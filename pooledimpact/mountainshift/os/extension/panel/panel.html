@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Sentinel DevTools</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+
+  <header>
+    <div class="logo">🟣 <strong>SENTINEL</strong> <span class="sub">· ClaudeForm DevTools</span><span class="version">v1.1.0</span></div>
+    <div class="status-bar">
+      <span id="conn-badge" class="badge disconnected">● Disconnected</span>
+      <span id="tab-info" class="tab-info">—</span>
+      <button id="btn-attach-debugger" class="btn btn-secondary">Attach Debugger</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="col-left">
+      <nav class="tab-nav">
+        <button class="tab-btn active" data-tab="send">Send</button>
+        <button class="tab-btn" data-tab="attach">Attach</button>
+        <button class="tab-btn" data-tab="packet">Packet</button>
+        <button class="tab-btn" data-tab="capture">Capture</button>
+        <button class="tab-btn" data-tab="watcher">Watcher</button>
+        <button class="tab-btn" data-tab="mesh">Mesh</button>
+        <button class="tab-btn" data-tab="debugger">Debugger</button>
+      </nav>
+
+      <!-- SEND -->
+      <div id="tab-send" class="tab-panel active">
+        <h3>Send Message</h3>
+        <textarea id="send-text" rows="5" placeholder="Type your message to Claude…"></textarea>
+        <div class="row">
+          <button id="btn-send" class="btn btn-accent">▶ Send</button>
+          <label class="opt-label"><input type="checkbox" id="chk-capture"> Capture response</label>
+        </div>
+      </div>
+
+      <!-- ATTACH -->
+      <div id="tab-attach" class="tab-panel">
+        <h3>Attach File</h3>
+        <div class="field"><label>Filename</label><input id="attach-name" type="text" value="SEND.XML"></div>
+        <div class="field"><label>MIME type</label><input id="attach-mime" type="text" value="application/xml"></div>
+        <div class="field"><label>Content</label><textarea id="attach-content" rows="6" placeholder="File content…"></textarea></div>
+        <div class="row">
+          <button id="btn-attach-only" class="btn btn-secondary">📎 Attach only</button>
+          <button id="btn-attach-send" class="btn btn-accent">▶ Attach + Send</button>
+          <label class="opt-label"><input type="checkbox" id="chk-attach-capture"> Capture response</label>
+        </div>
+        <div class="field"><label>Message (optional)</label><input id="attach-msg" type="text" placeholder="(leave blank for none)"></div>
+      </div>
+
+      <!-- PACKET -->
+      <div id="tab-packet" class="tab-panel">
+        <h3>Send Packet (SEND.XML)</h3>
+        <div class="grid-2">
+          <div class="field"><label>FROM</label><input id="pkt-from" type="text" value="WILL"></div>
+          <div class="field"><label>TO</label><input id="pkt-to" type="text" value="ARCH"></div>
+        </div>
+        <div class="field"><label>CHAT</label><textarea id="pkt-chat" rows="3" placeholder="Natural language message…"></textarea></div>
+        <div class="field"><label>COMMAND</label><input id="pkt-command" type="text" placeholder="e.g. BUILD_INDEX"></div>
+        <div class="field"><label>QUERY</label><input id="pkt-query" type="text" placeholder="SQL or free-text query…"></div>
+        <div class="field"><label>PING</label><input id="pkt-ping" type="text" placeholder="e.g. alive?"></div>
+        <div class="field">
+          <label>MEMORY</label>
+          <div class="row-tight">
+            <input id="pkt-memory-topic" type="text" placeholder="topic" style="width:30%">
+            <input id="pkt-memory" type="text" placeholder="value" style="flex:1">
+          </div>
+        </div>
+        <div class="field">
+          <label>BUILD</label>
+          <div class="row-tight">
+            <input id="pkt-build-artifact" type="text" placeholder="artifact" style="width:30%">
+            <input id="pkt-build" type="text" placeholder="value" style="flex:1">
+          </div>
+        </div>
+        <div class="row">
+          <button id="btn-send-packet" class="btn btn-accent">▶ Send Packet</button>
+          <button id="btn-guarded-send" class="btn btn-secondary">🛡 Guarded Send</button>
+          <button id="btn-preview-xml" class="btn btn-ghost">Preview XML</button>
+        </div>
+        <pre id="xml-preview" class="xml-preview hidden"></pre>
+      </div>
+
+      <!-- CAPTURE -->
+      <div id="tab-capture" class="tab-panel">
+        <h3>Response Capture</h3>
+        <p class="hint">Capture Claude's response after any send. Polls the DOM until streaming settles.</p>
+
+        <div class="field-group">
+          <h4>waitForResponse</h4>
+          <div class="grid-2">
+            <div class="field"><label>Poll (ms)</label><input id="cap-poll" type="number" value="800" min="200"></div>
+            <div class="field"><label>Settle (ms)</label><input id="cap-settle" type="number" value="2000" min="500"></div>
+          </div>
+          <div class="field"><label>Timeout (ms)</label><input id="cap-timeout" type="number" value="120000"></div>
+          <button id="btn-wait-response" class="btn btn-accent">⏳ Wait for Response</button>
+        </div>
+
+        <div class="field-group">
+          <h4>sendAndCapture</h4>
+          <p class="hint">Send an XML string and capture the response in one call.</p>
+          <div class="field"><label>XML String</label><textarea id="cap-xml" rows="4" placeholder="&lt;?xml ...&gt;"></textarea></div>
+          <button id="btn-send-capture" class="btn btn-accent">▶ sendAndCapture</button>
+        </div>
+
+        <div class="field-group">
+          <h4>packetAndCapture</h4>
+          <p class="hint">Uses packet fields from the Packet tab.</p>
+          <button id="btn-packet-capture" class="btn btn-accent">▶ packetAndCapture</button>
+        </div>
+      </div>
+
+      <!-- WATCHER -->
+      <div id="tab-watcher" class="tab-panel">
+        <h3>File Watcher + sendAndWait</h3>
+
+        <div class="field-group">
+          <h4>watchOutputFile</h4>
+          <p class="hint">Polls the output panel DOM for a file to appear. Writes miss records to IndexedDB on timeout and reloads.</p>
+          <div class="field"><label>Watch filename</label><input id="watch-filename" type="text" value="RECEIVE.XML"></div>
+          <div class="grid-2">
+            <div class="field"><label>Poll (ms)</label><input id="watch-interval" type="number" value="3000"></div>
+            <div class="field"><label>Timeout (ms)</label><input id="watch-timeout" type="number" value="120000"></div>
+          </div>
+          <div class="grid-2">
+            <div class="field"><label>Retry after (ms)</label><input id="watch-retry-after" type="number" value="120000"></div>
+            <div class="field"><label>Max retries</label><input id="watch-max-retries" type="number" value="5" min="1"></div>
+          </div>
+          <div class="row">
+            <button id="btn-watch-start" class="btn btn-accent">👁 Start Watching</button>
+            <button id="btn-watch-stop" class="btn btn-secondary" disabled>■ Stop</button>
+          </div>
+          <div id="watch-status" class="watch-status hidden"></div>
+        </div>
+
+        <div class="field-group">
+          <h4>sendAndWait</h4>
+          <p class="hint">Send packet (from Packet tab) then watch for a file in one call.</p>
+          <div class="field"><label>Watch filename</label><input id="saw-filename" type="text" value="RECEIVE.XML"></div>
+          <button id="btn-send-and-wait" class="btn btn-accent">▶ sendAndWait</button>
+        </div>
+
+        <div class="field-group">
+          <h4>IndexedDB Miss Records</h4>
+          <div class="row">
+            <button id="btn-get-misses" class="btn btn-secondary">📋 Get Misses</button>
+            <button id="btn-clear-misses" class="btn btn-ghost">🗑 Clear Misses</button>
+          </div>
+          <div id="misses-table" class="misses-table hidden"></div>
+        </div>
+      </div>
+
+      <!-- MESH -->
+      <div id="tab-mesh" class="tab-panel">
+        <h3>BroadcastChannel Mesh</h3>
+        <div class="grid-2">
+          <div class="field"><label>Identity</label><input id="mesh-identity" type="text" value="WILL"></div>
+          <div class="field"><label>Channel</label><input id="mesh-channel" type="text" value="sentinel-broadcast"></div>
+        </div>
+        <div class="row">
+          <button id="btn-join-mesh" class="btn btn-accent">Join Mesh</button>
+          <button id="btn-leave-mesh" class="btn btn-secondary">Leave</button>
+          <button id="btn-ping-mesh" class="btn btn-ghost">Ping</button>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <label>Broadcast Chat (to)</label>
+          <div class="row-tight">
+            <input id="mesh-chat-to" type="text" value="broadcast" style="width:30%">
+            <input id="mesh-chat-text" type="text" placeholder="Message…" style="flex:1">
+            <button id="btn-mesh-chat" class="btn btn-accent btn-sm">Send</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>toMeridian</label>
+          <div class="row-tight">
+            <input id="mesh-meridian-text" type="text" placeholder="Route to MERIDIAN…" style="flex:1">
+            <button id="btn-to-meridian" class="btn btn-secondary btn-sm">Send</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>sendXMLAndBroadcast</label>
+          <textarea id="mesh-xml-broadcast" rows="3" placeholder="XML string to upload + broadcast…"></textarea>
+          <button id="btn-xml-broadcast" class="btn btn-secondary" style="margin-top:6px">📡 XML + Broadcast</button>
+        </div>
+      </div>
+
+      <!-- DEBUGGER -->
+      <div id="tab-debugger" class="tab-panel">
+        <h3>chrome.debugger</h3>
+        <p class="hint">Send raw CDP commands to the inspected tab.</p>
+        <div class="field"><label>Domain.Method</label><input id="dbg-method" type="text" value="Runtime.evaluate"></div>
+        <div class="field"><label>Params (JSON)</label><textarea id="dbg-params" rows="5" placeholder='{"expression": "document.title"}'></textarea></div>
+        <div class="row"><button id="btn-dbg-send" class="btn btn-accent">▶ Send CDP Command</button></div>
+        <div class="field" style="margin-top:12px">
+          <label>Quick evaluations</label>
+          <div class="quick-evals">
+            <button class="btn btn-ghost btn-sm quick-eval" data-expr="document.title">Page Title</button>
+            <button class="btn btn-ghost btn-sm quick-eval" data-expr="window.cf ? 'ready' : 'NOT INJECTED'">CF Status</button>
+            <button class="btn btn-ghost btn-sm quick-eval" data-expr="window.cf?._identity ?? 'no mesh'">Mesh ID</button>
+            <button class="btn btn-ghost btn-sm quick-eval" data-expr="document.querySelector('[contenteditable]')?.tagName">Editor</button>
+            <button class="btn btn-ghost btn-sm quick-eval" data-expr="window.cf?._getLastAssistantText()?.slice(0,80)">Last Response</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- Right: log / output -->
+    <section class="col-right">
+      <div class="log-header">
+        <span>Output Log</span>
+        <div class="log-controls">
+          <label class="opt-label"><input type="checkbox" id="chk-autoscroll" checked> Auto-scroll</label>
+          <button id="btn-clear-log" class="btn btn-ghost btn-sm">Clear</button>
+        </div>
+      </div>
+      <div id="log" class="log"></div>
+      <div class="response-area hidden" id="response-area">
+        <div class="response-header">
+          Claude Response <span id="response-ms"></span>
+          <button id="btn-copy-response" class="btn btn-ghost btn-sm">Copy</button>
+        </div>
+        <pre id="response-text"></pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Panel Overlay -->
+  <div id="panel-overlay" class="panel-overlay hidden">
+    <div class="panel-overlay-inner">
+      <div class="overlay-spinner"></div>
+      <div id="overlay-message" class="overlay-message">Processing…</div>
+      <div class="overlay-sub">SENTINEL · ARCH</div>
+      <div id="overlay-stream" class="overlay-stream"></div>
+      <button id="btn-overlay-dismiss" class="btn btn-ghost btn-sm" style="margin-top:12px">Dismiss</button>
+    </div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>
