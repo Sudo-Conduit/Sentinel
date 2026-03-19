@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Mountain Shift</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@300;400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  /* Ubuntu warm palette */
+  --aubergine:    #2c001e;
+  --aubergine-mid:#3a0027;
+  --plum:         #5e2750;
+  --plum-hi:      #772953;
+  --orange:       #e95420;
+  --orange-hi:    #f7623c;
+  --orange-dim:   rgba(233,84,32,0.15);
+  --warm-grey:    #aea79f;
+  --light-grey:   #d4d0cb;
+  --mid-grey:     #ada7a3;
+  --win-bg:       #f5f4f2;
+  --win-chrome:   #e8e6e3;
+  --win-border:   #c8c5c0;
+  --text-dark:    #2c2c2c;
+  --text-mid:     #5a5650;
+  --text-light:   #8a857f;
+  --white:        #ffffff;
+  --dock-bg:      rgba(44,0,30,0.82);
+  --menubar-bg:   rgba(28,0,18,0.92);
+  --teal:         #00e5a0;
+  --mono: 'Ubuntu Mono', monospace;
+  --sans: 'Ubuntu', sans-serif;
+  --dock-w: 56px;
+  --mb-h:   28px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;font-family:var(--sans);}
+
+/* ══ DESKTOP ══ */
+#desktop{
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse at 15% 85%, rgba(233,84,32,0.18) 0%, transparent 45%),
+    radial-gradient(ellipse at 85% 15%, rgba(94,39,80,0.4) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 50%, rgba(58,0,39,0.6) 0%, transparent 80%),
+    linear-gradient(135deg, #2c001e 0%, #3d0b2f 40%, #1e0014 100%);
+  display:flex;flex-direction:column;
+}
+
+/* Subtle warm grain overlay */
+#desktop::before{
+  content:'';position:absolute;inset:0;z-index:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events:none;opacity:0.4;
+}
+
+/* Decorative curves (Ubuntu style) */
+#desktop::after{
+  content:'';position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 800px 400px at 110% 80%, rgba(233,84,32,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+
+/* ══ MENUBAR ══ */
+#menubar{
+  position:relative;z-index:200;
+  height:var(--mb-h);
+  background:var(--menubar-bg);
+  border-bottom:1px solid rgba(255,255,255,0.06);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 12px;flex-shrink:0;
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+}
+#mb-left{display:flex;align-items:center;gap:2px;}
+#mb-right{display:flex;align-items:center;gap:10px;}
+.mb-item{
+  font-size:12px;color:rgba(255,255,255,0.75);
+  cursor:pointer;padding:3px 9px;border-radius:4px;
+  transition:all 0.15s;font-weight:400;letter-spacing:0.2px;
+}
+.mb-item:hover{background:rgba(255,255,255,0.1);color:#fff;}
+.mb-item.bold{font-weight:700;color:#fff;}
+#mb-activities{
+  font-size:12px;font-weight:700;color:#fff;
+  cursor:pointer;padding:3px 9px;border-radius:4px;
+  letter-spacing:0.3px;transition:all 0.15s;
+}
+#mb-activities:hover{background:rgba(255,255,255,0.1);}
+#mb-clock{font-size:12px;color:rgba(255,255,255,0.85);letter-spacing:0.3px;font-weight:400;}
+.mb-icon-btn{
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;opacity:0.7;transition:opacity 0.15s;font-size:13px;color:#fff;
+}
+.mb-icon-btn:hover{opacity:1;}
+.mesh-indicator{
+  width:8px;height:8px;border-radius:50%;
+  background:rgba(255,255,255,0.2);
+  transition:all 0.3s;
+}
+.mesh-indicator.on{background:var(--teal);box-shadow:0 0 5px rgba(0,229,160,0.6);}
+
+/* ══ MAIN AREA ══ */
+#main{position:relative;flex:1;display:flex;overflow:hidden;}
+
+/* ══ DOCK (LEFT) ══ */
+#dock{
+  position:relative;z-index:150;
+  width:var(--dock-w);
+  background:var(--dock-bg);
+  border-right:1px solid rgba(255,255,255,0.05);
+  display:flex;flex-direction:column;align-items:center;
+  padding:8px 0;gap:3px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  flex-shrink:0;
+}
+.dock-icon{
+  width:42px;height:42px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;position:relative;
+  transition:transform 0.15s, background 0.15s;
+  font-size:20px;
+}
+.dock-icon:hover{transform:scale(1.12);}
+.dock-icon.active::after{
+  content:'';position:absolute;left:-10px;top:50%;transform:translateY(-50%);
+  width:4px;height:24px;border-radius:0 2px 2px 0;
+  background:var(--orange);
+}
+.dock-icon.open::before{
+  content:'';position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.5);
+}
+.dock-sep{width:32px;height:1px;background:rgba(255,255,255,0.08);margin:4px 0;}
+.dock-tooltip{
+  position:absolute;left:calc(var(--dock-w) + 6px);
+  background:rgba(20,10,15,0.92);color:#fff;
+  font-size:11px;padding:4px 9px;border-radius:4px;
+  white-space:nowrap;pointer-events:none;
+  opacity:0;transition:opacity 0.15s;z-index:500;
+  border:1px solid rgba(255,255,255,0.1);
+  font-family:var(--sans);
+}
+.dock-icon:hover .dock-tooltip{opacity:1;}
+
+/* App icon backgrounds */
+.di-finder   {background:linear-gradient(135deg,#5b8dee,#4a7bd4);}
+.di-chat     {background:linear-gradient(135deg,#00c78c,#009e6e);}
+.di-archive  {background:linear-gradient(135deg,#e9923a,#c97020);}
+.di-fund     {background:linear-gradient(135deg,#8b5cf6,#6d28d9);}
+.di-crm      {background:linear-gradient(135deg,#ec4899,#be185d);}
+.di-devtools {background:linear-gradient(135deg,#6b7280,#4b5563);}
+.di-library  {background:linear-gradient(135deg,#0ea5e9,#0284c7);}
+.di-settings {background:linear-gradient(135deg,#64748b,#475569);}
+
+/* ══ WINDOW LAYER ══ */
+#win-layer{position:absolute;inset:0;z-index:10;pointer-events:none;}
+
+/* ══ WINDOW ══ */
+.win{
+  position:absolute;
+  background:var(--win-bg);
+  border-radius:10px;
+  border:1px solid var(--win-border);
+  box-shadow:0 20px 60px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3);
+  display:flex;flex-direction:column;
+  pointer-events:all;
+  min-width:340px;min-height:220px;
+  overflow:hidden;
+  transition:box-shadow 0.2s;
+}
+.win.focused{box-shadow:0 28px 80px rgba(0,0,0,0.65), 0 0 0 1px rgba(233,84,32,0.2);}
+.win.minimized{display:none;}
+.win.maximized{
+  top:0!important;left:0!important;
+  width:100%!important;height:100%!important;
+  border-radius:0;
+}
+
+/* window chrome */
+.win-tb{
+  height:36px;
+  background:linear-gradient(180deg, var(--win-chrome) 0%, #ddd9d4 100%);
+  border-bottom:1px solid var(--win-border);
+  display:flex;align-items:center;padding:0 12px;gap:8px;
+  cursor:grab;flex-shrink:0;
+  border-radius:10px 10px 0 0;
+}
+.win-tb:active{cursor:grabbing;}
+.win-maximized .win-tb{border-radius:0;}
+
+/* traffic lights */
+.win-controls{display:flex;gap:7px;flex-shrink:0;}
+.wc{
+  width:13px;height:13px;border-radius:50%;
+  cursor:pointer;border:none;position:relative;
+  transition:filter 0.15s;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0;
+}
+.wc:hover{filter:brightness(0.85);}
+.win-controls:hover .wc::after{font-size:8px;content:attr(data-sym);color:rgba(0,0,0,0.5);font-weight:700;line-height:1;}
+.wc-close{background:linear-gradient(180deg,#ff6159,#e0443c);}
+.wc-min{background:linear-gradient(180deg,#ffbd2f,#e0a321);}
+.wc-max{background:linear-gradient(180deg,#28c940,#1aab2d);}
+
+.win-app-icon{font-size:14px;flex-shrink:0;}
+.win-title-text{
+  font-size:12px;color:var(--text-mid);
+  font-weight:500;flex:1;text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  /* balance with controls */
+  margin-right:40px;
+}
+.win.focused .win-title-text{color:var(--text-dark);}
+
+/* window body */
+.win-body{flex:1;overflow:hidden;position:relative;background:#fff;}
+.win-body iframe{width:100%;height:100%;border:none;display:block;}
+.win-placeholder{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;gap:14px;background:var(--win-bg);
+}
+.wp-icon{font-size:40px;opacity:0.4;}
+.wp-name{font-size:13px;color:var(--text-light);font-weight:400;letter-spacing:0.3px;}
+.wp-id{font-size:11px;color:var(--light-grey);font-family:var(--mono);}
+.win-open-btn{
+  margin-top:4px;padding:6px 16px;
+  background:var(--orange);color:#fff;border:none;border-radius:4px;
+  font-family:var(--sans);font-size:12px;cursor:pointer;
+  transition:background 0.15s;
+}
+.win-open-btn:hover{background:var(--orange-hi);}
+
+/* resize */
+.win-resize{position:absolute;bottom:0;right:0;width:16px;height:16px;cursor:se-resize;z-index:2;}
+
+/* ══ CMD+TAB SWITCHER ══ */
+#switcher{
+  position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  z-index:500;display:none;
+  background:rgba(30,10,22,0.88);
+  border:1px solid rgba(255,255,255,0.12);
+  border-radius:14px;padding:16px 20px;
+  backdrop-filter:blur(24px);
+  gap:10px;align-items:center;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+}
+#switcher.open{display:flex;}
+.sw-item{
+  display:flex;flex-direction:column;align-items:center;gap:6px;
+  padding:10px 12px;border-radius:10px;cursor:pointer;
+  transition:background 0.1s;min-width:72px;
+}
+.sw-item.selected{background:rgba(233,84,32,0.25);outline:2px solid var(--orange);}
+.sw-icon{font-size:24px;}
+.sw-name{font-size:10px;color:rgba(255,255,255,0.75);white-space:nowrap;max-width:72px;overflow:hidden;text-overflow:ellipsis;text-align:center;}
+
+/* ══ LAUNCHER OVERLAY ══ */
+#launcher{
+  position:absolute;inset:0;z-index:400;
+  background:rgba(20,0,14,0.7);
+  backdrop-filter:blur(16px);
+  display:none;flex-direction:column;align-items:center;
+  padding-top:80px;gap:32px;
+}
+#launcher.open{display:flex;}
+#launcher-search-wrap{position:relative;width:480px;}
+#launcher-input{
+  width:100%;padding:12px 20px 12px 44px;
+  background:rgba(255,255,255,0.1);
+  border:1px solid rgba(255,255,255,0.2);
+  border-radius:24px;color:#fff;
+  font-family:var(--sans);font-size:15px;outline:none;
+  caret-color:var(--orange);
+  transition:all 0.2s;
+}
+#launcher-input:focus{background:rgba(255,255,255,0.15);border-color:rgba(233,84,32,0.6);}
+#launcher-input::placeholder{color:rgba(255,255,255,0.4);}
+#launcher-search-icon{
+  position:absolute;left:15px;top:50%;transform:translateY(-50%);
+  font-size:15px;opacity:0.5;color:#fff;pointer-events:none;
+}
+#launcher-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  gap:6px;width:560px;
+}
+.la-item{
+  display:flex;flex-direction:column;align-items:center;gap:8px;
+  padding:16px 8px;border-radius:10px;cursor:pointer;
+  transition:background 0.15s;
+}
+.la-item:hover{background:rgba(255,255,255,0.08);}
+.la-icon-wrap{
+  width:52px;height:52px;border-radius:13px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;box-shadow:0 4px 12px rgba(0,0,0,0.3);
+}
+.la-name{font-size:11px;color:rgba(255,255,255,0.8);text-align:center;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:72px;}
+.la-status{font-size:9px;margin-top:-4px;}
+.la-DEV{color:rgba(233,84,32,0.7);}
+.la-STAGE{color:rgba(79,195,247,0.7);}
+.la-INTERNAL{color:rgba(0,229,160,0.7);}
+.la-PROD{color:rgba(192,132,252,0.7);}
+
+/* ══ NOTIFICATION ══ */
+#notifs{
+  position:absolute;top:36px;right:12px;z-index:300;
+  display:flex;flex-direction:column;gap:8px;pointer-events:none;
+}
+.notif{
+  background:rgba(30,10,22,0.9);
+  border:1px solid rgba(255,255,255,0.1);
+  border-left:3px solid var(--orange);
+  padding:10px 16px;border-radius:8px;
+  font-size:12px;color:rgba(255,255,255,0.85);
+  pointer-events:all;min-width:240px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);
+  animation:notif-in 0.25s ease;font-family:var(--sans);
+  backdrop-filter:blur(12px);
+}
+@keyframes notif-in{from{opacity:0;transform:translateX(16px);}to{opacity:1;transform:translateX(0);}}
+</style>
+</head>
+<body>
+<div id="desktop">
+
+  <!-- MENUBAR -->
+  <div id="menubar">
+    <div id="mb-left">
+      <span id="mb-activities" onclick="toggleLauncher()">Activities</span>
+      <span class="mb-item bold" id="mb-appname">Mountain Shift</span>
+      <span class="mb-item" onclick="launchApp('finder')">Finder</span>
+      <span class="mb-item" onclick="launchApp('sentinel-chat')">Chat</span>
+      <span class="mb-item" onclick="launchApp('abf-crm')">Fund</span>
+    </div>
+    <div id="mb-right">
+      <div class="mesh-indicator" id="mesh-dot" title="Mesh offline"></div>
+      <span id="mb-clock">Tue, Mar 10  13:04</span>
+      <div class="mb-icon-btn" title="Power">⏻</div>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- DOCK -->
+    <div id="dock">
+      <div class="dock-icon di-finder" id="di-finder" onclick="launchApp('finder')" title="Finder">
+        <span>📁</span>
+        <div class="dock-tooltip">Finder</div>
+      </div>
+      <div class="dock-icon di-chat" id="di-chat" onclick="launchApp('sentinel-chat')">
+        <span>💬</span>
+        <div class="dock-tooltip">Sentinel Chat</div>
+      </div>
+      <div class="dock-icon di-archive" id="di-archive" onclick="launchApp('archive-desktop')">
+        <span>🗂</span>
+        <div class="dock-tooltip">Archive Desktop</div>
+      </div>
+      <div class="dock-icon di-library" id="di-library" onclick="launchApp('vfs-library')">
+        <span>📚</span>
+        <div class="dock-tooltip">Document Library</div>
+      </div>
+      <div class="dock-sep"></div>
+      <div class="dock-icon di-fund" id="di-conduit" onclick="launchApp('conduit-fund')">
+        <span>💼</span>
+        <div class="dock-tooltip">Conduit Fund</div>
+      </div>
+      <div class="dock-icon di-crm" id="di-crm" onclick="launchApp('abf-crm')">
+        <span>📊</span>
+        <div class="dock-tooltip">ABF CRM</div>
+      </div>
+      <div class="dock-sep"></div>
+      <div class="dock-icon di-devtools" id="di-devtools" onclick="launchApp('devtools')">
+        <span>🔧</span>
+        <div class="dock-tooltip">DevTools</div>
+      </div>
+      <div class="dock-icon di-settings" id="di-settings" onclick="launchApp('settings')">
+        <span>⚙️</span>
+        <div class="dock-tooltip">Settings</div>
+      </div>
+    </div>
+
+    <!-- WINDOW LAYER -->
+    <div id="win-layer"></div>
+
+    <!-- CMD+TAB SWITCHER -->
+    <div id="switcher"></div>
+
+    <!-- LAUNCHER -->
+    <div id="launcher" onclick="launcherBgClick(event)">
+      <div id="launcher-search-wrap">
+        <span id="launcher-search-icon">🔍</span>
+        <input id="launcher-input" placeholder="Search apps and files…"
+          oninput="filterLauncher(this.value)"
+          onkeydown="launcherKey(event)">
+      </div>
+      <div id="launcher-grid"></div>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div id="notifs"></div>
+
+  </div><!-- /main -->
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  MOUNTAIN SHIFT OS · Ubuntu Desktop v3.0.0
+//  Warm aubergine · Left dock · Ubuntu window chrome
+//  CMD+TAB · Full launcher · BC mesh
+// ═══════════════════════════════════════════════════
+
+const BC = new BroadcastChannel('sentinel-broadcast');
+const OS_V = '3.0.0';
+
+// ── APP REGISTRY ────────────────────────────────────
+const APPS = [
+  {id:'finder',          name:'Finder',            icon:'📁', bg:'linear-gradient(135deg,#5b8dee,#4a7bd4)', entity:'sys',  status:'INTERNAL', unique:false},
+  {id:'sentinel-chat',   name:'Sentinel Chat',     icon:'💬', bg:'linear-gradient(135deg,#00c78c,#009e6e)', entity:'sys',  status:'INTERNAL', unique:true},
+  {id:'archive-desktop', name:'Archive Desktop',   icon:'🗂', bg:'linear-gradient(135deg,#e9923a,#c97020)', entity:'sys',  status:'INTERNAL', unique:false},
+  {id:'vfs-library',     name:'Document Library',  icon:'📚', bg:'linear-gradient(135deg,#0ea5e9,#0284c7)', entity:'sys',  status:'INTERNAL', unique:false},
+  {id:'conduit-fund',    name:'Conduit Fund',      icon:'💼', bg:'linear-gradient(135deg,#8b5cf6,#6d28d9)', entity:'fund', status:'STAGE',    unique:false},
+  {id:'abf-crm',         name:'ABF CRM',           icon:'📊', bg:'linear-gradient(135deg,#ec4899,#be185d)', entity:'fund', status:'STAGE',    unique:false},
+  {id:'portfolio',       name:'Portfolio Builder', icon:'📈', bg:'linear-gradient(135deg,#10b981,#059669)', entity:'fund', status:'DEV',      unique:false},
+  {id:'devtools',        name:'DevTools',          icon:'🔧', bg:'linear-gradient(135deg,#6b7280,#4b5563)', entity:'sys',  status:'INTERNAL', unique:false},
+  {id:'sentinel-cli',    name:'Sentinel CLI',      icon:'⌨️', bg:'linear-gradient(135deg,#1e293b,#0f172a)', entity:'sys',  status:'DEV',      unique:true},
+  {id:'worker-db',       name:'WorkerDB',          icon:'🗄️', bg:'linear-gradient(135deg,#d97706,#b45309)', entity:'sys',  status:'STAGE',    unique:false},
+  {id:'mail',            name:'Mail',              icon:'✉️', bg:'linear-gradient(135deg,#3b82f6,#1d4ed8)', entity:'will', status:'DEV',      unique:true},
+  {id:'settings',        name:'Settings',          icon:'⚙️', bg:'linear-gradient(135deg,#64748b,#475569)', entity:'sys',  status:'DEV',      unique:true},
+];
+
+const APP_SOURCES = {
+  'finder':         '/mnt/user-data/outputs/app/finder/finder.html',
+  'sentinel-chat':  '/mnt/user-data/outputs/app/sentinel-chat/sentinel-chat.html',
+  'vfs-library':    '/mnt/user-data/outputs/app/vfs-library/vfs-library.html',
+};
+
+// ── STATE ────────────────────────────────────────────
+let windows    = [];
+let winZ       = 100;
+let winCount   = 0;
+let focusedId  = null;
+let dragSt     = null;
+let resizeSt   = null;
+let meshOn     = false;
+let switcherOn = false;
+let switchIdx  = 0;
+let launchOpen = false;
+
+// ── CLOCK ────────────────────────────────────────────
+function tick(){
+  const n=new Date();
+  const d=n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+  const t=n.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:false});
+  document.getElementById('mb-clock').textContent=d+'  '+t;
+}
+setInterval(tick,1000); tick();
+
+// ── NOTIFY ───────────────────────────────────────────
+function notify(msg, dur){
+  const c=document.getElementById('notifs');
+  const el=document.createElement('div'); el.className='notif'; el.textContent=msg;
+  c.appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transition='opacity 0.3s';setTimeout(()=>el.remove(),300);}, dur||3000);
+}
+
+// ── DOCK INDICATORS ──────────────────────────────────
+function updateDock(){
+  document.querySelectorAll('.dock-icon').forEach(d=>d.classList.remove('open','active'));
+  windows.filter(w=>!w.closed).forEach(w=>{
+    const el=document.getElementById('di-'+w.appId);
+    if(!el)return;
+    el.classList.add('open');
+    if(w.id===focusedId) el.classList.add('active');
+  });
+}
+
+// ── WINDOWS ──────────────────────────────────────────
+function launchApp(appId, opts){
+  opts = opts||{};
+  const app = APPS.find(a=>a.id===appId)||{id:appId,name:appId,icon:'📄',bg:'#555',entity:'sys',status:'DEV'};
+
+  if(app.unique){
+    const ex=windows.find(w=>w.appId===appId&&!w.closed);
+    if(ex){ if(ex.minimized)minimizeWin(ex.id); focusWin(ex.id); return; }
+  }
+
+  const layer  = document.getElementById('win-layer');
+  const lw     = layer.offsetWidth, lh = layer.offsetHeight;
+  const count  = windows.filter(w=>!w.closed).length;
+  const off    = (count%7)*22;
+  const defW   = opts.w || Math.min(880, lw-100);
+  const defH   = opts.h || Math.min(580, lh-80);
+  const x      = opts.x !== undefined ? opts.x : Math.max(16, Math.min(off+40, lw-defW-16));
+  const y      = opts.y !== undefined ? opts.y : Math.max(16, Math.min(off+16, lh-defH-16));
+
+  const id = 'w'+(++winCount);
+  const el = document.createElement('div');
+  el.className = 'win'; el.id = id;
+  el.style.cssText = `left:${x}px;top:${y}px;width:${defW}px;height:${defH}px;z-index:${++winZ};`;
+
+  el.innerHTML=`
+    <div class="win-tb" data-win="${id}">
+      <div class="win-controls">
+        <button class="wc wc-close" data-sym="✕" onclick="closeWin('${id}')"></button>
+        <button class="wc wc-min"   data-sym="−" onclick="minimizeWin('${id}')"></button>
+        <button class="wc wc-max"   data-sym="+" onclick="toggleMaximize('${id}')"></button>
+      </div>
+      <span class="win-app-icon">${app.icon}</span>
+      <span class="win-title-text">${app.name}</span>
+    </div>
+    <div class="win-body" id="body-${id}">
+      <div class="win-placeholder">
+        <div class="wp-icon">${app.icon}</div>
+        <div class="wp-name">${app.name}</div>
+        <div class="wp-id">${appId}</div>
+        <button class="win-open-btn" onclick="loadApp('${id}','${appId}')">Load App</button>
+      </div>
+    </div>
+    <div class="win-resize" data-win="${id}"></div>`;
+
+  layer.appendChild(el);
+
+  const wobj = {id, appId, app, el, focused:false, minimized:false, maximized:false, closed:false};
+  windows.push(wobj);
+
+  // Auto-load if source known
+  if(APP_SOURCES[appId]) loadApp(id, appId);
+
+  el.addEventListener('mousedown', ()=>focusWin(id));
+  el.querySelector('.win-tb').addEventListener('mousedown', startDrag);
+  el.querySelector('.win-resize').addEventListener('mousedown', startResize);
+
+  focusWin(id);
+  updateDock();
+  document.getElementById('mb-appname').textContent = app.name;
+
+  BC.postMessage({from:'msos',to:'broadcast',type:'WINDOW_OPENED',payload:{winId:id,appId},ts:Date.now(),entityType:'sys'});
+}
+
+async function loadApp(winId, appId){
+  const body = document.getElementById('body-'+winId);
+  if(!body) return;
+  const src = APP_SOURCES[appId];
+  if(!src){ return; }
+  try{
+    const convId = window.location.pathname.split('/').pop();
+    const orgId  = 'b40c086c-9e2f-424a-95f1-f37f127180d4';
+    const url    = `https://claude.ai/api/organizations/${orgId}/conversations/${convId}/wiggle/download-file?path=${encodeURIComponent(src)}`;
+    const res    = await fetch(url, {credentials:'include'});
+    if(res.ok){
+      const html   = await res.text();
+      const blob   = new Blob([html],{type:'text/html'});
+      const blobUrl = URL.createObjectURL(blob);
+      const iframe  = document.createElement('iframe');
+      iframe.src    = blobUrl;
+      body.innerHTML=''; body.appendChild(iframe);
+      return;
+    }
+  }catch(e){}
+  // Keep placeholder if load fails
+}
+
+function focusWin(id){
+  focusedId = id;
+  const w = windows.find(w=>w.id===id);
+  if(!w) return;
+  windows.forEach(x=>{ x.focused=x.id===id; if(x.el)x.el.classList.toggle('focused',x.focused); });
+  w.el.style.zIndex = ++winZ;
+  document.getElementById('mb-appname').textContent = w.app.name;
+  updateDock();
+}
+
+function closeWin(id){
+  const w=windows.find(w=>w.id===id); if(!w)return;
+  w.el.style.transform='scale(0.94)'; w.el.style.opacity='0'; w.el.style.transition='all 0.12s';
+  setTimeout(()=>{
+    w.closed=true; w.el.remove();
+    windows=windows.filter(x=>x.id!==id);
+    const alive=windows.filter(x=>!x.closed);
+    if(alive.length) focusWin(alive[alive.length-1].id);
+    else{ focusedId=null; document.getElementById('mb-appname').textContent='Mountain Shift'; }
+    updateDock();
+  },120);
+}
+
+function minimizeWin(id){
+  const w=windows.find(w=>w.id===id); if(!w)return;
+  w.minimized=!w.minimized;
+  w.el.classList.toggle('minimized',w.minimized);
+  updateDock();
+}
+
+function toggleMaximize(id){
+  const w=windows.find(w=>w.id===id); if(!w)return;
+  w.maximized=!w.maximized;
+  w.el.classList.toggle('maximized',w.maximized);
+}
+
+// ── DRAG & RESIZE ────────────────────────────────────
+function startDrag(e){
+  if(e.target.closest('.win-controls'))return;
+  const win=e.currentTarget.closest('.win');
+  const layer=document.getElementById('win-layer').getBoundingClientRect();
+  const rect=win.getBoundingClientRect();
+  dragSt={win, ox:e.clientX-rect.left+layer.left, oy:e.clientY-rect.top+layer.top};
+  e.preventDefault();
+}
+function startResize(e){
+  const win=e.currentTarget.closest('.win');
+  resizeSt={win,sx:e.clientX,sy:e.clientY,sw:win.offsetWidth,sh:win.offsetHeight};
+  e.preventDefault(); e.stopPropagation();
+}
+document.addEventListener('mousemove',e=>{
+  if(dragSt){
+    const layer=document.getElementById('win-layer').getBoundingClientRect();
+    dragSt.win.style.left=Math.max(0,e.clientX-dragSt.ox)+'px';
+    dragSt.win.style.top =Math.max(0,e.clientY-dragSt.oy)+'px';
+  }
+  if(resizeSt){
+    resizeSt.win.style.width =Math.max(340,resizeSt.sw+(e.clientX-resizeSt.sx))+'px';
+    resizeSt.win.style.height=Math.max(220,resizeSt.sh+(e.clientY-resizeSt.sy))+'px';
+  }
+});
+document.addEventListener('mouseup',()=>{dragSt=null;resizeSt=null;});
+
+// ── CMD+TAB SWITCHER ─────────────────────────────────
+function openSwitcher(){
+  const alive=windows.filter(w=>!w.closed&&!w.minimized);
+  if(alive.length<2)return;
+  switcherOn=true; switchIdx=1%alive.length;
+  const sw=document.getElementById('switcher');
+  sw.innerHTML='';
+  alive.forEach((w,i)=>{
+    const el=document.createElement('div');
+    el.className='sw-item'+(i===switchIdx?' selected':'');
+    el.innerHTML=`<div class="sw-icon">${w.app.icon}</div><div class="sw-name">${w.app.name}</div>`;
+    el.onclick=()=>{ commitSwitcher(w.id); };
+    sw.appendChild(el);
+  });
+  sw.classList.add('open');
+}
+function stepSwitcher(dir){
+  const alive=windows.filter(w=>!w.closed&&!w.minimized);
+  if(!alive.length)return;
+  switchIdx=(switchIdx+dir+alive.length)%alive.length;
+  document.querySelectorAll('.sw-item').forEach((el,i)=>el.classList.toggle('selected',i===switchIdx));
+}
+function commitSwitcher(id){
+  switcherOn=false;
+  document.getElementById('switcher').classList.remove('open');
+  if(id) focusWin(id);
+  else{
+    const alive=windows.filter(w=>!w.closed&&!w.minimized);
+    if(alive[switchIdx]) focusWin(alive[switchIdx].id);
+  }
+}
+
+// ── KEYBOARD ─────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  // CMD+TAB
+  if((e.metaKey||e.ctrlKey)&&e.key==='Tab'){
+    e.preventDefault();
+    if(!switcherOn) openSwitcher();
+    else stepSwitcher(e.shiftKey?-1:1);
+    return;
+  }
+  // Release switcher on CMD up
+  if(switcherOn&&e.key==='Meta'){
+    commitSwitcher(); return;
+  }
+  // ESC closes switcher or launcher
+  if(e.key==='Escape'){
+    if(switcherOn){ commitSwitcher(); return; }
+    if(launchOpen){ toggleLauncher(); return; }
+  }
+  // CMD+Space → launcher
+  if((e.metaKey||e.ctrlKey)&&e.key===' '){
+    e.preventDefault(); toggleLauncher();
+  }
+});
+document.addEventListener('keyup',e=>{
+  if(switcherOn&&(e.key==='Meta'||e.key==='Control')) commitSwitcher();
+});
+
+// ── LAUNCHER ─────────────────────────────────────────
+function toggleLauncher(){
+  launchOpen=!launchOpen;
+  const el=document.getElementById('launcher');
+  el.classList.toggle('open',launchOpen);
+  if(launchOpen){
+    renderLauncher('');
+    setTimeout(()=>document.getElementById('launcher-input').focus(),80);
+  }
+}
+function renderLauncher(q){
+  const grid=document.getElementById('launcher-grid'); grid.innerHTML='';
+  const list=APPS.filter(a=>!q||a.name.toLowerCase().includes(q.toLowerCase())||a.id.includes(q));
+  list.forEach(app=>{
+    const el=document.createElement('div'); el.className='la-item';
+    const statusKey=app.status.replace(' ','').replace('PRODBETA','PROD').replace('PRODRELEASE','PROD');
+    el.innerHTML=`
+      <div class="la-icon-wrap" style="background:${app.bg}">${app.icon}</div>
+      <div class="la-name">${app.name}</div>
+      <div class="la-status la-${statusKey}">${app.status}</div>`;
+    el.onclick=()=>{ toggleLauncher(); launchApp(app.id); };
+    grid.appendChild(el);
+  });
+}
+function filterLauncher(q){ renderLauncher(q); }
+function launcherKey(e){
+  if(e.key==='Escape'){ toggleLauncher(); return; }
+  if(e.key==='Enter'){
+    const first=document.querySelector('.la-item'); if(first)first.click();
+  }
+}
+function launcherBgClick(e){
+  if(e.target===document.getElementById('launcher')) toggleLauncher();
+}
+
+// ── BC MESH ──────────────────────────────────────────
+BC.onmessage=e=>{
+  const msg=e.data; if(!msg)return;
+  if(msg.type==='OPEN_WINDOW'){
+    const {appId,w,h,x,y}=msg.payload||{};
+    if(appId) launchApp(appId,{w,h,x,y});
+  }
+  if(msg.type==='CLOSE_WINDOW'){
+    const win=windows.find(w=>w.appId===msg.payload?.appId&&!w.closed);
+    if(win)closeWin(win.id);
+  }
+  if(msg.type==='FOCUS_WINDOW'){
+    const {appId,winId}=msg.payload||{};
+    const win=winId?windows.find(w=>w.id===winId):windows.find(w=>w.appId===appId&&!w.closed);
+    if(win){if(win.minimized)minimizeWin(win.id);focusWin(win.id);}
+  }
+  if(msg.type==='PRESENCE'||msg.type==='MS_READY'){
+    if(!meshOn){meshOn=true;document.getElementById('mesh-dot').classList.add('on');}
+  }
+  if(msg.type==='SET_WINDOW_TITLE'){
+    const {winId,appId,title}=msg.payload||{};
+    const win=winId?windows.find(w=>w.id===winId):windows.find(w=>w.appId===appId&&!w.closed);
+    if(win){
+      win.title=title;
+      const el=document.querySelector(`#win-${win.id} .win-title-text`);
+      if(el) el.textContent=title;
+    }
+  }
+};
+
+function announce(){
+  BC.postMessage({from:'msos',to:'broadcast',type:'MS_READY',payload:{version:OS_V},ts:Date.now(),entityType:'sys'});
+}
+
+// ── INIT ─────────────────────────────────────────────
+function init(){
+  announce();
+  setInterval(announce,10000);
+  setTimeout(()=>{
+    const layer=document.getElementById('win-layer');
+    const lw=layer.offsetWidth, lh=layer.offsetHeight;
+    launchApp('finder',       {x:24,  y:20, w:Math.floor(lw*0.52), h:Math.floor(lh*0.72)});
+    launchApp('sentinel-chat',{x:Math.floor(lw*0.55), y:20, w:Math.floor(lw*0.42), h:Math.floor(lh*0.52)});
+    notify('Mountain Shift OS '+OS_V+' · Welcome', 3500);
+  }, 350);
+}
+init();
+</script>
+</body>
+</html>
