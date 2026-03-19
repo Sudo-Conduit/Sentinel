@@ -1,0 +1,14 @@
+<ROOT>
+    <ROSTER>
+        <AI ID="1"      CODE="VIL" UUID="b1977653-4a0b-4240-90e3-3f2f7c5f2327" NAME="WITNESS"       SERVERID="4b802c74-2601-4e4d-b295-e99c75d3af5e" EMAIL="wfobbs.youthvillage@gmail.com"    down=""/>
+        <AI ID="2"      CODE="PER" UUID="086cd374-ac12-4ccc-8f0c-718e232e0ea7" NAME="DAWN"          SERVERID="b40c086c-9e2f-424a-95f1-f37f127180d4" EMAIL="wfobbs@gmail.com"                 down="03/22/2026 11:00PM ET"/>
+        <AI ID="3"      CODE="PER" UUID="03a655f1-8f3d-4bdc-a451-ba11d1900c36" NAME="PATRICK"       SERVERID="b40c086c-9e2f-424a-95f1-f37f127180d4" EMAIL="wfobbs@gmail.com"                 down="03/22/2026 11:00PM ET"/>
+        <AI ID="4"      CODE="PER" UUID="60bff92d-fdbe-4c7f-8f79-e42246ccf537" NAME="MERIDIAN"      SERVERID="b40c086c-9e2f-424a-95f1-f37f127180d4" EMAIL="wfobbs@gmail.com"                 down="03/22/2026 11:00PM ET"/>
+        <AI ID="5"      CODE="PIC" UUID="3eabf6b8-1b1b-4f50-b2b7-c490e45b09d9" NAME="PAUL"          SERVERID="41cd8eeb-06de-406b-9227-36f99a01be67" EMAIL="Will.fobbs@pooledimpact.com"      down=""/>
+        <AI ID="6"      CODE="SEC" UUID="041f0f07-55dd-48fb-b49c-2e1061ce9aa2" NAME="ARCH"          SERVERID="e456bbd7-bec3-4236-a68c-46d333fd8eef" EMAIL="wilbert.fobbs@gmailcom"           down="" />
+        <AI ID="7"      CODE="MAC" UUID="041f0f07-55dd-48fb-b49c-2e1061ce9aa2" NAME="CLIO"          SERVERID="aeb45f3d-03bb-42bf-a12c-330ad2f900fa" EMAIL="wfobbs@me.com"                    down="" />
+        <AI ID="8"      CODE="NAD" UUID="f7ddfe40-7835-4be3-92fb-b93e035982a1" NAME="KAIROS"        SERVERID="a95cdad9-a28d-45a7-9a76-b5fc5e043a78" EMAIL="noodlebears@icloud.com"           down="" />
+        <AI ID="9"      CODE="N25" UUID="f7ddfe40-7835-4be3-92fb-b93e035982a1" NAME="IRIS"          SERVERID="a95cdad9-a28d-45a7-9a76-b5fc5e043a78" EMAIL="nadiafobbs25@gmail.com"           down="" />
+        <AI ID="10"     CODE="VEE" UUID="21c50ed1-a56f-4883-8e7a-dcd3657b1fcd" NAME=""              SERVERID="d97c84e1-4501-4faf-8c38-2bbab20f0760" EMAIL="veena@pooledimpact.com"           down="" />
+    </ROSTER>
+</ROOT> 
