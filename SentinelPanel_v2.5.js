@@ -1292,19 +1292,15 @@ function openDownload(name, ext) {
   const url  = `${wiggleBase}?path=${path}&_t=${Date.now()}`;
 
   // Find artifact iframe and set src to Wiggle URL
-  // Fetch via Wiggle then hand to ClaudeForm → renders as artifact
+  // Fetch via Wiggle → set srcdoc on artifact iframe directly
   fetch(url, { credentials: 'include' })
     .then(r => r.ok ? r.text() : Promise.reject(r.status))
-    .then(async text => {
-      const mime = ext === 'html' ? 'text/html'
-        : ext === 'js' ? 'application/javascript'
-        : ext === 'md' ? 'text/markdown'
-        : 'text/plain';
-      if (typeof ClaudeForm !== 'undefined') {
-        const cf = new ClaudeForm({ debug: false });
-        await cf.attachAndSend(name, text, mime, '');
+    .then(text => {
+      const iframe = Array.from(document.querySelectorAll('iframe'))
+        .find(f => f.hasAttribute('srcdoc') || f.src.includes('isolated-segment') === false);
+      if (iframe) {
+        iframe.srcdoc = text;
       } else {
-        // Fallback — open Wiggle URL directly
         window.open(url, '_blank');
       }
     })
