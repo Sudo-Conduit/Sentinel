@@ -821,11 +821,32 @@ function detectIdentity() {
   const url  = window.location.href;
   const cm   = url.match(/chat\/([a-f0-9-]{36})/);
   if (cm) SP.state.chatId = cm[1];
-  const html = document.body.innerHTML;
-  const om   = html.match(/organizations\/([a-f0-9-]{36})/);
-  const vm   = html.match(/conversations\/([a-f0-9-]{36})\/wiggle/);
-  if (om) SP.state.orgId = om[1];
+
+  // Search page source — scripts, links, meta, innerHTML
+  const src = document.documentElement.innerHTML +
+              Array.from(document.querySelectorAll('script')).map(s=>s.textContent).join(' ');
+
+  const om = src.match(/organizations\/([a-f0-9-]{36})/);
+  const vm = src.match(/conversations\/([a-f0-9-]{36})(?:\/wiggle)?/);
+  if (om) SP.state.orgId  = om[1];
   if (vm) SP.state.convId = vm[1];
+
+  // Also try URL
+  const urlOrg  = url.match(/organizations\/([a-f0-9-]{36})/);
+  const urlConv = url.match(/conversations\/([a-f0-9-]{36})/);
+  if (urlOrg)  SP.state.orgId  = urlOrg[1];
+  if (urlConv) SP.state.convId = urlConv[1];
+
+  // Fallback: scan all script tags for org/conv patterns
+  if (!SP.state.orgId || !SP.state.convId) {
+    document.querySelectorAll('script').forEach(s => {
+      const t = s.textContent || '';
+      const o = t.match(/"organization(?:_id|Id|UUID)":\s*"([a-f0-9-]{36})"/);
+      const c = t.match(/"conversation(?:_id|Id|UUID)":\s*"([a-f0-9-]{36})"/);
+      if (o && !SP.state.orgId)  SP.state.orgId  = o[1];
+      if (c && !SP.state.convId) SP.state.convId = c[1];
+    });
+  }
 }
 
 function scanDownloads() {
@@ -912,7 +933,7 @@ const TOOLS = {
       const tags = Object.entries(byExt).map(([e,n]) =>
         `<span class="tag" data-filter="${e}">${e} ${n}</span>`).join('');
       const list = files.slice(0,40).map(f =>
-        `<li data-name="${f.name}" data-ext="${f.ext||''}" style="cursor:pointer" onclick="openDownload('${f.name}','${f.ext||''}')">
+        `<li data-name="${f.name}" data-ext="${f.ext||''}" style="cursor:pointer">
           <span>${f.name}</span>
           <span class="badge badge-${f.ext||'md'}">${f.ext||'?'}</span>
         </li>`
@@ -1282,6 +1303,21 @@ function wireButtons() {
   });
 
   // ── Downloads ──
+  // Wire download item clicks
+  s.querySelectorAll('#dl-list li[data-name]').forEach(li => {
+    li.addEventListener('click', () => {
+      const name = li.dataset.name;
+      const ext  = li.dataset.ext || '';
+      if (!SP.state.orgId || !SP.state.convId) {
+        const out = s.getElementById('snapshot-out');
+        // Show error in a visible place
+        alert(`Cannot open: orgId/convId not detected.\nCheck Control tab.`);
+        return;
+      }
+      openDownload(name, ext);
+    });
+  });
+
   s.querySelectorAll('#dl-tags .tag').forEach(tag => {
     tag.addEventListener('click', () => {
       const ext = tag.dataset.filter;
