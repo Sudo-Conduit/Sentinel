@@ -1268,22 +1268,40 @@ function openDownload(name, ext) {
   const path = encodeURIComponent(`/mnt/user-data/outputs/${name}`);
   const url  = `${wiggleBase}?path=${path}&_t=${Date.now()}`;
 
-  // HTML/MD/JS — fetch and open as artifact blob
-  if (['html','md','js','xml','py','csv'].includes(ext)) {
+  // All text files — fetch and render in srcdoc viewer inside Sentinel
+  if (['html','md','js','xml','py','csv','db'].includes(ext)) {
     fetch(url, { credentials: 'include' })
       .then(r => r.ok ? r.text() : Promise.reject(r.status))
       .then(text => {
-        const mime = ext === 'html' ? 'text/html;charset=utf-8'
-          : ext === 'md' ? 'text/markdown;charset=utf-8'
-          : ext === 'js' ? 'application/javascript;charset=utf-8'
-          : 'text/plain;charset=utf-8';
-        const blob = new Blob([text], { type: mime });
-        const burl = URL.createObjectURL(blob);
-        window.open(burl, '_blank');
+        // Wrap non-HTML in a simple viewer
+        const isHtml = ext === 'html';
+        const srcdoc = isHtml ? text : `<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+  body{background:#0d1117;color:#e6edf3;font-family:'IBM Plex Mono',monospace;
+       font-size:12px;padding:16px;margin:0;white-space:pre-wrap;word-break:break-word}
+  ::-webkit-scrollbar{width:4px} ::-webkit-scrollbar-thumb{background:#444}
+</style></head><body>${text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</body></html>`;
+
+        // Show in content area as srcdoc iframe
+        const content = SP.shadow.getElementById('sp-content');
+        if (!content) return;
+        content.innerHTML = `
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:11px;color:var(--accent);font-family:var(--font-mono,monospace)">${name}</span>
+            <span style="font-size:10px;color:#555;cursor:pointer" onclick="this.closest('#sp-content').innerHTML='<div class=loading>Click a tab to load</div>'">✕ close</span>
+          </div>
+          <iframe srcdoc="${srcdoc.replace(/"/g,'&quot;')}"
+            style="width:100%;height:calc(100% - 32px);border:1px solid #333;border-radius:4px;background:#0d1117"
+            sandbox="allow-scripts allow-same-origin">
+          </iframe>`;
       })
-      .catch(e => console.error('[SentinelPanel] openDownload failed:', e));
+      .catch(e => {
+        const out = SP.shadow.getElementById('sp-content');
+        if(out) out.innerHTML = `<div style="color:#e05a5a;padding:8px">Failed to load: ${name} (${e})</div>`;
+      });
   } else {
-    // Binary / other — direct download link
+    // Binary — open direct
     window.open(url, '_blank');
   }
 }
