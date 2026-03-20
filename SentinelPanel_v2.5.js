@@ -1273,10 +1273,10 @@ function openDownload(name, ext) {
     fetch(url, { credentials: 'include' })
       .then(r => r.ok ? r.text() : Promise.reject(r.status))
       .then(text => {
-        const mime = ext === 'html' ? 'text/html'
-          : ext === 'md' ? 'text/markdown'
-          : ext === 'js' ? 'application/javascript'
-          : 'text/plain';
+        const mime = ext === 'html' ? 'text/html;charset=utf-8'
+          : ext === 'md' ? 'text/markdown;charset=utf-8'
+          : ext === 'js' ? 'application/javascript;charset=utf-8'
+          : 'text/plain;charset=utf-8';
         const blob = new Blob([text], { type: mime });
         const burl = URL.createObjectURL(blob);
         window.open(burl, '_blank');
