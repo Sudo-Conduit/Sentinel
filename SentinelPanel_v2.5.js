@@ -1268,23 +1268,16 @@ function openDownload(name, ext) {
   const path = encodeURIComponent(`/mnt/user-data/outputs/${name}`);
   const url  = `${wiggleBase}?path=${path}&_t=${Date.now()}`;
 
-  // Fetch file and open as Claude artifact (about:srcdoc)
-  fetch(url, { credentials: 'include' })
-    .then(r => r.ok ? r.text() : Promise.reject(r.status))
-    .then(text => {
-      // sendPrompt renders content as artifact in the Claude artifact panel
-      if (typeof window.sendPrompt === 'function') {
-        window.sendPrompt(text);
-      } else {
-        // Fallback — copy to clipboard
-        navigator.clipboard.writeText(text).catch(()=>{});
-        alert(`${name} copied to clipboard. Paste into Claude to render as artifact.`);
-      }
-    })
-    .catch(e => {
-      const out = SP.shadow.getElementById('sp-content');
-      if(out) out.innerHTML = `<div style="color:#e05a5a;padding:8px">Failed to load: ${name} (${e})</div>`;
-    });
+  // Open file in artifact iframe using Wiggle URL directly
+  const iframe = document.querySelector('iframe[srcdoc], iframe[src*="srcdoc"]')
+    || document.querySelector('[class*="artifact"] iframe')
+    || document.querySelector('iframe');
+  if (iframe) {
+    iframe.src = url;
+  } else {
+    // No artifact iframe found — open Wiggle URL in new tab
+    window.open(url, '_blank');
+  }
 }
 
 // ── Render ────────────────────────────────────────────────────────────────
