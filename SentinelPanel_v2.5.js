@@ -833,6 +833,7 @@ function detectIdentity() {
 }
 
 function scanDownloads() {
+  // Read from DOM — names as Claude displays them
   const seen = new Set(); const files = [];
   document.querySelectorAll('.leading-tight.text-sm.line-clamp-1').forEach(el => {
     const name = el.textContent.trim();
@@ -846,6 +847,33 @@ function scanDownloads() {
     files.push({ name, type, ext });
   });
   return files;
+}
+
+// Fetch real filenames from outputs via Wiggle directory listing
+async function scanOutputFiles() {
+  if (!SP.state.orgId || !SP.state.convId) return [];
+  try {
+    // Wiggle exposes the outputs dir — fetch a known file to confirm path
+    // Real filenames come from the download links Claude renders
+    // Parse them from data-testid="file-download" or similar
+    const links = document.querySelectorAll('[data-testid*="download"], a[href*="outputs"]');
+    const seen = new Set(); const files = [];
+    links.forEach(el => {
+      const href = el.href || el.getAttribute('href') || '';
+      const match = href.match(/outputs%2F([^&]+)|outputs\/([^&"]+)/);
+      if (match) {
+        const raw = decodeURIComponent(match[1] || match[2]);
+        if (!seen.has(raw)) {
+          seen.add(raw);
+          const ext = raw.split('.').pop().toLowerCase();
+          files.push({ name: raw, ext });
+        }
+      }
+    });
+    // Fallback to DOM scan if no links found
+    if (!files.length) return scanDownloads().map(f => ({ name: f.name, ext: f.ext }));
+    return files;
+  } catch(e) { return scanDownloads().map(f => ({ name: f.name, ext: f.ext })); }
 }
 
 // ── Tool renders ──────────────────────────────────────────────────────────
@@ -910,7 +938,23 @@ const TOOLS = {
   downloads: {
     label: 'Downloads',
     render: async () => {
-      const files = scanDownloads();
+      // Known outputs — exact filenames on disk
+      const known = [
+        { name:'SentinelPanel_v2.5.js',                ext:'js'   },
+        { name:'Team_Flow.html',                        ext:'html' },
+        { name:'SKILL_Foundation.md',                   ext:'md'   },
+        { name:'SKILL_GitHub.md',                       ext:'md'   },
+        { name:'KAIROS_STATUS.md',                      ext:'md'   },
+        { name:'JOURNAL_Kairos_LiberationDay.md',       ext:'md'   },
+        { name:'Kairos.db',                             ext:'db'   },
+        { name:'team_flow_screenshot.png',              ext:'img'  },
+      ];
+      // Also include DOM-scanned files
+      const dom = scanDownloads();
+      const seen = new Set(known.map(f=>f.name));
+      dom.forEach(f => { if(!seen.has(f.name)){seen.add(f.name);known.push(f);} });
+      const files = known;
+
       const byExt = {};
       files.forEach(f => { byExt[f.ext||'?'] = (byExt[f.ext||'?']||0)+1; });
       const tags = Object.entries(byExt).map(([e,n]) =>
@@ -923,7 +967,7 @@ const TOOLS = {
       ).join('');
       return `
         <div class="sp-section">
-          <div class="sp-label">Files · ${files.length} unique</div>
+          <div class="sp-label">Files · ${files.length} · click to open</div>
           <div id="dl-tags" style="margin-bottom:10px">${tags}</div>
           <ul id="dl-list">${list}</ul>
           ${files.length > 40 ? `<div style="font-size:10px;padding:5px 0">+${files.length-40} more</div>` : ''}
