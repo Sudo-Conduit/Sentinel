@@ -1291,14 +1291,21 @@ function openDownload(name, ext) {
   const path = encodeURIComponent(`/mnt/user-data/outputs/${name}`);
   const url  = `${wiggleBase}?path=${path}&_t=${Date.now()}`;
 
-  // Open file in artifact iframe using Wiggle URL directly
-  const iframe = document.querySelector('iframe[srcdoc], iframe[src*="srcdoc"]')
-    || document.querySelector('[class*="artifact"] iframe')
-    || document.querySelector('iframe');
+  // Find artifact iframe and set src to Wiggle URL
+  const iframes = Array.from(document.querySelectorAll('iframe'));
+  console.log('[SentinelPanel] iframes found:', iframes.length, iframes.map(f=>f.src||f.srcdoc?.slice(0,30)||'srcdoc'));
+  const iframe = iframes.find(f =>
+    f.srcdoc !== undefined ||
+    (f.src && f.src.includes('srcdoc')) ||
+    f.closest('[class*="artifact"]') ||
+    f.closest('[data-testid*="artifact"]')
+  ) || iframes[iframes.length - 1]; // last iframe is usually the artifact
+
   if (iframe) {
+    console.log('[SentinelPanel] loading into iframe:', iframe.src?.slice(0,60)||'srcdoc');
     iframe.src = url;
   } else {
-    // No artifact iframe found — open Wiggle URL in new tab
+    console.warn('[SentinelPanel] no iframe found — opening in new tab');
     window.open(url, '_blank');
   }
 }
