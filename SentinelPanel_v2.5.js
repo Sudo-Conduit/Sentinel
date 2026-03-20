@@ -476,14 +476,15 @@ class Chat {
   }
 
   // ── Build HTML token snapshot ─────────────────────────────────────────
-  static buildSnapshotHTML(chatId, r) {
+  static buildSnapshotHTML(chatId, r, instanceName) {
     const ts   = new Date().toISOString();
     const time = new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     const bc   = r.pct < 50 ? '#2ee8b0' : r.pct < 75 ? '#fab75c' : '#e24b4a';
+    const name = instanceName || 'UNKNOWN';
     return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"/>
-<title>Sentinel Tokens · ${chatId ? chatId.slice(0,8) : 'unknown'} · ${time}</title>
+<title>Sentinel Tokens · ${name} · ${time}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#000;color:#fff;font-family:'DM Mono','Courier New',monospace;padding:24px;font-size:13px}
@@ -497,8 +498,8 @@ h1{color:#d4af37;font-size:18px;letter-spacing:2px;text-transform:uppercase;marg
 .bar{height:100%;border-radius:3px}
 .footer{margin-top:32px;padding-top:12px;border-top:1px solid #222;color:#444;font-size:10px}
 </style></head><body>
-<h1>⬡ Sentinel · Token Snapshot</h1>
-<div class="sub">Chat: ${chatId||'not detected'} · SentinelPanel v2.5 · Pooled Impact</div>
+<h1>⬡ ${name} · Token Snapshot</h1>
+<div class="sub">${name} · ${chatId||'not detected'} · SentinelPanel v2.5 · Pooled Impact</div>
 <div class="section">
   <div class="label">Context Window</div>
   <div class="bar-wrap"><div class="bar" style="width:${r.pct}%;background:${bc}"></div></div>
@@ -521,6 +522,18 @@ h1{color:#d4af37;font-size:18px;letter-spacing:2px;text-transform:uppercase;marg
 <div class="footer">Pooled Impact Corporation · SentinelPanel v2.5 · ${ts}</div>
 </body></html>`;
   }
+}
+
+// ── SEND.XML builder — Will's outbound format ────────────────────────────────
+// Format: <SEND ts="..." from="WILL" to="ARCH"> (content via MSG.XML on GitHub)
+function buildSendXML(from, to) {
+  const ts = new Date().toISOString();
+  const toName = typeof to === 'string' ? to.toUpperCase()
+    : Array.isArray(to) ? to.map(t => (typeof t === 'string' ? t : t.nm || t).toUpperCase()).join(',')
+    : String(to).toUpperCase();
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<SEND ts="${ts}" from="${(from||'WILL').toUpperCase()}" to="${toName}">
+</SEND>`;
 }
 
 // ── MSG.XML builder — v2.5: TO is 1:M JSON array ─────────────────────────
@@ -1228,7 +1241,7 @@ function wireButtons() {
     if(out) out.textContent='Building snapshot...';
     const r    = Chat.analyzed();
     const cid  = SP.state.chatId || 'unknown';
-    const html = Chat.buildSnapshotHTML(cid, r);
+    const html = Chat.buildSnapshotHTML(cid, r, SP.state.instanceName);
     const ts   = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
     const path = `ops/snapshots/Sentinel.Tokens.${cid}.html`;
     const res  = await ghPush(path, html, `snapshot: ${cid.slice(0,8)}`);
