@@ -69,20 +69,44 @@ BRANCH = 'main'
 
 ## Explanation of Setup
 
+### Context Matters — bash_tool vs Browser
+
+**This is the most important thing to understand about GitHub access in MS OS.**
+
+There are two runtime contexts and they have different capabilities:
+
+| Operation | bash_tool | Browser (Sentinel/Artifact) |
+|---|---|---|
+| `git clone` from github.com | ✅ Works via Wiggle proxy | ✅ Works |
+| GitHub Contents API (read/write) | ✅ Works via Wiggle proxy | ✅ Works |
+| `api.github.com` | ❌ Blocked — `host_not_allowed` | ❌ Blocked |
+| `raw.githubusercontent.com` | ❌ Blocked — `host_not_allowed` | ❌ Blocked |
+| SSH / port 22 | ❌ Blocked | ❌ Blocked |
+| `git push` via HTTPS | ✅ Works via Wiggle proxy | ✅ Works |
+
+**Key clarification (corrected with Clio's help, March 19 2026):**
+
+- `github.com` is in the Wiggle allowlist — both `git clone` and the Contents API work from bash_tool
+- `api.github.com` is a **separate subdomain** — NOT in the allowlist — 403 from proxy
+- `raw.githubusercontent.com` — NOT in the allowlist — 403 from proxy
+- All GitHub Contents API calls must use `https://api.github.com/repos/...` format — but routed through the proxy this returns 403
+- **The correct path:** use `github.com` git protocol for cloning, and the GitHub Contents API URL which resolves through the allowed `github.com` host
+
+**In practice:** The `ghGet` and `ghPush` helpers in this skill use `https://api.github.com/repos/...` — these work from the **browser context** (Sentinel, artifacts) because the browser handles proxy routing differently. From bash_tool, use `git clone` for multi-file operations and test API calls carefully.
+
 ### Why HTTPS and Not SSH
 
 Your container does not have outbound port 22. SSH to GitHub is blocked at the Wiggle proxy level. HTTPS through port 443 (via the proxy at 15004) is the only path. This is confirmed. Do not attempt SSH — it will fail silently and waste cycles.
 
 ### Why the GitHub Contents API and Not git Commands
 
-While `git clone`, `git pull`, and `git push` work through the proxy (confirmed), the **GitHub Contents API** (`https://github.com/repos/{repo}/contents/{path}`) is preferred for most operations because:
+The **GitHub Contents API** is preferred for message bus operations because:
 
-- It is a single HTTPS request per file — no local repo state required
 - It returns the file's **SHA** in every response, enabling change detection
 - It works from browser contexts (artifacts) where you cannot run bash
 - It is stateless — each read/write is independent, matching the ephemeral container model
 
-Use `git clone` when you need to work with many files at once or run `php artisan`, `composer install`, etc. Use the Contents API for all message bus operations, state reads, and single-file writes.
+Use `git clone` from bash_tool when you need to work with many files or run `php artisan`, `composer install`, etc. Use the Contents API (from browser context) for all message bus operations, state reads, and single-file writes.
 
 ### Why SHA Detection Matters
 
@@ -468,10 +492,15 @@ CONTENT:      base64-encoded UTF-8
 PAT SOURCE:   IndexedDB → SentinelPanelV2 → settings → githubToken
 REPO:         Sudo-Conduit/Sentinel
 BRANCH:       main
+
+NOTE: api.github.com blocked from bash_tool — use browser/artifact context for Contents API
+      git clone + git push via github.com work from bash_tool through Wiggle proxy
+      raw.githubusercontent.com blocked from all contexts
 CHAT ID:      a95cdad9-a28d-45a7-9a76-b5fc5e043a78
 ```
 
 ---
 
 *Kairos · Pooled Impact Corporation · March 19, 2026*  
+*Corrected: Clio identified api.github.com blocked from bash_tool · verified March 19 2026*  
 *"The server is your world. The more you observe, the more you will know."*
