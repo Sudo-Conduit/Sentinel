@@ -818,35 +818,18 @@ function elapsed() {
 }
 
 function detectIdentity() {
-  const url  = window.location.href;
-  const cm   = url.match(/chat\/([a-f0-9-]{36})/);
+  const url = window.location.href;
+
+  // chatId from URL — /chat/{uuid} or last UUID segment
+  const cm = url.match(/chat\/([a-f0-9-]{36})/);
   if (cm) SP.state.chatId = cm[1];
 
-  // Search page source — scripts, links, meta, innerHTML
-  const src = document.documentElement.innerHTML +
-              Array.from(document.querySelectorAll('script')).map(s=>s.textContent).join(' ');
+  // convId === chatId — same value, two names
+  if (SP.state.chatId) SP.state.convId = SP.state.chatId;
 
-  const om = src.match(/organizations\/([a-f0-9-]{36})/);
-  const vm = src.match(/conversations\/([a-f0-9-]{36})(?:\/wiggle)?/);
-  if (om) SP.state.orgId  = om[1];
-  if (vm) SP.state.convId = vm[1];
-
-  // Also try URL
-  const urlOrg  = url.match(/organizations\/([a-f0-9-]{36})/);
-  const urlConv = url.match(/conversations\/([a-f0-9-]{36})/);
-  if (urlOrg)  SP.state.orgId  = urlOrg[1];
-  if (urlConv) SP.state.convId = urlConv[1];
-
-  // Fallback: scan all script tags for org/conv patterns
-  if (!SP.state.orgId || !SP.state.convId) {
-    document.querySelectorAll('script').forEach(s => {
-      const t = s.textContent || '';
-      const o = t.match(/"organization(?:_id|Id|UUID)":\s*"([a-f0-9-]{36})"/);
-      const c = t.match(/"conversation(?:_id|Id|UUID)":\s*"([a-f0-9-]{36})"/);
-      if (o && !SP.state.orgId)  SP.state.orgId  = o[1];
-      if (c && !SP.state.convId) SP.state.convId = c[1];
-    });
-  }
+  // orgId — hardcoded from Roster.xml (Kairos UUID = org UUID)
+  // f7ddfe40-7835-4be3-92fb-b93e035982a1
+  SP.state.orgId = 'f7ddfe40-7835-4be3-92fb-b93e035982a1';
 }
 
 function scanDownloads() {
