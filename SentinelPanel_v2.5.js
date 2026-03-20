@@ -1526,7 +1526,20 @@ function wireButtons() {
     if(!SP.state.orgId||!SP.state.convId){if(out)out.textContent='OrgId/ConvId not detected.';return;}
     const wiggle=`https://claude.ai/api/organizations/${SP.state.orgId}/conversations/${SP.state.convId}/wiggle/download-file?path=${encodeURIComponent('/mnt/user-data/outputs/'+file)}`;
     const r=await fetch(wiggle,{credentials:'include'});
-    if(r.ok){const html=await r.text();window.open(URL.createObjectURL(new Blob([html],{type:'text/html'})),'_blank');if(out)out.textContent=`✓ ${file} opened`;}
+    if(r.ok){
+      const html=await r.text();
+      // Inject into Claude's artifact iframe
+      const artifactFrame = document.querySelector('iframe[src*="artifact"], iframe[sandbox]');
+      if(artifactFrame){
+        artifactFrame.srcdoc=html;
+        if(out)out.textContent=`✓ ${file} loaded into artifact iframe`;
+      } else {
+        // Fallback — srcdoc in Sentinel content area
+        const contentEl=SP.shadow.getElementById('sp-content');
+        if(contentEl) contentEl.innerHTML=`<iframe srcdoc="${html.replace(/"/g,'&quot;')}" style="width:100%;height:100%;border:none" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>`;
+        if(out)out.textContent=`✓ ${file} loaded in Sentinel viewer`;
+      }
+    }
     else if(out) out.textContent=`${r.status} — not found`;
   });
   const appSel=s.getElementById('app-select');
