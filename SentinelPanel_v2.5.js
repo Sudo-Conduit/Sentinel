@@ -976,10 +976,6 @@ const TOOLS = {
         { name:'Kairos.db',                             ext:'db'   },
         { name:'team_flow_screenshot.png',              ext:'img'  },
       ];
-      // Also include DOM-scanned files
-      const dom = scanDownloads();
-      const seen = new Set(known.map(f=>f.name));
-      dom.forEach(f => { if(!seen.has(f.name)){seen.add(f.name);known.push(f);} });
       const files = known;
 
       const byExt = {};
