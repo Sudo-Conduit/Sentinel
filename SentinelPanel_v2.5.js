@@ -38,6 +38,7 @@ const SP = {
     lastKnownCommitSha: null, // last known GitHub commit sha
     receiveSha: null,         // last known RECEIVE.XML sha
     receiveChunkCount: 0,     // how many chunks already broadcast
+    pollMode: 'off',          // 'heartbeat' | 'active' | 'off'
     pollTimer: null,        // MSG.XML poll interval handle
     archiveThreshold: 75,   // auto-archive at this % (0 = disabled)
     archiveTriggered: false,
@@ -707,18 +708,44 @@ function updatePollDot(hasMsg) {
   dot.classList.toggle('active', !!hasMsg);
 }
 
-function startMsgPoll(intervalMs = 5000) {
+// ── Poll mode: heartbeat (idle) vs active ────────────────────────────────
+// Heartbeat: 30s — always running, detects wake-up messages
+// Active: 5s — starts on send, stops after response complete
+const POLL_HEARTBEAT = 30000;
+const POLL_ACTIVE    = 5000;
+
+function startHeartbeat() {
   if (SP.state.pollTimer) clearInterval(SP.state.pollTimer);
-  // Poll both MSG.XML and RECEIVE.XML on same interval
+  SP.state.pollMode = 'heartbeat';
+  SP.state.pollTimer = setInterval(() => { pollMsg(); }, POLL_HEARTBEAT);
+  updatePollDot(false);
+}
+
+function startActivePoll() {
+  if (SP.state.pollMode === 'active') return; // already active
+  if (SP.state.pollTimer) clearInterval(SP.state.pollTimer);
+  SP.state.pollMode = 'active';
   SP.state.pollTimer = setInterval(() => {
     pollMsg();
     pollReceive();
-  }, intervalMs);
+  }, POLL_ACTIVE);
+  updatePollDot(true);
+}
+
+function returnToHeartbeat() {
+  startHeartbeat();
+}
+
+// Keep startMsgPoll as alias — defaults to heartbeat
+function startMsgPoll(intervalMs) {
+  if (intervalMs && intervalMs <= POLL_ACTIVE) startActivePoll();
+  else startHeartbeat();
 }
 
 function stopMsgPoll() {
   if (SP.state.pollTimer) clearInterval(SP.state.pollTimer);
   SP.state.pollTimer = null;
+  SP.state.pollMode  = 'off';
 }
 
 // ── Archive ───────────────────────────────────────────────────────────────
@@ -1784,6 +1811,8 @@ function buildPanel() {
 
       // Reset receive state — new conversation starting
       resetReceiveState();
+      // Switch to active polling
+      startActivePoll();
 
       // Step 1: Commit MSG.XML to GitHub
       const toArr = [{ nm: to }];
@@ -1906,7 +1935,7 @@ async function boot() {
 
   // If token already saved, start polling + check archive
   if (SP.state.githubToken) {
-    if (SP.state.chatId) startMsgPoll();
+    if (SP.state.chatId) startHeartbeat();
     checkLatestArchive();
   }
 
