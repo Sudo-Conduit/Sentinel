@@ -912,7 +912,10 @@ const TOOLS = {
       const tags = Object.entries(byExt).map(([e,n]) =>
         `<span class="tag" data-filter="${e}">${e} ${n}</span>`).join('');
       const list = files.slice(0,40).map(f =>
-        `<li><span>${f.name}</span><span class="badge badge-${f.ext||'md'}">${f.ext||'?'}</span></li>`
+        `<li data-name="${f.name}" data-ext="${f.ext||''}" style="cursor:pointer" onclick="openDownload('${f.name}','${f.ext||''}')">
+          <span>${f.name}</span>
+          <span class="badge badge-${f.ext||'md'}">${f.ext||'?'}</span>
+        </li>`
       ).join('');
       return `
         <div class="sp-section">
@@ -1206,6 +1209,36 @@ const TOOLS = {
   },
 
 };
+
+// ── Open download via Wiggle ─────────────────────────────────────────────
+function openDownload(name, ext) {
+  if (!SP.state.orgId || !SP.state.convId) {
+    console.warn('[SentinelPanel] orgId/convId not detected — cannot open file');
+    return;
+  }
+  const wiggleBase = `https://claude.ai/api/organizations/${SP.state.orgId}/conversations/${SP.state.convId}/wiggle/download-file`;
+  const path = encodeURIComponent(`/mnt/user-data/outputs/${name}`);
+  const url  = `${wiggleBase}?path=${path}&_t=${Date.now()}`;
+
+  // HTML/MD/JS — fetch and open as artifact blob
+  if (['html','md','js','xml','py','csv'].includes(ext)) {
+    fetch(url, { credentials: 'include' })
+      .then(r => r.ok ? r.text() : Promise.reject(r.status))
+      .then(text => {
+        const mime = ext === 'html' ? 'text/html'
+          : ext === 'md' ? 'text/markdown'
+          : ext === 'js' ? 'application/javascript'
+          : 'text/plain';
+        const blob = new Blob([text], { type: mime });
+        const burl = URL.createObjectURL(blob);
+        window.open(burl, '_blank');
+      })
+      .catch(e => console.error('[SentinelPanel] openDownload failed:', e));
+  } else {
+    // Binary / other — direct download link
+    window.open(url, '_blank');
+  }
+}
 
 // ── Render ────────────────────────────────────────────────────────────────
 async function render(toolId) {
@@ -1593,7 +1626,7 @@ function buildPanel() {
   root.innerHTML = `
     <div id="sp-panel">
       <div id="sp-header">
-        <span class="sp-logo">⬡ SENTINEL v2.5</span>
+        <span class="sp-logo">⬡ <span id="sp-instance-name">${SP.state.instanceName || 'SENTINEL'}</span> v2.5</span>
         <span class="sp-header-right">
           <button id="sp-undock-btn" title="Drag to float">⊹</button>
           <button id="sp-theme-btn" title="Toggle theme">🌙</button>
