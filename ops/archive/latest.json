@@ -1,9 +1,9 @@
 {
-  "chatId": "efc9ebf3-30d9-4e38-9ce3-4b36d64c4af2",
+  "chatId": "a95cdad9-a28d-45a7-9a76-b5fc5e043a78",
   "instanceName": "unknown",
-  "epoch": 1774236995,
-  "path": "ops/archive/efc9ebf3-30d9-4e38-9ce3-4b36d64c4af2/1774236995",
-  "archivedAt": "2026-03-23T03:36:39.641Z",
+  "epoch": 1774237204,
+  "path": "ops/archive/a95cdad9-a28d-45a7-9a76-b5fc5e043a78/1774237204",
+  "archivedAt": "2026-03-23T03:40:06.941Z",
   "auto": false,
-  "tokenPct": 33
+  "tokenPct": 88
 }
