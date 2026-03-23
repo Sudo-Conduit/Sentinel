@@ -46,3 +46,21 @@
 
   console.log('[Sentinel] Content script loaded on', location.hostname);
 })();
+
+  // ── RELAY_COOKIE → BroadcastChannel ────────────────────────────────────────
+  // Service worker sends RELAY_COOKIE → content script broadcasts on sentinel-relay
+  // CookieWiggle (artifact) listens on sentinel-relay and auto-populates the field
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg.type === 'RELAY_COOKIE') {
+      const bc = new BroadcastChannel('sentinel-relay');
+      bc.postMessage({
+        type:     'COOKIE',
+        value:    msg.value,
+        name:     msg.name,
+        httpOnly: msg.httpOnly
+      });
+      console.log(`[Sentinel] Cookie relayed to page: ${msg.name} (${msg.value.length} chars)`);
+      sendResponse({ ok: true });
+    }
+  });
