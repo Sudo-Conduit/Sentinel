@@ -369,6 +369,25 @@ els.btnAttachDbg.addEventListener('click', async () => {
   }
 });
 
+// ── GET COOKIE ────────────────────────────────────────────────────────────────
+// Reads HttpOnly claude.ai session cookie → relays to page via BroadcastChannel
+// CookieWiggle artifact listens on sentinel-relay and auto-populates
+if ($('btn-get-cookie')) {
+  $('btn-get-cookie').addEventListener('click', async () => {
+    log('Reading claude.ai session cookie…', 'dim');
+    try {
+      const r = await sendToBackground({ type: 'GET_COOKIE' });
+      if (r?.ok) {
+        log(`✓ Cookie relayed: ${r.name} (${r.length} chars) → CookieWiggle`, 'ok');
+      } else {
+        log('✗ ' + (r?.error ?? 'Cookie read failed'), 'error');
+      }
+    } catch (err) {
+      log('✗ ' + err.message, 'error');
+    }
+  });
+}
+
 // ── SEND tab ──────────────────────────────────────────────────────────────────
 els.btnSend.addEventListener('click', async () => {
   const text = els.sendText.value.trim();

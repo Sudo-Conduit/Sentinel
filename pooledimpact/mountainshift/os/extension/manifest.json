@@ -10,7 +10,8 @@
     "windows",
     "system.display",
     "storage",
-    "scripting"
+    "scripting",
+    "cookies"
   ],
   "host_permissions": [
     "https://claude.ai/*"

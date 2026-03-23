@@ -106,3 +106,77 @@ function broadcastToDevTools(msg) {
   // Send to all extension views (DevTools panels, popups, etc.)
   chrome.runtime.sendMessage(msg).catch(() => {}); // ignore if no listeners
 }
+
+// ── GET_COOKIE ────────────────────────────────────────────────────────────────
+// Reads claude.ai cookies (including HttpOnly) and relays to content script
+// which broadcasts on sentinel-relay BroadcastChannel → CookieWiggle receives it
+
+chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
+  if (msg.type !== 'GET_COOKIE') return;
+
+  chrome.cookies.getAll({ url: 'https://claude.ai' }, (cookies) => {
+    if (!cookies || !cookies.length) {
+      sendResponse({ ok: false, error: 'No cookies found for claude.ai' });
+      return;
+    }
+
+    // Log all cookies for debugging
+    console.log('[Sentinel] claude.ai cookies:', cookies.map(c => ({
+      name: c.name,
+      length: c.value.length,
+      httpOnly: c.httpOnly,
+      secure: c.secure
+    })));
+
+    // Priority: HttpOnly session tokens first, then longest value
+    const priority = [
+      '__Secure-next-auth.session-token',
+      'next-auth.session-token',
+      '__Host-next-auth.csrf-token',
+      'sessionKey',
+      'session',
+    ];
+
+    let found = null;
+    for (const name of priority) {
+      const c = cookies.find(c => c.name === name);
+      if (c) { found = c; break; }
+    }
+
+    // Fallback: longest HttpOnly cookie
+    if (!found) {
+      found = cookies
+        .filter(c => c.httpOnly)
+        .sort((a, b) => b.value.length - a.value.length)[0];
+    }
+
+    // Final fallback: longest cookie of any type
+    if (!found) {
+      found = cookies.sort((a, b) => b.value.length - a.value.length)[0];
+    }
+
+    if (!found) {
+      sendResponse({ ok: false, error: 'Could not identify session cookie' });
+      return;
+    }
+
+    console.log(`[Sentinel] Selected cookie: ${found.name} (${found.value.length} chars, httpOnly:${found.httpOnly})`);
+
+    // Relay to the active claude.ai tab's content script
+    chrome.tabs.query({ url: 'https://claude.ai/*', active: true }, (tabs) => {
+      const tab = tabs[0];
+      if (tab) {
+        chrome.tabs.sendMessage(tab.id, {
+          type:   'RELAY_COOKIE',
+          name:   found.name,
+          value:  found.value,
+          httpOnly: found.httpOnly
+        });
+      }
+    });
+
+    sendResponse({ ok: true, name: found.name, length: found.value.length });
+  });
+
+  return true; // async response
+});
