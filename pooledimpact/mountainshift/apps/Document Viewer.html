@@ -1,0 +1,2188 @@
+<!DOCTYPE html>
+<html lang="en" x-data="app()" :data-theme="themes[activeTheme].daisyTheme" :class="{'dark-mode': themes[activeTheme].dark}">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>GeoAPI Bible Dictionary</title>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@4.10.1/dist/full.min.css" rel="stylesheet"/>
+<script>
+function app(){return{
+
+/* ── State ── */
+activeTheme: (()=>{ try{return localStorage.getItem('geoapi-theme')||'stripe'}catch(e){return 'stripe'} })(),
+themes:{
+  stripe:    {label:'Stripe',    daisyTheme:'stripe-light',    dark:false},
+  twilio:    {label:'Twilio',    daisyTheme:'twilio-night',    dark:true},
+  amazon:    {label:'Amazon',    daisyTheme:'amazon-business', dark:false},
+  google:    {label:'Google',    daisyTheme:'google-docs',     dark:false},
+  microsoft: {label:'Microsoft', daisyTheme:'ms-fluent',       dark:false}
+},
+
+sidebarCollapsed:false,
+mobileSidebarOpen:false,
+activeEntry:null,
+openTabs:[],
+bottomSection:'page',
+searchQuery:'',
+sidebarView:'group',   // 'group' | 'az' | 'weight'
+sbPage:1,
+sbPageSize:12,
+activeDefVersion:{},
+popover:{visible:false,x:0,y:0,text:'',activeTab:'highlight',commentInput:'',noteInput:'',notePublic:false},
+// Unified annotation store — all persist to IndexedDB
+annotations:[],   // {id,type:'underline'|'comment'|'note',entryId,text,selection,createdAt,editedAt,pub,rangeData}
+_editingAnno:null,// {id} when editing a comment/note
+
+// Word hover popup
+wordPop:{visible:false,x:0,y:0,word:'',entry:null,commentCount:0,noteCount:0},
+_wordPopTimer:null,
+
+// Helpful votes
+helpfulVotes:{},  // {entryId: 'up'|'down'|null}
+
+// Active nav section
+activeNav:'dictionary',  // 'library'|'guides'|'dictionary'
+userMenuOpen:false,
+historyOpen:false,
+helpOpen:false,
+entryHistory:[],  // [{id, word, lexar, time}]
+helpContent:'',   // loaded from IndexedDB
+
+getHelpHTML(){
+  return [
+    '<h1>GeoAPI Bible Dictionary</h1>',
+    '<h2>Getting started</h2>',
+    '<p>Select any entry from the left sidebar to open it. Use the tabs at the top to keep multiple entries open simultaneously.</p>',
+    '<h2>Sidebar views</h2>',
+    '<ul><li><strong>Group</strong> — entries organized by chain: Resolution · Foundation · Problem · Negative</li>',
+    '<li><strong>A–Z</strong> — all entries alphabetically with pagination</li>',
+    '<li><strong>Weight</strong> — entries sorted by geo_weight (10.0 = highest truth significance)</li></ul>',
+    '<h2>Text selection</h2>',
+    '<p>Highlight any text in an entry to open the annotation panel:</p>',
+    '<ul><li><strong>Underline</strong> — marks the selected text with a visible underline</li>',
+    '<li><strong>Comment</strong> — public annotation visible to all readers</li>',
+    '<li><strong>Note</strong> — private by default · toggle Share to make public</li></ul>',
+    '<h2>Tension pairs</h2>',
+    '<p>Each entry declares its antonyms as tension pairs. Click any tension pole card to navigate to the opposite entry. Entries not yet built show a <code>soon</code> badge.</p>',
+    '<h2>Themes</h2>',
+    '<ul><li><strong>Stripe</strong> — light · violet accent</li>',
+    '<li><strong>Twilio</strong> — dark · red accent</li>',
+    '<li><strong>Amazon</strong> — light · orange accent with dark sidebar</li>',
+    '<li><strong>Google</strong> — light · Google blue · Material-inspired</li>',
+    '<li><strong>Microsoft</strong> — light · Microsoft blue · enterprise clean</li></ul>',
+    '<p>Theme is remembered across sessions via localStorage.</p>',
+    '<h2>Version history</h2>',
+    '<ul><li><strong>v1.0</strong> — Library index · Dictionary seed · Romans Ch 1–3</li>',
+    '<li><strong>v1.1</strong> — Schema · WordWeight Bible methodology · TBD weights</li>',
+    '<li><strong>v1.2</strong> — XSL reference · standalone HTML artifact · themes</li>',
+    '<li><strong>v1.3</strong> — library_bible.xml Build 2 · all 66 books declared</li>',
+    '<li><strong>v1.4</strong> — Build 3 core entries (grace · sin · righteousness · faith · gospel · condemnation · wrath · justification · mercy · unbelief)</li>',
+    '<li><strong>v1.5</strong> — Build 4 extended entries (redemption · peace · salvation · death · life · love · law · Spirit · flesh · hope · glory · propitiation)</li></ul>',
+    '<h2>Schema</h2>',
+    '<p>The canonical schema is declared in <code>SCHEMA_v1.2.xml</code>. All 22 validation rules are enforced. Contribution weights for word_weight and word_rank are <strong>TBD</strong> pending declaration by WFobbs3.</p>',
+    '<h2>Build roadmap</h2>',
+    '<p>Builds 5–20 cover Romans Chapters 1–16, one chapter per build. Each chapter must be confirmed before the next begins.</p>',
+    '<hr>',
+    '<p><em>GeoAPI Bible Library v1.5 · Pooled Impact Corporation · Trade Secret · DTSA 2016</em></p>'
+  ].join('\n');
+},
+
+/* ── Dictionary data ── */
+entries:[
+  {id:'W-001',word:'grace',lexar:'charis',strongs:'G5485',pos:'noun',chain:'romans_r',weight:10.0,
+   short:'Free and unmerited favor of God toward sinners.',
+   definitions:[
+     {version:'KJV',text:'Unmerited divine favor freely given to the undeserving. A gift not earned.',source:'BDAG 3rd p.1079'},
+     {version:'ESV',text:'The free and unmerited favor of God toward sinners. Given without regard to worthiness in the recipient.',source:'BDAG 3rd p.1079'},
+     {version:'NIV',text:"God's undeserved kindness and love extended freely to humanity through Jesus Christ.",source:'BDAG 3rd p.1079'}
+   ],
+   decomp:[
+     {lexar:'dorean',stem:'freely',pos:'adverb',strongs:'G1432',def:'Without cost. As a gift. Without cause in the recipient.'},
+     {lexar:'charis',stem:'favor',pos:'noun',strongs:'G5485',def:'Goodwill freely given. The operative power and disposition of God toward the undeserving.'},
+     {lexar:'doron',stem:'gift',pos:'noun',strongs:'G1435',def:'Something given voluntarily without expectation of return.'},
+     {lexar:'ergon',stem:'earned',pos:'verb',strongs:'G2041',def:'Obtained through labor or merit. Grace operates in the absence of ergon as cause.'}
+   ],
+   etymology:{gk:'charis — that which brings delight · charm · joy · favor',lat:'gratia — favor · esteem · goodwill',en:'grace — favor · virtue · first attested c.1200',note:"Charis in classical Greek meant the quality that evokes delight. Paul transforms it — not the quality that evokes favor in God but the favor God extends without reference to any quality in the recipient."},
+   antonyms:[{ref:'W-010',word:'condemnation',type:'direct_antonym'},{ref:'W-011',word:'wrath',type:'contextual_antonym'},{ref:'W-100',word:'merit',type:'mechanism_antonym'}],
+   synonyms:[{ref:'W-025',word:'mercy',type:'related_concept'},{ref:'W-041',word:'gift',type:'near_synonym'}],
+   verses:[{ref:'ROM-3-24',primary:true,kjv:'Being justified freely by his grace through the redemption that is in Christ Jesus.',esv:'And are justified by his grace as a gift, through the redemption that is in Christ Jesus.'},
+           {ref:'ROM-6-14',primary:false,esv:'For sin will have no dominion over you, since you are not under law but under grace.'},
+           {ref:'ROM-11-6',primary:false,esv:'But if it is by grace, it is no longer on the basis of works; otherwise grace would no longer be grace.'}],
+   links:{god_attr:['GA-LOVE','GA-EMPOWERMENT'],principles:['P-LOVE_GOD','P-LOVE_NEIGHBOR'],foundations:['L1-001','L1-006']},
+   morph:[{lexar:'charis',word:'grace',rel:'root'},{lexar:'charisma',word:'charisma',rel:'derivative'},{lexar:'charitoō',word:'gracious',rel:'derivative'}],
+   geo:{chain:'romans_r',weight:10.0,coords:'1.00,0.50,0.58,1.00,0.95,0.70,0.92,1.00,0.95'},
+   notes:['Grace is the highest-weight coordinate in the romans_r resolution chain. It is the direct geometric answer to sin in the romans_p problem chain. Romans 3:23 declares the gap. Romans 3:24 declares the coverage.','charis appears 24 times in Romans — more than any other Pauline letter by density.']},
+
+  {id:'W-002',word:'sin',lexar:'hamartia',strongs:'G0266',pos:'noun',chain:'romans_p',weight:10.0,
+   short:'Missing the mark. Falling short of the declared standard of God\'s glory.',
+   definitions:[
+     {version:'KJV',text:"Missing the mark. Falling short of the declared standard of God's glory and character.",source:'BDAG 3rd p.49'},
+     {version:'ESV',text:"The universal human condition of missing the declared standard of God. Failure to conform to God's character.",source:'BDAG 3rd p.49'},
+     {version:'NIV',text:"Falling short of God's perfect standard. Any act or state that fails to honor God.",source:'BDAG 3rd p.49'}
+   ],
+   decomp:[
+     {lexar:'hamartano',stem:'missing',pos:'verb',strongs:'G0264',def:'To miss the mark. An archery term. The arrow falls short or deviates.'},
+     {lexar:'hustereo',stem:'falling',pos:'verb',strongs:'G5302',def:'To come behind. To lack. Romans 3:23 — all fall short of the glory of God.'},
+     {lexar:'doxa',stem:'standard',pos:'noun',strongs:'G1391',def:'Glory. The manifest weight and presence of God. The declared coordinate that all human vectors fail to reach.'}
+   ],
+   etymology:{gk:'hamartia — missing the mark · archery term',heb:'chata — to miss · to go wrong · same archery metaphor',en:'sin — transgression of divine law · first attested c.825',note:'The archery metaphor is geometrically precise. There is a declared target coordinate. Sin is the vector that does not reach it.'},
+   antonyms:[{ref:'W-001',word:'grace',type:'direct_resolution'},{ref:'W-003',word:'righteousness',type:'state_antonym'},{ref:'W-020',word:'justification',type:'legal_resolution'}],
+   synonyms:[{ref:'W-030b',word:'transgression',type:'near_synonym'},{ref:'W-031b',word:'iniquity',type:'near_synonym'}],
+   verses:[{ref:'ROM-3-23',primary:true,kjv:'For all have sinned, and come short of the glory of God.',esv:'For all have sinned and fall short of the glory of God.'},
+           {ref:'ROM-6-23',primary:false,esv:'For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:['P-LOVE_GOD'],foundations:['L1-001']},
+   morph:[{lexar:'hamartia',word:'sin',rel:'root'},{lexar:'hamartolos',word:'sinner',rel:'derivative'}],
+   geo:{chain:'romans_p',weight:10.0,coords:'0.02,0.60,0.45,0.95,0.40,0.70,0.88,0.00,0.90'},
+   notes:['Sin is the pure knot of the romans_p problem chain. Its polarity coordinate is 0.00 — maximum distance from love at polarity 1.00.']},
+
+  {id:'W-003',word:'righteousness',lexar:'dikaiosyne',strongs:'G1343',pos:'noun',chain:'romans_r',weight:9.5,
+   short:'The state of being in right standing before God. Received through faith in Christ.',
+   definitions:[
+     {version:'ESV',text:'The state of being in right standing before God. Conformity to the declared standard of God\'s character. Received through faith in Christ — not produced by human effort.',source:'BDAG 3rd p.247'},
+     {version:'KJV',text:'The state of being just and righteous before God. Imputed to the believer through faith in Jesus Christ.',source:'BDAG 3rd p.247'}
+   ],
+   decomp:[
+     {lexar:'dikaios',stem:'right',pos:'adjective',strongs:'G1342',def:'Conforming to what is right. Just. In accordance with the declared standard.'},
+     {lexar:'logizomai',stem:'imputed',pos:'verb',strongs:'G3049',def:'To reckon. To count. To credit to an account. Righteousness is credited not earned.'},
+     {lexar:'lambano',stem:'received',pos:'verb',strongs:'G2983',def:'To receive. To accept what is given from outside oneself. Righteousness is received not achieved.'}
+   ],
+   etymology:{gk:'dikaiosyne — the quality of being dikaios · just · in conformity with the standard',heb:'tzedakah — righteousness · justice · rightness',en:'righteousness — the quality of being morally right · first attested c.1200',note:'Dikaiosyne in Paul carries both the forensic dimension (legal standing) and the moral dimension (character). Romans 1:17 declares the righteousness of God revealed in the gospel.'},
+   antonyms:[{ref:'W-031',word:'unrighteousness',type:'direct_antonym'},{ref:'W-002',word:'sin',type:'source_antonym'}],
+   synonyms:[{ref:'W-020',word:'justification',type:'legal_form'},{ref:'W-035b',word:'holiness',type:'character_form'}],
+   verses:[{ref:'ROM-1-17',primary:true,kjv:'For therein is the righteousness of God revealed from faith to faith: as it is written, The just shall live by faith.',esv:'For in it the righteousness of God is revealed from faith for faith, as it is written, "The righteous shall live by faith."'},
+           {ref:'ROM-3-21',primary:false,esv:'But now the righteousness of God has been manifested apart from the law.'}],
+   links:{god_attr:['GA-JUSTICE','GA-LOVE'],principles:['P-LOVE_GOD'],foundations:['L1-001']},
+   morph:[{lexar:'dikaiosyne',word:'righteousness',rel:'root'},{lexar:'dikaiosis',word:'justification',rel:'derivative'},{lexar:'dikaios',word:'just',rel:'derivative'},{lexar:'adikia',word:'unrighteousness',rel:'antonym'}],
+   geo:{chain:'romans_r',weight:9.5,coords:'0.95,0.88,0.55,0.98,0.78,0.88,0.95,0.95,0.92'},
+   notes:[]},
+
+  {id:'W-004',word:'faith',lexar:'pistis',strongs:'G4102',pos:'noun',chain:'layer0',weight:9.5,
+   short:'Trust in a person or declared truth based on demonstrated character.',
+   definitions:[
+     {version:'KJV',text:'The substance of things hoped for. The evidence of things not seen. Trust in a person or declared truth based on their known character.',source:'BDAG 3rd p.818'},
+     {version:'ESV',text:'Trust in a person or declared truth based on demonstrated character and prior faithfulness. The means by which righteousness is received.',source:'BDAG 3rd p.818'}
+   ],
+   decomp:[
+     {lexar:'hypostasis',stem:'substance',pos:'noun',strongs:'G5287',def:'That which stands under. Foundation. Also translated confidence, assurance, title deed. Hebrews 11:1.'},
+     {lexar:'elegchos',stem:'evidence',pos:'noun',strongs:'G1650',def:'Proof. Conviction. A legal term — the evidence that convicts or convinces. Faith is evidence-based not baseless.'},
+     {lexar:'pepoithesis',stem:'trust',pos:'noun',strongs:'G4006',def:'Confidence. Reliance. Settled conviction that one can depend on another. Derived from demonstrated character.'}
+   ],
+   etymology:{gk:'pistis — faith · trust · belief · also a pledge or guarantee in commercial contexts',lat:'fides — faith · trust · confidence · root of fidelity',en:'faith — trust · belief · first attested c.1200',note:'Pistis in Greek commercial contexts meant a pledge or guarantee. Paul transforms it to mean relational trust toward God based on His declared character. Faith is not blind — it is evidence-based trust in a declared Person.'},
+   antonyms:[{ref:'W-060',word:'unbelief',type:'direct_antonym'},{ref:'W-061',word:'doubt',type:'partial_antonym'}],
+   synonyms:[{ref:'W-051',word:'trust',type:'near_synonym'},{ref:'W-052',word:'confidence',type:'near_synonym'}],
+   verses:[{ref:'ROM-1-17',primary:true,kjv:'The just shall live by faith.',esv:'The righteous shall live by faith.'},
+           {ref:'HEB-11-1',primary:false,kjv:'Now faith is the substance of things hoped for, the evidence of things not seen.',esv:'Now faith is the assurance of things hoped for, the conviction of things not seen.'}],
+   links:{god_attr:['GA-EMPOWERMENT'],principles:['P-LOVE_GOD'],foundations:['L1-006']},
+   morph:[{lexar:'pistis',word:'faith',rel:'root'},{lexar:'pisteuo',word:'believe',rel:'derivative'},{lexar:'pistos',word:'faithful',rel:'derivative'},{lexar:'apistia',word:'unbelief',rel:'antonym'}],
+   geo:{chain:'layer0',weight:9.5,coords:'0.90,0.50,0.80,0.70,0.65,0.40,0.75,0.95,0.85'},
+   notes:[]},
+
+  {id:'W-005',word:'gospel',lexar:'euangelion',strongs:'G2098',pos:'noun',chain:'layer0',weight:9.5,
+   short:'Good news. The declared announcement of what God has done through Christ.',
+   definitions:[
+     {version:'KJV',text:'Good news. The declared announcement of what God has done through Christ to reconcile humanity to Himself.',source:'BDAG 3rd p.402'},
+     {version:'ESV',text:"The good news of what God has accomplished in Christ — justification by grace through faith for all who believe.",source:'BDAG 3rd p.402'}
+   ],
+   decomp:[
+     {lexar:'eu',stem:'good',pos:'prefix',strongs:'',def:'Good. Well. A prefix intensifying the positive quality.'},
+     {lexar:'angelia',stem:'news',pos:'noun',strongs:'G0031',def:'A message. A report. The gospel is news — something that happened — not advice about what to do.'},
+     {lexar:'kerygma',stem:'announcement',pos:'noun',strongs:'G2782',def:'The proclaimed message. The content of the authoritative declaration.'}
+   ],
+   etymology:{gk:'euangelion — good news · originally a reward paid to the messenger bearing good news',en:'gospel — from Old English godspel · good story · first attested c.950',note:'In the Roman Empire euangelion was used for imperial announcements — the birth of a new emperor, a military victory. Paul appropriates the term deliberately.'},
+   antonyms:[{ref:'W-010',word:'condemnation',type:'outcome_antonym'}],
+   synonyms:[{ref:'W-071',word:'good news',type:'translation_synonym'},{ref:'W-071b',word:'kerygma',type:'technical_synonym'}],
+   verses:[{ref:'ROM-1-16',primary:true,kjv:'For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth.',esv:'For I am not ashamed of the gospel, for it is the power of God for salvation to everyone who believes.'}],
+   links:{god_attr:['GA-LOVE','GA-AUTHORITY'],principles:['P-LOVE_GOD','P-LOVE_NEIGHBOR'],foundations:['L1-005']},
+   morph:[{lexar:'euangelion',word:'gospel',rel:'root'},{lexar:'euangelizo',word:'evangelize',rel:'derivative'},{lexar:'euangelistes',word:'evangelist',rel:'derivative'}],
+   geo:{chain:'layer0',weight:9.5,coords:'0.95,0.65,0.60,0.95,0.80,0.75,0.90,0.95,0.92'},
+   notes:[]},
+
+  {id:'W-010',word:'condemnation',lexar:'katakrima',strongs:'G2631',pos:'noun',chain:'negative',weight:9.0,
+   short:'The judicial verdict of guilty. The legal opposite of justification.',
+   definitions:[
+     {version:'KJV',text:'The judicial verdict of guilty. The sentence pronounced against sin. The legal opposite of justification.',source:'BDAG 3rd p.519'},
+     {version:'ESV',text:'The judgment of condemnation. The legal sentence of guilty pronounced against sin. Romans 5:16.',source:'BDAG 3rd p.519'}
+   ],
+   decomp:[
+     {lexar:'kata',stem:'against',pos:'prefix',strongs:'',def:'Against. Down. A directional prefix indicating judgment directed downward against the accused.'},
+     {lexar:'krino',stem:'judge',pos:'verb',strongs:'G2919',def:'To judge. To evaluate. To render a verdict.'},
+     {lexar:'krima',stem:'verdict',pos:'noun',strongs:'G2917',def:'A judicial decision. katakrima is the verdict of guilty specifically.'}
+   ],
+   etymology:{gk:'katakrima — the verdict of condemnation · from kata (against) + krino (judge)',lat:'condemnatio — a formal verdict of guilty',en:'condemnation — pronouncing guilty · first attested c.1380',note:''},
+   antonyms:[{ref:'W-001',word:'grace',type:'direct_antonym'},{ref:'W-020',word:'justification',type:'legal_antonym'}],
+   synonyms:[{ref:'W-080b',word:'judgment',type:'near_synonym'}],
+   verses:[{ref:'ROM-8-1',primary:true,kjv:'There is therefore now no condemnation to them which are in Christ Jesus.',esv:'There is therefore now no condemnation for those who are in Christ Jesus.'},
+           {ref:'ROM-5-18',primary:false,esv:'As one trespass led to condemnation for all men, so one act of righteousness leads to justification and life for all men.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:[],foundations:['L1-004']},
+   morph:[{lexar:'katakrima',word:'condemnation',rel:'root'},{lexar:'krino',word:'judge',rel:'verb_root'}],
+   geo:{chain:'negative',weight:9.0,coords:'0.02,0.70,0.45,0.95,0.45,0.70,0.88,0.02,0.88'},
+   notes:[]},
+
+  {id:'W-011',word:'wrath',lexar:'orge',strongs:'G3709',pos:'noun',chain:'romans_p',weight:8.5,
+   short:'Settled indignation. The consistent principled response of holiness to violation.',
+   definitions:[
+     {version:'KJV',text:'Settled indignation. The consistent and principled response of holiness to that which violates it.',source:'BDAG 3rd p.720'},
+     {version:'ESV',text:"The settled, principled opposition of God's holiness to all sin and evil. Not emotional rage but consistent judicial response.",source:'BDAG 3rd p.720'}
+   ],
+   decomp:[
+     {lexar:'orge',stem:'indignation',pos:'noun',strongs:'G3709',def:"Settled principled response. Distinguished from thumos (G2372) the hot passionate outburst. God's wrath is orge — principled not emotional."},
+     {lexar:'dikaios',stem:'principled',pos:'adjective',strongs:'G1342',def:'In accordance with a declared standard. The wrath is principled because it responds consistently to a declared violation.'}
+   ],
+   etymology:{gk:'orge — natural impulse · settled disposition · distinguished from thumos the sudden outburst',en:'wrath — fierce anger · first attested before 900',note:'The Greek distinction between orge and thumos is critical. thumos is the hot flash. orge is the settled disposition — as consistent as the holiness from which it proceeds.'},
+   antonyms:[{ref:'W-025',word:'mercy',type:'direct_antonym'},{ref:'W-001',word:'grace',type:'contextual_antonym'}],
+   synonyms:[{ref:'W-083',word:'anger',type:'contextual_synonym'}],
+   verses:[{ref:'ROM-1-18',primary:true,kjv:'For the wrath of God is revealed from heaven against all ungodliness and unrighteousness of men.',esv:'For the wrath of God is revealed from heaven against all ungodliness and unrighteousness of men, who by their unrighteousness suppress the truth.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:[],foundations:['L1-004']},
+   morph:[{lexar:'orge',word:'wrath',rel:'root'},{lexar:'orgizō',word:'be angry',rel:'derivative'}],
+   geo:{chain:'romans_p',weight:8.5,coords:'0.10,0.75,0.45,0.90,0.60,0.75,0.85,0.05,0.88'},
+   notes:[]},
+
+  {id:'W-020',word:'justification',lexar:'dikaiosis',strongs:'G1347',pos:'noun',chain:'romans_r',weight:9.5,
+   short:'The legal declaration of righteousness. God\'s judicial act declaring the sinner righteous.',
+   definitions:[
+     {version:'KJV',text:"The legal act of declaring a sinner righteous. The acquittal. God's judicial verdict that the believer stands righteous before Him through Christ.",source:'BDAG 3rd p.249'},
+     {version:'ESV',text:"The legal declaration of righteousness. The judicial act by which God declares the sinner righteous on the basis of Christ's righteousness received through faith.",source:'BDAG 3rd p.249'}
+   ],
+   decomp:[
+     {lexar:'dikaioo',stem:'declare',pos:'verb',strongs:'G1344',def:'To declare righteous. To acquit. A legal verdict — not making righteous in character but declaring righteous in legal standing.'},
+     {lexar:'krima',stem:'verdict',pos:'noun',strongs:'G2917',def:'A judicial decision. Justification is a verdict not a process.'},
+     {lexar:'aphesis',stem:'acquittal',pos:'noun',strongs:'G0859',def:'Release. Forgiveness. Justification includes but exceeds acquittal — positive declaration of righteousness.'}
+   ],
+   etymology:{gk:'dikaiosis — the act of declaring righteous · from dikaioō to justify',lat:'iustificatio — the act of justifying',en:'justification — first attested c.1425',note:'dikaiosis appears only twice in the NT — Romans 4:25 and Romans 5:18 — making it near-hapax within Romans. Entirely forensic — the legal verdict.'},
+   antonyms:[{ref:'W-010',word:'condemnation',type:'direct_legal_antonym'}],
+   synonyms:[{ref:'W-003',word:'righteousness',type:'result_synonym'},{ref:'W-085b',word:'acquittal',type:'near_synonym'}],
+   verses:[{ref:'ROM-3-24',primary:true,kjv:'Being justified freely by his grace through the redemption that is in Christ Jesus.',esv:'And are justified by his grace as a gift, through the redemption that is in Christ Jesus.'},
+           {ref:'ROM-5-18',primary:false,esv:'So one act of righteousness leads to justification and life for all men.'}],
+   links:{god_attr:['GA-JUSTICE','GA-LOVE'],principles:[],foundations:['L1-001','L1-006']},
+   morph:[{lexar:'dikaiosis',word:'justification',rel:'root'},{lexar:'dikaioo',word:'justify',rel:'verb_form'},{lexar:'dikaiosyne',word:'righteousness',rel:'related'}],
+   geo:{chain:'romans_r',weight:9.5,coords:'0.92,0.85,0.55,0.98,0.75,0.85,0.95,0.92,0.90'},
+   notes:['dikaiosis appears only twice in the NT — Romans 4:25 and Romans 5:18.']},
+
+  {id:'W-025',word:'mercy',lexar:'eleos',strongs:'G1656',pos:'noun',chain:'romans_r',weight:9.0,
+   short:'Compassion shown to someone in need. The withholding of punishment that is deserved.',
+   definitions:[
+     {version:'KJV',text:'Compassion shown to someone in need or distress. The withholding of punishment that is deserved.',source:'BDAG 3rd p.315'},
+     {version:'ESV',text:'Compassion or forbearance shown to someone in one\'s power. Mercy withholds deserved punishment. Distinct from grace which gives undeserved blessing.',source:'BDAG 3rd p.315'}
+   ],
+   decomp:[
+     {lexar:'splanchna',stem:'compassion',pos:'noun',strongs:'G4698',def:'The viscera. The inner parts. The seat of deep emotion. Mercy originates in deep feeling.'},
+     {lexar:'katecho',stem:'withhold',pos:'verb',strongs:'G2722',def:'To hold. To restrain. Mercy actively withholds what justice could require.'}
+   ],
+   etymology:{gk:'eleos — mercy · pity · compassion — often translating Hebrew hesed in the LXX',heb:'hesed — lovingkindness · covenant faithfulness · steadfast love',en:'mercy — forbearance · compassion · first attested c.1175',note:'Eleos in the LXX most often translates hesed — one of the richest theological words in the OT. hesed carries covenant faithfulness alongside compassion.'},
+   antonyms:[{ref:'W-011',word:'wrath',type:'direct_antonym'},{ref:'W-087',word:'judgment',type:'contextual_antonym'}],
+   synonyms:[{ref:'W-001',word:'grace',type:'related_concept'},{ref:'W-086',word:'compassion',type:'near_synonym'}],
+   verses:[{ref:'ROM-9-23',primary:true,esv:'In order to make known the riches of his glory for vessels of mercy, which he has prepared beforehand for glory.'},
+           {ref:'ROM-11-32',primary:false,esv:'For God has consigned all to disobedience, that he may have mercy on all.'}],
+   links:{god_attr:['GA-LOVE'],principles:['P-LOVE_NEIGHBOR'],foundations:['L1-002','L1-003']},
+   morph:[{lexar:'eleos',word:'mercy',rel:'root'},{lexar:'eleemon',word:'merciful',rel:'derivative'},{lexar:'eleeo',word:'have mercy',rel:'verb_form'}],
+   geo:{chain:'romans_r',weight:9.0,coords:'0.92,0.55,0.58,0.95,0.82,0.72,0.90,0.95,0.90'},
+   notes:['The mercy-wrath axis in Romans 9 is the highest-kappa region in the entire letter.']},
+
+  {id:'W-030',word:'redemption',lexar:'apolutrosis',strongs:'G0629',pos:'noun',chain:'romans_r',weight:9.5,
+   short:'Liberation by payment of a ransom. Release from bondage secured by Christ\'s death.',
+   definitions:[
+     {version:'KJV',text:"The payment of a ransom price to secure release from bondage. Deliverance from sin through the blood of Christ.",source:'BDAG 3rd p.117'},
+     {version:'ESV',text:"Liberation by payment of a ransom. The release from the bondage of sin secured by Christ's atoning death. Romans 3:24.",source:'BDAG 3rd p.117'}
+   ],
+   decomp:[
+     {lexar:'lutroo',stem:'release',pos:'verb',strongs:'G3084',def:'To release upon receipt of ransom. To liberate. From lutron — the ransom price itself.'},
+     {lexar:'lutron',stem:'ransom',pos:'noun',strongs:'G3083',def:'The price paid for release. Mark 10:45 — the Son of Man came to give his life as a ransom for many.'}
+   ],
+   etymology:{gk:'apolutrosis — releasing on payment of ransom · buying back from slavery',heb:'gaal — to redeem · to act as kinsman-redeemer',en:'redemption — the action of buying back · first attested c.1340',note:'Grace is free to the recipient but not to God. Redemption is what grace costs God.'},
+   antonyms:[{ref:'W-091',word:'bondage',type:'state_antonym'},{ref:'W-092',word:'captivity',type:'state_antonym'}],
+   synonyms:[{ref:'W-001',word:'grace',type:'mechanism_parent'},{ref:'W-040',word:'salvation',type:'outcome_synonym'}],
+   verses:[{ref:'ROM-3-24',primary:true,esv:'And are justified by his grace as a gift, through the redemption that is in Christ Jesus.'},
+           {ref:'ROM-8-23',primary:false,esv:'We ourselves groan inwardly as we wait eagerly for the redemption of our bodies.'}],
+   links:{god_attr:['GA-LOVE','GA-JUSTICE'],principles:[],foundations:['L1-002','L1-006']},
+   morph:[{lexar:'apolutrosis',word:'redemption',rel:'root'},{lexar:'lutron',word:'ransom',rel:'related'},{lexar:'lutroo',word:'redeem',rel:'verb_form'}],
+   geo:{chain:'romans_r',weight:9.5,coords:'0.92,0.72,0.58,0.98,0.80,0.82,0.93,0.92,0.91'},
+   notes:[]},
+
+  {id:'W-035',word:'peace',lexar:'eirene',strongs:'G1515',pos:'noun',chain:'romans_r',weight:8.5,
+   short:'The state of harmony resulting from reconciliation with God. The Hebrew shalom.',
+   definitions:[
+     {version:'KJV',text:"The state of harmony and wholeness resulting from reconciliation with God. The Hebrew shalom — complete wellbeing in right relationship.",source:'BDAG 3rd p.287'},
+     {version:'ESV',text:"Peace with God — the restored relationship declared through justification by faith. Romans 5:1.",source:'BDAG 3rd p.287'}
+   ],
+   decomp:[
+     {lexar:'shalom',stem:'wholeness',pos:'noun',strongs:'H7965',def:'Complete wellbeing. Nothing missing. Nothing broken. The Hebrew concept that eirene most fully translates.'},
+     {lexar:'katallagē',stem:'reconciliation',pos:'noun',strongs:'G2643',def:"The restoration of a broken relationship. Peace with God is declared through reconciliation — the hostility resolved through Christ."}
+   ],
+   etymology:{gk:"eirene — peace · harmony · absence of war",heb:"shalom — completeness · wholeness · welfare",en:"peace — freedom from disturbance · first attested c.1125",note:"eirene in Greek primarily meant absence of war. Hebrew shalom carries the positive — wholeness, nothing missing. Paul's eirene draws on shalom through the LXX."},
+   antonyms:[{ref:'W-098',word:'enmity',type:'direct_antonym'},{ref:'W-011',word:'wrath',type:'contextual_antonym'}],
+   synonyms:[{ref:'W-096',word:'reconciliation',type:'mechanism_synonym'},{ref:'W-097',word:'wholeness',type:'HEB_equivalent'}],
+   verses:[{ref:'ROM-5-1',primary:true,kjv:'Therefore being justified by faith, we have peace with God through our Lord Jesus Christ.',esv:'Therefore, since we have been justified by faith, we have peace with God through our Lord Jesus Christ.'},
+           {ref:'ROM-8-6',primary:false,esv:'To set the mind on the Spirit is life and peace.'}],
+   links:{god_attr:['GA-LOVE'],principles:['P-LOVE_GOD','P-LOVE_NEIGHBOR'],foundations:[]},
+   morph:[{lexar:'eirene',word:'peace',rel:'root'},{lexar:'eirenopoios',word:'peacemaker',rel:'derivative'}],
+   geo:{chain:'romans_r',weight:8.5,coords:'0.90,0.42,0.62,0.88,0.72,0.68,0.85,0.92,0.88'},
+   notes:[]},
+
+  {id:'W-040',word:'salvation',lexar:'soteria',strongs:'G4991',pos:'noun',chain:'romans_r',weight:9.0,
+   short:'The comprehensive rescue from sin, wrath, and death through faith in Christ.',
+   definitions:[
+     {version:'KJV',text:"Deliverance from sin. The comprehensive rescue of the whole person — past justification, present sanctification, future glorification.",source:'BDAG 3rd p.985'},
+     {version:'ESV',text:"Rescue from sin, wrath, and death. The comprehensive work of God in Christ encompassing justification, sanctification, and glorification.",source:'BDAG 3rd p.985'}
+   ],
+   decomp:[
+     {lexar:'sozo',stem:'save',pos:'verb',strongs:'G4982',def:'To save. To rescue from danger. sozo covers healing, rescue from drowning, and rescue from spiritual death.'},
+     {lexar:'soter',stem:'Savior',pos:'noun',strongs:'G4990',def:'The one who saves. The name Jesus (Yeshua) means God saves — soteria is embedded in His personal name.'}
+   ],
+   etymology:{gk:'soteria — preservation · rescue · deliverance from danger',heb:'yeshua — salvation · deliverance — the personal name of Jesus derives from this root',en:'salvation — deliverance from sin · first attested c.1300',note:'The name Jesus (Iesous / Yeshua) means God saves — soteria is embedded in His personal name. Romans 1:16 declares both the person and the work simultaneously.'},
+   antonyms:[{ref:'W-050',word:'death',type:'direct_antonym'},{ref:'W-010',word:'condemnation',type:'legal_antonym'}],
+   synonyms:[{ref:'W-030',word:'redemption',type:'mechanism_synonym'},{ref:'W-020',word:'justification',type:'legal_dimension'}],
+   verses:[{ref:'ROM-1-16',primary:true,kjv:'For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth.',esv:'For I am not ashamed of the gospel, for it is the power of God for salvation to everyone who believes.'},
+           {ref:'ROM-10-10',primary:false,esv:'With the heart one believes and is justified, and with the mouth one confesses and is saved.'}],
+   links:{god_attr:['GA-LOVE'],principles:['P-LOVE_GOD'],foundations:['L1-001']},
+   morph:[{lexar:'soteria',word:'salvation',rel:'root'},{lexar:'soter',word:'Savior',rel:'derivative'},{lexar:'sozo',word:'save',rel:'verb_form'}],
+   geo:{chain:'romans_r',weight:9.0,coords:'0.93,0.60,0.65,0.95,0.78,0.78,0.92,0.93,0.91'},
+   notes:[]},
+
+  {id:'W-050',word:'death',lexar:'thanatos',strongs:'G2288',pos:'noun',chain:'negative',weight:9.0,
+   short:'Physical death. Spiritual separation from God. The declared wage of sin.',
+   definitions:[
+     {version:'KJV',text:"The cessation of physical life. The spiritual condition of alienation from God — the consequence of sin declared in Romans 6:23.",source:'BDAG 3rd p.443'},
+     {version:'ESV',text:"Physical death — cessation of bodily life. Spiritual death — separation from God as the consequence of sin. Romans 6:23 — the wages of sin is death.",source:'BDAG 3rd p.443'}
+   ],
+   decomp:[
+     {lexar:'opsonia',stem:'wages',pos:'noun',strongs:'G3800',def:"Military pay. What a soldier earns. Romans 6:23 — the wages of sin is death. Death is what sin earns."},
+     {lexar:'chorizo',stem:'separation',pos:'noun',strongs:'G5563',def:'To separate. Spiritual death is separation from God — maximum possible distance from the declared truth surface.'}
+   ],
+   etymology:{gk:"thanatos — death · personification of death in classical mythology",heb:"mavet — death · the realm of the dead · Sheol",en:"death — the end of life · first attested c.725",note:"Romans distinguishes three dimensions: physical death, spiritual death (Ephesians 2:1 dead in sins), and the second death (Revelation 20:14). Christ's resurrection is declared as victory over all three simultaneously."},
+   antonyms:[{ref:'W-055',word:'life',type:'direct_antonym'},{ref:'W-040',word:'salvation',type:'outcome_antonym'}],
+   synonyms:[{ref:'W-103',word:'perishing',type:'near_synonym'}],
+   verses:[{ref:'ROM-6-23',primary:true,kjv:'For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord.',esv:'For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.'},
+           {ref:'ROM-5-12',primary:false,esv:'Just as sin came into the world through one man, and death through sin.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:[],foundations:[]},
+   morph:[{lexar:'thanatos',word:'death',rel:'root'},{lexar:'apothnesko',word:'die',rel:'verb_form'}],
+   geo:{chain:'negative',weight:9.0,coords:'0.02,0.65,0.40,0.95,0.35,0.65,0.88,0.02,0.85'},
+   notes:[]},
+
+  {id:'W-055',word:'life',lexar:'zoe',strongs:'G2222',pos:'noun',chain:'romans_r',weight:9.5,
+   short:'Eternal life — the life of God, qualitatively distinct from biological existence.',
+   definitions:[
+     {version:'KJV',text:"Eternal life — the life of the age to come, begun now in those who are in Christ. The free gift of God in contrast to the wages of sin.",source:'BDAG 3rd p.430'},
+     {version:'ESV',text:"The life of God — eternal, qualitatively distinct from mere biological existence. Given as a free gift through Christ Jesus. Romans 6:23.",source:'BDAG 3rd p.430'}
+   ],
+   decomp:[
+     {lexar:'aionios',stem:'eternal',pos:'adjective',strongs:'G0166',def:'Of the age. Eternal. Not merely unending duration but the quality of life belonging to the coming age. zoe aionios = the life of the age to come.'},
+     {lexar:'charisma',stem:'gift',pos:'noun',strongs:'G5486',def:"A grace-gift. Romans 6:23 — the gift (charisma) of God is eternal life. The word charisma is the grace-word."}
+   ],
+   etymology:{gk:'zoe — life · in NT the divine life distinct from mere biological existence',heb:'chayyim — life · always plural in Hebrew · the plural suggesting life in its fullness',en:'life — the condition of being alive · first attested c.725',note:'Greek distinguished zoe (life as quality and principle) from bios (life as biological existence). John uses zoe almost exclusively. The distinction matters geometrically.'},
+   antonyms:[{ref:'W-050',word:'death',type:'direct_antonym'}],
+   synonyms:[{ref:'W-105',word:'eternal life',type:'full_expression'},{ref:'W-040',word:'salvation',type:'outcome_synonym'}],
+   verses:[{ref:'ROM-6-23',primary:true,kjv:'For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord.',esv:'For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.'},
+           {ref:'ROM-8-6',primary:false,esv:'To set the mind on the Spirit is life and peace.'}],
+   links:{god_attr:['GA-LOVE','GA-EMPOWERMENT'],principles:[],foundations:['L1-001']},
+   morph:[{lexar:'zoe',word:'life',rel:'root'},{lexar:'zao',word:'living',rel:'verb_form'},{lexar:'zoopoieo',word:'vivify',rel:'derivative'}],
+   geo:{chain:'romans_r',weight:9.5,coords:'0.95,0.45,0.70,0.92,0.80,0.75,0.90,0.95,0.92'},
+   notes:[]},
+
+  {id:'W-060',word:'unbelief',lexar:'apistia',strongs:'G0570',pos:'noun',chain:'negative',weight:7.0,
+   short:'The absence of faith. Faithlessness. The negation of pistis.',
+   definitions:[
+     {version:'KJV',text:"The absence of faith. Faithlessness. Failure to trust God's declared word and character.",source:'BDAG 3rd p.103'},
+     {version:'ESV',text:"The absence or rejection of faith. The failure to trust God's declared character and promises. Romans 3:3.",source:'BDAG 3rd p.103'}
+   ],
+   decomp:[
+     {lexar:'a',stem:'without',pos:'prefix',strongs:'',def:'The alpha privative — negating the word that follows. apistia is the negation of pistis. Without faith.'},
+     {lexar:'pistis',stem:'faith',pos:'noun',strongs:'G4102',def:'The root that unbelief negates. apistia is precisely and exactly the absence of pistis.'}
+   ],
+   etymology:{gk:'apistia — lack of faith · faithlessness · from a (without) + pistis (faith)',en:'unbelief — lack of belief · first attested c.1526',note:''},
+   antonyms:[{ref:'W-004',word:'faith',type:'direct_antonym'}],
+   synonyms:[{ref:'W-061',word:'doubt',type:'partial_synonym'},{ref:'W-090b',word:'hardness of heart',type:'near_synonym'}],
+   verses:[{ref:'ROM-3-3',primary:true,kjv:'For what if some did not believe? shall their unbelief make the faith of God without effect?',esv:'What if some were unfaithful? Does their faithlessness nullify the faithfulness of God?'},
+           {ref:'ROM-11-20',primary:false,esv:'They were broken off because of their unbelief, but you stand fast through faith.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:[],foundations:[]},
+   morph:[{lexar:'apistia',word:'unbelief',rel:'root'},{lexar:'pistos',word:'faithful',rel:'antonym'}],
+   geo:{chain:'negative',weight:7.0,coords:'0.15,0.55,0.50,0.80,0.35,0.55,0.72,0.12,0.78'},
+   notes:[]},
+
+  {id:'W-065',word:'love',lexar:'agape',strongs:'G0026',pos:'noun',chain:'layer0',weight:10.0,
+   short:'The self-giving unconditional love that is God\'s own nature. 1 John 4:8.',
+   definitions:[
+     {version:'KJV',text:"The self-giving, unconditional love of God. Not an emotion but a declared disposition — the nature of God expressed toward the undeserving.",source:'BDAG 3rd p.6'},
+     {version:'ESV',text:"The love that is God's own nature — self-giving, unconditional, active. Poured out through the Holy Spirit. Romans 5:5.",source:'BDAG 3rd p.6'}
+   ],
+   decomp:[
+     {lexar:'kenoo',stem:'self-giving',pos:'verb',strongs:'G2758',def:'To empty oneself. Philippians 2:7 — Christ emptied Himself. agape is defined by this self-emptying movement toward the other.'},
+     {lexar:'ekcheo',stem:'poured out',pos:'verb',strongs:'G1632',def:'To pour out. Romans 5:5 — the love of God has been poured into our hearts through the Holy Spirit.'},
+     {lexar:'physis',stem:'nature',pos:'noun',strongs:'G5449',def:"Essential character. 1 John 4:8 — God IS love. agape is not an attribute God has but the nature God is. The distinction is absolute."}
+   ],
+   etymology:{gk:'agape — love — specifically in NT the self-giving love that characterizes God',heb:'ahavah — love · affection · primary OT love word',en:'love — warm personal attachment · first attested c.725',note:'1 John 4:8 — God IS agape — is the most significant theological declaration in the corpus. The copula IS not HAS places agape in the Absolute Truths layer as the nature of God not merely an attribute.'},
+   antonyms:[{ref:'W-109',word:'hatred',type:'direct_antonym'},{ref:'W-002',word:'sin',type:'character_antonym'}],
+   synonyms:[{ref:'W-025',word:'mercy',type:'expression_synonym'},{ref:'W-001',word:'grace',type:'expression_synonym'}],
+   verses:[{ref:'ROM-5-5',primary:true,kjv:'The love of God is shed abroad in our hearts by the Holy Ghost which is given unto us.',esv:"God's love has been poured into our hearts through the Holy Spirit who has been given to us."},
+           {ref:'ROM-8-39',primary:false,esv:'Nor anything else in all creation, will be able to separate us from the love of God in Christ Jesus our Lord.'},
+           {ref:'1JN-4-8',primary:false,kjv:'He that loveth not knoweth not God; for God is love.',esv:'Anyone who does not love does not know God, because God is love.'}],
+   links:{god_attr:['GA-LOVE'],principles:['P-LOVE_GOD','P-LOVE_NEIGHBOR','P-LOVE_SELF'],foundations:['L1-001','L1-002']},
+   morph:[{lexar:'agape',word:'love',rel:'root'},{lexar:'agapao',word:'love (v)',rel:'verb_form'},{lexar:'agapetos',word:'beloved',rel:'derivative'}],
+   geo:{chain:'layer0',weight:10.0,coords:'1.00,0.50,0.60,1.00,1.00,0.80,0.95,1.00,0.95'},
+   notes:['agape is the pure knot of the entire Absolute Truths manifold. All coordinates in every domain map are measured against it. Romans 8:35-39 is the declared geometric statement that nothing in creation can move the believer away from agape.']},
+
+  {id:'W-070',word:'law',lexar:'nomos',strongs:'G3551',pos:'noun',chain:'romans_p',weight:7.5,
+   short:'The Mosaic law. Reveals sin but cannot justify. Was given to lead to Christ.',
+   definitions:[
+     {version:'KJV',text:"The Mosaic law. The declared standard of God. The law reveals sin but cannot justify — it was never intended to save but to show the need for grace.",source:'BDAG 3rd p.677'},
+     {version:'ESV',text:"The law of Moses — God's declared standard. The law reveals sin (Romans 3:20), convicts conscience, but cannot justify (Romans 3:28).",source:'BDAG 3rd p.677'}
+   ],
+   decomp:[
+     {lexar:'kanon',stem:'standard',pos:'noun',strongs:'G2583',def:'A rule or measure. The declared norm against which deviation is measured.'},
+     {lexar:'paidagogos',stem:'tutor',pos:'noun',strongs:'G3807',def:"A household slave who supervised a child. Galatians 3:24 — the law was our guardian until Christ came."}
+   ],
+   etymology:{gk:'nomos — that which is assigned · custom · law — from nemo to distribute',heb:'torah — instruction · law · teaching — from yarah to teach. Torah is broader than law — the full divine instruction.',en:'law — a rule of conduct · first attested c.1000',note:'Paul uses nomos in multiple senses in Romans: the Mosaic law (chapters 2-3), the principle of sin (7:23), and the law of the Spirit of life (8:2). The Mosaic law is holy and good (Romans 7:12) but cannot justify.'},
+   antonyms:[{ref:'W-001',word:'grace',type:'mechanism_antonym'},{ref:'W-004',word:'faith',type:'mechanism_antonym'}],
+   synonyms:[{ref:'W-112',word:'commandment',type:'component_synonym'}],
+   verses:[{ref:'ROM-3-20',primary:true,kjv:'By the deeds of the law there shall no flesh be justified: for by the law is the knowledge of sin.',esv:'For by works of the law no human being will be justified in his sight, since through the law comes knowledge of sin.'},
+           {ref:'ROM-7-12',primary:false,esv:'So the law is holy, and the commandment is holy and righteous and good.'}],
+   links:{god_attr:['GA-JUSTICE','GA-AUTHORITY'],principles:[],foundations:['L1-004']},
+   morph:[{lexar:'nomos',word:'law',rel:'root'},{lexar:'entole',word:'commandment',rel:'component'},{lexar:'anomos',word:'lawless',rel:'antonym'}],
+   geo:{chain:'romans_p',weight:7.5,coords:'0.55,0.85,0.48,0.90,0.60,0.85,0.92,0.55,0.82'},
+   notes:[]},
+
+  {id:'W-075',word:'Spirit',lexar:'pneuma',strongs:'G4151',pos:'noun',chain:'layer0',weight:9.5,
+   short:'The Holy Spirit. Indwells believers. Gives life, assures sonship, intercedes.',
+   definitions:[
+     {version:'KJV',text:"The Holy Spirit — the third person of the Trinity. The Spirit of God who indwells believers and produces life, righteousness, and sonship. Romans 8.",source:'BDAG 3rd p.832'},
+     {version:'ESV',text:"The Holy Spirit — the Spirit of God and of Christ who indwells believers. Gives life, assures sonship, and intercedes. Romans 8 is the primary pneuma chapter.",source:'BDAG 3rd p.832'}
+   ],
+   decomp:[
+     {lexar:'pnoe',stem:'breath',pos:'noun',strongs:'G4157',def:"Breath. Wind. The physical root of pneuma. Genesis 2:7 — God breathed the breath of life."},
+     {lexar:'oikeo',stem:'indwells',pos:'verb',strongs:'G3611',def:'To inhabit. To dwell in. Romans 8:9 — the Spirit of God dwells in you.'},
+     {lexar:'huperentugchano',stem:'intercedes',pos:'verb',strongs:'G5242',def:'To intercede with sighs. Romans 8:26-27 — the Spirit himself intercedes with groanings too deep for words.'}
+   ],
+   etymology:{gk:'pneuma — wind · breath · spirit — triple meaning shared with Hebrew ruach',heb:'ruach — wind · breath · spirit — same triple ambiguity used in John 3:8',en:'Spirit — the animating principle · first attested c.1250',note:'pneuma appears 21 times in Romans 8 — more than any other chapter in Paul. The Spirit is the declared answer to the flesh established in chapters 1-7.'},
+   antonyms:[{ref:'W-080',word:'flesh',type:'direct_antonym'},{ref:'W-050',word:'death',type:'outcome_antonym'}],
+   synonyms:[{ref:'W-114',word:'Helper',type:'functional_synonym'}],
+   verses:[{ref:'ROM-8-9',primary:true,kjv:'But ye are not in the flesh, but in the Spirit, if so be that the Spirit of God dwell in you.',esv:'You, however, are not in the flesh but in the Spirit, if in fact the Spirit of God dwells in you.'},
+           {ref:'ROM-8-26',primary:false,esv:'The Spirit helps us in our weakness. The Spirit himself intercedes for us with groanings too deep for words.'}],
+   links:{god_attr:['GA-EMPOWERMENT','GA-LOVE'],principles:['P-LOVE_GOD'],foundations:[]},
+   morph:[{lexar:'pneuma',word:'Spirit',rel:'root'},{lexar:'pneumatikos',word:'spiritual',rel:'derivative'}],
+   geo:{chain:'layer0',weight:9.5,coords:'0.95,0.48,0.72,0.90,0.85,0.72,0.92,0.95,0.93'},
+   notes:[]},
+
+  {id:'W-080',word:'flesh',lexar:'sarx',strongs:'G4561',pos:'noun',chain:'romans_p',weight:8.0,
+   short:'The fallen human nature. Humanity oriented away from God. Hostile to God.',
+   definitions:[
+     {version:'KJV',text:"The sinful nature. Human nature in its fallen state — oriented away from God. Distinct from the body (soma) which is not inherently sinful.",source:'BDAG 3rd p.914'},
+     {version:'ESV',text:"The fallen human nature. Humanity oriented away from God. Those in the flesh cannot please God — Romans 8:8.",source:'BDAG 3rd p.914'}
+   ],
+   decomp:[
+     {lexar:'echthra',stem:'hostile',pos:'adjective',strongs:'G2189',def:'Hostile. Enemy. Romans 8:7 — the mind governed by flesh is hostile to God. The flesh is declared as oriented in opposition.'},
+     {lexar:'dunamai',stem:'unable',pos:'verb',strongs:'G1410',def:'To be able. Romans 8:8 — those in the flesh cannot please God. The incapacity is structural.'}
+   ],
+   etymology:{gk:'sarx — flesh · in Paul often the sinful nature or humanity in weakness apart from God',heb:'basar — flesh · the body · humanity in its creaturely weakness',en:'flesh — the soft substance of the body · first attested c.725',note:"Paul uses sarx in two distinct senses: physical flesh (Romans 1:3) and the sinful orientation (Romans 8:4-9). sarx as sinful nature is about the orientation of the will away from God."},
+   antonyms:[{ref:'W-075',word:'Spirit',type:'direct_antonym'},{ref:'W-003',word:'righteousness',type:'outcome_antonym'}],
+   synonyms:[{ref:'W-117',word:'sinful nature',type:'translation_synonym'}],
+   verses:[{ref:'ROM-8-7',primary:true,kjv:"The carnal mind is enmity against God: for it is not subject to the law of God, neither indeed can be.",esv:"For the mind that is set on the flesh is hostile to God, for it does not submit to God's law; indeed, it cannot."},
+           {ref:'ROM-7-18',primary:false,esv:'For I know that nothing good dwells in me, that is, in my flesh.'}],
+   links:{god_attr:['GA-JUSTICE'],principles:[],foundations:[]},
+   morph:[{lexar:'sarx',word:'flesh',rel:'root'},{lexar:'sarkikos',word:'carnal',rel:'derivative'}],
+   geo:{chain:'romans_p',weight:8.0,coords:'0.20,0.62,0.40,0.88,0.30,0.60,0.78,0.15,0.80'},
+   notes:[]},
+
+  {id:'W-085',word:'hope',lexar:'elpis',strongs:'G1680',pos:'noun',chain:'romans_r',weight:8.5,
+   short:'Confident expectation of future good based on declared promise. Not wishful thinking.',
+   definitions:[
+     {version:'KJV',text:"Confident expectation of future good based on declared promise. Not wishful thinking but certain anticipation grounded in God's character.",source:'BDAG 3rd p.319'},
+     {version:'ESV',text:"Confident expectation of future glory. Romans 5:2 — we rejoice in hope of the glory of God. Hope is certainty about the future based on present grace.",source:'BDAG 3rd p.319'}
+   ],
+   decomp:[
+     {lexar:'bebaios',stem:'confident',pos:'adjective',strongs:'G0949',def:"Firm. Certain. Hope in Paul is not uncertain wishing but confident expectation — grounded in God's declared character."},
+     {lexar:'epangelia',stem:'promise',pos:'noun',strongs:'G1860',def:'A declared commitment. Hope is grounded in epangelia — specific declared promise. Not general optimism but promise-grounded expectation.'}
+   ],
+   etymology:{gk:'elpis — hope · expectation — in NT always positive and promise-grounded',heb:'tikvah — hope · expectation — from a root meaning to wait and look for',en:'hope — a feeling of expectation and desire · first attested c.1000',note:''},
+   antonyms:[{ref:'W-121',word:'despair',type:'direct_antonym'},{ref:'W-122',word:'shame',type:'outcome_antonym'}],
+   synonyms:[{ref:'W-004',word:'faith',type:'family_member'},{ref:'W-120',word:'expectation',type:'near_synonym'}],
+   verses:[{ref:'ROM-5-2',primary:true,kjv:'We rejoice in hope of the glory of God.',esv:'We rejoice in hope of the glory of God.'},
+           {ref:'ROM-5-5',primary:false,esv:"Hope does not put us to shame, because God's love has been poured into our hearts."},
+           {ref:'ROM-8-24',primary:false,esv:'For in this hope we were saved. Now hope that is seen is not hope.'}],
+   links:{god_attr:['GA-EMPOWERMENT'],principles:['P-LOVE_GOD'],foundations:['L1-003']},
+   morph:[{lexar:'elpis',word:'hope',rel:'root'},{lexar:'elpizo',word:'hope (v)',rel:'verb_form'}],
+   geo:{chain:'romans_r',weight:8.5,coords:'0.88,0.45,0.78,0.82,0.68,0.65,0.85,0.90,0.87'},
+   notes:[]},
+
+  {id:'W-090',word:'glory',lexar:'doxa',strongs:'G1391',pos:'noun',chain:'layer0',weight:9.5,
+   short:'The manifest presence and weight of God. The standard fallen short of. The telos.',
+   definitions:[
+     {version:'KJV',text:"The manifest presence and weight of God. The full expression of God's character made visible. What humanity has fallen short of. The telos — the declared end toward which creation moves.",source:'BDAG 3rd p.257'},
+     {version:'ESV',text:"The radiant majesty and manifest presence of God. Romans 3:23 — all fall short of the glory of God. Romans 5:2 — we rejoice in hope of the glory of God. Standard and telos simultaneously.",source:'BDAG 3rd p.257'}
+   ],
+   decomp:[
+     {lexar:'kabod',stem:'weight',pos:'noun',strongs:'H3519',def:"Weight. Heaviness. Hebrew kabod (glory) comes from the root to be heavy. God's glory is His substantial presence — weightiness, substance, significance."},
+     {lexar:'telos',stem:'telos',pos:'noun',strongs:'G5056',def:'End. Goal. Purpose. The telos of the Romans manifold is the hope of the glory of God — Romans 5:2.'}
+   ],
+   etymology:{gk:'doxa — opinion · reputation · honor · in LXX adopted to translate Hebrew kabod',heb:'kabod — glory · weight · honor · from kaved to be heavy',en:'glory — high renown · splendor · first attested c.1300',note:'The transformation of doxa from opinion (classical Greek) to glory (biblical Greek through LXX) is one of the most significant semantic shifts in the history of language. The final word of Romans 16:27 is doxa.'},
+   antonyms:[{ref:'W-126',word:'shame',type:'direct_antonym'},{ref:'W-127',word:'dishonor',type:'direct_antonym'}],
+   synonyms:[{ref:'W-124',word:'majesty',type:'near_synonym'},{ref:'W-125',word:'honor',type:'near_synonym'}],
+   verses:[{ref:'ROM-3-23',primary:true,kjv:'For all have sinned, and come short of the glory of God.',esv:'For all have sinned and fall short of the glory of God.'},
+           {ref:'ROM-5-2',primary:false,esv:'We rejoice in hope of the glory of God.'},
+           {ref:'ROM-16-27',primary:false,esv:'To the only wise God be glory forevermore through Jesus Christ! Amen.'}],
+   links:{god_attr:['GA-LOVE','GA-AUTHORITY'],principles:['P-LOVE_GOD'],foundations:[]},
+   morph:[{lexar:'doxa',word:'glory',rel:'root'},{lexar:'doxazo',word:'glorify',rel:'verb_form'},{lexar:'doxologia',word:'doxology',rel:'derivative'}],
+   geo:{chain:'layer0',weight:9.5,coords:'0.97,0.55,0.65,0.98,0.88,0.82,0.95,0.97,0.94'},
+   notes:['Glory is simultaneously the standard fallen short of (Romans 3:23) and the declared destination moving toward (Romans 5:2, 8:18). The last word of Romans is doxa.']},
+
+  {id:'W-095',word:'propitiation',lexar:'hilasterion',strongs:'G2435',pos:'noun',chain:'romans_r',weight:9.0,
+   short:'The atoning sacrifice. Christ satisfying God\'s righteous wrath. Romans 3:25.',
+   definitions:[
+     {version:'KJV',text:"The mercy seat. Christ set forth as the one who turns aside the wrath of God through His blood. Romans 3:25.",source:'BDAG 3rd p.474'},
+     {version:'ESV',text:"The atoning sacrifice — Christ satisfying God's righteous wrath against sin. The point where God's justice and grace are simultaneously expressed.",source:'BDAG 3rd p.474'}
+   ],
+   decomp:[
+     {lexar:'kapporeth',stem:'mercy seat',pos:'noun',strongs:'H3727',def:"The kapporeth — the covering of the ark where blood was sprinkled on the Day of Atonement. hilasterion in Romans 3:25 evokes this. Christ is the antitype of the mercy seat."},
+     {lexar:'hilaskomai',stem:'satisfy',pos:'verb',strongs:'G2433',def:'To appease. To propitiate. To turn aside wrath by meeting its just requirement.'},
+     {lexar:'haima',stem:'blood',pos:'noun',strongs:'G0129',def:"Blood. Romans 3:25 — through faith in his blood. The blood declares the death — the price paid."}
+   ],
+   etymology:{gk:"hilasterion — that which propitiates · the mercy seat in LXX (Exodus 25:17)",heb:"kapporeth — mercy seat · covering · the golden cover of the ark on Yom Kippur",en:"propitiation — the action of propitiating · first attested c.1540",note:"hilasterion appears only twice in the NT — Romans 3:25 and Hebrews 9:5 (explicitly the mercy seat). Paul's use is deliberately typological — Christ is both the priest and the mercy seat."},
+   antonyms:[{ref:'W-011',word:'wrath',type:'resolved_antonym'},{ref:'W-131',word:'alienation',type:'state_antonym'}],
+   synonyms:[{ref:'W-030',word:'redemption',type:'related_mechanism'},{ref:'W-130',word:'atonement',type:'broader_concept'}],
+   verses:[{ref:'ROM-3-25',primary:true,kjv:"Whom God hath set forth to be a propitiation through faith in his blood, to declare his righteousness for the remission of sins that are past.",esv:"Whom God put forward as a propitiation by his blood, to be received by faith. This was to show God's righteousness."}],
+   links:{god_attr:['GA-JUSTICE','GA-LOVE'],principles:[],foundations:['L1-006']},
+   morph:[{lexar:'hilasterion',word:'propitiation',rel:'root'},{lexar:'hilaskomai',word:'atone',rel:'verb_form'},{lexar:'hileos',word:'merciful',rel:'adjective'}],
+   geo:{chain:'romans_r',weight:9.0,coords:'0.90,0.78,0.55,0.97,0.72,0.82,0.93,0.88,0.90'},
+   notes:['Romans 3:25-26 is the most theologically dense passage in the entire letter. The cross is retroactive — it covers former sins passed over in forbearance.']}
+],
+
+/* ── Computed ── */
+get comments(){ return this.annotations.filter(a=>a.type==='comment'); },
+get notes(){ return this.annotations.filter(a=>a.type==='note'); },
+get currentEntryAnnotations(){ 
+  if(!this.activeEntry) return [];
+  return this.annotations.filter(a=>a.entryId===this.activeEntry.id);
+},
+
+get filteredEntries(){
+  const q=this.searchQuery.toLowerCase();
+  if(!q) return this.entries;
+  return this.entries.filter(e=>
+    e.word.includes(q)||e.lexar.includes(q)||
+    e.strongs.toLowerCase().includes(q)||
+    e.short.toLowerCase().includes(q)
+  );
+},
+get sortedEntries(){
+  const list=[...this.filteredEntries];
+  if(this.sidebarView==='az')
+    return list.sort((a,b)=>a.word.localeCompare(b.word));
+  if(this.sidebarView==='weight')
+    return list.sort((a,b)=>b.weight-a.weight||a.word.localeCompare(b.word));
+  return list; // group mode uses groupedEntries
+},
+get totalPages(){
+  return Math.max(1, Math.ceil(this.sortedEntries.length / this.sbPageSize));
+},
+get pagedEntries(){
+  const s=(this.sbPage-1)*this.sbPageSize;
+  return this.sortedEntries.slice(s, s+this.sbPageSize);
+},
+setSbView(v){
+  this.sidebarView=v;
+  this.sbPage=1;
+},
+get groupedEntries(){
+  const groups={romans_r:[],romans_p:[],layer0:[],negative:[]};
+  this.filteredEntries.forEach(e=>{if(groups[e.chain])groups[e.chain].push(e);});
+  return groups;
+},
+chainLabel(c){return{romans_r:'Resolution chain',romans_p:'Problem chain',layer0:'Foundation',negative:'Negative poles'}[c]||c},
+chainColor(c){return{romans_r:'badge-ok',romans_p:'badge-mt',layer0:'badge-ac',negative:'badge-mt'}[c]||'badge-mt'},
+
+/* ── Actions ── */
+openEntry(id){
+  const e=this.entries.find(x=>x.id===id);
+  if(!e) return;
+  this.activeEntry=e;
+  if(!this.openTabs.find(t=>t.id===id)) this.openTabs.push({id,word:e.word,lexar:e.lexar});
+  if(!this.activeDefVersion[id]) this.activeDefVersion[id]=(e.definitions[1]||e.definitions[0]).version;
+  this.bottomSection='page';
+  this.mobileSidebarOpen=false;
+  this.historyOpen=false;
+  this.helpOpen=false;
+  // Record in history
+  this.entryHistory.unshift({id,word:e.word,lexar:e.lexar,strongs:e.strongs,time:new Date().toLocaleTimeString()});
+  if(this.entryHistory.length>50) this.entryHistory.pop();
+},
+closeTab(id,ev){
+  ev.stopPropagation();
+  const idx=this.openTabs.findIndex(t=>t.id===id);
+  this.openTabs.splice(idx,1);
+  if(this.activeEntry&&this.activeEntry.id===id){
+    this.activeEntry=this.openTabs.length?this.entries.find(e=>e.id===this.openTabs[Math.max(0,idx-1)].id):null;
+  }
+},
+selectTab(id){this.openEntry(id)},
+getDefText(entry){
+  const v=this.activeDefVersion[entry.id]||(entry.definitions[1]||entry.definitions[0]).version;
+  return (entry.definitions.find(d=>d.version===v)||entry.definitions[0]);
+},
+getActiveVersion(entry){return this.activeDefVersion[entry.id]||(entry.definitions[1]||entry.definitions[0]).version},
+setDefVersion(entry,v){this.activeDefVersion[entry.id]=v},
+getVerseText(verse){
+  const av=this.activeEntry?this.getActiveVersion(this.activeEntry):'ESV';
+  return av==='KJV'?(verse.kjv||verse.esv||''):(verse.esv||verse.kjv||'');
+},
+weightPct(w){return(w/10)*100},
+
+/* ── Text selection ── */
+_savedRange:null,
+initSelection(){
+  document.addEventListener('mouseup',e=>{
+    if(e.target.closest('.selection-pop')) return;
+    setTimeout(()=>{
+      const sel=window.getSelection();
+      if(!sel||sel.toString().trim().length<2){
+        this.popover.visible=false;
+        return;
+      }
+      // Save the range NOW before any click clears it
+      try { this._savedRange = sel.getRangeAt(0).cloneRange(); }
+      catch(e){ this._savedRange=null; }
+      const r=sel.getRangeAt(0).getBoundingClientRect();
+      const pw=300,ph=280;
+      let x=r.left+(r.width/2)-(pw/2);
+      let y=r.bottom+10;
+      x=Math.max(8,Math.min(x,window.innerWidth-pw-8));
+      if(y+ph>window.innerHeight) y=r.top-ph-8;
+      this.popover={...this.popover,visible:true,x,y,text:sel.toString().trim(),activeTab:'highlight',commentInput:'',noteInput:''};
+    },10);
+  });
+  document.addEventListener('mousedown',e=>{
+    if(!e.target.closest('.selection-pop')){
+      this.popover.visible=false;
+    }
+  });
+},
+underlineSelection(){
+  const range = this._savedRange;
+  if(!range){ this.popover.visible=false; return; }
+  try {
+    const id = 'anno-' + Date.now();
+    const span = document.createElement('span');
+    span.className = 'underlined';
+    span.dataset.annoId = id;
+    span.title = 'Click to remove highlight';
+    span.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      this.removeHighlight(id);
+    });
+    const fragment = range.extractContents();
+    span.appendChild(fragment);
+    range.insertNode(span);
+    // Save to annotations + IDB
+    const anno = {
+      id, type:'underline',
+      entryId: this.activeEntry?.id || '',
+      selection: this.popover.text,
+      text:'', pub:false,
+      createdAt: Date.now(), editedAt: null
+    };
+    this.annotations.push(anno);
+    this.saveAnnotationsToIDB();
+    this._savedRange = null;
+    window.getSelection()?.removeAllRanges();
+    this.popover.visible = false;
+  } catch(e){
+    console.warn('Underline failed:', e.message);
+    this._savedRange = null;
+    this.popover.visible = false;
+  }
+},
+removeHighlight(id){
+  // Unwrap the span, restore its text content
+  const span = document.querySelector('[data-anno-id="'+id+'"]');
+  if(span){
+    const parent = span.parentNode;
+    while(span.firstChild) parent.insertBefore(span.firstChild, span);
+    parent.removeChild(span);
+  }
+  this.annotations = this.annotations.filter(a=>a.id!==id);
+  this.saveAnnotationsToIDB();
+},
+addComment(){
+  if(!this.popover.commentInput.trim()) return;
+  const anno = {
+    id: 'anno-' + Date.now(),
+    type: 'comment',
+    entryId: this.activeEntry?.id || '',
+    entryWord: this.activeEntry?.word || '',
+    selection: this.popover.text,
+    text: this.popover.commentInput,
+    pub: true,
+    createdAt: Date.now(),
+    editedAt: null
+  };
+  this.annotations.push(anno);
+  this.saveAnnotationsToIDB();
+  this.popover.commentInput='';
+  this.popover.visible=false;
+},
+editAnnotation(id){
+  const a = this.annotations.find(x=>x.id===id);
+  if(!a) return;
+  this._editingAnno = {id, draft: a.text, pub: a.pub};
+},
+saveEdit(id){
+  const ea = this._editingAnno;
+  if(!ea || ea.id!==id) return;
+  const idx = this.annotations.findIndex(x=>x.id===id);
+  if(idx>-1){
+    this.annotations[idx].text = ea.draft;
+    this.annotations[idx].pub  = ea.pub;
+    this.annotations[idx].editedAt = Date.now();
+    this.saveAnnotationsToIDB();
+  }
+  this._editingAnno = null;
+},
+deleteAnnotation(id){
+  this.annotations = this.annotations.filter(a=>a.id!==id);
+  this.saveAnnotationsToIDB();
+  if(this._editingAnno?.id===id) this._editingAnno=null;
+},
+addNote(){
+  if(!this.popover.noteInput.trim()) return;
+  const anno = {
+    id: 'anno-' + Date.now(),
+    type: 'note',
+    entryId: this.activeEntry?.id || '',
+    entryWord: this.activeEntry?.word || '',
+    selection: this.popover.text,
+    text: this.popover.noteInput,
+    pub: this.popover.notePublic,
+    createdAt: Date.now(),
+    editedAt: null
+  };
+  this.annotations.push(anno);
+  this.saveAnnotationsToIDB();
+  this.popover.noteInput='';
+  this.popover.visible=false;
+},
+fmtEpoch(ts){
+  if(!ts) return '';
+  return new Date(ts).toLocaleString();
+},
+
+/* ── Helpers ── */
+etymologyRows(entry){
+  if(!entry||!entry.etymology) return [];
+  return Object.entries(entry.etymology)
+    .filter(([k,v])=>k!=='note'&&v)
+    .map(([k,v])=>({k,v}));
+},
+/* ── Helpers ── */
+entryExists(id){ return !!this.entries.find(e=>e.id===id); },
+tryOpenEntry(id){
+  if(this.entryExists(id)) this.openEntry(id);
+},
+
+/* ── IndexedDB for Help markdown ── */
+/* ── Annotations IDB ── */
+async saveAnnotationsToIDB(){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve();
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('annotations','readwrite');
+          const store=tx.objectStore('annotations');
+          store.clear();
+          this.annotations.forEach(a=>store.put(a));
+          tx.oncomplete=()=>resolve();
+          tx.onerror=()=>resolve();
+        }catch(ex){resolve();}
+      };
+    }catch(e){resolve();}
+  });
+},
+async loadAnnotationsFromIDB(){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve([]);
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('annotations','readonly');
+          const r=tx.objectStore('annotations').getAll();
+          r.onsuccess=()=>resolve(r.result||[]);
+          r.onerror=()=>resolve([]);
+        }catch(ex){resolve([]);}
+      };
+    }catch(e){resolve([]);}
+  });
+},
+async loadHelpfulVotesFromIDB(){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve({});
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('votes','readonly');
+          const r=tx.objectStore('votes').getAll();
+          r.onsuccess=()=>{const obj={};(r.result||[]).forEach(v=>{obj[v.id]=v.vote;});resolve(obj);};
+          r.onerror=()=>resolve({});
+        }catch(ex){resolve({});}
+      };
+    }catch(e){resolve({});}
+  });
+},
+async saveVote(entryId,vote){
+  this.helpfulVotes[entryId]=vote;
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve();
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('votes','readwrite');
+          if(vote===null)tx.objectStore('votes').delete(entryId);
+          else tx.objectStore('votes').put({id:entryId,vote,ts:Date.now()});
+          tx.oncomplete=()=>resolve();
+          tx.onerror=()=>resolve();
+        }catch(ex){resolve();}
+      };
+    }catch(e){resolve();}
+  });
+},
+async saveHelpToIDB(md){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve();
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('docs','readwrite');
+          tx.objectStore('docs').put({id:'help',content:md,saved:Date.now()});
+          tx.oncomplete=()=>resolve();
+          tx.onerror=()=>resolve();
+        }catch(ex){resolve();}
+      };
+    }catch(e){resolve();}
+  });
+},
+async loadHelpFromIDB(){
+  return new Promise(resolve=>{
+    try{
+      const req=indexedDB.open('geoapi-dict',2);
+      req.onupgradeneeded=e=>{const db=e.target.result;['docs','annotations','votes'].forEach(s=>{if(!db.objectStoreNames.contains(s))db.createObjectStore(s,{keyPath:'id'});});};
+      req.onerror=()=>resolve(null);
+      req.onsuccess=e=>{
+        try{
+          const db=e.target.result;
+          const tx=db.transaction('docs','readonly');
+          const r=tx.objectStore('docs').get('help');
+          r.onsuccess=()=>resolve(r.result?.content||null);
+          r.onerror=()=>resolve(null);
+        }catch(ex){resolve(null);}
+      };
+    }catch(e){resolve(null);}
+  });
+}
+,
+/* ── Word hover ── */
+initWordHover(){
+  const area = document.getElementById('content-entry-area');
+  if(!area) return;
+  area.addEventListener('mouseover', e=>{
+    const el = e.target;
+    if(!['SPAN','STRONG','CODE','EM'].includes(el.tagName)) return;
+    const word = el.textContent.trim().toLowerCase().replace(/[.,;:!?'"()]/g,'');
+    if(word.length < 3) return;
+    clearTimeout(this._wordPopTimer);
+    this._wordPopTimer = setTimeout(()=>{
+      const entry = this.entries.find(en=>
+        en.word===word || en.lexar===word ||
+        (en.morph||[]).some(m=>m.word===word||m.lexar===word)
+      );
+      const commentCount = this.annotations.filter(a=>a.type==='comment'&&a.entryId===(entry?.id||'')).length;
+      const noteCount    = this.annotations.filter(a=>a.type==='note'   &&a.entryId===(entry?.id||'')).length;
+      if(!entry && commentCount===0 && noteCount===0) return;
+      const rect = el.getBoundingClientRect();
+      this.wordPop = {
+        visible:true,
+        x: Math.min(rect.left, window.innerWidth-260),
+        y: rect.bottom + 6,
+        word, entry, commentCount, noteCount
+      };
+    }, 350);
+  });
+  area.addEventListener('mouseleave', ()=>{
+    clearTimeout(this._wordPopTimer);
+    this.wordPop.visible = false;
+  });
+},
+parseMd(md){
+  if(!md) return '';
+  var lines = md.split('\n');
+  var out = [];
+  var inList = false;
+  for(var i=0; i<lines.length; i++){
+    var l = lines[i]
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/`([^`]+)`/g,'<code>$1</code>');
+    if(/^### /.test(l)){ if(inList){out.push('</ul>');inList=false;} out.push('<h3>'+l.slice(4)+'</h3>'); }
+    else if(/^## /.test(l)){ if(inList){out.push('</ul>');inList=false;} out.push('<h2>'+l.slice(3)+'</h2>'); }
+    else if(/^# /.test(l)){ if(inList){out.push('</ul>');inList=false;} out.push('<h1>'+l.slice(2)+'</h1>'); }
+    else if(/^- /.test(l)){ if(!inList){out.push('<ul>');inList=true;} out.push('<li>'+l.slice(2)+'</li>'); }
+    else if(/^---$/.test(l)){ if(inList){out.push('</ul>');inList=false;} out.push('<hr>'); }
+    else if(l.trim()===''){  if(inList){out.push('</ul>');inList=false;} }
+    else { if(inList){out.push('</ul>');inList=false;} out.push('<p>'+l+'</p>'); }
+  }
+  if(inList) out.push('</ul>');
+  return out.join('\n');
+},
+async openHelp(){
+  this.helpOpen=true;
+  this.historyOpen=false;
+  if(!this.helpContent){
+    const stored = await this.loadHelpFromIDB();
+    if(stored){
+      this.helpContent = stored;
+    } else {
+      this.helpContent = this.getHelpHTML();
+      this.saveHelpToIDB(this.helpContent);
+    }
+  }
+},
+
+/* ── Init ── */
+async init(){
+    this.initSelection();
+    this.$watch('activeTheme', v=>{ try{localStorage.setItem('geoapi-theme',v)}catch(e){} });
+    // Load persisted data
+    const [annos, votes] = await Promise.all([
+      this.loadAnnotationsFromIDB(),
+      this.loadHelpfulVotesFromIDB()
+    ]);
+    this.annotations = annos;
+    this.helpfulVotes = votes;
+    // Start word hover after DOM ready
+    this.$nextTick(()=>{ this.initWordHover(); });
+  }
+}}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+<link href="https://fonts.googleapis.com/css2?family=Berkeley+Mono&family=Spectral:ital,wght@0,400;0,600;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet"/>
+<style>
+/* ── Reset ─────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+[x-cloak]{display:none!important}
+body{font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;overflow:hidden;height:100dvh}
+h1,h2,h3,.serif{font-family:'Spectral',serif}
+code,.mono{font-family:'Berkeley Mono',monospace;font-size:12px}
+
+/* ── Theme tokens ───────────────────────────── */
+[data-theme="stripe-light"]{
+  --bg:#ffffff;--bg2:#f6f9fc;--bg3:#eef2f7;--bd:#e3e8ef;--bd2:#c8d0db;
+  --tx:#1a1f36;--mt:#6b7c93;--ac:#635bff;--ab:#f0effe;--abt:#635bff;
+  --ok:#0a7c41;--okb:#ebfaf3;--wn:#7b5900;--wnb:#fff8eb;
+  --er:#9e0e27;--erb:#fef0f3;--cd:#f1f3f8;
+  --sb:#ffffff;--sbd:#e3e8ef;--sblink:#6b7c93;--sbact:#635bff;--sbactb:#f0effe;
+  --bb:#ffffff;--bbt:#6b7c93;--bbact:#635bff;
+  --pop:#ffffff;--popshadow:0 8px 32px rgba(0,0,0,.14),0 2px 8px rgba(0,0,0,.08);
+  --tab-bg:#f6f9fc;--tab-act:#ffffff;--tab-bd:#e3e8ef;
+}
+/* ── Google Developers (developers.google.com) ── */
+[data-theme="google-docs"]{
+  --bg:#ffffff;
+  --bg2:#f8f9fa;
+  --bg3:#f1f3f4;
+  --bd:#dadce0;
+  --bd2:#bdc1c6;
+  --tx:#202124;
+  --mt:#5f6368;
+  --ac:#1a73e8;
+  --ab:#e8f0fe;
+  --abt:#1a73e8;
+  --ok:#188038;
+  --okb:#e6f4ea;
+  --wn:#b06000;
+  --wnb:#fef9c3;
+  --er:#c5221f;
+  --erb:#fce8e6;
+  --cd:#f1f3f4;
+  /* Sidebar: white with subtle gray rule — matches developers.google.com left nav */
+  --sb:#ffffff;
+  --sbd:#dadce0;
+  --sblink:#3c4043;
+  --sbact:#1a73e8;
+  --sbactb:#e8f0fe;
+  /* Bottom bar */
+  --bb:#ffffff;
+  --bbt:#5f6368;
+  --bbact:#1a73e8;
+  --pop:#ffffff;
+  --popshadow:0 1px 3px 1px rgba(60,64,67,.15),0 1px 2px rgba(60,64,67,.3);
+  --tab-bg:#f8f9fa;
+  --tab-act:#ffffff;
+  --tab-bd:#dadce0;
+}
+/* Google: active sidebar item gets blue pill left border + light blue bg */
+[data-theme="google-docs"] .sb-item.active{
+  background:#e8f0fe;
+  color:#1a73e8;
+  border-left:3px solid #1a73e8;
+  border-radius:0 24px 24px 0;
+  margin-right:8px;
+}
+[data-theme="google-docs"] .sb-item:hover{
+  background:#f1f3f4;
+  border-radius:0 24px 24px 0;
+  margin-right:8px;
+}
+[data-theme="google-docs"] .sb-section-label{color:#5f6368;font-size:10px}
+[data-theme="google-docs"] .top-bar{border-bottom:1px solid #dadce0}
+[data-theme="google-docs"] .entry-word{color:#202124}
+[data-theme="google-docs"] .entry-tab.active{border-top:2px solid #1a73e8;color:#1a73e8}
+[data-theme="google-docs"] .geo-fill{background:linear-gradient(90deg,#1a73e8,#188038)}
+[data-theme="google-docs"] .verse-card{border-left-color:#1a73e8;background:#e8f0fe}
+[data-theme="google-docs"] body{font-family:'Google Sans',Roboto,'DM Sans',sans-serif}
+
+/* ── Microsoft Learn (learn.microsoft.com) ── */
+[data-theme="ms-fluent"]{
+  --bg:#ffffff;
+  --bg2:#f9f9f9;
+  --bg3:#f3f2f1;
+  --bd:#e1dfdd;
+  --bd2:#c8c6c4;
+  --tx:#1b1b1b;
+  --mt:#616161;
+  --ac:#0078d4;
+  --ab:#cce4f7;
+  --abt:#0078d4;
+  --ok:#107c10;
+  --okb:#dff6dd;
+  --wn:#8a5700;
+  --wnb:#fff4ce;
+  --er:#a4262c;
+  --erb:#fde7e9;
+  --cd:#f3f2f1;
+  /* Sidebar: MS Learn uses a medium-dark navy left rail */
+  --sb:#1b2a3b;
+  --sbd:#243447;
+  --sblink:#c7d0da;
+  --sbact:#60cdff;
+  --sbactb:#062846;
+  /* Bottom bar: white */
+  --bb:#ffffff;
+  --bbt:#616161;
+  --bbact:#0078d4;
+  --pop:#ffffff;
+  --popshadow:0 8px 16px rgba(0,0,0,.14),0 2px 4px rgba(0,0,0,.1);
+  --tab-bg:#f3f2f1;
+  --tab-act:#ffffff;
+  --tab-bd:#e1dfdd;
+}
+/* MS Learn: dark sidebar specific overrides */
+[data-theme="ms-fluent"] .sidebar{background:#1b2a3b;border-right-color:#243447}
+[data-theme="ms-fluent"] .sb-header{border-bottom-color:#243447;background:#1b2a3b}
+[data-theme="ms-fluent"] .sb-brand{color:#ffffff}
+[data-theme="ms-fluent"] .sb-section-label{color:#8a9bb0}
+[data-theme="ms-fluent"] .sb-search{background:#243447;border-color:#3a506b;color:#e0e8f0}
+[data-theme="ms-fluent"] .sb-search::placeholder{color:#8a9bb0}
+[data-theme="ms-fluent"] .sb-item{color:#c7d0da}
+[data-theme="ms-fluent"] .sb-item:hover{background:#243447;color:#ffffff}
+[data-theme="ms-fluent"] .sb-item.active{background:#062846;color:#60cdff;border-left-color:#60cdff}
+[data-theme="ms-fluent"] .sb-item-icon{background:#243447;color:#8a9bb0}
+[data-theme="ms-fluent"] .sb-item.active .sb-item-icon{background:#0078d4;color:#fff}
+[data-theme="ms-fluent"] .sb-view-bar{background:#1b2a3b;border-bottom-color:#243447}
+[data-theme="ms-fluent"] .sb-view-btn{border-color:#3a506b;color:#8a9bb0}
+[data-theme="ms-fluent"] .sb-view-btn.active{background:#0078d4;border-color:#0078d4;color:#fff}
+[data-theme="ms-fluent"] .sb-pager{background:#1b2a3b;border-top-color:#243447}
+[data-theme="ms-fluent"] .sb-pg-btn{border-color:#3a506b;color:#8a9bb0}
+[data-theme="ms-fluent"] .sb-pg-btn:hover:not([disabled]){background:#243447;color:#fff}
+[data-theme="ms-fluent"] .sb-page-info{color:#8a9bb0}
+[data-theme="ms-fluent"] .top-bar{border-bottom:1px solid #e1dfdd}
+[data-theme="ms-fluent"] .entry-tab{background:#f3f2f1;border-color:#e1dfdd}
+[data-theme="ms-fluent"] .entry-tab.active{background:#fff;border-top:2px solid #0078d4;color:#0078d4}
+[data-theme="ms-fluent"] .verse-card{border-left-color:#0078d4;background:#cce4f7}
+[data-theme="ms-fluent"] .geo-fill{background:linear-gradient(90deg,#0078d4,#107c10)}
+[data-theme="ms-fluent"] .bb-user{background:#0078d4}
+[data-theme="ms-fluent"] body{font-family:'Segoe UI','DM Sans',sans-serif}
+
+[data-theme="twilio-night"]{
+  --bg:#0d0e14;--bg2:#161822;--bg3:#1e2030;--bd:#2a2d3e;--bd2:#3a3e52;
+  --tx:#e8eaf2;--mt:#8b90a7;--ac:#f22f46;--ab:#2a0d12;--abt:#f22f46;
+  --ok:#2ed47a;--okb:#0a2218;--wn:#ffb020;--wnb:#261a00;
+  --er:#f22f46;--erb:#2a0d12;--cd:#1a1c28;
+  --sb:#0d0e14;--sbd:#2a2d3e;--sblink:#8b90a7;--sbact:#f22f46;--sbactb:#2a0d12;
+  --bb:#161822;--bbt:#8b90a7;--bbact:#f22f46;
+  --pop:#1e2030;--popshadow:0 8px 32px rgba(0,0,0,.4),0 2px 8px rgba(0,0,0,.3);
+  --tab-bg:#0d0e14;--tab-act:#161822;--tab-bd:#2a2d3e;
+}
+[data-theme="amazon-business"]{
+  --bg:#fafafa;--bg2:#f0f2f2;--bg3:#e8eaea;--bd:#d5d9d9;--bd2:#b2b8b8;
+  --tx:#111827;--mt:#565959;--ac:#e47911;--ab:#fef6ec;--abt:#e47911;
+  --ok:#067d62;--okb:#e8f5f2;--wn:#7b5900;--wnb:#fff8eb;
+  --er:#cc0c39;--erb:#fff0f4;--cd:#eaeded;
+  --sb:#232f3e;--sbd:#374151;--sblink:#ccd0d0;--sbact:#e47911;--sbactb:#3d2b0a;
+  --bb:#ffffff;--bbt:#565959;--bbact:#e47911;
+  --pop:#ffffff;--popshadow:0 8px 32px rgba(0,0,0,.12),0 2px 8px rgba(0,0,0,.06);
+  --tab-bg:#f0f2f2;--tab-act:#ffffff;--tab-bd:#d5d9d9;
+}
+
+/* ── Layout ─────────────────────────────────── */
+.layout{display:flex;height:100dvh;background:var(--bg);color:var(--tx)}
+.sidebar{
+  width:240px;min-width:240px;background:var(--sb);border-right:1px solid var(--sbd);
+  display:flex;flex-direction:column;transition:width .2s ease,min-width .2s ease;
+  overflow:hidden;flex-shrink:0;
+}
+.sidebar.icon-only{width:52px;min-width:52px}
+.main-area{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.top-bar{
+  height:52px;background:var(--bg);border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;gap:8px;padding:0 12px;flex-shrink:0;
+}
+.tabs-bar{
+  background:var(--tab-bg);border-bottom:1px solid var(--tab-bd);
+  display:flex;align-items:flex-end;overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;
+}
+.tabs-bar::-webkit-scrollbar{display:none}
+.entry-tab{
+  display:flex;align-items:center;gap:6px;padding:7px 14px 7px 12px;
+  border:1px solid var(--tab-bd);border-bottom:none;margin-bottom:-1px;
+  background:var(--tab-bg);color:var(--mt);cursor:pointer;
+  white-space:nowrap;border-radius:6px 6px 0 0;font-size:12px;
+  transition:background .12s,color .12s;min-width:0;
+}
+.entry-tab.active{background:var(--tab-act);color:var(--tx);border-color:var(--bd);font-weight:500}
+.entry-tab:hover:not(.active){background:var(--bg2)}
+.tab-close{
+  width:16px;height:16px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:10px;line-height:1;color:var(--mt);border:none;background:transparent;cursor:pointer;
+  transition:background .12s;flex-shrink:0;
+}
+.tab-close:hover{background:var(--bg3);color:var(--tx)}
+.content-area{flex:1;overflow-y:auto;padding:28px 32px 100px;background:var(--bg)}
+.bottom-bar{
+  position:absolute;bottom:0;left:0;right:0;height:56px;
+  background:var(--bb);border-top:1px solid var(--bd);
+  display:flex;align-items:center;padding:0 8px;gap:2px;
+}
+
+/* ── Sidebar elements ────────────────────────── */
+.sb-header{
+  height:52px;display:flex;align-items:center;padding:0 14px;
+  border-bottom:1px solid var(--sbd);gap:8px;flex-shrink:0;
+}
+.sb-brand{font-family:'Spectral',serif;font-size:15px;font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden}
+[data-theme="amazon-business"] .sb-brand{color:#f0f2f2}
+.sb-search{
+  padding:6px 12px;margin:8px;border-radius:6px;border:1px solid var(--sbd);
+  background:var(--bg3);color:var(--tx);font-size:12px;font-family:'DM Sans',sans-serif;
+  outline:none;width:calc(100% - 16px);
+}
+.sidebar.icon-only .sb-search{display:none}
+.sidebar.icon-only .sb-view-bar{display:none}
+.sidebar.icon-only .sb-pager{display:none}
+[data-theme="amazon-business"] .sb-search{background:#1a2433;border-color:#374151;color:#d5d9d9}
+.sb-search::placeholder{color:var(--mt)}
+.sb-section-label{
+  font-size:9px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--mt);padding:12px 14px 4px;white-space:nowrap;overflow:hidden;
+}
+[data-theme="amazon-business"] .sb-section-label{color:#8a9a9a}
+.sidebar.icon-only .sb-section-label{padding:12px 0 4px;text-align:center;font-size:8px}
+.sb-item{
+  display:flex;align-items:center;gap:10px;padding:6px 14px;
+  color:var(--sblink);cursor:pointer;border-left:2px solid transparent;
+  transition:all .1s;font-size:13px;white-space:nowrap;overflow:hidden;
+  border:none;background:transparent;width:100%;text-align:left;
+}
+.sb-item:hover{background:var(--bg2);color:var(--tx)}
+[data-theme="amazon-business"] .sb-item:hover{background:#1a2433}
+.sb-item.active{color:var(--sbact);background:var(--sbactb);border-left-color:var(--sbact);font-weight:500}
+[data-theme="amazon-business"] .sb-item.active{background:var(--sbactb)}
+.sb-item-icon{
+  width:20px;height:20px;display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;font-size:11px;border-radius:4px;background:var(--bg3);
+  color:var(--mt);font-family:'Berkeley Mono',monospace;font-weight:600;
+}
+.sidebar.icon-only .sb-item-icon{width:24px;height:24px;margin:0 auto;font-size:10px}
+[data-theme="amazon-business"] .sb-item-icon{background:#1a2433;color:#8a9a9a}
+.sb-item.active .sb-item-icon{background:var(--ac);color:#fff}
+.sb-item-label{overflow:hidden;text-overflow:ellipsis}
+.sidebar.icon-only .sb-item{padding:8px 0;justify-content:center;border-left:none}
+.sb-item-weight{margin-left:auto;font-size:10px;font-family:'Berkeley Mono',monospace;color:var(--mt);opacity:.7;flex-shrink:0}
+.sidebar.icon-only .sb-item-weight{display:none}
+.sidebar.icon-only .sb-item-label{display:none}
+
+/* ── Top nav bar ── */
+.nav-bar{height:40px;display:flex;align-items:center;padding:0 16px;gap:1px;background:var(--bg);border-bottom:1px solid var(--bd);flex-shrink:0}
+.nav-item{padding:0 14px;height:100%;display:flex;align-items:center;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--mt);cursor:pointer;border:none;background:transparent;border-bottom:2px solid transparent;transition:all .12s}
+.nav-item:hover{color:var(--tx)}.nav-item.active{color:var(--ac);border-bottom-color:var(--ac)}
+.nav-sep{width:1px;height:16px;background:var(--bd);margin:0 4px}
+/* ── Annotation cards ── */
+.anno-card{border:1px solid var(--bd);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--bg2)}
+.anno-card-head{display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap}
+.anno-badge{font-size:10px;padding:1px 8px;border-radius:10px;font-family:'Berkeley Mono',monospace}
+.anno-pub{background:var(--okb);color:var(--ok)}.anno-priv{background:var(--ab);color:var(--ac)}
+.anno-selection{font-family:'Spectral',serif;font-size:12px;color:var(--ac);margin-bottom:6px;font-style:italic;border-left:2px solid var(--ac);padding-left:8px}
+.anno-text{font-size:13px;color:var(--tx);line-height:1.6}.anno-time{font-size:10px;color:var(--mt);font-family:'Berkeley Mono',monospace}
+.anno-edited{font-size:10px;color:var(--wn);font-family:'Berkeley Mono',monospace;margin-left:6px}
+.anno-actions{display:flex;gap:6px;margin-top:8px}
+.anno-btn{font-size:11px;padding:3px 10px;border-radius:4px;border:1px solid var(--bd);background:transparent;cursor:pointer;color:var(--mt);transition:all .12s}
+.anno-btn:hover{border-color:var(--ac);color:var(--ac)}.anno-btn.danger:hover{border-color:var(--er);color:var(--er)}
+.anno-edit-area{width:100%;border:1px solid var(--bd);border-radius:6px;padding:7px 10px;background:var(--bg);color:var(--tx);font-size:12px;font-family:'DM Sans',sans-serif;outline:none;resize:vertical;min-height:60px;margin-top:8px}
+.anno-edit-area:focus{border-color:var(--ac)}
+.anno-save-btn{width:100%;padding:6px;border-radius:5px;border:none;background:var(--ac);color:#fff;font-size:12px;cursor:pointer;margin-top:6px;transition:opacity .12s}
+/* ── Word hover popup ── */
+.word-pop{position:fixed;z-index:300;background:var(--pop);border:1px solid var(--bd);border-radius:8px;box-shadow:var(--popshadow);padding:12px 14px;max-width:260px;pointer-events:none;animation:popIn .12s ease}
+.word-pop-word{font-family:'Spectral',serif;font-size:15px;font-weight:600;color:var(--tx);margin-bottom:4px}
+.word-pop-def{font-size:12px;color:var(--mt);line-height:1.55;margin-bottom:8px}
+.word-pop-counts{display:flex;gap:8px}
+.word-pop-chip{font-size:10px;font-family:'Berkeley Mono',monospace;padding:1px 8px;border-radius:10px;background:var(--bg2);color:var(--mt)}
+/* ── Helpful votes ── */
+.helpful-bar{display:flex;align-items:center;gap:12px;padding:16px 0 0;border-top:1px solid var(--bd);margin-top:24px}
+.helpful-label{font-size:13px;color:var(--mt)}
+.helpful-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--bd);background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:16px;transition:all .15s;color:var(--mt)}
+.helpful-btn:hover{border-color:var(--ac);color:var(--ac);background:var(--ab)}
+.helpful-btn.voted-up{background:var(--okb);border-color:var(--ok);color:var(--ok)}
+.helpful-btn.voted-down{background:var(--erb);border-color:var(--er);color:var(--er)}
+.helpful-count{font-size:12px;color:var(--mt);font-family:'Berkeley Mono',monospace}
+
+/* ── Collapse button ─────────────────────────── */
+.sb-collapse-btn{
+  display:flex;align-items:center;justify-content:center;width:24px;height:24px;
+  border-radius:4px;border:1px solid var(--sbd);background:transparent;
+  color:var(--mt);cursor:pointer;transition:all .12s;flex-shrink:0;
+}
+.sb-collapse-btn:hover{background:var(--bg2);color:var(--tx)}
+[data-theme="amazon-business"] .sb-collapse-btn{border-color:#374151;color:#8a9a9a}
+[data-theme="amazon-business"] .sb-collapse-btn:hover{background:#1a2433;color:#d5d9d9}
+.sidebar.icon-only .sb-brand,.sidebar.icon-only .sb-collapse-btn-label{display:none}
+.sidebar.icon-only .sb-header{justify-content:center;padding:0 4px}
+
+/* ── Top bar elements ────────────────────────── */
+.theme-pill{
+  display:flex;align-items:center;gap:1px;background:var(--bg2);
+  border:1px solid var(--bd);border-radius:20px;padding:2px;
+}
+.theme-btn{
+  padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;
+  background:transparent;border:none;cursor:pointer;color:var(--mt);
+  transition:all .15s;
+}
+.theme-btn.active{background:var(--ac);color:#fff}
+.search-box{
+  flex:1;max-width:280px;background:var(--bg2);border:1px solid var(--bd);
+  border-radius:20px;padding:5px 12px;font-size:12px;font-family:'DM Sans',sans-serif;
+  color:var(--tx);outline:none;
+}
+.search-box::placeholder{color:var(--mt)}
+.search-box:focus{border-color:var(--ac)}
+.icon-btn{
+  width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  border:none;background:transparent;cursor:pointer;color:var(--mt);transition:all .12s;
+}
+.icon-btn:hover{background:var(--bg2);color:var(--tx)}
+.icon-btn.active-icon{color:var(--ac)}
+
+/* ── Entry content ───────────────────────────── */
+.entry-header{margin-bottom:24px}
+.entry-word{font-family:'Spectral',serif;font-size:32px;font-weight:600;color:var(--tx);margin-bottom:4px}
+.entry-lexar{font-family:'Berkeley Mono',monospace;font-size:14px;color:var(--ac);margin-bottom:12px}
+.entry-meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;align-items:center}
+.badge{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;
+  font-size:11px;font-family:'Berkeley Mono',monospace;font-weight:500;
+}
+.badge-ac{background:var(--ab);color:var(--ac)}
+.badge-ok{background:var(--okb);color:var(--ok)}
+.badge-wn{background:var(--wnb);color:var(--wn)}
+.badge-mt{background:var(--bg2);color:var(--mt)}
+.section-title{
+  font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--mt);margin:24px 0 10px;
+}
+.definition-card{
+  background:var(--bg2);border:1px solid var(--bd);border-radius:8px;
+  padding:14px 16px;margin-bottom:10px;
+}
+.def-version-tabs{display:flex;gap:4px;margin-bottom:12px}
+.def-vtab{
+  font-size:10px;font-family:'Berkeley Mono',monospace;padding:2px 8px;border-radius:4px;
+  border:1px solid var(--bd);background:transparent;color:var(--mt);cursor:pointer;
+}
+.def-vtab.active{background:var(--ac);color:#fff;border-color:var(--ac)}
+.def-text{font-size:13px;line-height:1.65;color:var(--tx)}
+.decomp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:10px}
+.decomp-word{
+  background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:10px 12px;
+  font-size:12px;
+}
+.decomp-lexar{font-family:'Berkeley Mono',monospace;color:var(--ac);font-size:12px;margin-bottom:2px}
+.decomp-pos{font-size:10px;color:var(--mt)}
+.decomp-def{font-size:11px;color:var(--mt);margin-top:4px;line-height:1.5}
+.tension-grid{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:10px}
+.tension-pole{
+  flex:1;min-width:140px;border:1px solid var(--bd);border-radius:8px;padding:12px 14px;
+  background:var(--bg2);cursor:pointer;transition:border-color .12s;
+}
+.tension-pole:hover{border-color:var(--ac)}
+.tension-pole.resolution{border-left:3px solid var(--ok)}
+.tension-pole.problem{border-left:3px solid var(--er)}
+.tension-label{font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mt);margin-bottom:2px}
+.tension-word{font-family:'Spectral',serif;font-size:16px;font-weight:600;color:var(--tx)}
+.tension-type{font-size:10px;font-family:'Berkeley Mono',monospace;color:var(--mt);margin-top:2px}
+.verse-card{
+  border-left:3px solid var(--ac);background:var(--ab);border-radius:0 6px 6px 0;
+  padding:10px 14px;margin-bottom:8px;
+}
+.verse-ref{font-family:'Berkeley Mono',monospace;font-size:10px;color:var(--ac);margin-bottom:4px}
+.verse-text{font-family:'Spectral',serif;font-size:14px;line-height:1.7;color:var(--tx)}
+.verse-text.primary{font-weight:500}
+.note-card{
+  border:1px solid var(--bd);border-radius:6px;padding:10px 14px;margin-bottom:8px;
+  background:var(--bg2);font-size:12px;line-height:1.6;color:var(--mt);
+}
+.link-chip{
+  display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;
+  font-size:11px;background:var(--bg2);border:1px solid var(--bd);
+  color:var(--tx);cursor:pointer;margin:2px;transition:border-color .1s;
+}
+.link-chip:hover{border-color:var(--ac);color:var(--ac)}
+.geo-bar{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.geo-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.geo-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--ac),var(--ok))}
+.geo-label{font-family:'Berkeley Mono',monospace;font-size:11px;color:var(--mt);white-space:nowrap}
+.geo-coord{font-family:'Berkeley Mono',monospace;font-size:10px;color:var(--mt);word-break:break-all;line-height:1.8}
+.morph-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.morph-chip{
+  font-family:'Berkeley Mono',monospace;font-size:11px;padding:3px 10px;border-radius:4px;
+  border:1px solid var(--bd);background:var(--bg2);color:var(--tx);cursor:pointer;transition:border-color .1s;
+}
+.morph-chip:hover{border-color:var(--ac);color:var(--ac)}
+.morph-root{background:var(--ab);border-color:var(--ac);color:var(--ac)}
+
+/* ── Bottom bar ──────────────────────────────── */
+.bb-btn{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:2px;padding:4px 14px;border-radius:8px;cursor:pointer;
+  color:var(--bbt);font-size:9px;font-weight:500;letter-spacing:.03em;
+  border:none;background:transparent;transition:all .12s;flex:1;max-width:80px;
+  text-transform:uppercase;
+}
+.bb-btn:hover{color:var(--bbact);background:var(--bg2)}
+.bb-btn.active{color:var(--bbact)}
+.bb-btn svg{width:20px;height:20px}
+.bb-spacer{flex:1}
+.bb-user{
+  width:36px;height:36px;border-radius:50%;background:var(--ac);
+  display:flex;align-items:center;justify-content:center;color:#fff;
+  font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;
+  margin-right:6px;transition:opacity .12s;flex-shrink:0;
+}
+.bb-user:hover{opacity:.85}
+
+/* ── Text selection popover ──────────────────── */
+.selection-pop{
+  position:fixed;z-index:200;background:var(--pop);border:1px solid var(--bd);
+  border-radius:10px;box-shadow:var(--popshadow);width:300px;
+  animation:popIn .15s ease;overflow:hidden;
+}
+@keyframes popIn{from{opacity:0;transform:translateY(6px) scale(.97)}to{opacity:1;transform:none}}
+.pop-tabs{display:flex;border-bottom:1px solid var(--bd)}
+.pop-tab{
+  flex:1;padding:8px 4px;font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;text-align:center;cursor:pointer;color:var(--mt);
+  border-bottom:2px solid transparent;transition:all .12s;background:transparent;border-top:none;border-left:none;border-right:none;
+}
+.pop-tab.active{color:var(--ac);border-bottom-color:var(--ac)}
+.pop-content{padding:12px}
+.pop-actions{display:flex;gap:8px;margin-bottom:12px}
+.pop-action{
+  flex:1;padding:8px 6px;border-radius:6px;border:1px solid var(--bd);
+  background:var(--bg2);color:var(--tx);font-size:11px;text-align:center;
+  cursor:pointer;transition:all .12s;display:flex;flex-direction:column;align-items:center;gap:3px;
+}
+.pop-action:hover{border-color:var(--ac);color:var(--ac);background:var(--ab)}
+.pop-action svg{width:16px;height:16px}
+.pop-input{
+  width:100%;border:1px solid var(--bd);border-radius:6px;padding:7px 10px;
+  background:var(--bg2);color:var(--tx);font-size:12px;font-family:'DM Sans',sans-serif;
+  outline:none;resize:none;
+}
+.pop-input:focus{border-color:var(--ac)}
+.pop-input::placeholder{color:var(--mt)}
+.pop-submit{
+  width:100%;padding:7px;border-radius:6px;border:none;
+  background:var(--ac);color:#fff;font-size:12px;font-weight:500;
+  cursor:pointer;margin-top:8px;transition:opacity .12s;
+}
+.pop-submit:hover{opacity:.85}
+.comment-item{padding:8px;border-radius:6px;background:var(--bg2);margin-bottom:6px;font-size:12px}
+.comment-text{color:var(--tx);margin-bottom:2px}
+.comment-meta{font-size:10px;color:var(--mt)}
+
+/* ── Annotations in text ─────────────────────── */
+.underlined{text-decoration:underline;text-decoration-color:var(--ac);text-decoration-thickness:2px}
+.commented{background:var(--wnb);border-radius:2px;cursor:help}
+.noted{background:var(--ab);border-radius:2px;cursor:help}
+
+/* ── Empty state ─────────────────────────────── */
+.empty-state{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  height:100%;color:var(--mt);gap:12px;padding:40px;text-align:center;
+}
+.empty-state svg{opacity:.3}
+.empty-title{font-family:'Spectral',serif;font-size:22px;color:var(--tx);opacity:.4}
+.empty-sub{font-size:13px;max-width:280px;line-height:1.6}
+
+/* ── Sidebar view toggle ── */
+.sb-view-bar{display:flex;align-items:center;gap:3px;padding:4px 8px;border-bottom:1px solid var(--sbd);flex-shrink:0}
+.sb-view-btn{flex:1;padding:4px 0;font-size:10px;font-weight:600;letter-spacing:.04em;text-align:center;border:1px solid var(--sbd);border-radius:5px;background:transparent;cursor:pointer;color:var(--sblink);transition:all .12s;text-transform:uppercase}
+.sb-view-btn:hover{color:var(--tx);border-color:var(--bd2)}
+[data-theme="amazon-business"] .sb-view-btn{color:#8a9a9a}
+.sb-view-btn.active{background:var(--sbact);color:#fff;border-color:var(--sbact)}
+/* ── User menu theme buttons ── */
+.um-theme-btn{width:100%;padding:9px 14px;display:flex;align-items:center;gap:8px;background:transparent;border:none;cursor:pointer;font-size:13px;color:var(--tx);text-align:left;transition:background .1s}
+.um-theme-btn:hover{background:var(--bg2)}
+.um-theme-active{background:var(--ab) !important;color:var(--ac) !important}
+[data-theme="amazon-business"] .um-theme-btn{color:var(--tx)}
+[data-theme="amazon-business"] .um-theme-active{background:var(--ab) !important;color:var(--ac) !important}
+[data-theme="twilio-night"] .um-theme-btn{color:var(--tx)}
+[data-theme="twilio-night"] .um-theme-btn:hover{background:var(--bg3)}
+
+/* ── Pagination ── */
+.sb-pager{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-top:1px solid var(--sbd);flex-shrink:0;gap:4px}
+.sb-page-info{font-size:10px;color:var(--sblink);font-family:'Berkeley Mono',monospace;white-space:nowrap}
+.sb-page-btns{display:flex;gap:2px}
+.sb-pg-btn{width:24px;height:22px;border-radius:4px;border:1px solid var(--sbd);background:transparent;cursor:pointer;color:var(--sblink);display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12s;font-family:'Berkeley Mono',monospace}
+.sb-pg-btn:hover:not([disabled]){background:var(--bg2);color:var(--tx);border-color:var(--bd2)}
+.sb-pg-btn[disabled]{opacity:.3;cursor:default;pointer-events:none}
+.sb-pg-num{min-width:28px;text-align:center}
+[data-theme="amazon-business"] .sb-pager,[data-theme="amazon-business"] .sb-view-bar{border-color:#374151}
+[data-theme="amazon-business"] .sb-pg-btn,[data-theme="amazon-business"] .sb-view-btn{border-color:#374151;color:#8a9a9a}
+[data-theme="amazon-business"] .sb-pg-btn:hover:not([disabled]){background:#1a2433;color:#d5d9d9}
+
+/* ── Scrollbar ───────────────────────────────── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:3px}
+
+/* ── Animations ──────────────────────────────── */
+.pf{animation:fadeSlide .15s ease}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+/* ── Notes panel ─────────────────────────────── */
+.notes-panel{padding:24px 32px 100px}
+.note-item{
+  border:1px solid var(--bd);border-radius:8px;padding:14px;margin-bottom:10px;background:var(--bg2);
+}
+.note-item-text{font-size:13px;color:var(--tx);margin-bottom:6px;line-height:1.6}
+.note-item-meta{font-size:11px;color:var(--mt);display:flex;align-items:center;gap:8px}
+.note-priv{font-size:10px;padding:1px 7px;border-radius:10px;background:var(--ab);color:var(--ac)}
+.note-pub{font-size:10px;padding:1px 7px;border-radius:10px;background:var(--okb);color:var(--ok)}
+
+/* ── Right panel (History + Help) ── */
+.right-panel{width:320px;min-width:320px;background:var(--bg);border-left:1px solid var(--bd);display:flex;flex-direction:column;overflow:hidden;flex-shrink:0}
+.rp-header{height:52px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid var(--bd);gap:10px;flex-shrink:0}
+.rp-title{font-family:'Spectral',serif;font-size:15px;font-weight:600;color:var(--tx)}
+.rp-close{margin-left:auto;width:26px;height:26px;border-radius:5px;border:1px solid var(--bd);background:transparent;cursor:pointer;color:var(--mt);display:flex;align-items:center;justify-content:center;font-size:13px;transition:all .12s}
+.rp-close:hover{background:var(--bg2);color:var(--tx)}
+.rp-body{flex:1;overflow-y:auto;padding:16px}
+.history-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border:1px solid var(--bd);background:var(--bg2);margin-bottom:6px;cursor:pointer;transition:border-color .12s}
+.history-item:hover{border-color:var(--ac)}
+.history-word{font-family:'Spectral',serif;font-size:14px;font-weight:600;color:var(--tx)}
+.history-meta{font-family:'Berkeley Mono',monospace;font-size:10px;color:var(--mt)}
+.history-time{font-size:10px;color:var(--mt);margin-left:auto;white-space:nowrap}
+.help-md h1{font-family:'Spectral',serif;font-size:20px;font-weight:600;color:var(--tx);margin:0 0 12px}
+.help-md h2{font-family:'Spectral',serif;font-size:15px;font-weight:600;color:var(--tx);margin:18px 0 8px;padding-top:14px;border-top:1px solid var(--bd)}
+.help-md h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--mt);margin:12px 0 5px}
+.help-md p{font-size:13px;color:var(--mt);line-height:1.7;margin-bottom:8px}
+.help-md ul{margin:0 0 10px 16px}.help-md li{font-size:13px;color:var(--mt);line-height:1.65;margin-bottom:3px;list-style:disc}
+.help-md strong{color:var(--tx);font-weight:500}
+.help-md code{font-family:'Berkeley Mono',monospace;font-size:11px;background:var(--bg2);border:1px solid var(--bd);border-radius:3px;padding:1px 5px;color:var(--ac)}
+.help-md hr{border:none;border-top:1px solid var(--bd);margin:14px 0}
+.help-md em{color:var(--mt);font-size:11px;font-style:italic}
+@media(max-width:900px){.right-panel{position:fixed;right:0;top:52px;bottom:0;z-index:80;box-shadow:-4px 0 16px rgba(0,0,0,.12)}}
+
+/* ── Responsive ──────────────────────────────── */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:0;top:0;bottom:0;z-index:100;transform:translateX(-100%);transition:transform .25s ease}
+  .sidebar.mobile-open{transform:translateX(0)}
+  .mobile-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;display:none}
+  .mobile-overlay.open{display:block}
+  .sidebar.icon-only{width:240px}
+  .content-area{padding:16px 16px 100px}
+  .entry-word{font-size:24px}
+}
+</style>
+</head>
+<body>
+
+
+<div style="display:flex;flex-direction:column;height:100dvh;background:var(--bg)">
+
+  <!-- ══ NAV BAR ══════════════════════════════════════════════════════ -->
+  <nav class="nav-bar" style="margin-left:0">
+    <button class="nav-item" :class="{active:activeNav==='library'}"    @click="activeNav='library'">Library</button>
+    <div class="nav-sep"></div>
+    <button class="nav-item" :class="{active:activeNav==='guides'}"     @click="activeNav='guides'">Guides</button>
+    <div class="nav-sep"></div>
+    <button class="nav-item" :class="{active:activeNav==='dictionary'}" @click="activeNav='dictionary'">Dictionary</button>
+  </nav>
+
+  <!-- Main layout row -->
+  <div class="layout" style="flex:1;min-height:0" x-init="init()">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════ -->
+  <aside class="sidebar" :class="{
+    'icon-only': sidebarCollapsed,
+    'mobile-open': mobileSidebarOpen
+  }">
+    <div class="sb-header">
+      <div class="sb-brand">
+        <span style="color:var(--ac);font-style:italic">G</span>eoAPI
+        <span style="font-weight:300;opacity:.6"> Dict</span>
+      </div>
+      <button class="sb-collapse-btn" @click="sidebarCollapsed=!sidebarCollapsed" :title="sidebarCollapsed?'Expand':'Collapse'">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <path x-show="!sidebarCollapsed" d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <path x-show="sidebarCollapsed" d="M5 2l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <div style="position:relative;margin:8px">
+      <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--mt)" width="12" height="12" viewBox="0 0 16 16" fill="none">
+        <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <input class="sb-search" style="margin:0;width:100%;padding-left:28px" type="text" placeholder="Search entries…" x-model="searchQuery" @input="sbPage=1"/>
+    </div>
+
+
+    <!-- View toggle -->
+    <div class="sb-view-bar">
+      <button class="sb-view-btn" :class="{active:sidebarView==='group'}" @click="setSbView('group')" title="Grouped by chain">Group</button>
+      <button class="sb-view-btn" :class="{active:sidebarView==='az'}" @click="setSbView('az')" title="Alphabetical">A–Z</button>
+      <button class="sb-view-btn" :class="{active:sidebarView==='weight'}" @click="setSbView('weight')" title="By geo weight">Weight</button>
+    </div>
+
+    <!-- Entry list -->
+    <div style="flex:1;overflow-y:auto;padding-bottom:4px" id="sb-list">
+
+      <!-- GROUP MODE -->
+      <template x-if="sidebarView==='group'">
+        <div>
+          <template x-for="chain in ['romans_r','layer0','romans_p','negative']" :key="chain">
+            <div x-show="groupedEntries[chain]?.length">
+              <div class="sb-section-label" x-text="chainLabel(chain)"></div>
+              <template x-for="entry in groupedEntries[chain]" :key="entry.id">
+                <button class="sb-item" :class="{active: activeEntry?.id===entry.id}" @click="openEntry(entry.id)">
+                  <span class="sb-item-icon mono" x-text="entry.strongs.slice(0,3)"></span>
+                  <span class="sb-item-label" x-text="entry.word"></span>
+                  <span class="sb-item-weight" x-text="entry.weight.toFixed(1)"></span>
+                </button>
+              </template>
+            </div>
+          </template>
+        </div>
+      </template>
+
+      <!-- A-Z + WEIGHT (flat paged) -->
+      <template x-if="sidebarView!=='group'">
+        <div>
+          <template x-for="entry in pagedEntries" :key="entry.id">
+            <button class="sb-item" :class="{active: activeEntry?.id===entry.id}" @click="openEntry(entry.id)">
+              <span class="sb-item-icon mono" x-text="entry.strongs.slice(0,3)"></span>
+              <span class="sb-item-label" x-text="entry.word"></span>
+              <span class="sb-item-weight"
+                :style="sidebarView==='weight'?'color:var(--sbact);font-weight:600':''"
+                x-text="entry.weight.toFixed(1)"></span>
+            </button>
+          </template>
+          <!-- Empty state -->
+          <div x-show="pagedEntries.length===0" style="padding:16px;font-size:12px;color:var(--sblink);text-align:center">
+            No entries match
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Pagination (A-Z + Weight modes) -->
+    <div class="sb-pager" x-show="sidebarView!=='group' && totalPages>1">
+      <div class="sb-page-info">
+        <span x-text="((sbPage-1)*sbPageSize+1)"></span>–<span x-text="Math.min(sbPage*sbPageSize, sortedEntries.length)"></span>
+        <span style="opacity:.5"> / </span><span x-text="sortedEntries.length"></span>
+      </div>
+      <div class="sb-page-btns">
+        <button class="sb-pg-btn" @click="sbPage=1" :disabled="sbPage===1" title="First">«</button>
+        <button class="sb-pg-btn" @click="sbPage--" :disabled="sbPage===1" title="Prev">‹</button>
+        <span class="sb-pg-btn sb-pg-num" style="cursor:default;border-color:var(--sbact);color:var(--sbact)" x-text="sbPage+'/'+totalPages"></span>
+        <button class="sb-pg-btn" @click="sbPage++" :disabled="sbPage>=totalPages" title="Next">›</button>
+        <button class="sb-pg-btn" @click="sbPage=totalPages" :disabled="sbPage>=totalPages" title="Last">»</button>
+      </div>
+    </div>
+
+    <!-- Search result count for group mode -->
+    <div class="sb-pager" x-show="sidebarView==='group' && searchQuery">
+      <div class="sb-page-info" x-text="filteredEntries.length+' result'+(filteredEntries.length===1?'':'s')"></div>
+    </div>
+
+  </aside>
+
+  <!-- Mobile overlay -->
+  <div class="mobile-overlay" :class="{open: mobileSidebarOpen}" @click="mobileSidebarOpen=false"></div>
+
+  <!-- ══ MAIN AREA ════════════════════════════════════════ -->
+  <div class="main-area">
+
+    <!-- Top bar -->
+    <div class="top-bar">
+      <!-- Mobile menu button -->
+      <button class="icon-btn" style="display:none" @click="mobileSidebarOpen=true" id="mob-menu-btn">
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 4.5h14M2 9h14M2 13.5h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+      <style>@media(max-width:768px){#mob-menu-btn{display:flex!important}}</style>
+
+      <div style="position:relative;flex:1;max-width:280px">
+        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--mt)" width="13" height="13" viewBox="0 0 16 16" fill="none">
+          <circle cx="6.5" cy="6.5" r="5" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        <input class="search-box" style="max-width:100%;padding-left:28px" type="text" placeholder="Search dictionary…" x-model="searchQuery"/>
+      </div>
+
+      <div class="bb-spacer"></div>
+
+      <!-- History button -->
+      <button class="icon-btn" :class="{active:historyOpen}" @click="historyOpen=!historyOpen;helpOpen=false" title="History">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+
+      <!-- Help button -->
+      <button class="icon-btn" :class="{active:helpOpen}" @click="openHelp()" title="Help">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+          <path d="M6.5 6.5C6.5 5.7 7.2 5 8 5s1.5.7 1.5 1.5c0 .6-.4 1-.8 1.3C8.3 8.1 8 8.5 8 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          <circle cx="8" cy="11" r=".6" fill="currentColor"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Tabs bar -->
+    <div class="tabs-bar" x-show="openTabs.length">
+      <template x-for="tab in openTabs" :key="tab.id">
+        <div class="entry-tab" :class="{active:activeEntry?.id===tab.id}" @click="selectTab(tab.id)">
+          <span class="mono" style="font-size:10px;opacity:.6" x-text="tab.id"></span>
+          <span x-text="tab.word" style="font-weight:500"></span>
+          <button class="tab-close" @click="closeTab(tab.id,$event)" title="Close">✕</button>
+        </div>
+      </template>
+    </div>
+
+    <!-- ── Content area ── -->
+    <div class="content-area" id="content-entry-area" x-show="bottomSection==='page'">
+
+      <!-- Empty state -->
+      <div class="empty-state" x-show="!activeEntry">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none"><rect x="8" y="8" width="32" height="32" rx="4" stroke="currentColor" stroke-width="2"/><path d="M16 18h16M16 24h12M16 30h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <div class="empty-title">GeoAPI Bible Dictionary</div>
+        <div class="empty-sub">Select an entry from the sidebar to begin. 22 core entries declared across Romans.</div>
+      </div>
+
+      <!-- Entry view -->
+      <div class="pf" x-show="activeEntry" x-key="activeEntry?.id">
+        <template x-if="activeEntry">
+          <div>
+            <!-- Header -->
+            <div class="entry-header">
+              <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                <div class="entry-word" x-text="activeEntry.word"></div>
+                <div class="entry-lexar mono" x-text="activeEntry.lexar"></div>
+              </div>
+              <div class="entry-meta">
+                <span class="badge badge-ac mono" x-text="activeEntry.strongs"></span>
+                <span class="badge badge-mt mono" x-text="activeEntry.pos"></span>
+                <span class="badge mono" :class="chainColor(activeEntry.chain)" x-text="chainLabel(activeEntry.chain)"></span>
+              </div>
+              <p style="font-size:13px;color:var(--mt);line-height:1.65;max-width:640px" x-text="activeEntry.short"></p>
+            </div>
+
+            <!-- Geo weight bar -->
+            <div class="geo-bar">
+              <div class="geo-label">geo_weight</div>
+              <div class="geo-track" style="max-width:200px">
+                <div class="geo-fill" :style="`width:${weightPct(activeEntry.weight)}%`"></div>
+              </div>
+              <div class="geo-label" x-text="activeEntry.weight.toFixed(1)+' / 10.0'"></div>
+            </div>
+
+            <!-- Definition -->
+            <div class="section-title">Definition</div>
+            <div class="definition-card">
+              <div class="def-version-tabs">
+                <template x-for="def in activeEntry.definitions" :key="def.version">
+                  <button class="def-vtab" :class="{active:getActiveVersion(activeEntry)===def.version}" @click="setDefVersion(activeEntry,def.version)" x-text="def.version"></button>
+                </template>
+              </div>
+              <div class="def-text" x-text="getDefText(activeEntry).text"></div>
+              <div style="margin-top:8px;font-size:10px;color:var(--mt);font-family:'Berkeley Mono',monospace" x-text="'Source: '+getDefText(activeEntry).source"></div>
+            </div>
+
+            
+
+<!-- Synonyms -->
+            <div x-show="activeEntry.synonyms?.length">
+              <div class="section-title">Related entries</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px">
+                <template x-for="s in activeEntry.synonyms" :key="s.ref">
+                  <span class="link-chip"
+                    :style="entryExists(s.ref)?'cursor:pointer':'cursor:default;opacity:.45'"
+                    :title="entryExists(s.ref)?'Open entry':'Entry pending — Build 5+'"
+                    @click="tryOpenEntry(s.ref)">
+                    <span x-text="s.word"></span>
+                    <span style="font-size:10px;opacity:.6;margin-left:3px" x-text="'· '+s.type.replace(/_/g,' ')"></span>
+                    <span x-show="!entryExists(s.ref)" class="badge badge-ghost" style="font-size:9px;padding:0 5px;height:16px;min-height:0;line-height:16px;margin-left:4px">soon</span>
+                  </span>
+                </template>
+              </div>
+            </div>
+
+            
+
+<!-- Primary verse -->
+            <div x-show="activeEntry.verses?.length">
+              <div class="section-title">Verses</div>
+              <template x-for="v in activeEntry.verses" :key="v.ref">
+                <div class="verse-card">
+                  <div class="verse-ref mono" x-text="v.ref + (v.primary?' · primary':'')"></div>
+                  <div class="verse-text" :class="{primary:v.primary}" x-text="getVerseText(v)"></div>
+                </div>
+              </template>
+            </div>
+
+            
+
+<!-- Decomposition -->
+            <div class="section-title">Word decomposition</div>
+            <div class="decomp-grid">
+              <template x-for="w in activeEntry.decomp" :key="w.lexar">
+                <div class="decomp-word">
+                  <div class="decomp-lexar" x-text="w.lexar"></div>
+                  <div class="decomp-pos" x-text="w.pos + (w.strongs?' · '+w.strongs:'')"></div>
+                  <div class="decomp-def" x-text="w.def"></div>
+                </div>
+              </template>
+            </div>
+
+            
+
+<!-- Links -->
+            <div class="section-title">Links</div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+              <template x-for="g in activeEntry.links.god_attr||[]" :key="g">
+                <span class="link-chip badge-ac" x-text="g"></span>
+              </template>
+              <template x-for="p in activeEntry.links.principles||[]" :key="p">
+                <span class="link-chip" x-text="p"></span>
+              </template>
+              <template x-for="f in activeEntry.links.foundations||[]" :key="f">
+                <span class="link-chip" style="border-color:var(--wn);color:var(--wn)" x-text="f"></span>
+              </template>
+            </div>
+
+            
+
+<!-- Notes -->
+            <div x-show="activeEntry.notes?.filter(n=>n).length">
+              <div class="section-title">Notes</div>
+              <template x-for="n in activeEntry.notes.filter(x=>x)" :key="n">
+                <div class="note-card" x-text="n"></div>
+              </template>
+            </div>
+
+            
+
+<!-- Etymology -->
+            <div class="section-title">Etymology</div>
+            <div class="definition-card">
+              <template x-for="ety in etymologyRows(activeEntry)" :key="ety.k">
+                <div style="display:flex;gap:8px;margin-bottom:6px;font-size:12px" x-show="ety.v">
+                  <span class="mono" style="color:var(--ac);min-width:28px;text-transform:uppercase" x-text="ety.k.slice(0,3)"></span>
+                  <span style="color:var(--mt)" x-text="ety.v"></span>
+                </div>
+              </template>
+              <p x-show="activeEntry.etymology.note" style="font-size:12px;color:var(--tx);margin-top:10px;line-height:1.65;border-top:1px solid var(--bd);padding-top:10px" x-text="activeEntry.etymology.note"></p>
+            </div>
+
+            
+
+<!-- Tension pairs -->
+            <div x-show="activeEntry.antonyms?.length">
+              <div class="section-title">Tension pairs</div>
+              <div class="tension-grid">
+                <!-- Self -->
+                <div class="tension-pole resolution">
+                  <div class="tension-label">This entry</div>
+                  <div class="tension-word" x-text="activeEntry.word"></div>
+                  <div class="tension-type mono" x-text="activeEntry.strongs"></div>
+                </div>
+                <template x-for="ant in activeEntry.antonyms" :key="ant.ref">
+                  <div class="tension-pole problem"
+                    :style="entryExists(ant.ref)?'cursor:pointer':'cursor:default;opacity:.5'"
+                    :title="entryExists(ant.ref)?'Open '+ant.word:'Entry pending — Build 5+'"
+                    @click="tryOpenEntry(ant.ref)">
+                    <div class="tension-label" x-text="ant.type.replace(/_/g,' ')"></div>
+                    <div class="tension-word" x-text="ant.word"></div>
+                    <div class="tension-type mono" x-text="ant.ref"></div>
+                  </div>
+                </template>
+              </div>
+            </div>
+
+            
+
+<!-- Morphological family -->
+            <div class="section-title">Morphological family</div>
+            <div class="morph-grid">
+              <template x-for="m in activeEntry.morph" :key="m.lexar">
+                <span class="morph-chip" :class="{'morph-root':m.rel==='root'}" @click="if(m.rel!=='root'){const e=entries.find(x=>x.lexar===m.lexar);if(e)openEntry(e.id)}">
+                  <span x-text="m.lexar"></span>
+                  <span style="font-size:10px;opacity:.6;margin-left:4px" x-text="'· '+m.word"></span>
+                </span>
+              </template>
+            </div>
+
+            
+
+<!-- Geo coordinates -->
+            <div class="section-title">GeoAPI coordinates</div>
+            <div class="definition-card">
+              <div class="geo-coord mono" x-text="'['+activeEntry.geo.coords+']'"></div>
+              
+
+            <!-- Helpful votes -->
+            <div class="helpful-bar" x-show="activeEntry">
+              <span class="helpful-label">Was this helpful?</span>
+              <button class="helpful-btn"
+                :class="helpfulVotes[activeEntry?.id]==='up' ? 'voted-up' : ''"
+                @click="saveVote(activeEntry.id, helpfulVotes[activeEntry.id]==='up' ? null : 'up')"
+                title="Yes">👍</button>
+              <button class="helpful-btn"
+                :class="helpfulVotes[activeEntry?.id]==='down' ? 'voted-down' : ''"
+                @click="saveVote(activeEntry.id, helpfulVotes[activeEntry.id]==='down' ? null : 'down')"
+                title="No">👎</button>
+              <span class="helpful-count" x-show="helpfulVotes[activeEntry?.id]"
+                x-text="helpfulVotes[activeEntry?.id]==='up' ? 'Marked helpful' : 'Marked not helpful'"></span>
+            </div>
+
+            <div style="height:40px"></div>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Comments panel -->
+    <div class="notes-panel" x-show="bottomSection==='comments'" style="overflow-y:auto;flex:1">
+      <div style="font-family:'Spectral',serif;font-size:20px;font-weight:600;color:var(--tx);margin-bottom:4px">Comments</div>
+      <p style="font-size:13px;color:var(--mt);margin-bottom:20px">Public annotations visible to all readers.</p>
+      <div x-show="!comments.length" style="text-align:center;padding:32px 0;color:var(--mt);font-size:13px">No comments yet. Highlight text to add one.</div>
+      <template x-for="c in comments" :key="c.id">
+        <div class="anno-card">
+          <div class="anno-card-head">
+            <span class="anno-badge anno-pub">Public</span>
+            <span class="mono" style="font-size:10px;color:var(--mt)" x-text="c.entryWord"></span>
+          </div>
+          <div class="anno-selection" x-show="c.selection" x-text="'❝ '+c.selection+'❞'"></div>
+          <template x-if="!(_editingAnno?.id===c.id)">
+            <div>
+              <div class="anno-text" x-text="c.text"></div>
+              <div style="margin-top:6px;display:flex;align-items:center">
+                <span class="anno-time" x-text="fmtEpoch(c.createdAt)"></span>
+                <span class="anno-edited" x-show="c.editedAt" x-text="'edited '+fmtEpoch(c.editedAt)"></span>
+              </div>
+              <div class="anno-actions">
+                <button class="anno-btn" @click="editAnnotation(c.id)">Edit</button>
+                <button class="anno-btn danger" @click="deleteAnnotation(c.id)">Delete</button>
+              </div>
+            </div>
+          </template>
+          <template x-if="_editingAnno?.id===c.id">
+            <div>
+              <textarea class="anno-edit-area" x-model="_editingAnno.draft" placeholder="Edit comment…"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mt);cursor:pointer">
+                  <input type="checkbox" x-model="_editingAnno.pub"/>Public
+                </label>
+              </div>
+              <button class="anno-save-btn" @click="saveEdit(c.id)">Save</button>
+              <button class="anno-btn" style="margin-top:6px;width:100%;text-align:center" @click="_editingAnno=null">Cancel</button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- Notes panel -->
+    <div class="notes-panel" x-show="bottomSection==='notes'" style="overflow-y:auto;flex:1">
+      <div style="font-family:'Spectral',serif;font-size:20px;font-weight:600;color:var(--tx);margin-bottom:4px">Notes</div>
+      <p style="font-size:13px;color:var(--mt);margin-bottom:20px">Private by default. Toggle Share to make public.</p>
+      <div x-show="!notes.length" style="text-align:center;padding:32px 0;color:var(--mt);font-size:13px">No notes yet. Highlight text to add one.</div>
+      <template x-for="n in notes" :key="n.id">
+        <div class="anno-card">
+          <div class="anno-card-head">
+            <span class="anno-badge" :class="n.pub?'anno-pub':'anno-priv'" x-text="n.pub?'Public':'Private'"></span>
+            <span class="mono" style="font-size:10px;color:var(--mt)" x-text="n.entryWord"></span>
+          </div>
+          <div class="anno-selection" x-show="n.selection" x-text="'❝ '+n.selection+'❞'"></div>
+          <template x-if="!(_editingAnno?.id===n.id)">
+            <div>
+              <div class="anno-text" x-text="n.text"></div>
+              <div style="margin-top:6px;display:flex;align-items:center">
+                <span class="anno-time" x-text="fmtEpoch(n.createdAt)"></span>
+                <span class="anno-edited" x-show="n.editedAt" x-text="'edited '+fmtEpoch(n.editedAt)"></span>
+              </div>
+              <div class="anno-actions">
+                <button class="anno-btn" @click="editAnnotation(n.id)">Edit</button>
+                <button class="anno-btn danger" @click="deleteAnnotation(n.id)">Delete</button>
+              </div>
+            </div>
+          </template>
+          <template x-if="_editingAnno?.id===n.id">
+            <div>
+              <textarea class="anno-edit-area" x-model="_editingAnno.draft" placeholder="Edit note…"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mt);cursor:pointer">
+                  <input type="checkbox" x-model="_editingAnno.pub"/>Share publicly
+                </label>
+              </div>
+              <button class="anno-save-btn" @click="saveEdit(n.id)">Save</button>
+              <button class="anno-btn" style="margin-top:6px;width:100%;text-align:center" @click="_editingAnno=null">Cancel</button>
+            </div>
+          </template>
+        </div>
+      </template>
+    </div>
+
+    <!-- ── Bottom bar ── -->
+    <div class="bottom-bar">
+      <button class="bb-btn" :class="{active:bottomSection==='page'}" @click="bottomSection='page'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9h8M8 13h5" stroke-linecap="round"/></svg>
+        Entry
+      </button>
+      <button class="bb-btn" :class="{active:bottomSection==='comments'}" @click="bottomSection='comments'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke-linecap="round"/></svg>
+        Comments
+        <span x-show="comments.length" style="font-size:9px;background:var(--ac);color:#fff;border-radius:8px;padding:0 4px;margin-top:1px" x-text="comments.length"></span>
+      </button>
+      <button class="bb-btn" :class="{active:bottomSection==='notes'}" @click="bottomSection='notes'">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2v-5" stroke-linecap="round"/><path d="M18 2l4 4-8 8H10v-4l8-8z" stroke-linecap="round"/></svg>
+        Notes
+        <span x-show="notes.length" style="font-size:9px;background:var(--ac);color:#fff;border-radius:8px;padding:0 4px;margin-top:1px" x-text="notes.length"></span>
+      </button>
+      <div style="flex:1"></div>
+      <!-- Theme selector in bottom bar — select for 5 themes -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:2px;margin-right:8px;flex-shrink:0">
+        <span style="font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--bbt);opacity:.6">Themes</span>
+        <select x-model="activeTheme"
+          style="background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:3px 6px;font-size:11px;color:var(--tx);cursor:pointer;outline:none;font-family:'DM Sans',sans-serif;max-width:110px">
+          <template x-for="(t,k) in themes" :key="k">
+            <option :value="k" x-text="t.label" :selected="activeTheme===k"></option>
+          </template>
+        </select>
+      </div>
+      <div class="bb-user" @click="userMenuOpen=!userMenuOpen" title="User menu">W</div>
+    </div>
+
+    <!-- User menu -->
+    <div x-show="userMenuOpen" @click.away="userMenuOpen=false"
+      style="position:fixed;bottom:64px;right:12px;background:var(--pop);border:1px solid var(--bd);border-radius:10px;box-shadow:var(--popshadow);min-width:200px;overflow:hidden;z-index:1000;pointer-events:all">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--bd)">
+        <div style="font-size:13px;font-weight:500;color:var(--tx)">Wilbert Fobbs III</div>
+        <div class="mono" style="font-size:10px;color:var(--mt)">WFobbs3 · Build v1.5</div>
+      </div>
+      <div style="padding:6px 14px 4px;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--mt)">Appearance</div>
+      <template x-for="(t,k) in themes" :key="k">
+        <button type="button" class="um-theme-btn"
+          :class="activeTheme===k ? 'um-theme-active' : ''"
+          @click.stop="activeTheme=k; userMenuOpen=false">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="flex-shrink:0">
+            <circle cx="6" cy="6" r="5" stroke="currentColor" stroke-width="1.5"
+              :style="activeTheme===k ? 'fill:var(--ac);stroke:var(--ac)' : ''"/>
+          </svg>
+          <span x-text="t.label+' theme'"></span>
+          <svg x-show="activeTheme===k" width="11" height="11" viewBox="0 0 12 12" fill="none" style="margin-left:auto;flex-shrink:0">
+            <path d="M2 6l3 3 5-5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </template>
+      <div style="border-top:1px solid var(--bd)">
+        <button class="sb-item" style="width:100%;padding:10px 14px" @click="userMenuOpen=false">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Export annotations
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+  <!-- ══ RIGHT PANEL: HISTORY + HELP ═══════════════════════════ -->
+  <div class="right-panel" x-show="historyOpen || helpOpen" x-cloak>
+
+    <!-- History panel -->
+    <template x-if="historyOpen">
+      <div style="display:flex;flex-direction:column;height:100%">
+        <div class="rp-header">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+          <span class="rp-title">History</span>
+          <button class="rp-close" @click="historyOpen=false">✕</button>
+        </div>
+        <div class="rp-body">
+          <div x-show="!entryHistory.length" style="text-align:center;padding:32px 0;color:var(--mt);font-size:13px">
+            <svg width="32" height="32" viewBox="0 0 16 16" fill="none" style="opacity:.25;display:block;margin:0 auto 10px">
+              <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+              <path d="M8 5v3.5l2.5 1.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            </svg>
+            No entries visited yet
+          </div>
+          <template x-for="(h,i) in entryHistory" :key="i">
+            <div class="history-item" @click="openEntry(h.id)">
+              <div>
+                <div class="history-word" x-text="h.word"></div>
+                <div class="history-meta" x-text="h.lexar+' · '+h.strongs"></div>
+              </div>
+              <div class="history-time" x-text="h.time"></div>
+            </div>
+          </template>
+          <div x-show="entryHistory.length > 1" style="margin-top:12px">
+            <button @click="entryHistory=[]" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--bd);background:transparent;color:var(--mt);font-size:12px;cursor:pointer">
+              Clear history
+            </button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Help panel -->
+    <template x-if="helpOpen">
+      <div style="display:flex;flex-direction:column;height:100%">
+        <div class="rp-header">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M6.5 6.5C6.5 5.7 7.2 5 8 5s1.5.7 1.5 1.5c0 .6-.4 1-.8 1.3C8.3 8.1 8 8.5 8 9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+            <circle cx="8" cy="11" r=".6" fill="currentColor"/>
+          </svg>
+          <span class="rp-title">Help</span>
+          <div style="display:flex;gap:6px;margin-left:auto;align-items:center">
+            <span class="mono" style="font-size:9px;color:var(--mt)">IndexedDB</span>
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--ok)" title="Saved to IndexedDB"></div>
+            <button class="rp-close" @click="helpOpen=false">✕</button>
+          </div>
+        </div>
+        <div class="rp-body">
+          <div x-show="!helpContent" style="text-align:center;padding:32px;color:var(--mt);font-size:13px">Loading…</div>
+          <div class="help-md" x-show="helpContent" x-html="helpContent"></div>
+        </div>
+      </div>
+    </template>
+
+  </div>
+
+  </div><!-- end main layout row -->
+</div><!-- end nav wrapper -->
+
+<!-- ══ TEXT SELECTION POPOVER ════════════════════════════ -->
+<div class="selection-pop" x-show="popover.visible" x-cloak
+  :style="`left:${popover.x}px;top:${popover.y}px`">
+
+  <!-- Selected text preview -->
+  <div style="padding:10px 12px 0;border-bottom:none">
+    <div class="mono" style="font-size:11px;color:var(--mt);margin-bottom:4px">Selected text</div>
+    <div style="font-family:'Spectral',serif;font-size:13px;color:var(--tx);line-height:1.5;padding:6px 8px;background:var(--bg2);border-radius:5px;border-left:2px solid var(--ac);max-height:50px;overflow:hidden" x-text="'❝ '+popover.text.slice(0,100)+(popover.text.length>100?'…':'')+'❞'"></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="pop-tabs">
+    <button class="pop-tab" :class="{active:popover.activeTab==='highlight'}" @click="popover.activeTab='highlight'">Annotate</button>
+    <button class="pop-tab" :class="{active:popover.activeTab==='comment'}" @click="popover.activeTab='comment'">Comment</button>
+    <button class="pop-tab" :class="{active:popover.activeTab==='note'}" @click="popover.activeTab='note'">Note</button>
+  </div>
+
+  <!-- Annotate tab -->
+  <div class="pop-content" x-show="popover.activeTab==='highlight'">
+    <div style="font-size:11px;color:var(--mt);margin-bottom:8px">Format selected text</div>
+    <div class="pop-actions">
+      <div class="pop-action" @click="underlineSelection()" title="Underline">
+        <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><text x="2" y="12" font-size="10" font-family="serif" font-weight="bold" fill="currentColor">U</text><line x1="2" y1="14" x2="14" y2="14" stroke="currentColor" stroke-width="1.5"/></svg>
+        Underline
+      </div>
+      <div class="pop-action" @click="popover.activeTab='comment'">
+        <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M14 10a1 1 0 01-1 1H5l-3 3V3a1 1 0 011-1h10a1 1 0 011 1v7z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Comment
+      </div>
+      <div class="pop-action" @click="popover.activeTab='note'">
+        <svg viewBox="0 0 16 16" fill="none" width="16" height="16"><path d="M7 3H4a1 1 0 00-1 1v9a1 1 0 001 1h8a1 1 0 001-1V8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M11 1l3 3-5 5H6V6l5-5z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Note
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--mt);text-align:center">Click action above or close to dismiss</div>
+    <button class="pop-submit" style="background:var(--bg2);color:var(--mt);margin-top:6px" @click="popover.visible=false">Dismiss</button>
+  </div>
+
+  <!-- Comment tab -->
+  <div class="pop-content" x-show="popover.activeTab==='comment'">
+    <div style="font-size:11px;color:var(--ok);margin-bottom:8px">📢 Public — visible to all readers</div>
+    <textarea class="pop-input" rows="3" placeholder="Add a comment…" x-model="popover.commentInput"></textarea>
+    <button class="pop-submit" @click="addComment()">Post comment</button>
+  </div>
+
+  <!-- Note tab -->
+  <div class="pop-content" x-show="popover.activeTab==='note'">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <div style="font-size:11px" :style="popover.notePublic?'color:var(--ok)':'color:var(--ac)'">
+        <span x-text="popover.notePublic?'📢 Public':'🔒 Private'"></span>
+      </div>
+      <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--mt);cursor:pointer">
+        <input type="checkbox" x-model="popover.notePublic" style="width:12px;height:12px"/>
+        Share
+      </label>
+    </div>
+    <textarea class="pop-input" rows="3" placeholder="Add a note…" x-model="popover.noteInput"></textarea>
+    <button class="pop-submit" @click="addNote()">Save note</button>
+  </div>
+</div>
+
+<!-- ══ WORD HOVER POPUP ═════════════════════════════ -->
+<div class="word-pop" x-show="wordPop.visible" x-cloak
+  :style="`left:${wordPop.x}px;top:${wordPop.y}px`">
+  <template x-if="wordPop.entry">
+    <div>
+      <div class="word-pop-word" x-text="wordPop.entry.word"></div>
+      <div class="word-pop-def" x-text="wordPop.entry.short"></div>
+    </div>
+  </template>
+  <template x-if="!wordPop.entry && wordPop.word">
+    <div class="word-pop-word" x-text="wordPop.word"></div>
+  </template>
+  <div class="word-pop-counts" x-show="wordPop.commentCount || wordPop.noteCount">
+    <span class="word-pop-chip" x-show="wordPop.commentCount" x-text="wordPop.commentCount+' comment'+(wordPop.commentCount===1?'':'s')"></span>
+    <span class="word-pop-chip" x-show="wordPop.noteCount" x-text="wordPop.noteCount+' note'+(wordPop.noteCount===1?'':'s')"></span>
+  </div>
+</div>
+
+</body>
+</html>
