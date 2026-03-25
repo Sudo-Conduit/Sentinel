@@ -1,9 +1,9 @@
 {
   "chatId": "62b06a86-6812-48ad-a9c1-42542e11e594",
   "instanceName": "unknown",
-  "epoch": 1774398367,
-  "path": "ops/archive/62b06a86-6812-48ad-a9c1-42542e11e594/1774398367",
-  "archivedAt": "2026-03-25T00:26:10.866Z",
-  "auto": true,
+  "epoch": 1774398430,
+  "path": "ops/archive/62b06a86-6812-48ad-a9c1-42542e11e594/1774398430",
+  "archivedAt": "2026-03-25T00:27:13.337Z",
+  "auto": false,
   "tokenPct": 100
 }
