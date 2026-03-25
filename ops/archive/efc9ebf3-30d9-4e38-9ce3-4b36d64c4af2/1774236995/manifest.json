@@ -1,0 +1,19 @@
+{
+  "version": "2.5",
+  "chatId": "efc9ebf3-30d9-4e38-9ce3-4b36d64c4af2",
+  "instanceName": "unknown",
+  "archivedAt": "2026-03-23T03:36:35.721Z",
+  "epoch": 1774236995,
+  "tokens": {
+    "total": 66041,
+    "pct": 33,
+    "remaining": 133959,
+    "prose": 11307,
+    "code": 6034,
+    "img": 27200,
+    "tool": 19500,
+    "sys": 2000
+  },
+  "turns": 197,
+  "warning": "🟢 LOW"
+}
