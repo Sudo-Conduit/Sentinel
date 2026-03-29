@@ -1,0 +1,1275 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MountainShift · Business Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.min.js"></script>
+<style>
+/* ══════════════════════════════════════
+   THEME TOKENS — mirrors Conduit Fund
+══════════════════════════════════════ */
+:root,[data-theme="dark"]{
+  --bg:#0b1426; --bg-mid:#111d35; --bg-light:#1a2a45; --border:#1e3052;
+  --gold:#c9a84c; --gold-lt:#e0c270; --gold-dim:rgba(201,168,76,0.12);
+  --slate:#8a99b3; --slate-lt:#b0bdd4; --fg:#f0f4fb; --text:#cdd6e8;
+  --green:#2ecc71; --red:#e74c3c; --blue:#5dade2; --purple:#bb8fce;
+  --yellow:#f4d03f; --teal:#1abc9c;
+  --shadow:rgba(0,0,0,0.5);
+  --bg-overlay:rgba(8,14,28,0.88);
+  --scrollbar:#1e3052;
+  --input-bg:#0b1426;
+  --row-hover:rgba(201,168,76,0.04);
+}
+[data-theme="light"]{
+  --bg:#f0f2f7; --bg-mid:#ffffff; --bg-light:#f5f7fc; --border:#c8d0e0;
+  --fg:#0d1b2e; --text:#1e2d45; --slate:#4a5878; --slate-lt:#2e3f5c;
+  --gold:#a67c2a; --gold-lt:#c9962e; --gold-dim:rgba(166,124,42,0.10);
+  --green:#1a9e50; --red:#c0392b; --blue:#2471a3; --purple:#7d3c98;
+  --yellow:#b7860b; --teal:#148f77;
+  --shadow:rgba(0,0,0,0.10);
+  --bg-overlay:rgba(15,30,60,0.55);
+  --scrollbar:#c8d0e0;
+  --input-bg:#ffffff;
+  --row-hover:rgba(166,124,42,0.06);
+}
+
+/* ══ BASE ══ */
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s;}
+[data-theme="dark"] body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% -10%,rgba(201,168,76,0.07) 0%,transparent 70%),repeating-linear-gradient(0deg,transparent,transparent 39px,rgba(255,255,255,0.015) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,rgba(255,255,255,0.015) 40px);pointer-events:none;z-index:0;}
+[data-theme="light"] body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 80% 60% at 50% -20%,rgba(201,168,76,0.04) 0%,transparent 60%);pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;display:flex;flex-direction:column;min-height:100vh;}
+
+/* ══ HEADER ══ */
+header{border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-mid);position:sticky;top:0;z-index:100;transition:background .25s,border-color .25s;}
+[data-theme="dark"] header{background:rgba(11,20,38,0.92);}
+[data-theme="light"] header{background:#ffffff;border-bottom:1px solid #c0cade;}
+.logo-mark{width:34px;height:34px;border:1.5px solid var(--gold);border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:16px;font-weight:600;color:var(--gold);flex-shrink:0;}
+.header-title h1{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--fg);}
+.header-title p{font-size:9px;color:var(--slate);letter-spacing:2px;text-transform:uppercase;margin-top:1px;font-family:'DM Mono',monospace;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,204,113,0.7);animation:pulse 2.5s ease-in-out infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* ══ THEME TOGGLE ══ */
+.theme-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;transition:all .2s;}
+.theme-toggle:hover{border-color:var(--gold);}
+.tt-track{width:32px;height:18px;border-radius:9px;background:var(--border);position:relative;transition:background .2s;}
+.tt-track.on{background:var(--gold);}
+.tt-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--bg-mid);transition:left .2s;}
+.tt-track.on .tt-thumb{left:16px;}
+.tt-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;}
+
+/* ══ LAYOUT ══ */
+.main-layout{display:flex;flex:1;}
+nav{width:214px;min-width:214px;border-right:1px solid var(--border);padding:22px 0;background:var(--bg-mid);transition:background .25s,border-color .25s;}
+[data-theme="dark"] nav{background:rgba(11,20,38,0.5);}
+[data-theme="light"] nav{background:#e8ecf4;border-right:1px solid #c0cade;}
+.content{flex:1;overflow-y:auto;padding:28px 32px;background:var(--bg);}
+[data-theme="light"] .content{background:#f0f2f7;}
+
+/* ══ NAV ══ */
+.nav-section-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2.5px;text-transform:uppercase;color:var(--slate);padding:0 20px;margin-bottom:6px;margin-top:18px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 20px;cursor:pointer;border-left:2px solid transparent;color:var(--slate);transition:all .15s;font-size:12px;font-weight:400;}
+.nav-item:hover{background:var(--row-hover);color:var(--fg);}
+.nav-item.active{border-left-color:var(--gold);background:var(--gold-dim);color:var(--gold);}
+.nav-icon{font-size:13px;width:16px;text-align:center;flex-shrink:0;}
+.nav-badge{font-family:'DM Mono',monospace;font-size:8px;background:var(--gold-dim);color:var(--gold);padding:1px 6px;border-radius:2px;margin-left:auto;}
+
+/* ══ CARDS ══ */
+.card{background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:20px 24px;transition:background .25s,border-color .25s;}
+[data-theme="light"] .card{background:#ffffff;}
+.card-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:12px;}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:20px;font-weight:500;color:var(--fg);margin-bottom:4px;}
+.section-sub{font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:20px;}
+
+/* ══ STAT CARDS ══ */
+.stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.stat-card{background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:16px 18px;transition:background .25s;}
+[data-theme="light"] .stat-card{background:#ffffff;}
+.stat-label{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:6px;}
+.stat-value{font-family:'DM Mono',monospace;font-size:22px;font-weight:400;color:var(--fg);}
+.stat-sub{font-size:10px;color:var(--slate);margin-top:3px;}
+
+/* ══ TABLES ══ */
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);padding:8px 12px;border-bottom:1px solid var(--border);text-align:left;}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle;}
+tr:hover td{background:var(--row-hover);}
+
+/* ══ INPUTS ══ */
+.form-group{margin-bottom:14px;}
+.form-group label{display:block;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--slate);margin-bottom:5px;}
+input[type=range]{width:100%;accent-color:var(--gold);cursor:pointer;}
+input[type=text],input[type=number],select{background:var(--input-bg);border:1px solid var(--border);border-radius:2px;color:var(--fg);padding:6px 10px;font-size:12px;font-family:'DM Sans',sans-serif;width:100%;transition:border-color .15s;}
+input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border-color:var(--gold);}
+[data-theme="light"] input[type=text],[data-theme="light"] input[type=number],[data-theme="light"] select{background:#ffffff;border-color:#c0cade;color:var(--fg);}
+.val-display{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);text-align:right;}
+
+/* ══ BUTTONS ══ */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:2px;font-size:11px;font-family:'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;cursor:pointer;border:none;transition:all .15s;}
+.btn-gold{background:var(--gold);color:#0b1426;}
+.btn-gold:hover{background:var(--gold-lt);}
+.btn-ghost{background:transparent;border:1px solid var(--border);color:var(--slate);}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold);}
+.btn-danger{background:transparent;border:1px solid rgba(231,76,60,0.3);color:var(--red);}
+.btn-danger:hover{background:rgba(231,76,60,0.08);}
+
+/* ══ TAGS / BADGES ══ */
+.tag{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:2px;border:1px solid transparent;display:inline-block;}
+.tag.royalty{background:rgba(201,168,76,.15);color:var(--gold);border-color:rgba(201,168,76,.2);}
+.tag.revenue{background:rgba(46,204,113,.1);color:var(--green);border-color:rgba(46,204,113,.2);}
+.tag.debt{background:rgba(93,173,226,.1);color:var(--blue);border-color:rgba(93,173,226,.2);}
+.tag.equity-t{background:rgba(187,143,206,.1);color:var(--purple);border-color:rgba(187,143,206,.2);}
+.tag.hybrid{background:rgba(187,143,206,.08);color:var(--purple);border-color:rgba(187,143,206,.25);border-style:dashed;}
+
+/* ══ PAYBACK TOGGLE ══ */
+.payback-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:20px;}
+.payback-btn{padding:8px 10px;border:1px solid var(--border);border-radius:2px;background:transparent;color:var(--slate);font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;text-align:center;transition:all .15s;line-height:1.4;}
+.payback-btn:hover{border-color:var(--gold);color:var(--gold);}
+.payback-btn.active{border-color:var(--gold);background:var(--gold-dim);color:var(--gold);}
+
+/* ══ CHARTS ══ */
+.chart-wrap{background:var(--bg-light);border:1px solid var(--border);border-radius:3px;padding:16px;}
+[data-theme="light"] .chart-wrap{background:#f5f7fc;}
+
+/* ══ MONO DATA ══ */
+.mono{font-family:'DM Mono',monospace;}
+.gold{color:var(--gold);}
+.green{color:var(--green);}
+.red{color:var(--red);}
+.blue{color:var(--blue);}
+.slate{color:var(--slate);}
+.fg{color:var(--fg);}
+
+/* ══ TABS ══ */
+.tab-row{display:flex;border-bottom:1px solid var(--border);margin-bottom:24px;gap:0;}
+.tab-btn{padding:10px 20px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer;transition:all .15s;margin-bottom:-1px;}
+.tab-btn:hover{color:var(--fg);}
+.tab-btn.active{color:var(--gold);border-bottom-color:var(--gold);}
+
+/* ══ XML IMPORT/EXPORT ══ */
+.xml-bar{display:flex;gap:8px;align-items:center;padding:12px 16px;background:var(--bg-light);border:1px solid var(--border);border-radius:3px;margin-bottom:20px;}
+[data-theme="light"] .xml-bar{background:#f0f2f7;}
+.xml-status{font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);margin-left:auto;}
+
+/* ══ FLYWHEEL ══ */
+.flywheel-node{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:2px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:0.5px;}
+
+/* ══ SCROLLBAR ══ */
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--scrollbar);border-radius:2px;}
+
+/* ══ TOAST ══ */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--fg);z-index:9999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.gold{border-color:var(--gold);color:var(--gold);}
+.toast.err{border-color:var(--red);color:var(--red);}
+
+/* ══ DIVIDER ══ */
+.divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div class="logo-mark">M</div>
+    <div class="header-title">
+      <h1>Mountain<span style="color:var(--gold)">SHIFT</span></h1>
+      <p>Business Intelligence · v1.0</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <div style="display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;">
+      <div class="status-dot"></div>
+      <span>Live</span>
+    </div>
+    <div class="xml-bar" style="margin:0;padding:6px 12px;">
+      <button class="btn btn-ghost" style="padding:4px 12px;font-size:9px;" onclick="exportXML()">⬇ Export XML</button>
+      <button class="btn btn-ghost" style="padding:4px 12px;font-size:9px;" onclick="document.getElementById('xml-input').click()">⬆ Import XML</button>
+      <input type="file" id="xml-input" accept=".xml" style="display:none" onchange="importXML(event)">
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <div class="tt-track" id="tt-track"><div class="tt-thumb"></div></div>
+      <span class="tt-label" id="tt-label">Dark</span>
+    </div>
+  </div>
+</header>
+
+<!-- ══ MAIN LAYOUT ══ -->
+<div class="main-layout">
+
+  <!-- ══ SIDEBAR NAV ══ -->
+  <nav>
+    <div class="nav-section-label">Platform</div>
+    <div class="nav-item active" onclick="showSection('overview')" id="nav-overview">
+      <span class="nav-icon">◈</span> Overview
+    </div>
+    <div class="nav-item" onclick="showSection('business')" id="nav-business">
+      <span class="nav-icon">◇</span> Business Model
+    </div>
+
+    <div class="nav-section-label">Calculators</div>
+    <div class="nav-item" onclick="showSection('revenue')" id="nav-revenue">
+      <span class="nav-icon">$</span> Revenue Calc
+      <span class="nav-badge">Live</span>
+    </div>
+    <div class="nav-item" onclick="showSection('payback')" id="nav-payback">
+      <span class="nav-icon">⟳</span> Payback Types
+    </div>
+
+    <div class="nav-section-label">Financial Model</div>
+    <div class="nav-item" onclick="showSection('financial')" id="nav-financial">
+      <span class="nav-icon">∿</span> 24-Mo Projection
+    </div>
+    <div class="nav-item" onclick="showSection('unit')" id="nav-unit">
+      <span class="nav-icon">◎</span> Unit Economics
+    </div>
+    <div class="nav-item" onclick="showSection('cashflow')" id="nav-cashflow">
+      <span class="nav-icon">⇌</span> Cash Flow
+    </div>
+
+    <div class="nav-section-label">Intelligence</div>
+    <div class="nav-item" onclick="showSection('auction')" id="nav-auction">
+      <span class="nav-icon">⬡</span> Ad Auction Floor
+      <span class="nav-badge">AI</span>
+    </div>
+
+    <div style="padding:20px 20px 0;margin-top:auto;">
+      <div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--slate);letter-spacing:1px;line-height:1.8;">
+        ManifoldAI · GeoJS<br>
+        C²-continuous · No LLM<br>
+        Deterministic · Auditable
+      </div>
+    </div>
+  </nav>
+
+  <!-- ══ CONTENT ══ -->
+  <div class="content">
+
+    <!-- ════════════════════ OVERVIEW ════════════════════ -->
+    <div id="section-overview">
+      <div class="section-title">MountainShift Platform</div>
+      <div class="section-sub">Independent media · authentic voice · AI-powered discovery</div>
+
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-label">Model</div>
+          <div class="stat-value" style="font-size:16px;font-family:'Cormorant Garamond',serif;font-weight:500;">Newsletter + Media</div>
+          <div class="stat-sub">Discovery & distribution</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Access</div>
+          <div class="stat-value" style="font-size:16px;font-family:'Cormorant Garamond',serif;">Invite-Only</div>
+          <div class="stat-sub">Waitlist + skip code</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Revenue Streams</div>
+          <div class="stat-value">6</div>
+          <div class="stat-sub">Subs · Ads · Intros · Bounties</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Intelligence</div>
+          <div class="stat-value" style="font-size:14px;color:var(--purple);">ManifoldAI</div>
+          <div class="stat-sub">GeoJS · 9D semantic · No LLM</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+        <div class="card">
+          <div class="card-label">Page types · personality facets</div>
+          <table>
+            <thead><tr><th>Page</th><th>Primary audience</th><th>Visibility</th></tr></thead>
+            <tbody>
+              <tr><td class="gold mono">Personal</td><td>Friends &amp; family</td><td class="slate">User controlled</td></tr>
+              <tr><td style="color:var(--blue)" class="mono">Business</td><td>Investors &amp; partners</td><td class="slate">User controlled</td></tr>
+              <tr><td style="color:var(--green)" class="mono">Philanthropy</td><td>NGOs &amp; INGOs</td><td class="slate">User controlled</td></tr>
+              <tr><td style="color:var(--purple)" class="mono">Publish</td><td>Academics &amp; public</td><td class="slate">User controlled</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <div class="card-label">Engagement tiers · PageValue weights</div>
+          <table>
+            <thead><tr><th>Tier</th><th>Weight</th><th>PageValue contribution</th></tr></thead>
+            <tbody>
+              <tr><td>Viewer</td><td class="mono slate">1</td><td class="slate">Baseline presence</td></tr>
+              <tr><td style="color:var(--teal)">Subscriber</td><td class="mono" style="color:var(--teal)">5</td><td class="slate">5× Viewer</td></tr>
+              <tr><td style="color:var(--yellow)">Donor</td><td class="mono" style="color:var(--yellow)">11</td><td class="slate">11× Viewer</td></tr>
+              <tr><td style="color:var(--green)">Paid Subscriber</td><td class="mono green">14</td><td class="slate">14× Viewer · highest value</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">The MountainShift Flywheel</div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 0;">
+          <span class="flywheel-node" style="background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.2);">Write Content</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(26,188,156,.1);color:var(--teal);border:1px solid rgba(26,188,156,.2);">Build Audience</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(46,204,113,.1);color:var(--green);border:1px solid rgba(46,204,113,.2);">PageValue Rises</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(244,208,63,.1);color:var(--yellow);border:1px solid rgba(244,208,63,.2);">Higher Ad Floor</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(187,143,206,.1);color:var(--purple);border:1px solid rgba(187,143,206,.2);">More Introductions</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(93,173,226,.1);color:var(--blue);border:1px solid rgba(93,173,226,.2);">Bounty Eligibility</span>
+          <span class="slate">→</span>
+          <span class="flywheel-node" style="background:rgba(201,168,76,.12);color:var(--gold);border:1px solid rgba(201,168,76,.2);">More Content ↻</span>
+        </div>
+      </div>
+
+      <div style="margin-top:16px;" class="card">
+        <div class="card-label">ManifoldAI · GeoJS integration points</div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+          <div style="padding:12px;background:var(--bg-light);border-radius:2px;border:1px solid var(--border);">
+            <div class="mono" style="font-size:10px;color:var(--purple);margin-bottom:4px;">Ad Auction Floor</div>
+            <div style="font-size:11px;color:var(--slate);line-height:1.6;">Neural net · 8 signals · dynamic pricing per page</div>
+          </div>
+          <div style="padding:12px;background:var(--bg-light);border-radius:2px;border:1px solid var(--border);">
+            <div class="mono" style="font-size:10px;color:var(--purple);margin-bottom:4px;">Topic Bounty Detection</div>
+            <div style="font-size:11px;color:var(--slate);line-height:1.6;">9D semantic gap analysis · binary eligibility · push-only</div>
+          </div>
+          <div style="padding:12px;background:var(--bg-light);border-radius:2px;border:1px solid var(--border);">
+            <div class="mono" style="font-size:10px;color:var(--purple);margin-bottom:4px;">Intro Relevance Score</div>
+            <div style="font-size:11px;color:var(--slate);line-height:1.6;">C²-continuous path · pre-delivery filter · facet-aware</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ BUSINESS MODEL ════════════════════ -->
+    <div id="section-business" style="display:none;">
+      <div class="section-title">Business Model</div>
+      <div class="section-sub">Revenue streams · fee structure · platform economics</div>
+
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-label">Min Sub Price</div><div class="stat-value">$5<span style="font-size:14px">/mo</span></div><div class="stat-sub">or $50/year</div></div>
+        <div class="stat-card"><div class="stat-label">Platform Fee (Subs)</div><div class="stat-value gold">10%</div><div class="stat-sub">No reader fees</div></div>
+        <div class="stat-card"><div class="stat-label">Donation Platform Fee</div><div class="stat-value" style="color:var(--teal)">8%</div><div class="stat-sub">Not split with author</div></div>
+        <div class="stat-card"><div class="stat-label">Ad Share Unlocks</div><div class="stat-value" style="color:var(--yellow)">50K</div><div class="stat-sub">Users — per page or total</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-label">Revenue stream matrix</div>
+        <table>
+          <thead><tr><th>Stream</th><th>Platform Cut</th><th>Author / Recipient</th><th>Basis</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td class="gold">Paid Subscriptions</td><td class="mono gold">10%</td><td class="mono green">~84% net</td><td>Per subscriber</td><td class="slate">Stripe fees apply</td></tr>
+            <tr><td style="color:var(--teal)">Donations</td><td class="mono" style="color:var(--teal)">8%</td><td class="mono green">~91% net</td><td>Platform only</td><td class="slate">Not split with author</td></tr>
+            <tr><td class="slate">Ads · below 50K</td><td class="mono slate">100%</td><td class="mono slate">0%</td><td>Platform default</td><td class="slate">Author opt-out available</td></tr>
+            <tr><td class="green">Ads · 50K–150K</td><td class="mono">80%</td><td class="mono green">20%</td><td>Either triggers</td><td class="slate">Per page or total users</td></tr>
+            <tr><td class="green">Ads · 150K–500K</td><td class="mono">70%</td><td class="mono green">30%</td><td>Either triggers</td><td class="slate">—</td></tr>
+            <tr><td style="color:var(--yellow)">Ads · 500K–1M</td><td class="mono">60%</td><td class="mono" style="color:var(--yellow)">40%</td><td>Either triggers</td><td class="slate">—</td></tr>
+            <tr><td style="color:var(--yellow)">Ads · 1M+</td><td class="mono">50%</td><td class="mono" style="color:var(--yellow)">50%</td><td>Either triggers</td><td class="slate">Max author share</td></tr>
+            <tr><td style="color:var(--purple)">Paid Introductions</td><td class="mono">~15%</td><td class="mono green">~81% net</td><td>Recipient earns cut</td><td class="slate">ManifoldAI scores relevance</td></tr>
+            <tr><td class="slate">Custom Domain</td><td class="mono gold">$50</td><td class="mono slate">—</td><td>One-time setup</td><td class="slate">yourname.com</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div class="card">
+          <div class="card-label">Co-author revenue split</div>
+          <div style="font-size:12px;color:var(--slate);line-height:1.8;margin-bottom:12px;">Split calculated on <strong style="color:var(--fg)">NET</strong> — after platform fee and Stripe fees. Default 50/50, configurable on Pro.</div>
+          <div style="background:var(--bg-light);border:1px solid var(--border);padding:12px;border-radius:2px;font-family:'DM Mono',monospace;font-size:11px;line-height:2.2;">
+            <div style="display:flex;justify-content:space-between;"><span class="slate">Subscriber pays</span><span class="fg">$10.00</span></div>
+            <div style="display:flex;justify-content:space-between;"><span class="slate">Platform (10%)</span><span class="red">−$1.00</span></div>
+            <div style="display:flex;justify-content:space-between;"><span class="slate">Stripe fees</span><span class="red">−$0.59</span></div>
+            <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;"><span class="fg">Net to split</span><span class="green">$8.41</span></div>
+            <div style="display:flex;justify-content:space-between;"><span class="gold">÷ 2 co-authors</span><span class="gold">$4.21 each</span></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-label">Stripe fee components</div>
+          <table>
+            <thead><tr><th>Fee type</th><th>Rate</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>Transaction</td><td class="mono red">2.9%</td><td class="slate">Per charge</td></tr>
+              <tr><td>Flat fee</td><td class="mono red">$0.30</td><td class="slate">Per transaction</td></tr>
+              <tr><td>Billing (recurring)</td><td class="mono red">0.7%</td><td class="slate">Subscription only</td></tr>
+              <tr><td style="color:var(--gold)">Annual batching</td><td class="mono gold">1× /yr</td><td class="slate">Saves ~$2.91/sub/yr</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ REVENUE CALCULATOR ════════════════════ -->
+    <div id="section-revenue" style="display:none;">
+      <div class="section-title">Revenue Calculator</div>
+      <div class="section-sub">Live fee waterfall · all streams · persisted state</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div>
+          <!-- Subscriptions -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Subscriptions</div>
+            <div style="display:flex;gap:8px;margin-bottom:14px;">
+              <button class="btn btn-gold" id="billing-monthly" onclick="setBilling('monthly')" style="font-size:9px;padding:4px 14px;">Monthly</button>
+              <button class="btn btn-ghost" id="billing-annual" onclick="setBilling('annual')" style="font-size:9px;padding:4px 14px;">Annual</button>
+            </div>
+            <div class="form-group">
+              <label>Price per subscriber <span class="val-display" id="v-subprice">$10/mo</span></label>
+              <input type="range" min="5" max="50" value="10" step="1" id="r-subprice" oninput="calcRevenue()">
+            </div>
+            <div class="form-group">
+              <label>Subscriber count <span class="val-display" id="v-subcount">500</span></label>
+              <input type="range" min="10" max="10000" value="500" step="10" id="r-subcount" oninput="calcRevenue()">
+            </div>
+          </div>
+          <!-- Donations -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Donations</div>
+            <div class="form-group">
+              <label>Avg donation <span class="val-display" id="v-donavg">$25</span></label>
+              <input type="range" min="5" max="500" value="25" id="r-donavg" oninput="calcRevenue()">
+            </div>
+            <div class="form-group">
+              <label>Donors per month <span class="val-display" id="v-doncount">50</span></label>
+              <input type="range" min="0" max="500" value="50" id="r-doncount" oninput="calcRevenue()">
+            </div>
+          </div>
+          <!-- Introductions -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Introductions</div>
+            <div class="form-group">
+              <label>Intro fee <span class="val-display" id="v-introprice">$25</span></label>
+              <input type="range" min="10" max="500" value="25" step="5" id="r-introprice" oninput="calcRevenue()">
+            </div>
+            <div class="form-group">
+              <label>Intros per month <span class="val-display" id="v-introcount">20</span></label>
+              <input type="range" min="0" max="200" value="20" id="r-introcount" oninput="calcRevenue()">
+            </div>
+          </div>
+          <!-- Advertising -->
+          <div class="card">
+            <div class="card-label">Advertising</div>
+            <div class="form-group">
+              <label>Audience size <span class="val-display" id="v-audience">75K</span></label>
+              <input type="range" min="1000" max="2000000" value="75000" step="1000" id="r-audience" oninput="calcRevenue()">
+            </div>
+            <div class="form-group">
+              <label>Monthly ad revenue <span class="val-display" id="v-adrev">$3,000</span></label>
+              <input type="range" min="0" max="100000" value="3000" step="100" id="r-adrev" oninput="calcRevenue()">
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);">Ad tier: <span class="gold" id="ad-tier-label">Tier 1 · 20% author share</span></div>
+          </div>
+        </div>
+
+        <div>
+          <!-- Summary metrics -->
+          <div class="stat-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px;">
+            <div class="stat-card"><div class="stat-label">Monthly Net</div><div class="stat-value green" id="sum-monthly">—</div></div>
+            <div class="stat-card"><div class="stat-label">ARR</div><div class="stat-value gold" id="sum-arr">—</div></div>
+          </div>
+
+          <!-- Stream breakdown -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Stream breakdown · monthly net</div>
+            <table>
+              <thead><tr><th>Stream</th><th style="text-align:right">Net / month</th></tr></thead>
+              <tbody>
+                <tr><td class="gold">Subscriptions</td><td class="mono green" style="text-align:right" id="b-subs">—</td></tr>
+                <tr><td style="color:var(--teal)">Donations</td><td class="mono green" style="text-align:right" id="b-don">—</td></tr>
+                <tr><td style="color:var(--purple)">Introductions</td><td class="mono green" style="text-align:right" id="b-intro">—</td></tr>
+                <tr><td style="color:var(--yellow)">Ad share</td><td class="mono green" style="text-align:right" id="b-ads">—</td></tr>
+                <tr style="border-top:1px solid var(--gold);"><td class="fg"><strong>Total</strong></td><td class="mono green" style="text-align:right;font-size:15px;" id="b-total">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Per-transaction detail -->
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Per-transaction · subscription</div>
+            <div style="font-family:'DM Mono',monospace;font-size:11px;line-height:2.2;" id="tx-detail"></div>
+          </div>
+
+          <!-- Batching tip -->
+          <div class="card" style="border-color:rgba(201,168,76,.2);">
+            <div class="card-label" style="color:var(--gold);">Batching tip</div>
+            <div style="font-size:11px;color:var(--slate);" id="batch-tip">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ PAYBACK TYPES ════════════════════ -->
+    <div id="section-payback" style="display:none;">
+      <div class="section-title">Investment Payback Types</div>
+      <div class="section-sub">Select structure to model returns · MountainShift toggle</div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <div class="card-label">Select payback structure</div>
+        <div class="payback-grid">
+          <button class="payback-btn active" onclick="selectPayback('royalty')" id="pb-royalty">
+            <span class="tag royalty" style="display:block;margin-bottom:4px;">Royalty</span>
+            Royalty Payment
+          </button>
+          <button class="payback-btn" onclick="selectPayback('revenue')" id="pb-revenue">
+            <span class="tag revenue" style="display:block;margin-bottom:4px;">Revenue</span>
+            Revenue Based
+          </button>
+          <button class="payback-btn" onclick="selectPayback('debt')" id="pb-debt">
+            <span class="tag debt" style="display:block;margin-bottom:4px;">Debt</span>
+            Debt Payment
+          </button>
+          <button class="payback-btn" onclick="selectPayback('equity')" id="pb-equity">
+            <span class="tag equity-t" style="display:block;margin-bottom:4px;">Equity</span>
+            Equity
+          </button>
+          <button class="payback-btn" onclick="selectPayback('royalty-equity')" id="pb-royalty-equity">
+            <span class="tag hybrid" style="display:block;margin-bottom:4px;">Hybrid</span>
+            Royalty + Equity
+          </button>
+          <button class="payback-btn" onclick="selectPayback('revenue-equity')" id="pb-revenue-equity">
+            <span class="tag hybrid" style="display:block;margin-bottom:4px;">Hybrid</span>
+            Revenue + Equity
+          </button>
+          <button class="payback-btn" onclick="selectPayback('debt-equity')" id="pb-debt-equity">
+            <span class="tag hybrid" style="display:block;margin-bottom:4px;">Hybrid</span>
+            Debt + Equity
+          </button>
+          <div></div>
+        </div>
+      </div>
+
+      <!-- Dynamic payback calculator -->
+      <div id="payback-calc-wrap"></div>
+    </div>
+
+    <!-- ════════════════════ FINANCIAL MODEL ════════════════════ -->
+    <div id="section-financial" style="display:none;">
+      <div class="section-title">24-Month Financial Projection</div>
+      <div class="section-sub">Subscriber growth · revenue · OPEX · profitability</div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+        <div>
+          <div class="card">
+            <div class="card-label">Growth assumptions</div>
+            <div class="form-group"><label>Starting subscribers <span class="val-display" id="fv-startsubs">100</span></label><input type="range" min="10" max="5000" step="10" value="100" id="fr-startsubs" oninput="calcFinancial()"></div>
+            <div class="form-group"><label>Monthly growth % <span class="val-display" id="fv-growth">15%</span></label><input type="range" min="1" max="50" value="15" id="fr-growth" oninput="calcFinancial()"></div>
+            <div class="form-group"><label>Sub price <span class="val-display" id="fv-price">$10</span></label><input type="range" min="5" max="50" value="10" id="fr-price" oninput="calcFinancial()"></div>
+            <div class="form-group"><label>Monthly OPEX <span class="val-display" id="fv-opex">$5,000</span></label><input type="range" min="1000" max="50000" step="500" value="5000" id="fr-opex" oninput="calcFinancial()"></div>
+            <div class="form-group"><label>Ad revenue starts (month) <span class="val-display" id="fv-adstart">M6</span></label><input type="range" min="1" max="18" value="6" id="fr-adstart" oninput="calcFinancial()"></div>
+          </div>
+          <div class="stat-grid" style="grid-template-columns:1fr 1fr;margin-top:14px;">
+            <div class="stat-card"><div class="stat-label">Mo 24 MRR</div><div class="stat-value green" id="f-mrr">—</div></div>
+            <div class="stat-card"><div class="stat-label">Mo 24 ARR</div><div class="stat-value gold" id="f-arr">—</div></div>
+            <div class="stat-card"><div class="stat-label">Mo 24 Subs</div><div class="stat-value blue" id="f-subs">—</div></div>
+            <div class="stat-card"><div class="stat-label">Mo 24 Profit</div><div class="stat-value" id="f-profit">—</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="card-label">MRR · Gross vs Net · 24 months</div>
+            <canvas id="financial-chart" height="200"></canvas>
+          </div>
+          <div class="chart-wrap">
+            <div class="card-label">Monthly profit · 24 months</div>
+            <canvas id="profit-chart" height="160"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ UNIT ECONOMICS ════════════════════ -->
+    <div id="section-unit" style="display:none;">
+      <div class="section-title">Unit Economics</div>
+      <div class="section-sub">LTV · CAC · payback · cohort retention</div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+        <div>
+          <div class="card">
+            <div class="card-label">Inputs</div>
+            <div class="form-group"><label>CAC ($) <span class="val-display" id="uv-cac">$12</span></label><input type="range" min="1" max="200" value="12" id="ur-cac" oninput="calcUnit()"></div>
+            <div class="form-group"><label>Monthly churn % <span class="val-display" id="uv-churn">5%</span></label><input type="range" min="0.5" max="20" step="0.5" value="5" id="ur-churn" oninput="calcUnit()"></div>
+            <div class="form-group"><label>Sub price <span class="val-display" id="uv-price">$10</span></label><input type="range" min="5" max="50" value="10" id="ur-price" oninput="calcUnit()"></div>
+            <div class="form-group"><label>Gross margin % <span class="val-display" id="uv-margin">84%</span></label><input type="range" min="50" max="95" value="84" id="ur-margin" oninput="calcUnit()"></div>
+          </div>
+          <div class="stat-grid" style="grid-template-columns:1fr 1fr;margin-top:14px;">
+            <div class="stat-card"><div class="stat-label">LTV</div><div class="stat-value green" id="u-ltv">—</div></div>
+            <div class="stat-card"><div class="stat-label">CAC</div><div class="stat-value red" id="u-cac">—</div></div>
+            <div class="stat-card"><div class="stat-label">LTV:CAC</div><div class="stat-value" id="u-ratio">—</div></div>
+            <div class="stat-card"><div class="stat-label">Payback</div><div class="stat-value blue" id="u-payback">—</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-wrap">
+            <div class="card-label">Cohort retention · 24 months</div>
+            <canvas id="unit-chart" height="240"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ CASH FLOW ════════════════════ -->
+    <div id="section-cashflow" style="display:none;">
+      <div class="section-title">Cash Flow · 24 Months</div>
+      <div class="section-sub">Gross · expenses · net · ARR · MRR · cumulative cash</div>
+
+      <div style="display:grid;grid-template-columns:1fr 2fr;gap:20px;">
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Starting position</div>
+            <div class="form-group"><label>Starting cash <span class="val-display" id="cfv-cash">$50K</span></label><input type="range" min="0" max="1000000" step="5000" value="50000" id="cfr-cash" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Starting subs <span class="val-display" id="cfv-subs">100</span></label><input type="range" min="10" max="5000" step="10" value="100" id="cfr-subs" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Monthly growth % <span class="val-display" id="cfv-growth">12%</span></label><input type="range" min="1" max="40" value="12" id="cfr-growth" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Sub price <span class="val-display" id="cfv-price">$10</span></label><input type="range" min="5" max="50" value="10" id="cfr-price" oninput="calcCashflow()"></div>
+          </div>
+          <div class="card">
+            <div class="card-label">Monthly expenses</div>
+            <div class="form-group"><label>Salaries <span class="val-display" id="cfv-sal">$8,000</span></label><input type="range" min="0" max="50000" step="500" value="8000" id="cfr-sal" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Infrastructure <span class="val-display" id="cfv-infra">$1,200</span></label><input type="range" min="0" max="10000" step="100" value="1200" id="cfr-infra" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Marketing <span class="val-display" id="cfv-mkt">$2,000</span></label><input type="range" min="0" max="20000" step="200" value="2000" id="cfr-mkt" oninput="calcCashflow()"></div>
+            <div class="form-group"><label>Misc / Legal <span class="val-display" id="cfv-misc">$800</span></label><input type="range" min="0" max="5000" step="100" value="800" id="cfr-misc" oninput="calcCashflow()"></div>
+          </div>
+        </div>
+        <div>
+          <div class="stat-grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px;">
+            <div class="stat-card"><div class="stat-label">24-mo Gross</div><div class="stat-value blue" id="cf-gross">—</div></div>
+            <div class="stat-card"><div class="stat-label">24-mo Net Rev</div><div class="stat-value" style="color:var(--teal)" id="cf-net">—</div></div>
+            <div class="stat-card"><div class="stat-label">24-mo Expenses</div><div class="stat-value red" id="cf-exp">—</div></div>
+            <div class="stat-card"><div class="stat-label">24-mo NET</div><div class="stat-value" id="cf-profit">—</div></div>
+          </div>
+          <div class="chart-wrap" style="margin-bottom:14px;">
+            <div class="card-label">Cumulative cash · 24 months</div>
+            <canvas id="cashflow-chart" height="180"></canvas>
+          </div>
+          <div class="chart-wrap">
+            <div class="card-label">Monthly net cash flow · 24 months</div>
+            <canvas id="cashflow-bar-chart" height="150"></canvas>
+          </div>
+          <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);" id="breakeven-label"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════ AD AUCTION ════════════════════ -->
+    <div id="section-auction" style="display:none;">
+      <div class="section-title">Ad Auction Floor · ManifoldAI</div>
+      <div class="section-sub">Neural network · 8 input signals · dynamic floor pricing</div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="card">
+          <div class="card-label">Neural network input signals</div>
+          <table>
+            <thead><tr><th>#</th><th>Signal</th><th>Type</th><th>Impact</th></tr></thead>
+            <tbody>
+              <tr><td class="mono gold">S1</td><td>Locale</td><td><span class="tag debt">Static</span></td><td class="slate">US/UK/CA/AU premium</td></tr>
+              <tr><td class="mono gold">S2</td><td>Time of day</td><td><span class="tag revenue">Real-time</span></td><td class="slate">Peak reading windows</td></tr>
+              <tr><td class="mono gold">S3</td><td>Traffic + signed_up_ratio</td><td><span class="tag revenue">Real-time</span></td><td class="slate">Session volume · signed vs anon</td></tr>
+              <tr><td class="mono gold">S4</td><td>Page type</td><td><span class="tag debt">Static</span></td><td class="slate">Finance &gt; Publish &gt; Personal</td></tr>
+              <tr><td class="mono gold">S5</td><td>PageValue (score)</td><td><span class="tag royalty">Dynamic</span></td><td class="slate">Σ tier weights × counts</td></tr>
+              <tr><td class="mono gold">S6</td><td>Author connections</td><td><span class="tag royalty">Dynamic</span></td><td class="slate">Network depth + quality</td></tr>
+              <tr><td class="mono gold">S7</td><td>Newsletter engagement</td><td><span class="tag royalty">Dynamic</span></td><td class="slate">Comments · replies · shares</td></tr>
+              <tr><td class="mono gold">S8</td><td>Engagement decay</td><td><span class="tag royalty">Dynamic</span></td><td class="slate">Recency-weighted decay</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div>
+          <div class="card" style="margin-bottom:14px;">
+            <div class="card-label">Floor price formula</div>
+            <div style="background:var(--bg-light);border:1px solid var(--border);padding:14px;border-radius:2px;font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);line-height:2;">
+              <span style="color:var(--gold)">floor_price</span> = base_cpm<br>
+              &nbsp;&nbsp;× <span style="color:var(--blue)">locale_multiplier</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--teal)">time_of_day_curve(t)</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--teal)">traffic_index(sessions, signed_up_ratio)</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--blue)">page_type_coefficient</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--yellow)">normalize(PageValue)</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--yellow)">connection_quality_score</span><br>
+              &nbsp;&nbsp;× <span style="color:var(--yellow)">engagement_decay(comments, recency)</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-label">Auction model · Yahoo Overture style</div>
+            <div style="font-size:12px;color:var(--slate);line-height:1.8;">
+              Keyword/topic-based auction. Highest bidder above the AI-computed floor wins placement. Floor protects against underpricing high-value inventory.<br><br>
+              <strong style="color:var(--fg);">Ads are platform-default with author opt-out.</strong> ManifoldAI learns per-page signal weights over time. New pages start at category-average weights.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main-layout -->
+</div><!-- /app -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let currentBilling = 'monthly';
+let currentPayback = 'royalty';
+let charts = {};
+
+const STATE_KEY = 'ms_state_v1';
+
+function saveState() {
+  const state = {
+    billing: currentBilling,
+    payback: currentPayback,
+    sliders: {}
+  };
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    state.sliders[el.id] = el.value;
+  });
+  try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch(e){}
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STATE_KEY);
+    if (!raw) return;
+    const state = JSON.parse(raw);
+    if (state.billing) { currentBilling = state.billing; }
+    if (state.payback) { currentPayback = state.payback; }
+    if (state.sliders) {
+      Object.entries(state.sliders).forEach(([id, val]) => {
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      });
+    }
+  } catch(e){}
+}
+
+// ══════════════════════════════════════
+//  XML EXPORT / IMPORT
+// ══════════════════════════════════════
+function exportXML() {
+  const state = {
+    billing: currentBilling,
+    payback: currentPayback,
+    sliders: {}
+  };
+  document.querySelectorAll('input[type=range]').forEach(el => {
+    state.sliders[el.id] = el.value;
+  });
+
+  let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml += '<MountainShift version="1.0" exported="' + new Date().toISOString() + '">\n';
+  xml += '  <Settings>\n';
+  xml += '    <Billing>' + state.billing + '</Billing>\n';
+  xml += '    <Payback>' + state.payback + '</Payback>\n';
+  xml += '  </Settings>\n';
+  xml += '  <Sliders>\n';
+  Object.entries(state.sliders).forEach(([id, val]) => {
+    xml += '    <Slider id="' + id + '" value="' + val + '"/>\n';
+  });
+  xml += '  </Sliders>\n';
+  xml += '</MountainShift>\n';
+
+  const blob = new Blob([xml], { type: 'application/xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'mountainshift_' + new Date().toISOString().slice(0,10) + '.xml';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('XML exported · ' + a.download, false);
+}
+
+function importXML(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(e.target.result, 'application/xml');
+      const parseErr = doc.querySelector('parsererror');
+      if (parseErr) { toast('Invalid XML file', true); return; }
+
+      const billing = doc.querySelector('Billing')?.textContent;
+      const payback = doc.querySelector('Payback')?.textContent;
+      if (billing) { currentBilling = billing; setBilling(billing, true); }
+      if (payback) { currentPayback = payback; selectPayback(payback, true); }
+
+      doc.querySelectorAll('Slider').forEach(node => {
+        const id = node.getAttribute('id');
+        const val = node.getAttribute('value');
+        const el = document.getElementById(id);
+        if (el) el.value = val;
+      });
+
+      recalcAll();
+      toast('XML imported successfully', false);
+    } catch(err) {
+      toast('Import failed: ' + err.message, true);
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ══════════════════════════════════════
+//  THEME
+// ══════════════════════════════════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  const track = document.getElementById('tt-track');
+  const label = document.getElementById('tt-label');
+  track.classList.toggle('on', !isDark);
+  label.textContent = isDark ? 'Light' : 'Dark';
+  recalcAll();
+}
+
+// ══════════════════════════════════════
+//  NAV
+// ══════════════════════════════════════
+function showSection(id) {
+  document.querySelectorAll('[id^="section-"]').forEach(el => el.style.display = 'none');
+  document.querySelectorAll('[id^="nav-"]').forEach(el => el.classList.remove('active'));
+  document.getElementById('section-' + id).style.display = '';
+  document.getElementById('nav-' + id).classList.add('active');
+  saveState();
+  setTimeout(() => recalcAll(), 50);
+}
+
+// ══════════════════════════════════════
+//  FORMATTERS
+// ══════════════════════════════════════
+function fmtM(n) { return n >= 1e6 ? '$' + (n/1e6).toFixed(2) + 'M' : n >= 1000 ? '$' + (n/1000).toFixed(1) + 'K' : '$' + n.toFixed(0); }
+function fmtN(n) { return n >= 1e6 ? (n/1e6).toFixed(1) + 'M' : n >= 1000 ? Math.round(n/1000) + 'K' : String(Math.round(n)); }
+
+// ══════════════════════════════════════
+//  BILLING TOGGLE
+// ══════════════════════════════════════
+function setBilling(b, skipSave) {
+  currentBilling = b;
+  const mg = document.getElementById('billing-monthly');
+  const ag = document.getElementById('billing-annual');
+  if (mg && ag) {
+    mg.className = b === 'monthly' ? 'btn btn-gold' : 'btn btn-ghost';
+    ag.className = b === 'annual' ? 'btn btn-gold' : 'btn btn-ghost';
+    mg.style.fontSize = '9px'; mg.style.padding = '4px 14px';
+    ag.style.fontSize = '9px'; ag.style.padding = '4px 14px';
+  }
+  calcRevenue();
+  if (!skipSave) saveState();
+}
+
+// ══════════════════════════════════════
+//  REVENUE CALCULATOR
+// ══════════════════════════════════════
+function calcRevenue() {
+  const subPrice = parseFloat(document.getElementById('r-subprice')?.value || 10);
+  const subCount = parseFloat(document.getElementById('r-subcount')?.value || 500);
+  const donAvg = parseFloat(document.getElementById('r-donavg')?.value || 25);
+  const donCount = parseFloat(document.getElementById('r-doncount')?.value || 50);
+  const introPrice = parseFloat(document.getElementById('r-introprice')?.value || 25);
+  const introCount = parseFloat(document.getElementById('r-introcount')?.value || 20);
+  const audience = parseFloat(document.getElementById('r-audience')?.value || 75000);
+  const adRev = parseFloat(document.getElementById('r-adrev')?.value || 3000);
+
+  const sp = currentBilling === 'annual' ? subPrice * 10 : subPrice;
+  const stripeSub = sp * 0.036 + 0.30;
+  const subPlatform = sp * 0.10;
+  const subNet = sp - subPlatform - stripeSub;
+  const subMonthly = (currentBilling === 'annual' ? subNet / 12 : subNet) * subCount;
+
+  const stripeDon = donAvg * 0.036 + 0.30;
+  const donNet = (donAvg - donAvg * 0.08 - stripeDon) * donCount;
+
+  const stripeIntro = introPrice * 0.036 + 0.30;
+  const introNet = (introPrice - introPrice * 0.15 - stripeIntro) * introCount;
+
+  const adTier = audience >= 1e6 ? 0.50 : audience >= 5e5 ? 0.40 : audience >= 1.5e5 ? 0.30 : audience >= 5e4 ? 0.20 : 0;
+  const adAuthor = adRev * adTier;
+
+  const total = subMonthly + donNet + introNet + adAuthor;
+  const arr = total * 12;
+
+  setText('v-subprice', '$' + subPrice + '/mo');
+  setText('v-subcount', fmtN(subCount));
+  setText('v-donavg', '$' + donAvg);
+  setText('v-doncount', fmtN(donCount));
+  setText('v-introprice', '$' + introPrice);
+  setText('v-introcount', fmtN(introCount));
+  setText('v-audience', fmtN(audience));
+  setText('v-adrev', fmtM(adRev));
+  setText('ad-tier-label', adTier === 0 ? 'Below 50K · 0% author' : `Tier · ${adTier*100}% author share`);
+
+  setText('b-subs', fmtM(subMonthly));
+  setText('b-don', fmtM(donNet));
+  setText('b-intro', fmtM(introNet));
+  setText('b-ads', fmtM(adAuthor));
+  setText('b-total', fmtM(total));
+  setText('sum-monthly', fmtM(total));
+  setText('sum-arr', fmtM(arr));
+
+  const txEl = document.getElementById('tx-detail');
+  if (txEl) {
+    txEl.innerHTML = `
+      <div style="display:flex;justify-content:space-between"><span class="slate">Subscriber pays</span><span class="fg">$${sp.toFixed(2)}${currentBilling==='annual'?' /yr':'/mo'}</span></div>
+      <div style="display:flex;justify-content:space-between"><span class="slate">Platform (10%)</span><span class="red">−$${subPlatform.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between"><span class="slate">Stripe fees</span><span class="red">−$${stripeSub.toFixed(2)}</span></div>
+      <div style="display:flex;justify-content:space-between;border-top:1px solid var(--border);padding-top:6px;margin-top:4px"><span class="fg">Author keeps</span><span class="green">$${subNet.toFixed(2)} (${(subNet/sp*100).toFixed(1)}%)</span></div>
+    `;
+  }
+
+  const batchEl = document.getElementById('batch-tip');
+  if (batchEl) {
+    const saving = (0.30 * 11 * subCount).toFixed(0);
+    batchEl.innerHTML = `Annual billing saves <span class="gold">$${saving}/yr</span> in Stripe flat fees at ${fmtN(subCount)} subscribers — charging once instead of 12×.`;
+  }
+
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  PAYBACK TYPES
+// ══════════════════════════════════════
+function selectPayback(type, skipSave) {
+  currentPayback = type;
+  document.querySelectorAll('[id^="pb-"]').forEach(el => el.classList.remove('active'));
+  const btn = document.getElementById('pb-' + type);
+  if (btn) btn.classList.add('active');
+
+  const wrap = document.getElementById('payback-calc-wrap');
+  if (!wrap) return;
+
+  const configs = {
+    royalty: { label:'Royalty Payment', color:'var(--gold)', fields:[{l:'Annual Revenue',id:'pb-annrev',min:10000,max:10000000,step:10000,val:500000,fmt:fmtM},{l:'Royalty Rate %',id:'pb-rate',min:0.5,max:20,step:0.5,val:5,fmt:v=>`${v}%`},{l:'Investment Amount',id:'pb-invest',min:50000,max:5000000,step:50000,val:500000,fmt:fmtM}], calc: (v) => { const annual = v[0]*v[1]/100; const yrs = v[2]/annual; return [{l:'Annual Royalty',v:fmtM(annual)},{l:'Payback Period',v:yrs.toFixed(1)+' yrs'},{l:'Total Return (5yr)',v:fmtM(annual*5)}]; }},
+    revenue: { label:'Revenue Based Payment', color:'var(--green)', fields:[{l:'Monthly Revenue',id:'pb-mrev',min:5000,max:1000000,step:5000,val:50000,fmt:fmtM},{l:'Revenue Share %',id:'pb-rshare',min:1,max:25,step:0.5,val:8,fmt:v=>`${v}%`},{l:'Investment Amount',id:'pb-rinvest',min:50000,max:5000000,step:50000,val:500000,fmt:fmtM}], calc: (v) => { const monthly = v[0]*v[1]/100; const payback = v[2]/monthly; return [{l:'Monthly Payment',v:fmtM(monthly)},{l:'Payback (months)',v:payback.toFixed(0)+' mo'},{l:'12-mo return',v:fmtM(monthly*12)}]; }},
+    debt: { label:'Debt Payment', color:'var(--blue)', fields:[{l:'Principal',id:'pb-prin',min:50000,max:5000000,step:50000,val:500000,fmt:fmtM},{l:'Interest Rate %',id:'pb-int',min:1,max:25,step:0.5,val:8,fmt:v=>`${v}%`},{l:'Term (years)',id:'pb-term',min:1,max:10,step:1,val:5,fmt:v=>`${v} yrs`}], calc: (v) => { const monthly = (v[0]*(v[1]/100/12))/(1-Math.pow(1+v[1]/100/12,-v[2]*12)); const total = monthly*v[2]*12; return [{l:'Monthly Payment',v:fmtM(monthly)},{l:'Total Paid',v:fmtM(total)},{l:'Total Interest',v:fmtM(total-v[0])}]; }},
+    equity: { label:'Equity', color:'var(--purple)', fields:[{l:'Company Valuation',id:'pb-val',min:100000,max:50000000,step:100000,val:2000000,fmt:fmtM},{l:'Equity Stake %',id:'pb-estake',min:1,max:50,step:1,val:10,fmt:v=>`${v}%`},{l:'Revenue Multiple (exit)',id:'pb-mult',min:1,max:20,step:0.5,val:5,fmt:v=>`${v}×`}], calc: (v) => { const stake = v[0]*v[1]/100; const exitVal = v[0]*v[2]*v[1]/100; return [{l:'Equity Value (entry)',v:fmtM(stake)},{l:'Exit Value',v:fmtM(exitVal)},{l:'Return Multiple',v:(exitVal/stake).toFixed(1)+'×'}]; }},
+    'royalty-equity': { label:'Royalty + Equity', color:'var(--purple)', fields:[{l:'Annual Revenue',id:'pb-re-rev',min:10000,max:10000000,step:10000,val:500000,fmt:fmtM},{l:'Royalty Rate %',id:'pb-re-rrate',min:0.5,max:15,step:0.5,val:4,fmt:v=>`${v}%`},{l:'Equity Stake %',id:'pb-re-estake',min:1,max:30,step:1,val:5,fmt:v=>`${v}%`},{l:'Valuation',id:'pb-re-val',min:100000,max:20000000,step:100000,val:2000000,fmt:fmtM}], calc: (v) => { const royAnnual = v[0]*v[1]/100; const eqVal = v[3]*v[2]/100; return [{l:'Annual Royalty',v:fmtM(royAnnual)},{l:'Equity Value',v:fmtM(eqVal)},{l:'Combined 5yr',v:fmtM(royAnnual*5+eqVal)}]; }},
+    'revenue-equity': { label:'Revenue Based + Equity', color:'var(--teal)', fields:[{l:'Monthly Revenue',id:'pb-rve-mrev',min:5000,max:1000000,step:5000,val:50000,fmt:fmtM},{l:'Revenue Share %',id:'pb-rve-rshare',min:1,max:20,step:0.5,val:6,fmt:v=>`${v}%`},{l:'Equity Stake %',id:'pb-rve-estake',min:1,max:30,step:1,val:5,fmt:v=>`${v}%`},{l:'Valuation',id:'pb-rve-val',min:100000,max:20000000,step:100000,val:2000000,fmt:fmtM}], calc: (v) => { const monthly = v[0]*v[1]/100; const eqVal = v[3]*v[2]/100; return [{l:'Monthly Payment',v:fmtM(monthly)},{l:'Equity Value',v:fmtM(eqVal)},{l:'12-mo + equity',v:fmtM(monthly*12+eqVal)}]; }},
+    'debt-equity': { label:'Debt + Equity', color:'var(--yellow)', fields:[{l:'Principal',id:'pb-de-prin',min:50000,max:5000000,step:50000,val:500000,fmt:fmtM},{l:'Interest Rate %',id:'pb-de-int',min:1,max:25,step:0.5,val:8,fmt:v=>`${v}%`},{l:'Equity Stake %',id:'pb-de-estake',min:1,max:30,step:1,val:5,fmt:v=>`${v}%`},{l:'Valuation',id:'pb-de-val',min:100000,max:20000000,step:100000,val:2000000,fmt:fmtM}], calc: (v) => { const monthly = (v[0]*(v[1]/100/12))/(1-Math.pow(1+v[1]/100/12,-60)); const eqVal = v[3]*v[2]/100; return [{l:'Monthly Payment',v:fmtM(monthly)},{l:'Equity Value',v:fmtM(eqVal)},{l:'Total 5yr value',v:fmtM(monthly*60+eqVal)}]; }},
+  };
+
+  const cfg = configs[type];
+  if (!cfg) return;
+
+  let html = `<div class="card"><div class="card-label" style="color:${cfg.color}">${cfg.label} · Calculator</div>`;
+  html += `<div style="display:grid;grid-template-columns:repeat(${Math.min(cfg.fields.length,2)},1fr);gap:16px;margin-bottom:20px;">`;
+  cfg.fields.forEach(f => {
+    html += `<div class="form-group"><label>${f.l} <span class="val-display" id="pv-${f.id}">${f.fmt(f.val)}</span></label><input type="range" min="${f.min}" max="${f.max}" step="${f.step||1}" value="${f.val}" id="${f.id}" oninput="updatePaybackCalc()"></div>`;
+  });
+  html += `</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;" id="pb-results"></div></div>`;
+  wrap.innerHTML = html;
+
+  updatePaybackCalc();
+  if (!skipSave) saveState();
+}
+
+function updatePaybackCalc() {
+  const configs = {
+    royalty: {fields:['pb-annrev','pb-rate','pb-invest'], fmts:[fmtM,v=>`${v}%`,fmtM], calc: (v) => [{l:'Annual Royalty',v:fmtM(v[0]*v[1]/100)},{l:'Payback Period',v:(v[2]/(v[0]*v[1]/100)).toFixed(1)+' yrs'},{l:'Total Return (5yr)',v:fmtM(v[0]*v[1]/100*5)}]},
+    revenue: {fields:['pb-mrev','pb-rshare','pb-rinvest'], fmts:[fmtM,v=>`${v}%`,fmtM], calc: (v) => [{l:'Monthly Payment',v:fmtM(v[0]*v[1]/100)},{l:'Payback (months)',v:(v[2]/(v[0]*v[1]/100)).toFixed(0)+' mo'},{l:'12-mo return',v:fmtM(v[0]*v[1]/100*12)}]},
+    debt: {fields:['pb-prin','pb-int','pb-term'], fmts:[fmtM,v=>`${v}%`,v=>`${v} yrs`], calc: (v) => { const m=(v[0]*(v[1]/100/12))/(1-Math.pow(1+v[1]/100/12,-v[2]*12)); const t=m*v[2]*12; return [{l:'Monthly Payment',v:fmtM(m)},{l:'Total Paid',v:fmtM(t)},{l:'Total Interest',v:fmtM(t-v[0])}]; }},
+    equity: {fields:['pb-val','pb-estake','pb-mult'], fmts:[fmtM,v=>`${v}%`,v=>`${v}×`], calc: (v) => { const s=v[0]*v[1]/100; const e=v[0]*v[2]*v[1]/100; return [{l:'Entry Value',v:fmtM(s)},{l:'Exit Value',v:fmtM(e)},{l:'Multiple',v:(e/s).toFixed(1)+'×'}]; }},
+    'royalty-equity': {fields:['pb-re-rev','pb-re-rrate','pb-re-estake','pb-re-val'], fmts:[fmtM,v=>`${v}%`,v=>`${v}%`,fmtM], calc: (v) => { const r=v[0]*v[1]/100; const eq=v[3]*v[2]/100; return [{l:'Annual Royalty',v:fmtM(r)},{l:'Equity Value',v:fmtM(eq)},{l:'Combined 5yr',v:fmtM(r*5+eq)}]; }},
+    'revenue-equity': {fields:['pb-rve-mrev','pb-rve-rshare','pb-rve-estake','pb-rve-val'], fmts:[fmtM,v=>`${v}%`,v=>`${v}%`,fmtM], calc: (v) => { const m=v[0]*v[1]/100; const eq=v[3]*v[2]/100; return [{l:'Monthly Payment',v:fmtM(m)},{l:'Equity Value',v:fmtM(eq)},{l:'12-mo + equity',v:fmtM(m*12+eq)}]; }},
+    'debt-equity': {fields:['pb-de-prin','pb-de-int','pb-de-estake','pb-de-val'], fmts:[fmtM,v=>`${v}%`,v=>`${v}%`,fmtM], calc: (v) => { const m=(v[0]*(v[1]/100/12))/(1-Math.pow(1+v[1]/100/12,-60)); const eq=v[3]*v[2]/100; return [{l:'Monthly Payment',v:fmtM(m)},{l:'Equity Value',v:fmtM(eq)},{l:'Total 5yr',v:fmtM(m*60+eq)}]; }},
+  };
+  const cfg = configs[currentPayback];
+  if (!cfg) return;
+
+  const vals = cfg.fields.map((id, i) => {
+    const el = document.getElementById(id);
+    const val = el ? parseFloat(el.value) : 0;
+    const dispEl = document.getElementById('pv-' + id);
+    if (dispEl) dispEl.textContent = cfg.fmts[i](val);
+    return val;
+  });
+
+  const results = cfg.calc(vals);
+  const el = document.getElementById('pb-results');
+  if (!el) return;
+  el.innerHTML = results.map(r => `
+    <div class="stat-card">
+      <div class="stat-label">${r.l}</div>
+      <div class="stat-value" style="font-size:18px;color:var(--gold)">${r.v}</div>
+    </div>
+  `).join('');
+
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  FINANCIAL MODEL
+// ══════════════════════════════════════
+function calcFinancial() {
+  const startSubs = parseFloat(document.getElementById('fr-startsubs')?.value || 100);
+  const growth = parseFloat(document.getElementById('fr-growth')?.value || 15) / 100;
+  const price = parseFloat(document.getElementById('fr-price')?.value || 10);
+  const opex = parseFloat(document.getElementById('fr-opex')?.value || 5000);
+  const adStart = parseInt(document.getElementById('fr-adstart')?.value || 6);
+
+  setText('fv-startsubs', fmtN(startSubs));
+  setText('fv-growth', Math.round(growth*100) + '%');
+  setText('fv-price', '$' + price);
+  setText('fv-opex', fmtM(opex));
+  setText('fv-adstart', 'M' + adStart);
+
+  const months = Array.from({length:24}, (_,i) => {
+    const mo = i + 1;
+    const subs = Math.round(startSubs * Math.pow(1 + growth, mo));
+    const gross = subs * price;
+    const net = gross * 0.84 - 0.30 * subs;
+    const adRev = mo >= adStart ? Math.min(subs * 0.8, 5000) : 0;
+    const profit = net + adRev - opex;
+    return { mo, subs, gross, net: Math.max(0,net), profit, arr: net * 12 };
+  });
+
+  const last = months[months.length - 1];
+  setText('f-mrr', fmtM(last.net));
+  setText('f-arr', fmtM(last.arr));
+  setText('f-subs', fmtN(last.subs));
+  const profEl = document.getElementById('f-profit');
+  if (profEl) { profEl.textContent = fmtM(last.profit); profEl.className = 'stat-value ' + (last.profit >= 0 ? 'green' : 'red'); }
+
+  const labels = months.map(m => 'M' + m.mo);
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(30,48,82,0.8)' : 'rgba(200,208,224,0.6)';
+  const tickColor = isDark ? '#8a99b3' : '#4a5878';
+
+  destroyChart('financial');
+  const ctx1 = document.getElementById('financial-chart');
+  if (ctx1) {
+    charts.financial = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Gross', data: months.map(m => m.gross), borderColor: '#5dade2', backgroundColor: 'rgba(93,173,226,0.08)', fill: true, tension: 0.3, pointRadius: 0 },
+          { label: 'Net', data: months.map(m => m.net), borderColor: '#2ecc71', backgroundColor: 'rgba(46,204,113,0.08)', fill: true, tension: 0.3, pointRadius: 0 },
+        ]
+      },
+      options: chartOpts(gridColor, tickColor)
+    });
+  }
+
+  destroyChart('profit');
+  const ctx2 = document.getElementById('profit-chart');
+  if (ctx2) {
+    charts.profit = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [{ label: 'Profit', data: months.map(m => m.profit), backgroundColor: months.map(m => m.profit >= 0 ? 'rgba(46,204,113,0.7)' : 'rgba(231,76,60,0.7)'), borderRadius: 2 }]
+      },
+      options: chartOpts(gridColor, tickColor)
+    });
+  }
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  UNIT ECONOMICS
+// ══════════════════════════════════════
+function calcUnit() {
+  const cac = parseFloat(document.getElementById('ur-cac')?.value || 12);
+  const churn = parseFloat(document.getElementById('ur-churn')?.value || 5) / 100;
+  const price = parseFloat(document.getElementById('ur-price')?.value || 10);
+  const margin = parseFloat(document.getElementById('ur-margin')?.value || 84) / 100;
+
+  setText('uv-cac', '$' + cac);
+  setText('uv-churn', (churn*100).toFixed(1) + '%');
+  setText('uv-price', '$' + price);
+  setText('uv-margin', (margin*100).toFixed(0) + '%');
+
+  const ltv = (price * margin) / churn;
+  const ratio = ltv / cac;
+  const payback = cac / (price * margin);
+
+  setText('u-ltv', fmtM(ltv));
+  setText('u-cac', fmtM(cac));
+  const ratioEl = document.getElementById('u-ratio');
+  if (ratioEl) { ratioEl.textContent = ratio.toFixed(1) + '×'; ratioEl.className = 'stat-value ' + (ratio >= 3 ? 'green' : ratio >= 1 ? 'gold' : 'red'); }
+  setText('u-payback', payback.toFixed(1) + ' mo');
+
+  const cohort = Array.from({length:24}, (_,i) => ({
+    month: 'M' + (i+1),
+    retained: +(Math.pow(1-churn, i)*100).toFixed(1),
+    cumRev: +((price * margin) * (1 - Math.pow(1-churn, i+1)) / churn).toFixed(2)
+  }));
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(30,48,82,0.8)' : 'rgba(200,208,224,0.6)';
+  const tickColor = isDark ? '#8a99b3' : '#4a5878';
+
+  destroyChart('unit');
+  const ctx = document.getElementById('unit-chart');
+  if (ctx) {
+    charts.unit = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: cohort.map(c => c.month),
+        datasets: [
+          { label: 'Retention %', data: cohort.map(c => c.retained), borderColor: '#1abc9c', yAxisID: 'y', tension: 0.3, pointRadius: 0 },
+          { label: 'Cum. Net Rev / sub', data: cohort.map(c => c.cumRev), borderColor: '#2ecc71', yAxisID: 'y1', tension: 0.3, pointRadius: 0 },
+        ]
+      },
+      options: {
+        ...chartOpts(gridColor, tickColor),
+        scales: {
+          x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10, family: "'DM Mono'" } } },
+          y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => v + '%' } },
+          y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { color: tickColor, font: { size: 10 }, callback: v => fmtM(v) } }
+        }
+      }
+    });
+  }
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  CASH FLOW
+// ══════════════════════════════════════
+function calcCashflow() {
+  const startCash = parseFloat(document.getElementById('cfr-cash')?.value || 50000);
+  const startSubs = parseFloat(document.getElementById('cfr-subs')?.value || 100);
+  const growth = parseFloat(document.getElementById('cfr-growth')?.value || 12) / 100;
+  const price = parseFloat(document.getElementById('cfr-price')?.value || 10);
+  const sal = parseFloat(document.getElementById('cfr-sal')?.value || 8000);
+  const infra = parseFloat(document.getElementById('cfr-infra')?.value || 1200);
+  const mkt = parseFloat(document.getElementById('cfr-mkt')?.value || 2000);
+  const misc = parseFloat(document.getElementById('cfr-misc')?.value || 800);
+
+  setText('cfv-cash', fmtM(startCash));
+  setText('cfv-subs', fmtN(startSubs));
+  setText('cfv-growth', Math.round(growth*100) + '%');
+  setText('cfv-price', '$' + price);
+  setText('cfv-sal', fmtM(sal));
+  setText('cfv-infra', fmtM(infra));
+  setText('cfv-mkt', fmtM(mkt));
+  setText('cfv-misc', fmtM(misc));
+
+  const expenses = sal + infra + mkt + misc;
+  let cumCash = startCash;
+  const rows = Array.from({length:24}, (_,i) => {
+    const mo = i + 1;
+    const subs = Math.round(startSubs * Math.pow(1 + growth, mo));
+    const gross = subs * price;
+    const net = gross * 0.84 - 0.30 * subs;
+    const netCF = net - expenses;
+    cumCash += netCF;
+    return { mo, month:'M'+mo, subs, gross, net:Math.max(0,net), expenses, netCF, cumCash };
+  });
+
+  const totalGross = rows.reduce((a,r) => a + r.gross, 0);
+  const totalNet = rows.reduce((a,r) => a + r.net, 0);
+  const totalExp = rows.reduce((a,r) => a + r.expenses, 0);
+  const totalProfit = totalNet - totalExp;
+
+  setText('cf-gross', fmtM(totalGross));
+  setText('cf-net', fmtM(totalNet));
+  setText('cf-exp', fmtM(totalExp));
+  const pfEl = document.getElementById('cf-profit');
+  if (pfEl) { pfEl.textContent = fmtM(totalProfit); pfEl.className = 'stat-value ' + (totalProfit >= 0 ? 'green' : 'red'); }
+
+  const breakeven = rows.findIndex(r => r.netCF > 0);
+  const beEl = document.getElementById('breakeven-label');
+  if (beEl) beEl.textContent = breakeven >= 0 ? `Monthly cash flow positive from Month ${breakeven + 1}` : 'Not yet cash flow positive in 24 months';
+
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const gridColor = isDark ? 'rgba(30,48,82,0.8)' : 'rgba(200,208,224,0.6)';
+  const tickColor = isDark ? '#8a99b3' : '#4a5878';
+  const labels = rows.map(r => r.month);
+
+  destroyChart('cashflow');
+  const ctx1 = document.getElementById('cashflow-chart');
+  if (ctx1) {
+    charts.cashflow = new Chart(ctx1, {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Cash balance', data: rows.map(r => r.cumCash), borderColor: '#1abc9c', backgroundColor: 'rgba(26,188,156,0.08)', fill: true, tension: 0.3, pointRadius: 0 }] },
+      options: chartOpts(gridColor, tickColor)
+    });
+  }
+
+  destroyChart('cashflowbar');
+  const ctx2 = document.getElementById('cashflow-bar-chart');
+  if (ctx2) {
+    charts.cashflowbar = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          { label: 'Net revenue', data: rows.map(r => r.net), backgroundColor: 'rgba(46,204,113,0.6)', borderRadius: 2 },
+          { label: 'Expenses', data: rows.map(r => -r.expenses), backgroundColor: 'rgba(231,76,60,0.5)', borderRadius: 2 }
+        ]
+      },
+      options: { ...chartOpts(gridColor, tickColor), scales: { x: { stacked: true, grid:{color:gridColor}, ticks:{color:tickColor,font:{size:10,family:"'DM Mono'"}} }, y: { stacked: true, grid:{color:gridColor}, ticks:{color:tickColor,font:{size:10},callback:v=>fmtM(v)} } } }
+    });
+  }
+  saveState();
+}
+
+// ══════════════════════════════════════
+//  CHART HELPERS
+// ══════════════════════════════════════
+function chartOpts(gridColor, tickColor) {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: tickColor, font: { size: 10, family: "'DM Mono'" }, boxWidth: 12 } } },
+    scales: {
+      x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10, family: "'DM Mono'" } } },
+      y: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 10 }, callback: v => fmtM(v) } }
+    }
+  };
+}
+
+function destroyChart(key) {
+  if (charts[key]) { charts[key].destroy(); delete charts[key]; }
+}
+
+// ══════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function recalcAll() {
+  calcRevenue();
+  calcFinancial();
+  calcUnit();
+  calcCashflow();
+  selectPayback(currentPayback, true);
+  setBilling(currentBilling, true);
+}
+
+function toast(msg, isErr, isWarn) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (isErr ? ' err' : isWarn ? '' : ' gold');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  selectPayback(currentPayback, true);
+  setBilling(currentBilling, true);
+  recalcAll();
+  showSection('overview');
+});
+</script>
+</body>
+</html>
