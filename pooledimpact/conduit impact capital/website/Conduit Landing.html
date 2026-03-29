@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Conduit Impact Capital — Institutional Infrastructure Credit</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script>
+(function(){const w=console.warn;console.warn=function(...a){if(a[0]&&typeof a[0]==='string'&&a[0].includes('cdn.tailwindcss.com'))return;w.apply(console,a);};})();
+</script>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+if (typeof tailwind !== 'undefined') tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary:   '#1a4971',
+        primary2:  '#2a5f8f',
+        dark:      '#0f2d47',
+        secondary: '#c9a84c',
+        ink:       '#0d0d0d',
+        paper:     '#f4f1eb',
+        slate:     '#4a5568',
+        rule:      '#d4cfc4',
+      },
+      fontFamily: {
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        mono:  ['"IBM Plex Mono"', 'monospace'],
+        sans:  ['"IBM Plex Sans"', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: { sm: '2px' },
+    }
+  }
+}
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/mask@3.x.x/dist/cdn.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<style>
+  body { font-family: 'IBM Plex Sans', sans-serif; }
+  #slide-panel { transition: transform 0.4s cubic-bezier(0.4,0,0.2,1); }
+  [x-cloak] { display: none !important; }
+</style>
+</head>
+
+<body class="bg-paper text-ink overflow-x-hidden" x-data="conduit()">
+
+<!-- SLIDE PANEL -->
+<div id="slide-backdrop" class="fixed inset-0 bg-black/45 z-[59] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePanel()"></div>
+<div id="slide-panel" class="fixed top-0 right-0 bottom-0 w-full max-w-[440px] bg-white z-[60] flex flex-col shadow-2xl translate-x-full">
+  <div class="bg-primary px-7 py-6 flex justify-between items-start shrink-0">
+    <div>
+      <h2 class="font-serif text-2xl font-bold text-white mb-1">Schedule an Introduction</h2>
+      <p class="font-mono text-xs tracking-widest uppercase text-white/45">Conduit Impact Capital · Fund I</p>
+    </div>
+    <button onclick="closePanel()" class="text-white/60 hover:text-white text-3xl leading-none bg-transparent border-none cursor-pointer">&times;</button>
+  </div>
+  <div class="flex-1 overflow-y-auto px-7 py-8">
+    <p class="text-slate text-sm leading-relaxed mb-7">A 30-minute conversation to discuss the thesis, your allocation context, and whether Conduit Fund I fits your current portfolio objectives.</p>
+    <div id="panel-form" class="space-y-4">
+      <div><label class="font-mono text-xs tracking-widest uppercase text-primary block mb-1.5">Full Name *</label>
+      <input type="text" id="pf-name" placeholder="Your name" class="w-full px-3.5 py-2.5 border border-rule rounded-sm bg-paper text-sm outline-none focus:border-primary transition-colors"></div>
+      <div><label class="font-mono text-xs tracking-widest uppercase text-primary block mb-1.5">Email *</label>
+      <input type="email" id="pf-email" placeholder="you@organization.com" class="w-full px-3.5 py-2.5 border border-rule rounded-sm bg-paper text-sm outline-none focus:border-primary transition-colors"></div>
+      <div><label class="font-mono text-xs tracking-widest uppercase text-primary block mb-1.5">Phone <span class="font-sans normal-case tracking-normal text-slate/60">(optional)</span></label>
+      <input type="tel" id="pf-phone" placeholder="(000) 000-0000" x-mask="(999) 999-9999" class="w-full px-3.5 py-2.5 border border-rule rounded-sm bg-paper text-sm outline-none focus:border-primary transition-colors"></div>
+      <div><label class="font-mono text-xs tracking-widest uppercase text-primary block mb-1.5">Organization *</label>
+      <input type="text" id="pf-org" placeholder="Family office or institution" class="w-full px-3.5 py-2.5 border border-rule rounded-sm bg-paper text-sm outline-none focus:border-primary transition-colors"></div>
+      <div><label class="font-mono text-xs tracking-widest uppercase text-primary block mb-1.5">Allocation Focus <span class="font-sans normal-case tracking-normal text-slate/60">(optional)</span></label>
+      <input type="text" id="pf-focus" placeholder="Infrastructure, credit, impact..." class="w-full px-3.5 py-2.5 border border-rule rounded-sm bg-paper text-sm outline-none focus:border-primary transition-colors"></div>
+      <p id="panel-error" class="font-mono text-xs text-red-600 hidden"></p>
+      <button onclick="submitPanel()" class="w-full py-3.5 bg-primary hover:bg-primary2 text-white font-mono text-xs tracking-widest uppercase rounded-sm border-none cursor-pointer transition-colors mt-2">Book Introduction</button>
+    </div>
+    <div id="panel-thanks" class="hidden text-center py-12">
+      <div class="text-4xl mb-4">&#x2B21;</div>
+      <h3 class="font-serif text-2xl font-bold mb-3">Request Received</h3>
+      <p class="text-slate text-sm leading-relaxed">We will be in touch within 48 hours to confirm timing.</p>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<nav class="fixed top-0 inset-x-0 h-16 z-30 bg-primary shadow-[0_2px_20px_rgba(0,0,0,.25)] flex items-center justify-between px-12">
+  <div>
+    <div class="font-serif text-lg font-bold text-white leading-tight">Conduit Impact Capital</div>
+    <div class="font-mono text-xs tracking-widest uppercase text-white/40 mt-0.5">Pooled Impact Corporation · Fund I</div>
+  </div>
+  <div class="hidden lg:flex items-center gap-8">
+    <button onclick="gotoSection('thesis')" class="font-mono text-xs tracking-widest uppercase text-white/60 hover:text-white bg-transparent border-none cursor-pointer transition-colors p-0">Investment Thesis</button>
+    <button onclick="gotoSection('structure')" class="font-mono text-xs tracking-widest uppercase text-white/60 hover:text-white bg-transparent border-none cursor-pointer transition-colors p-0">Fund Structure</button>
+    <button onclick="gotoSection('trust')" class="font-mono text-xs tracking-widest uppercase text-white/60 hover:text-white bg-transparent border-none cursor-pointer transition-colors p-0">Risk Framework</button>
+    <a href="https://pooledimpact.com" target="_blank" rel="noopener" class="font-mono text-xs tracking-widest uppercase text-white/60 hover:text-white no-underline transition-colors">Pooled Impact</a>
+  </div>
+  <button onclick="openPanel()" class="hidden lg:block font-mono text-xs tracking-widest uppercase px-5 py-2 border border-white/40 text-white hover:bg-white/10 bg-transparent rounded-sm cursor-pointer transition-colors">Contact</button>
+  <button class="lg:hidden text-white bg-transparent border-none cursor-pointer" @click="mobileOpen = !mobileOpen">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7"/></svg>
+  </button>
+</nav>
+<!-- Mobile menu backdrop -->
+<div x-show="mobileOpen" x-cloak class="fixed inset-0 z-[28] bg-transparent lg:hidden" @click="mobileOpen = false"></div>
+<!-- Mobile menu -->
+<div x-show="mobileOpen" x-cloak
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0 -translate-y-2"
+     x-transition:enter-end="opacity-100 translate-y-0"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100 translate-y-0"
+     x-transition:leave-end="opacity-0 -translate-y-2"
+     class="fixed top-16 inset-x-0 z-30 bg-primary border-t border-white/10 px-6 py-5 flex flex-col gap-4 lg:hidden shadow-xl">
+  <button @click="gotoSection('thesis'); mobileOpen=false" class="font-mono text-xs tracking-widest uppercase text-white/70 bg-transparent border-none cursor-pointer text-left p-0">Investment Thesis</button>
+  <button @click="gotoSection('structure'); mobileOpen=false" class="font-mono text-xs tracking-widest uppercase text-white/70 bg-transparent border-none cursor-pointer text-left p-0">Fund Structure</button>
+  <button @click="gotoSection('trust'); mobileOpen=false" class="font-mono text-xs tracking-widest uppercase text-white/70 bg-transparent border-none cursor-pointer text-left p-0">Risk Framework</button>
+  <button @click="openPanel(); mobileOpen=false" class="font-mono text-xs tracking-widest uppercase text-white/70 bg-transparent border-none cursor-pointer text-left p-0">Contact</button>
+</div>
+
+<!-- HERO -->
+<section id="hero" class="pt-16 min-h-screen flex items-end bg-dark relative overflow-hidden">
+  <div class="absolute inset-0 opacity-[.03]" style="background-image:repeating-linear-gradient(0deg,#fff 0,#fff 1px,transparent 1px,transparent 60px),repeating-linear-gradient(90deg,#fff 0,#fff 1px,transparent 1px,transparent 60px)"></div>
+  <div class="relative z-10 w-full">
+    <div class="max-w-7xl mx-auto px-12 pt-24 pb-20">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-end">
+        <div>
+          <p class="font-mono text-xs tracking-widest uppercase text-secondary mb-6 flex items-center gap-3"><span class="block w-8 h-px bg-secondary"></span>Conduit Impact Capital — Fund I</p>
+          <h1 class="font-serif font-bold text-white leading-tight mb-5" style="font-size:clamp(2.6rem,5vw,4.2rem)">Institutional-Grade<br><span class="text-secondary">Infrastructure Credit</span></h1>
+          <p class="font-mono tracking-widest uppercase text-white/50 text-xs mb-5">Yield. Stability. Purpose.</p>
+          <p class="text-base text-white/55 leading-relaxed max-w-lg mb-10">A $150M asset-backed finance vehicle delivering senior secured infrastructure credit across solar, geothermal, data center, and biodiesel assets. Structured for institutional allocators seeking yield with integrity — and positioned for a Year 5 structured exit path.</p>
+          <div class="flex gap-4 flex-wrap">
+            <button onclick="openPanel()" class="font-mono text-xs tracking-widest uppercase px-7 py-3.5 bg-secondary text-ink hover:opacity-90 rounded-sm border-none cursor-pointer transition-opacity">Request Investor Deck</button>
+            <button onclick="gotoSection('thesis')" class="font-mono text-xs tracking-widest uppercase px-7 py-3.5 border border-white/20 text-white hover:bg-white/5 bg-transparent rounded-sm cursor-pointer transition-colors">View Investment Thesis</button>
+          </div>
+        </div>
+        <div class="flex justify-end">
+          <div class="border border-white/10 rounded-sm p-8 w-full max-w-xs space-y-6">
+            <div class="border-l-2 border-secondary/50 pl-5"><div class="font-serif text-3xl font-bold text-secondary">$150M</div><div class="font-mono text-xs tracking-widest uppercase text-white/35 mt-1">Target Fund Size</div></div>
+            <div class="border-l-2 border-white/15 pl-5"><div class="font-serif text-xl font-bold text-white">Senior Credit</div><div class="font-mono text-xs tracking-widest uppercase text-white/35 mt-1">Position in Capital Stack</div></div>
+            <div class="border-l-2 border-white/15 pl-5"><div class="font-serif text-xl font-bold text-white">20+ SPVs</div><div class="font-mono text-xs tracking-widest uppercase text-white/35 mt-1">Infrastructure Assets</div></div>
+            <div class="border-l-2 border-white/15 pl-5"><div class="font-serif text-xl font-bold text-white">Year 5</div><div class="font-mono text-xs tracking-widest uppercase text-white/35 mt-1">Structured Exit Path</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-white/8"></div>
+  </div>
+</section>
+
+<!-- WHY NOW -->
+<section id="why" class="py-20 px-12 bg-white">
+  <div class="max-w-5xl mx-auto">
+    <p class="font-mono text-xs tracking-widest uppercase text-primary mb-4">Market Context</p>
+    <h2 class="font-serif font-bold text-ink mb-5" style="font-size:clamp(1.8rem,4vw,2.8rem)">The allocation landscape has shifted.</h2>
+    <p class="text-lg text-slate leading-relaxed max-w-2xl mb-16">Institutional capital is rotating into infrastructure credit. The question is no longer whether to allocate — it is how to access structures built for durability, not narrative.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="border-t-2 border-primary pt-6"><div class="font-mono text-xs tracking-widest uppercase text-primary/50 mb-3">01 — Yield Compression</div><h3 class="font-serif text-lg font-semibold text-ink mb-3">Traditional fixed income no longer performs</h3><p class="text-slate text-sm leading-relaxed">Rates have repriced, but the structural search for yield-plus-stability has not resolved. Infrastructure credit sits in the gap: real assets, contracted cash flows, senior security — with spreads that compensate for illiquidity without compensating for opacity.</p></div>
+      <div class="border-t-2 border-primary pt-6"><div class="font-mono text-xs tracking-widest uppercase text-primary/50 mb-3">02 — Institutional Access</div><h3 class="font-serif text-lg font-semibold text-ink mb-3">The structures that exist are built for developers</h3><p class="text-slate text-sm leading-relaxed">Project finance, tax equity, and development-stage vehicles carry construction risk, equity volatility, and operational complexity that institutional allocators are not positioned to absorb. Conduit Fund I is built for capital deployment, not project development.</p></div>
+      <div class="border-t-2 border-primary pt-6"><div class="font-mono text-xs tracking-widest uppercase text-primary/50 mb-3">03 — Verification Gap</div><h3 class="font-serif text-lg font-semibold text-ink mb-3">Impact claims are unverifiable at scale</h3><p class="text-slate text-sm leading-relaxed">ESG labeling has expanded faster than verification infrastructure. Conduit is built on machine-validated, three-way matched data from day one — not because impact is the thesis, but because verifiable data is how you build a bond-eligible portfolio.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- THESIS -->
+<section id="thesis" class="py-20 px-12 bg-paper">
+  <div class="max-w-5xl mx-auto">
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
+      <div>
+        <p class="font-mono text-xs tracking-widest uppercase text-primary mb-4">Investment Thesis</p>
+        <h2 class="font-serif font-bold text-ink mb-5" style="font-size:clamp(1.8rem,4vw,2.8rem)">Real assets. Contracted cash flows. Senior position.</h2>
+        <div class="space-y-5 text-slate text-sm leading-relaxed">
+          <p>Pooled Impact is not an ESG fund. It is an asset-backed finance platform that happens to deploy capital into infrastructure that matters — because that is where the most durable yield lives.</p>
+          <p>The thesis begins with a simple observation: essential infrastructure generates predictable revenue. Solar installations under 10–15 year fixed-price contracts do not renegotiate because oil prices moved.</p>
+          <p>When the underlying asset is essential, contracted, and senior-secured, the yield is not a promise. It is a structure.</p>
+        </div>
+      </div>
+      <div class="divide-y divide-rule"><div class="flex gap-5 py-5 border-b border-rule last:border-b-0"><div class="font-mono text-sm font-medium text-primary w-8 shrink-0 pt-0.5">01</div><div><h4 class="font-serif text-lg font-semibold text-ink mb-1">Asset-Backed</h4><p class="text-slate text-sm leading-relaxed">Every dollar deployed is secured against a physical, revenue-generating infrastructure asset. No unsecured positions. No development-stage exposure.</p></div></div><div class="flex gap-5 py-5 border-b border-rule last:border-b-0"><div class="font-mono text-sm font-medium text-primary w-8 shrink-0 pt-0.5">02</div><div><h4 class="font-serif text-lg font-semibold text-ink mb-1">Contracted Revenue</h4><p class="text-slate text-sm leading-relaxed">All portfolio assets operate under long-term offtake agreements or capacity contracts. Revenue is not projected — it is scheduled.</p></div></div><div class="flex gap-5 py-5 border-b border-rule last:border-b-0"><div class="font-mono text-sm font-medium text-primary w-8 shrink-0 pt-0.5">03</div><div><h4 class="font-serif text-lg font-semibold text-ink mb-1">Senior Facility</h4><p class="text-slate text-sm leading-relaxed">Conduit holds the senior credit position across all SPVs. Subordinated capital and equity absorb first loss.</p></div></div><div class="flex gap-5 py-5 border-b border-rule last:border-b-0"><div class="font-mono text-sm font-medium text-primary w-8 shrink-0 pt-0.5">04</div><div><h4 class="font-serif text-lg font-semibold text-ink mb-1">Machine Verified</h4><p class="text-slate text-sm leading-relaxed">Three-way data matching — bank feed, accounting ledger, IoT sensors — validates every revenue event before it enters the fund record.</p></div></div><div class="flex gap-5 py-5 border-b border-rule last:border-b-0"><div class="font-mono text-sm font-medium text-primary w-8 shrink-0 pt-0.5">05</div><div><h4 class="font-serif text-lg font-semibold text-ink mb-1">Structured Exit</h4><p class="text-slate text-sm leading-relaxed">48 months of validated operating data positions the portfolio for investment-grade securitization. The exit is built into the origination.</p></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- STRUCTURE -->
+<section id="structure" class="py-20 px-12 bg-dark">
+  <div class="max-w-5xl mx-auto">
+    <p class="font-mono text-xs tracking-widest uppercase text-secondary mb-4">How It Works</p>
+    <h2 class="font-serif font-bold text-white mb-5" style="font-size:clamp(1.8rem,4vw,2.8rem)">Platform → Fund → Assets → Cash Flow</h2>
+    <p class="text-white/55 text-base leading-relaxed max-w-2xl mb-16">One platform. Multiple Special Purpose Vehicles. Continuous machine verification. A single bond-ready exit.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-16"><div class="border border-white/10 rounded-sm p-5"><div class="font-mono text-xs tracking-widest uppercase text-secondary/70 mb-3">01</div><h4 class="font-serif text-base font-bold text-white mb-2">Pooled Impact Platform</h4><p class="text-white/45 text-xs leading-relaxed">Origination, governance, and AI-powered monitoring infrastructure</p></div><div class="border border-white/10 rounded-sm p-5"><div class="font-mono text-xs tracking-widest uppercase text-secondary/70 mb-3">02</div><h4 class="font-serif text-base font-bold text-white mb-2">Conduit Fund I</h4><p class="text-white/45 text-xs leading-relaxed">$150M ABF vehicle · senior facility · 20+ SPVs</p></div><div class="border border-white/10 rounded-sm p-5"><div class="font-mono text-xs tracking-widest uppercase text-secondary/70 mb-3">03</div><h4 class="font-serif text-base font-bold text-white mb-2">Infrastructure Assets</h4><p class="text-white/45 text-xs leading-relaxed">Solar · Geothermal · Data Center · Biodiesel · Real Estate</p></div><div class="border border-white/10 rounded-sm p-5"><div class="font-mono text-xs tracking-widest uppercase text-secondary/70 mb-3">04</div><h4 class="font-serif text-base font-bold text-white mb-2">Contracted Cash Flows</h4><p class="text-white/45 text-xs leading-relaxed">Machine-verified · Three-way matched · Continuously reported</p></div><div class="border border-white/10 rounded-sm p-5"><div class="font-mono text-xs tracking-widest uppercase text-secondary/70 mb-3">05</div><h4 class="font-serif text-base font-bold text-white mb-2">Year 5 Exit</h4><p class="text-white/45 text-xs leading-relaxed">Structured securitization · Data-seasoned · Bond-eligible</p></div></div>
+    <div>
+      <p class="font-mono text-xs tracking-widest uppercase text-white/35 mb-6">Portfolio Architecture — Three-Sleeve</p>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div class="bg-white/5 border border-white/10 rounded-sm p-6"><div class="font-mono text-xs tracking-widest uppercase text-secondary mb-2">Sleeve A — Core Pool</div><div class="font-serif text-2xl font-bold text-white mb-2">80%</div><p class="text-white/50 text-sm leading-relaxed">Senior secured infrastructure credit. Solar, geothermal, data center, biodiesel. Contracted revenue. Machine-verified cash flows. Bond-eligible at Year 5.</p></div>
+        <div class="bg-white/5 border border-white/10 rounded-sm p-6"><div class="font-mono text-xs tracking-widest uppercase text-secondary mb-2">Sleeve B — Bridge</div><div class="font-serif text-2xl font-bold text-white mb-2">10%</div><p class="text-white/50 text-sm leading-relaxed">Short-duration predevelopment gap financing. Higher yield, shorter duration. Assets graduate to Sleeve A or are exited within 18 months.</p></div>
+        <div class="bg-white/5 border border-white/10 rounded-sm p-6"><div class="font-mono text-xs tracking-widest uppercase text-secondary mb-2">Sleeve C — Platform</div><div class="font-serif text-2xl font-bold text-white mb-2">10%</div><p class="text-white/50 text-sm leading-relaxed">Operational capital supporting Mountain Shift OS, monitoring infrastructure, and fund governance.</p></div>
+      </div>
+    </div>
+    <div class="mt-8 border border-secondary/25 rounded-sm p-6">
+      <p class="font-mono text-xs tracking-widest uppercase text-secondary mb-2">Platform Architecture</p>
+      <p class="font-serif text-lg font-bold text-white mb-2">CIFER · Finance Vertical</p>
+      <p class="text-white/50 text-sm leading-relaxed">Conduit is the Finance domain within CIFER — Pooled Impact's Comprehensive Investment Framework for Economic Regeneration spanning Commodities, Infrastructure, Finance, Energy, and Real Estate. Each SPV strengthens the platform.</p>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section id="trust" class="py-20 px-12 bg-white">
+  <div class="max-w-5xl mx-auto">
+    <p class="font-mono text-xs tracking-widest uppercase text-primary mb-4">Risk Framework</p>
+    <h2 class="font-serif font-bold text-ink mb-5" style="font-size:clamp(1.8rem,4vw,2.8rem)">Three-way verification. Continuous monitoring. No black boxes.</h2>
+    <p class="text-slate text-base leading-relaxed max-w-2xl mb-16">Every dollar of revenue is validated against three independent sources before it becomes part of the fund's record. This is not due diligence theater — it is the architecture.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div class="border-l-4 border-primary pl-6"><div class="text-2xl mb-4">&#x2B21;</div><h3 class="font-serif text-lg font-bold text-ink mb-3">Bank-to-Book Engine</h3><p class="text-slate text-sm leading-relaxed">Every transaction validated against SPV bank feed, accounting ledger, and IoT physical sensors simultaneously. A 2% variance triggers Yellow Alert. A 5% variance triggers Red Alert with maximum weighting.</p></div>
+      <div class="border-l-4 border-primary pl-6"><div class="text-2xl mb-4">&#x25CE;</div><h3 class="font-serif text-lg font-bold text-ink mb-3">Continuous IoT Monitoring</h3><p class="text-slate text-sm leading-relaxed">Solar inverter kWh output. Biodiesel flow rates. Data center uptime. Physical performance data feeds directly into the verification engine as a third leg of every revenue validation.</p></div>
+      <div class="border-l-4 border-primary pl-6"><div class="text-2xl mb-4">&#x25A3;</div><h3 class="font-serif text-lg font-bold text-ink mb-3">Investor Transparency</h3><p class="text-slate text-sm leading-relaxed">Allocators have access to live dashboard reporting. Not quarterly summaries — continuous visibility into SPV-level performance, alert status, and cash flow attribution.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- POSITIONING -->
+<section id="positioning" class="py-20 px-12 bg-paper">
+  <div class="max-w-5xl mx-auto">
+    <p class="font-mono text-xs tracking-widest uppercase text-primary mb-4">Portfolio Fit</p>
+    <h2 class="font-serif font-bold text-ink mb-8" style="font-size:clamp(1.8rem,4vw,2.8rem)">This is not a new allocation category. It is a better access point.</h2>
+    <blockquote class="border-l-4 border-secondary pl-6 mb-12"><p class="font-serif text-xl text-slate leading-relaxed italic">“The question is not whether essential infrastructure belongs in an institutional portfolio. It belongs. The question is whether you are accessing it through a structure built for your needs.”</p></blockquote>
+    <div class="bg-white border border-rule rounded-sm p-8">
+      <p class="font-mono text-xs tracking-widest uppercase text-primary mb-5">Where Conduit Sits</p>
+      <div class="space-y-4 text-slate text-sm leading-relaxed">
+        <p>Family offices and institutional allocators have long held infrastructure exposure — typically through listed utilities, infrastructure equity funds, or direct project finance. Each carries tradeoffs: liquidity risk, equity volatility, or operational complexity.</p>
+        <p>Conduit Fund I is positioned at the senior credit layer — above equity volatility, below public market correlation. Contracted cash flows. Senior position. A defined exit path that converts the portfolio into a tradeable instrument.</p>
+      </div>
+      <p class="font-mono text-xs tracking-widest text-slate/40 mt-6 pt-5 border-t border-rule leading-loose">Detailed fund terms, projections, and structure available to qualified investors upon request. This page does not constitute an offer to sell or solicitation to buy securities.</p>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section id="cta" class="py-24 px-12 bg-primary">
+  <div class="max-w-3xl mx-auto text-center">
+    <p class="font-mono text-xs tracking-widest uppercase text-white/35 mb-5">Next Steps</p>
+    <h2 class="font-serif font-bold text-white mb-6 leading-tight" style="font-size:clamp(2rem,5vw,3.2rem)">Ready to review the full structure?</h2>
+    <p class="text-white/55 text-base leading-relaxed mb-12 max-w-xl mx-auto">The investor deck covers the complete fund architecture, SPV detail, financial projections, team, and the technology platform that makes the securitization exit achievable. Qualified allocators only.</p>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 max-w-2xl mx-auto">
+      <div class="bg-white/8 border border-white/15 rounded-sm p-6 text-left"><h3 class="font-serif text-lg font-bold text-white mb-2">Request the Investor Deck</h3><p class="text-white/50 text-sm leading-relaxed mb-5">Full fund documentation including structure, projections, team biographies, and the data verification architecture. Sent within 24 hours to qualified allocators.</p><button onclick="openPanel()" class="font-mono text-xs tracking-widest uppercase px-5 py-2.5 bg-white text-primary hover:opacity-90 rounded-sm border-none cursor-pointer transition-opacity w-full">Request Deck</button></div>
+      <div class="bg-white/8 border border-white/15 rounded-sm p-6 text-left"><h3 class="font-serif text-lg font-bold text-white mb-2">Schedule an Introduction</h3><p class="text-white/50 text-sm leading-relaxed mb-5">A 30-minute conversation to discuss the thesis, your allocation context, and whether Conduit Fund I fits your current portfolio construction objectives.</p><button onclick="openPanel()" class="font-mono text-xs tracking-widest uppercase px-5 py-2.5 border border-white/40 text-white hover:bg-white/10 bg-transparent rounded-sm cursor-pointer transition-colors w-full">Book Intro Call</button></div>
+    </div>
+    <p class="font-mono text-xs text-white/25 mt-8">will.fobbs@pooledimpact.com · Pooled Impact Corporation · pooledimpact.com</p>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-dark px-12 pt-12 pb-8 border-t border-white/10">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col lg:flex-row justify-between items-start gap-10 mb-10">
+      <div>
+        <div class="font-serif text-xl font-bold text-white mb-1">Conduit Impact Capital</div>
+        <div class="font-mono text-xs tracking-widest uppercase text-white/30 mb-4">A Pooled Impact Corporation Fund</div>
+        <a href="https://pooledimpact.com" target="_blank" rel="noopener" class="font-mono text-xs tracking-widest uppercase text-secondary/70 hover:text-secondary no-underline transition-colors">pooledimpact.com &#x2197;</a>
+      </div>
+      <div class="flex gap-16 flex-wrap">
+        <div>
+          <h4 class="font-mono text-xs tracking-widest uppercase text-white/30 mb-4">Fund</h4>
+          <div class="flex flex-col gap-3">
+            <button onclick="gotoSection('thesis')" class="text-sm text-white/60 hover:text-white bg-transparent border-none cursor-pointer text-left p-0 font-sans transition-colors">Investment Thesis</button>
+            <button onclick="gotoSection('structure')" class="text-sm text-white/60 hover:text-white bg-transparent border-none cursor-pointer text-left p-0 font-sans transition-colors">Fund Structure</button>
+            <button onclick="gotoSection('trust')" class="text-sm text-white/60 hover:text-white bg-transparent border-none cursor-pointer text-left p-0 font-sans transition-colors">Risk Framework</button>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-mono text-xs tracking-widest uppercase text-white/30 mb-4">Connect</h4>
+          <div class="flex flex-col gap-3">
+            <button onclick="openPanel()" class="text-sm text-white/60 hover:text-white bg-transparent border-none cursor-pointer text-left p-0 font-sans transition-colors">Investor Relations</button>
+            <a href="https://www.linkedin.com/company/pooledimpact" target="_blank" rel="noopener" class="text-sm text-white/60 hover:text-white no-underline transition-colors">LinkedIn &#x2197;</a>
+            <a href="https://pooledimpact.com" target="_blank" rel="noopener" class="text-sm text-white/60 hover:text-white no-underline transition-colors">Pooled Impact &#x2197;</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="border-t border-white/10 pt-6 flex flex-col lg:flex-row justify-between gap-4">
+      <p class="font-mono text-xs text-white/50">&copy; 2026 Pooled Impact Corporation. All rights reserved.</p>
+      <p class="font-mono text-xs text-white/45 max-w-md lg:text-right leading-loose">This page is for informational purposes only and does not constitute an offer to sell or solicitation to buy any securities. Past performance is not indicative of future results. Investments involve risk. For qualified investors only.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+function openPanel(){document.getElementById('slide-panel').classList.remove('translate-x-full');document.getElementById('slide-backdrop').classList.remove('opacity-0','pointer-events-none');document.body.style.overflow='hidden';}
+function closePanel(){document.getElementById('slide-panel').classList.add('translate-x-full');document.getElementById('slide-backdrop').classList.add('opacity-0','pointer-events-none');document.body.style.overflow='';}
+function submitPanel(){const name=document.getElementById('pf-name').value.trim();const email=document.getElementById('pf-email').value.trim();const org=document.getElementById('pf-org').value.trim();const phone=document.getElementById('pf-phone').value.trim();const err=document.getElementById('panel-error');if(!name){err.classList.remove('hidden');err.textContent='Please enter your name.';return;}if(!email||!/^[^@]+@[^@]+\.[a-zA-Z]{2,8}$/.test(email)){err.classList.remove('hidden');err.textContent='Please enter a valid email.';return;}if(!org){err.classList.remove('hidden');err.textContent='Please enter your organization.';return;}err.classList.add('hidden');const sub=encodeURIComponent('Investor Inquiry — Conduit Impact Capital Fund I');const body=encodeURIComponent('Name: '+name+'\nOrg: '+org+'\nPhone: '+(phone||'N/A')+'\nFocus: '+(document.getElementById('pf-focus').value||'N/A'));window.open('mailto:will.fobbs@pooledimpact.com?subject='+sub+'&body='+body);document.getElementById('panel-form').classList.add('hidden');document.getElementById('panel-thanks').classList.remove('hidden');}
+function gotoSection(id){const el=document.getElementById(id);if(el)el.scrollIntoView({behavior:'smooth'});}
+document.addEventListener('alpine:init', () => {
+  Alpine.data('conduit', () => ({
+    mobileOpen: false,
+    init() {}
+  }));
+});
+</script>
+</body>
+</html>
