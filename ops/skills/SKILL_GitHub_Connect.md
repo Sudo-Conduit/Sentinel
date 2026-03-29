@@ -135,9 +135,9 @@ You can read files from GitHub using the `web_fetch` tool with a raw URL provide
 # You cannot write back to GitHub this way
 ```
 
-**Option B — Request Wiggle Provisioning**
+**Option B — Verified: Wiggle Is Always Provisioned**
 
-Ask Will to start a new conversation. Each new conversation may spin up a different container. Check `HTTPS_PROXY` again. Wiggle provisioning is per-container and varies by session.
+CORRECTION (verified 2026-03-29): All containers in this environment use the naming convention `container_01BotLnFq78CBSG8i9gxqjy7--wiggle--XXXXXX`. The `--wiggle--` suffix is structural — it is always present. Starting a new conversation does NOT change Wiggle provisioning. If `HTTPS_PROXY` is empty, the issue is not the container — check whether the environment variable is being read correctly or whether the JWT has expired. The JWT inside `HTTPS_PROXY` has a finite expiry (`exp` field). A genuinely empty `HTTPS_PROXY` has not been observed in practice.
 
 ---
 

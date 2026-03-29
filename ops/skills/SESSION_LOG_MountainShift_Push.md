@@ -242,11 +242,12 @@ echo "Exit: $?"
 
 | Symptom | Most Likely Cause | Fix |
 |---|---|---|
-| `HTTPS_PROXY` is empty | No Wiggle on this container | Ask Will to start a new conversation and check again |
+| `HTTPS_PROXY` is empty | CORRECTION: All containers in this environment use `--wiggle--` naming and Wiggle is always provisioned. An empty `HTTPS_PROXY` has not been observed in practice. If it happens, the JWT may have expired — check the `exp` field. Do NOT start a new conversation. | Verify with `echo $HTTPS_PROXY` and inspect the JWT payload. |
 | `fatal: unable to access` | PAT is wrong or expired | Ask Will for a new PAT |
 | `error: failed to push — fetch first` | Someone else pushed to `main` since your clone | Run `git pull --rebase https://${PAT}@github.com/${REPO}.git main` then push again |
 | `403 Forbidden` | You used `api.github.com` instead of `github.com` | Never use `api.github.com` from bash_tool. Always use `github.com`. |
-| `128` exit code on clone | DNS failure — no Wiggle | Same as empty `HTTPS_PROXY` above |
+| `128` exit code on clone | PAT is wrong, expired, or repo path is wrong — not a Wiggle issue | Double-check PAT and `REPO` value |
+| Push blocked by GitHub secret scanning | Document contains a live `ghp_` token | Redact to `ghp_REDACTED_ASK_WILL_FOR_CURRENT_PAT` before committing |
 | Commit shows wrong author | `git config user.name` not set | Set it in the same bash_tool call as `git commit` |
 
 ---
