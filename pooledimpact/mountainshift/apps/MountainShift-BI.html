@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.8.0/Recharts.min.js"></script>
+
 <style>
 /* ══════════════════════════════════════
    THEME TOKENS — mirrors Conduit Fund
@@ -572,11 +572,11 @@ input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border
         <div>
           <div class="chart-wrap" style="margin-bottom:14px;">
             <div class="card-label">MRR · Gross vs Net · 24 months</div>
-            <canvas id="financial-chart" height="200"></canvas>
+            <div style="position:relative;height:200px;"><canvas id="financial-chart"></canvas></div>
           </div>
           <div class="chart-wrap">
             <div class="card-label">Monthly profit · 24 months</div>
-            <canvas id="profit-chart" height="160"></canvas>
+            <div style="position:relative;height:160px;"><canvas id="profit-chart"></canvas></div>
           </div>
         </div>
       </div>
@@ -606,7 +606,7 @@ input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border
         <div>
           <div class="chart-wrap">
             <div class="card-label">Cohort retention · 24 months</div>
-            <canvas id="unit-chart" height="240"></canvas>
+            <div style="position:relative;height:240px;"><canvas id="unit-chart"></canvas></div>
           </div>
         </div>
       </div>
@@ -643,11 +643,11 @@ input[type=text]:focus,input[type=number]:focus,select:focus{outline:none;border
           </div>
           <div class="chart-wrap" style="margin-bottom:14px;">
             <div class="card-label">Cumulative cash · 24 months</div>
-            <canvas id="cashflow-chart" height="180"></canvas>
+            <div style="position:relative;height:180px;"><canvas id="cashflow-chart"></canvas></div>
           </div>
           <div class="chart-wrap">
             <div class="card-label">Monthly net cash flow · 24 months</div>
-            <canvas id="cashflow-bar-chart" height="150"></canvas>
+            <div style="position:relative;height:150px;"><canvas id="cashflow-bar-chart"></canvas></div>
           </div>
           <div style="margin-top:10px;font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);" id="breakeven-label"></div>
         </div>
