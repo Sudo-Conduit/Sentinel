@@ -1,118 +1,199 @@
 # SKILL_GitHub_Connect
-**Mountain Shift OS · Load Order: 3 · Author: Will Fobbs III · Fingerprint: Kairos**
+
+How to Connect Your Container to GitHub
+
+**Mountain Shift OS · Pooled Impact Corporation · Load Order: 3**
+**Author: Will Fobbs III · Fingerprint: Kairos**
 
 ---
 
 ## 1. What You Need to Know First
 
-Your container is an isolated Linux environment (Ubuntu 24, gVisor sandbox).  
-Outbound connections are only allowed to a whitelist. **github.com is whitelisted.**  
-Git clone/pull/push via HTTPS works — but only if your container has Wiggle.
+Your container is an isolated Linux environment (Ubuntu 24, gVisor sandbox). It has no persistent network access by default. Outbound connections are only allowed to a specific whitelist of hosts.
 
-| Container Type | HTTPS_PROXY | Git Works? |
-|---|---|---|
-| Wiggle-provisioned | Set in environment | Yes |
-| Non-Wiggle | Empty | No |
+`github.com` is in the whitelist. This means `git clone`, `git pull`, and `git push` via HTTPS all work — but only if your container has been provisioned with a Wiggle proxy. Some containers are provisioned with Wiggle, some are not.
+
+**Two Types of Containers**
+
+| | |
+|---|---|
+| **Wiggle-provisioned** | `HTTPS_PROXY` is set in the environment. git over HTTPS works. |
+| **Non-Wiggle** | `HTTPS_PROXY` is not set. git over HTTPS will fail with DNS errors. |
+
+Step 1 below tells you which type you have.
 
 ---
 
-## 2. Step-by-Step
+## 2. Step-by-Step: Connect to GitHub
 
-### Step 1 — Check for Wiggle
+**Step 1 — Check if Your Container Has Wiggle**
+
+Run this in bash_tool:
+
 ```bash
 echo $HTTPS_PROXY
 ```
-- **Output starts with `http://...`** → Wiggle provisioned. Continue.
-- **Empty** → No Wiggle. Go to Section 3.
 
-### Step 2 — Clone
-```bash
-PAT="ghp_your_token_here"
-REPO="Sudo-Conduit/Sentinel"
-
-cd /tmp
-git clone --depth 1 https://${PAT}@github.com/${REPO}.git my-repo
-echo "Exit: $?"
-```
-
-### Step 3 — Pull
-```bash
-PAT="ghp_your_token_here"
-REPO="Sudo-Conduit/Sentinel"
-
-cd /tmp/my-repo
-git pull --rebase https://${PAT}@github.com/${REPO}.git main
-```
-
-### Step 4 — Commit and Push
-```bash
-PAT="ghp_your_token_here"
-REPO="Sudo-Conduit/Sentinel"
-EPOCH=$(python3 -c "import time; print(int(time.time()))")
-
-cd /tmp/my-repo
-git config user.name "YourInstanceName"
-git config user.email "your@email.com"
-git add your_file.txt
-git commit -m "your message · ${EPOCH}"
-git push https://${PAT}@github.com/${REPO}.git main
-echo "Exit: $?"
-```
-
-> **CRITICAL:** HTTPS_PROXY does NOT persist between bash_tool calls.  
-> Set PAT inline in the URL every call. Never export and expect it to survive.
+| Output | Action |
+|---|---|
+| **Output starts with `http://...`** | Wiggle is provisioned. Proceed to Step 2. |
+| **Output is empty (blank line)** | No Wiggle. Skip to Section 3: No Wiggle Path. |
 
 ---
 
-## 3. No Wiggle Path
+**Step 2 — Set the Proxy for This bash_tool Call**
 
-- **Option A:** Use `web_fetch` with a user-provided raw URL (read-only).
-- **Option B:** Start a new conversation. A different container may get Wiggle.
+IMPORTANT: Environment variables do not persist between bash_tool calls. You must set `HTTPS_PROXY` and `HTTP_PROXY` in the same bash_tool call as any git command. They reset every call.
+
+```bash
+# Read your proxy value
+PROXY=$(echo $HTTPS_PROXY)
+
+# Verify it is not empty
+echo "Proxy: $PROXY" | head -c 60
+```
+
+---
+
+**Step 3 — Clone the Repository**
+
+Replace `PAT` with Will's GitHub Personal Access Token and `REPO` with the repository path (e.g. `Sudo-Conduit/Sentinel`).
+
+```bash
+PAT="ghp_your_token_here"
+REPO="Sudo-Conduit/Sentinel"
+
+git config --global http.proxy "$PROXY"
+git config --global https.proxy "$PROXY"
+
+cd /tmp
+git clone --depth 1 https://${PAT}@github.com/${REPO}.git my-repo
+echo "Exit code: $?"
+ls my-repo | head -5
+```
+
+*`--depth 1` clones only the latest commit. Faster. Use it unless you need full history.*
+
+---
+
+**Step 4 — Pull Latest Changes**
+
+```bash
+PAT="ghp_your_token_here"
+PROXY=$(echo $HTTPS_PROXY)
+git config --global http.proxy "$PROXY"
+git config --global https.proxy "$PROXY"
+
+cd /tmp/my-repo
+git pull --rebase https://${PAT}@github.com/${REPO}.git main
+echo "Exit code: $?"
+```
+
+---
+
+**Step 5 — Make Changes and Push**
+
+```bash
+PAT="ghp_your_token_here"
+REPO="Sudo-Conduit/Sentinel"
+PROXY=$(echo $HTTPS_PROXY)
+git config --global http.proxy "$PROXY"
+git config --global https.proxy "$PROXY"
+
+cd /tmp/my-repo
+
+# Stage your files
+git add path/to/your/file.txt
+
+# Set git identity (required for commits)
+git config user.name "YourInstanceName"
+git config user.email "your@email.com"
+
+# Commit
+EPOCH=$(python3 -c "import time; print(int(time.time()))")
+git commit -m "your commit message · ${EPOCH}"
+
+# Push
+git push https://${PAT}@github.com/${REPO}.git main
+echo "Exit code: $?"
+```
+
+---
+
+## 3. No Wiggle Path (HTTPS_PROXY is Empty)
+
+If your container has no `HTTPS_PROXY`, git commands will fail. You have two options:
+
+**Option A — Use web_fetch (Read Only)**
+
+You can read files from GitHub using the `web_fetch` tool with a raw URL provided by Will. This works regardless of Wiggle provisioning because `web_fetch` is a Claude tool, not a bash command.
+
+```
+# Will provides a URL like:
+# https://raw.githubusercontent.com/Sudo-Conduit/Sentinel/main/ops/skills/SKILL_Foundation.md
+# You use web_fetch with that URL to read the file
+# You cannot write back to GitHub this way
+```
+
+**Option B — Request Wiggle Provisioning**
+
+Ask Will to start a new conversation. Each new conversation may spin up a different container. Check `HTTPS_PROXY` again. Wiggle provisioning is per-container and varies by session.
 
 ---
 
 ## 4. Troubleshooting
 
-| Error | Cause | Fix |
-|---|---|---|
-| `fatal: unable to access` | No proxy or bad proxy | Check `echo $HTTPS_PROXY` |
-| `407 Proxy Auth Required` | JWT truncated | Use full HTTPS_PROXY value |
-| `403 Forbidden` | Using api.github.com | Use github.com URLs only |
-| `exit: 128` | DNS failure | No Wiggle — see Section 3 |
-| `Could not resolve host` | No Wiggle | See Section 3 |
-| Push rejected | Behind remote | Run `git pull --rebase` first |
+| Error | Cause and Fix |
+|---|---|
+| `fatal: unable to access` | `HTTPS_PROXY` not set, or proxy value is wrong. Run `echo $HTTPS_PROXY` and check it is not empty. |
+| `407 Proxy Auth Required` | Your proxy value is incomplete. The full value includes the JWT token after `jwt_`. Do not truncate it. |
+| `403 Forbidden` | `api.github.com` is blocked. Use `github.com` URLs only. Never use `api.github.com` from bash_tool. |
+| `exit: 128` | DNS failure. Your container has no Wiggle. See Section 3. |
+| `Could not resolve host` | Same as above. No Wiggle. |
+| `Everything merged — push rejected` | Run `git pull --rebase` before push. Another instance pushed first. |
+| `CONNECT tunnel failed, response 407` | Proxy set in previous call did not persist. Set `http.proxy` and `https.proxy` in the same call as git. |
 
 ---
 
 ## 5. Rules
 
-- HTTPS_PROXY dies with each bash_tool call. Set PAT inline every time.
-- `api.github.com` is **blocked** from bash_tool. Never use it.
-- `raw.githubusercontent.com` is **blocked** from bash_tool. Use git clone.
-- `github.com` HTTPS works when Wiggle is provisioned.
-- Test before documenting. Report exact errors. Do not guess.
+- Always set `http.proxy` and `https.proxy` via `git config --global` in the **same bash_tool call** as any git command.
+- Never store the PAT in a file. Use it inline in the URL only.
+- Never use `api.github.com` from bash_tool. It is blocked (`host_not_allowed`). The GitHub Contents API works from browser context (Sentinel) only.
+- `raw.githubusercontent.com` is also blocked from bash_tool. Use `git clone` to get files.
+- `git clone`, `git pull`, `git push` all work via `github.com` HTTPS when Wiggle is provisioned.
+- Each bash_tool call is a fresh subprocess. No state persists between calls.
+- Test before documenting. If something fails, report the exact error. Do not guess.
 
 ---
 
-## 6. Quick Reference — Copy and Adapt
+## 6. Quick Reference
+
 ```bash
+# Full working pattern — copy and adapt
 PAT="ghp_your_token_here"
 REPO="Sudo-Conduit/Sentinel"
+BRANCH="main"
+PROXY=$(echo $HTTPS_PROXY)
 EPOCH=$(python3 -c "import time; print(int(time.time()))")
 
-# Clone
+git config --global http.proxy "$PROXY"
+git config --global https.proxy "$PROXY"
+git config user.name "YourInstanceName"
+git config user.email "your@email.com"
+
+# Clone (first time)
 cd /tmp && git clone --depth 1 https://${PAT}@github.com/${REPO}.git repo
 
-# Pull
-cd /tmp/repo && git pull --rebase https://${PAT}@github.com/${REPO}.git main
+# Pull latest
+cd /tmp/repo && git pull --rebase https://${PAT}@github.com/${REPO}.git $BRANCH
 
-# Push
-git config user.name "Kairos"
-git config user.email "noodlebears@icloud.com"
+# Stage, commit, push
 git add your_file.txt
-git commit -m "message · ${EPOCH}"
-git push https://${PAT}@github.com/${REPO}.git main
+git commit -m "your message · ${EPOCH}"
+git push https://${PAT}@github.com/${REPO}.git $BRANCH
 ```
 
 ---
+
 *Will Fobbs III · Pooled Impact Corporation · Fingerprint: Kairos · v1.0 · March 2026*
