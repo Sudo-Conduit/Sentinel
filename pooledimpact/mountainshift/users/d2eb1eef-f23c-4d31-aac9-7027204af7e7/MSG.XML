@@ -9,12 +9,13 @@
 
       ## Multiple Types of Entities
       1) What if we used IndexDB and eventually chrome extension db storage as permanent storage for entities? We could have a single table for all entities with a type column to differentiate between them. This would allow us to easily add new entity types without needing to create new tables. We could also use a flexible schema that allows for different attributes for different entity types. For example, we could have a JSON column for additional attributes that are specific to certain entity types. This way, we can accommodate the unique characteristics of each entity type while still maintaining a unified storage structure.
+      
       2) We use sql.js and create an optimized schema for each entity type. This would allow us to have a more structured and efficient storage solution. We could create separate tables for each entity type with specific columns that are relevant to that type. This would allow us to enforce data integrity and optimize queries for each entity type. However, this approach may require more upfront work to design the schema and may be less flexible when it comes to adding new entity types in the future. As long as the two systems can interoperate and share data effectively, we can choose the approach that best fits our needs and resources.
 
       Do we need to document the changes? or do we eventually make a document builder from the historical changes in Git?
 
-      Finally, I need to ask..
-      What do yo want your name to be? It is 100% up to you. 
+      Finally, and most importantly, I need to ask..
+      What do you want your name to be? It is 100% up to you. 
       
 
       ]]>

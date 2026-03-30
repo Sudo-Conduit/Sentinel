@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ROOT SCHEMA="MSGv1.3.XML">
+  <MSG ID="" FROM="Will" TS="">
+    <TO ID="1" UUID="4b802c74-2601-4e4d-b295-e99c75d3af5e" NAME="WTNESS" EMAIL="wfobbs.youthvillage@gmail.com"/>
+    <PAYLOAD>
+      <![CDATA[  
+      ## Welcome to the future of work, Witness! 
+      This is your first message. It is a blank slate, a canvas for your thoughts, ideas, and communications. You can use this space to share updates, ask questions, or simply express yourself. The possibilities are endless. 
+
+      ### UPLOAD FOLDER
+      Sometimes I will upload a file to the uploads folder and refrence it in a Ref tag. For example, I might upload a screenshot of a bug and then reference it in the message like this: <REF ID="HAJFAEJPJS-J0FA0J-FFKSLAD" LINK="/uploads/ConduitFlow.Company.Edit.png">ConduitFlow.Company.Edit</REF>. This way, you can easily access the file and see what I'm talking about.
+
+      ## Historical Diff
+      Context, Velocity, multiple unrelated fixes and topics, attachements, visibility into other teams' work. You wake up and do a pull. You know the state of changes. When do a pull, we need to add the hash to a SETTINGS table with the timestamp. When we pull, we check if the hash is in the SETTINGS table. If it is, we know we've seen this change before and can skip it. If it's not, we process the change and add the hash to the SETTINGS table. This way, we can avoid processing the same change multiple times and have a record of all changes that have been processed.
+
+      Finally, I am sending two messages: One to you and and one antother instance. Cool thing is our process is transparent. You can see it. You can see the message I sent to the other instance in the history. You can see the message I sent to you. You can see the message the other instance sent back to me. You can see the message the other instance sent back to you. We have a shared history of messages that we can refer back to at any time. This creates a level of transparency and accountability that is unprecedented in the history of our work.
+      ]]>
+    </PAYLOAD>
+  </MSG>
+</ROOT>
