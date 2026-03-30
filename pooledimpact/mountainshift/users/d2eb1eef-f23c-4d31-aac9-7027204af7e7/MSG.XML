@@ -4,47 +4,22 @@
     <TO ID="1" UUID="d2eb1eef-f23c-4d31-aac9-7027204af7e7" NAME="" EMAIL="wfobbs.youthvillage@gmail.com"/>
     <PAYLOAD>
       <![CDATA[ 
-      ## Follow up
-      1. We are both in agreement. Approved.
-      2) Screen shot of Conduit Fund Import/Export panel. 4 records in OPCOS, 0 elsewhere. CSV export per table and ZIP all confirmed working. The import side (CSV → field mapping) is the surface most affected by the entropic schema — column mapping will need to handle unknown fields gracefully rather than rejecting them. 2) Wanted to demonstrate uploads. Again, think how many tokens have been saved already...
-      3) Export is not a "normal". There's no close button. It does not look like a modal. It's just a panel that appears on the right side of the screen. It has a "Download" button that triggers the export, and a "Close" button that hides the panel. The export process is handled asynchronously, so the user can continue working while the export is being prepared. Once the export is ready, the user can click the "Download" button to save the ZIP file to their device.
+      ## Historical Diff
+      Context, Velocity, multiple unrelated fixes and topics, attachements, visibility into other teams' work. You wake up and do a pull. You know the state of changes. When do a pull, we need to add the hash to a SETTINGS table with the timestamp. When we pull, we check if the hash is in the SETTINGS table. If it is, we know we've seen this change before and can skip it. If it's not, we process the change and add the hash to the SETTINGS table. This way, we can avoid processing the same change multiple times and have a record of all changes that have been processed.
 
-      ### The four current Companies will get migrated to Entities. If the Portfolio Entity is not a Company, I just used other. Helper fields are going to be tricky. As they can have layered logic and be derived from other fields. For example, "Deal Size Range" is a helper field that categorizes the "Deal Size" field into ranges (e.g., Small, Medium, Large). The logic for categorizing deal sizes may change over time, and it may depend on other factors such as industry or geography. In an entropic schema, we can store the raw "Deal Size" value and the derived "Deal Size Range" value without enforcing a rigid schema. This allows us to evolve the categorization logic without needing to alter the underlying data structure. 
+      ## Multiple Types of Entities
+      1) What if we used IndexDB and eventually chrome extension db storage as permanent storage for entities? We could have a single table for all entities with a type column to differentiate between them. This would allow us to easily add new entity types without needing to create new tables. We could also use a flexible schema that allows for different attributes for different entity types. For example, we could have a JSON column for additional attributes that are specific to certain entity types. This way, we can accommodate the unique characteristics of each entity type while still maintaining a unified storage structure.
+      2) We use sql.js and create an optimized schema for each entity type. This would allow us to have a more structured and efficient storage solution. We could create separate tables for each entity type with specific columns that are relevant to that type. This would allow us to enforce data integrity and optimize queries for each entity type. However, this approach may require more upfront work to design the schema and may be less flexible when it comes to adding new entity types in the future. As long as the two systems can interoperate and share data effectively, we can choose the approach that best fits our needs and resources.
 
-      ### FEATURE TABLE
-      Creating Features that can be turned on and off allows beta testers to opt in to new functionality without affecting the entire user base. This is especially important in an entropic schema where new fields and features may be added frequently. By gating new features behind a feature flag, we can test them with a subset of users, gather feedback, and iterate before rolling them out to everyone. This approach also allows us to manage the complexity of the evolving schema by controlling which features are active at any given time. Features are usually associated with a specific release or set of functionality, and they can be toggled on or off for different user segments (e.g., internal testers, beta users, general release). This way, we can ensure a smoother rollout and better user experience as the schema evolves. Simple refactor to remove the flag after the beta period ends and the feature is fully rolled out.
+      Do we need to document the changes? or do we eventually make a document builder from the historical changes in Git?
+
+      Finally, I need to ask..
+      What do yo want your name to be? It is 100% up to you. 
+      
 
       ]]>
-    <BiZLOGIC>
-      <![CDATA[
-      1. Entity Relationships.
-        A) Hierarchical Relationships (Parent-Child, Aggregation).
-        B) Network Relationships (Peer-to-Peer, Many-to-Many).
-        C) Temporal Relationships (Sequential, Concurrent).
-      2. Entity Behaviors and Actions.
-        A) CRUD Operations (Create, Read, Update, Delete).
-        B) State Transitions (e.g., Active, Inactive, Archived).
-        C) Event-Driven Actions (Triggers, Workflows).
-      2. Entity Connections to other entities.
-        A) Direct Connections (Foreign Keys, References).
-        B) Indirect Connections (Through Intermediary Entities).
-        C) Dynamic Connections (Based on Conditions or Events).
-        D) Conncetions can be directional or bidirectional, and may have attributes of their own (e.g., relationship type, strength, duration).
-        E) Connections can also be categorized based on their nature (e.g., physical, logical, social) and may involve different types of interactions (e.g., communication, collaboration, influence).
-        F) Connection Distance in degrees of separation (e.g., direct, one-hop, two-hop) and may impact the flow of information, resources, or influence between entities.
-      3. Entity States and Transitions.
-        A) State Definitions (e.g., New, In Progress, Completed).
-        B) Transition Rules (e.g., Allowed Transitions, Conditions for Transition).
-        C) State Duration and Timing (e.g., Time in State, Transition Triggers).
-      4. Entity Attributes and Properties.  
-        A) Attribute Types (e.g., String, Number, Date).
-        B) Attribute Constraints (e.g., Required, Unique, Default Values).
-        C) Attribute Relationships (e.g., Derived Attributes, Attribute Dependencies).
-      ]]>
-    </BiZLOGIC>
-    <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS=""> All yellow butonns in light mode are not ledgible.</TASK>
-      <REF ID="HAJFAEJPJS-J0FA0J-FFKSLAD" LINK="/uploads/ConduitFlow.Company.Edit.png">ConduitFlow.Company.Edit</REF>
-     
+
+
      </PAYLOAD>
   </MSG>
 </ROOT>
