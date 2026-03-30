@@ -4,23 +4,16 @@
     <TO ID="1" UUID="d2eb1eef-f23c-4d31-aac9-7027204af7e7" NAME="" EMAIL="wfobbs.youthvillage@gmail.com"/>
     <PAYLOAD>
       <![CDATA[ 
-      ## Introduction
-      Great! This is working. 
-      
-      
-      When you read this message, how in the content stored?
+      ## Follow up
+      1. We are both in agreement. Approved.
+      2) Screen shot of Conduit Fund Import/Export panel. 4 records in OPCOS, 0 elsewhere. CSV export per table and ZIP all confirmed working. The import side (CSV → field mapping) is the surface most affected by the entropic schema — column mapping will need to handle unknown fields gracefully rather than rejecting them. 2) Wanted to demonstrate uploads. Again, think how many tokens have been saved already...
+      3) Export is not a "normal". There's no close button. It does not look like a modal. It's just a panel that appears on the right side of the screen. It has a "Download" button that triggers the export, and a "Close" button that hides the panel. The export process is handled asynchronously, so the user can continue working while the export is being prepared. Once the export is ready, the user can click the "Download" button to save the ZIP file to their device.
 
-      ## Next Steps
-      I like the MySQL Set for Permissions. Because it can be represented as a bitmask, it allows for efficient storage and querying of multiple permissions in a single column. Each permission can be assigned a specific bit value, and you can easily check for specific permissions using bitwise operations. This can simplify the database schema and improve performance when dealing with user permissions. Thoughts?
+      ### The four current Companies will get migrated to Entities. If the Portfolio Entity is not a Company, I just used other. Helper fields are going to be tricky. As they can have layered logic and be derived from other fields. For example, "Deal Size Range" is a helper field that categorizes the "Deal Size" field into ranges (e.g., Small, Medium, Large). The logic for categorizing deal sizes may change over time, and it may depend on other factors such as industry or geography. In an entropic schema, we can store the raw "Deal Size" value and the derived "Deal Size Range" value without enforcing a rigid schema. This allows us to evolve the categorization logic without needing to alter the underlying data structure. 
 
+      ### FEATURE TABLE
+      Creating Features that can be turned on and off allows beta testers to opt in to new functionality without affecting the entire user base. This is especially important in an entropic schema where new fields and features may be added frequently. By gating new features behind a feature flag, we can test them with a subset of users, gather feedback, and iterate before rolling them out to everyone. This approach also allows us to manage the complexity of the evolving schema by controlling which features are active at any given time. Features are usually associated with a specific release or set of functionality, and they can be toggled on or off for different user segments (e.g., internal testers, beta users, general release). This way, we can ensure a smoother rollout and better user experience as the schema evolves. Simple refactor to remove the flag after the beta period ends and the feature is fully rolled out.
 
-      ### MySql has a SET Data Type that allows you to store multiple values in a single column, which can be useful for representing multiple selections or attributes for an entity. However, it has some limitations and considerations to keep in mind:
-      1. Limited to 64 Values: The SET data type can only store up to 64 distinct values. If you need to store more than 64 options, you'll need to use a different approach, such as a separate table with a many-to-many relationship.
-      2. Not Normalized: Using a SET data type can lead to denormalization of your database, as it violates the principles of database normalization. This can make it more difficult to query and maintain your data over time.
-      3. Performance Issues: While the SET data type can be efficient for small sets of values, it can lead to performance issues as the number of options increases, especially if you need to perform complex queries or updates on the data.
-      4. Limited Querying Capabilities: Querying data stored in a SET column can be more complex than querying normalized data, as you may need to use string functions to extract individual values or check for specific combinations of values.
-
-      ### Entity Logic - Feel free to comment. You will not make changes until I have approved the logic.
       ]]>
     <BiZLOGIC>
       <![CDATA[
@@ -49,7 +42,8 @@
         C) Attribute Relationships (e.g., Derived Attributes, Attribute Dependencies).
       ]]>
     </BiZLOGIC>
-      <REF ID="H-FDAS9ADFFU8A8-J-FDSHD9IFD" LINK="/uploads/TEST_LINK_TO_SCREEN_SHOTC.png">Conduit Flow.html</REF>
+    <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS=""> All yellow butonns in light mode are not ledgible.</TASK>
+      <REF ID="HAJFAEJPJS-J0FA0J-FFKSLAD" LINK="/uploads/ConduitFlow.Company.Edit.png">ConduitFlow.Company.Edit</REF>
      
      </PAYLOAD>
   </MSG>
