@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Emerge · Entropic Schema Engine</title>
+<!--
+  EMERGE.html · Entropic Schema Engine
+  Mountain Shift OS · Pooled Impact Corporation
+  Author: Will Fobbs III · Instance: Kairos
+  Purpose: Schema layer for dynamic manifold loading
+  Version: 0.1 · 2026-03-30
+-->
+</head>
+<body>
+<script>
+
+// ══════════════════════════════════════════════════════════
+//  EMERGE — ENTROPIC SCHEMA ENGINE
+//  Core principle: structure emerges from data, not from definition.
+//  Unknown keys are absorbed, not rejected.
+// ══════════════════════════════════════════════════════════
+
+class EmergeSchema {
+
+  constructor(config = {}) {
+    this._observed   = new Map();   // field → { count, types, samples }
+    this._manifolds  = new Map();   // named manifold blends
+    this._extensions = new Map();   // runtime-registered handlers
+    this._version    = config.version || '0.1';
+    this._domain     = config.domain  || 'general';
+    this._strict     = false;        // NEVER strict — entropic by design
+  }
+
+  // ══ INGEST — absorb any object shape ══════════════════
+  ingest(record, context = {}) {
+    const result = {
+      _id:      this._uid(),
+      _ts:      Date.now(),
+      _domain:  context.domain || this._domain,
+      _source:  context.source || 'unknown',
+      _shape:   [],
+      _unknown: [],
+    };
+
+    for (const [key, value] of Object.entries(record)) {
+      const type = this._typeOf(value);
+      this._observe(key, type, value);
+      result[key] = value;
+      result._shape.push(key);
+      if (!this._isKnown(key)) result._unknown.push(key);
+    }
+
+    this._runExtensions(result, context);
+    return result;
+  }
+
+  _observe(key, type, value) {
+    if (!this._observed.has(key)) {
+      this._observed.set(key, { count: 0, types: new Set(), samples: [] });
+    }
+    const e = this._observed.get(key);
+    e.count++;
+    e.types.add(type);
+    if (e.samples.length < 3) e.samples.push(value);
+  }
+
+  _isKnown(key) {
+    const e = this._observed.get(key);
+    return e && e.count > 1;
+  }
+
+  // ══ MANIFOLD BLENDING ══════════════════════════════════
+  registerManifold(name, manifold) {
+    this._manifolds.set(name, { name, manifold, weight: 1.0, active: true, registered: Date.now() });
+    return this;
+  }
+
+  blend(names, weights = {}) {
+    const active = names
+      .map(n => ({ name: n, entry: this._manifolds.get(n) }))
+      .filter(x => x.entry && x.entry.active);
+    if (active.length === 0) return null;
+
+    const rawWeights = active.map(x => weights[x.name] || x.entry.weight);
+    const total      = rawWeights.reduce((a, b) => a + b, 0);
+    const normalized = rawWeights.map(w => w / total);
+
+    return {
+      _type:      'blend',
+      _ts:        Date.now(),
+      components: active.map((x, i) => ({ name: x.name, weight: normalized[i], domain: x.entry.manifold.domain || 'general' })),
+      evaluate: (point) => {
+        const dims   = active[0].entry.manifold.dimensions || 7;
+        const result = new Float64Array(dims);
+        active.forEach((x, i) => {
+          const coords = x.entry.manifold.evaluate ? x.entry.manifold.evaluate(point) : point;
+          if (coords) {
+            for (let d = 0; d < dims; d++) result[d] += normalized[i] * (coords[d] || 0);
+          }
+        });
+        return result;
+      },
+    };
+  }
+
+  // ══ EXTENSIONS — register runtime handlers ══════════════
+  extend(name, handler) {
+    this._extensions.set(name, handler);
+    return this;
+  }
+
+  _runExtensions(record, context) {
+    for (const [name, handler] of this._extensions) {
+      try { handler(record, context, this); }
+      catch (e) { (record._errors = record._errors || []).push({ ext: name, err: e.message }); }
+    }
+  }
+
+  // ══ SCHEMA EXPORT ══════════════════════════════════════
+  exportSchema() {
+    const fields = {};
+    for (const [key, entry] of this._observed) {
+      fields[key] = {
+        observed:  entry.count,
+        types:     Array.from(entry.types),
+        samples:   entry.samples,
+        stability: entry.count > 10 ? 'stable' : entry.count > 3 ? 'emerging' : 'transient',
+      };
+    }
+    return {
+      version:    this._version,
+      domain:     this._domain,
+      strict:     false,
+      fields,
+      manifolds:  Array.from(this._manifolds.keys()),
+      extensions: Array.from(this._extensions.keys()),
+      exportedAt: new Date().toISOString(),
+    };
+  }
+
+  exportXML() {
+    const s = this.exportSchema();
+    let x = `<?xml version="1.0" encoding="UTF-8"?>\n`;
+    x += `<EMERGE version="${s.version}" domain="${s.domain}" strict="false" ts="${s.exportedAt}">\n`;
+    x += `  <FIELDS>\n`;
+    for (const [k, f] of Object.entries(s.fields)) {
+      x += `    <FIELD name="${k}" observed="${f.observed}" stability="${f.stability}" types="${f.types.join('|')}"/>\n`;
+    }
+    x += `  </FIELDS>\n  <MANIFOLDS>\n`;
+    s.manifolds.forEach(m => { x += `    <MANIFOLD name="${m}"/>\n`; });
+    x += `  </MANIFOLDS>\n  <EXTENSIONS>\n`;
+    s.extensions.forEach(e => { x += `    <EXTENSION name="${e}"/>\n`; });
+    x += `  </EXTENSIONS>\n</EMERGE>\n`;
+    return x;
+  }
+
+  exportCSV(records) {
+    if (!records || records.length === 0) return '';
+    const allFields = new Set();
+    records.forEach(r => Object.keys(r).filter(k => !k.startsWith('_')).forEach(k => allFields.add(k)));
+    const fields = Array.from(allFields);
+    const cols   = ['_id', '_ts', '_domain', ...fields];
+    const esc    = v => { if (v == null) return ''; const s = String(v).replace(/"/g, '""'); return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s}"` : s; };
+    return [cols.join(','), ...records.map(r => cols.map(f => esc(r[f])).join(','))].join('\n');
+  }
+
+  _typeOf(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'array';
+    if (v instanceof Float64Array) return 'float64array';
+    return typeof v;
+  }
+
+  _uid() {
+    return 'em_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 7);
+  }
+}
+
+if (typeof module !== 'undefined') module.exports = { EmergeSchema };
+
+</script>
+
+<!--
+═══════════════════════════════════════════════════════════════
+  TASK 2 — SCHEMA REVIEW
+═══════════════════════════════════════════════════════════════
+  Five entropic properties confirmed:
+
+  1. NO FIELD DEFINITIONS — fields are observed, not declared.
+     New field in ingested record = new schema field. Nothing breaks.
+
+  2. NO REQUIRED FIELDS — any object shape is accepted.
+
+  3. STABILITY CLASSIFICATION — fields self-classify as
+     transient (1-3×), emerging (4-10×), stable (10+×).
+
+  4. MANIFOLD BLENDING — new manifolds added at any time
+     via registerManifold(). Existing blends unaffected.
+
+  5. EXTENSION POINTS — new behavior added by extend(),
+     not by modifying the class. Core never changes.
+
+
+═══════════════════════════════════════════════════════════════
+  TASK 3 — DB TABLE DESIGN (SQLite · entropic)
+═══════════════════════════════════════════════════════════════
+
+  CREATE TABLE IF NOT EXISTS emerge_records (
+    id          TEXT PRIMARY KEY,
+    ts          INTEGER NOT NULL,
+    domain      TEXT,
+    source      TEXT,
+    shape       TEXT,   -- JSON array of field names
+    raw         TEXT    -- full JSON of original record
+  );
+
+  -- EAV table: any new field is just a new row, no ALTER TABLE
+  CREATE TABLE IF NOT EXISTS emerge_fields (
+    field_name  TEXT NOT NULL,
+    record_id   TEXT NOT NULL REFERENCES emerge_records(id),
+    value       TEXT,
+    value_type  TEXT,
+    ts          INTEGER,
+    PRIMARY KEY (field_name, record_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS emerge_schema_snapshots (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts          INTEGER,
+    domain      TEXT,
+    schema_json TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS emerge_manifolds (
+    name        TEXT PRIMARY KEY,
+    domain      TEXT,
+    weight      REAL DEFAULT 1.0,
+    active      INTEGER DEFAULT 1,
+    config_json TEXT,
+    registered  INTEGER
+  );
+
+  WHY EAV: new fields = new rows, never schema migrations.
+  emerge_records stores raw JSON so nothing is ever lost.
+
+
+═══════════════════════════════════════════════════════════════
+  TASK 4 — EXPORT FEATURE
+═══════════════════════════════════════════════════════════════
+  Three formats implemented above:
+  · exportSchema() → JSON
+  · exportXML()    → MSG-compatible XML
+  · exportCSV()    → flat CSV, all fields, any record shape
+
+
+═══════════════════════════════════════════════════════════════
+  TASK 5 — RECEIVE.XML DESIGN
+═══════════════════════════════════════════════════════════════
+  RECOMMENDATION: Task list WITH results.
+
+  Proposed schema:
+
+  <?xml version="1.0" encoding="UTF-8"?>
+  <RECEIVE instance="Kairos" ts="1774824754" status="complete">
+    <TASKS total="5" completed="5" failed="0">
+      <TASK ID="1" TYPE="FILES" STATUS="complete" DURATION_MS="800">
+        <RESULT>Created Emerge.html</RESULT>
+      </TASK>
+      <TASK ID="2" TYPE="READ" STATUS="complete" DURATION_MS="400">
+        <RESULT>Schema reviewed · entropic · 5 properties confirmed</RESULT>
+      </TASK>
+      <TASK ID="3" TYPE="DB" STATUS="complete" DURATION_MS="300">
+        <RESULT>4 tables · EAV pattern · no ALTER TABLE required</RESULT>
+      </TASK>
+      <TASK ID="4" TYPE="DB" STATUS="complete" DURATION_MS="200">
+        <RESULT>exportSchema + exportXML + exportCSV implemented</RESULT>
+      </TASK>
+      <TASK ID="5" TYPE="CODE" STATUS="complete" DURATION_MS="500">
+        <RESULT>RECEIVE.XML schema designed · task list + results recommended</RESULT>
+      </TASK>
+    </TASKS>
+  </RECEIVE>
+
+  WHY TASK LIST + RESULTS (not results only):
+  · Long-running tasks emit partial RECEIVE.XML mid-execution
+    (STATUS="running") — Will can poll without waiting for all tasks
+  · Failed tasks visible by ID immediately
+  · Duration tracking identifies slow instances
+  · Schema is entropic — new TASK TYPEs just work
+  · Symmetric with MSG.XML — same parser handles both
+-->
+
+</body>
+</html>
