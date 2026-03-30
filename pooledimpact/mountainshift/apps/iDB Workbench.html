@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDB Workbench</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg0:       #1a1c1e;
+  --bg1:       #22252a;
+  --bg2:       #2a2d34;
+  --bg3:       #32363f;
+  --bg4:       #3c4049;
+  --border:    #3e4249;
+  --border2:   #4a4f5a;
+  --text0:     #e8eaf0;
+  --text1:     #b8bcc8;
+  --text2:     #7a7f8e;
+  --text3:     #555a66;
+  --accent:    #4fc3f7;
+  --accent2:   #0288d1;
+  --accent-dim:#1a3a4a;
+  --green:     #66bb6a;
+  --orange:    #ffa726;
+  --red:       #ef5350;
+  --purple:    #ab47bc;
+  --yellow:    #ffee58;
+  --sidebar-w: 260px;
+  --toolbar-h: 42px;
+  --statusbar-h: 24px;
+  --font-mono: 'JetBrains Mono', 'Courier New', monospace;
+  --font-ui:   'IBM Plex Sans', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg0);
+  color: var(--text0);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* ── TITLEBAR ── */
+#titlebar {
+  height: var(--toolbar-h);
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+  flex-shrink: 0;
+  user-select: none;
+}
+#titlebar .logo {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  letter-spacing: 0.02em;
+}
+#titlebar .logo svg { width: 18px; height: 18px; }
+#titlebar .sep { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.tb-btn {
+  height: 28px; padding: 0 10px;
+  background: var(--bg2); border: 1px solid var(--border);
+  color: var(--text1); border-radius: 4px; cursor: pointer;
+  font-family: var(--font-ui); font-size: 12px;
+  display: flex; align-items: center; gap: 5px;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.tb-btn:hover { background: var(--bg3); color: var(--text0); border-color: var(--border2); }
+.tb-btn.primary { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+.tb-btn.primary:hover { background: #039be5; }
+.tb-btn svg { width: 13px; height: 13px; }
+#titlebar .spacer { flex: 1; }
+#db-selector {
+  height: 28px; padding: 0 8px;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text0); border-radius: 4px;
+  font-family: var(--font-ui); font-size: 12px;
+  min-width: 180px; cursor: pointer;
+}
+#db-selector:focus { outline: none; border-color: var(--accent); }
+
+/* ── MAIN LAYOUT ── */
+#main { flex: 1; display: flex; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+#sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg1);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: width 0.2s;
+}
+#sidebar.collapsed { width: 0; }
+
+#sidebar-header {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+}
+#sidebar-header span { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; }
+
+#db-tree {
+  flex: 1; overflow-y: auto; overflow-x: hidden;
+  padding: 4px 0;
+}
+#db-tree::-webkit-scrollbar { width: 4px; }
+#db-tree::-webkit-scrollbar-track { background: transparent; }
+#db-tree::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.tree-db {
+  padding: 0;
+}
+.tree-db-header {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px; cursor: pointer;
+  color: var(--text1); font-size: 12px; font-weight: 500;
+  transition: background 0.1s;
+}
+.tree-db-header:hover { background: var(--bg2); }
+.tree-db-header.active { color: var(--accent); }
+.tree-db-header svg { width: 13px; height: 13px; flex-shrink: 0; }
+.tree-db-header .db-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tree-db-header .caret { transition: transform 0.15s; color: var(--text3); flex-shrink: 0; }
+.tree-db-header.open .caret { transform: rotate(90deg); }
+.tree-db-header .badge {
+  font-size: 10px; padding: 1px 5px; border-radius: 9px;
+  background: var(--bg3); color: var(--text2); flex-shrink: 0;
+}
+
+.tree-stores { display: none; padding-left: 0; }
+.tree-stores.open { display: block; }
+.tree-store {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px 4px 28px; cursor: pointer;
+  color: var(--text2); font-size: 12px;
+  transition: background 0.1s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tree-store:hover { background: var(--bg2); color: var(--text0); }
+.tree-store.active { background: var(--accent-dim); color: var(--accent); }
+.tree-store svg { width: 12px; height: 12px; flex-shrink: 0; }
+.tree-store .count { margin-left: auto; font-size: 10px; color: var(--text3); }
+
+/* ── CONTENT AREA ── */
+#content {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; min-width: 0;
+}
+
+/* ── QUERY PANEL ── */
+#query-panel {
+  background: var(--bg1);
+  border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  height: 140px;
+  min-height: 80px;
+  resize: none;
+  position: relative;
+}
+
+#query-toolbar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg0);
+}
+#query-toolbar span { font-size: 11px; color: var(--text2); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+#query-toolbar .spacer { flex: 1; }
+#query-toolbar .kbd {
+  font-family: var(--font-mono); font-size: 10px; padding: 2px 5px;
+  background: var(--bg3); border: 1px solid var(--border2); border-radius: 3px; color: var(--text2);
+}
+
+#query-editor {
+  flex: 1; width: 100%; background: transparent;
+  border: none; outline: none; resize: none;
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--text0);
+  padding: 8px 12px; line-height: 1.6;
+}
+#query-editor::placeholder { color: var(--text3); }
+
+#resize-handle {
+  height: 4px; background: transparent; cursor: ns-resize;
+  position: absolute; bottom: 0; left: 0; right: 0;
+  transition: background 0.15s;
+}
+#resize-handle:hover { background: var(--accent); }
+
+/* ── RESULTS AREA ── */
+#results-area {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+}
+
+#results-toolbar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg0);
+  flex-shrink: 0;
+}
+#results-toolbar .tabs { display: flex; gap: 1px; }
+.rtab {
+  padding: 3px 12px; font-size: 12px; cursor: pointer;
+  background: var(--bg2); color: var(--text2);
+  border: 1px solid var(--border); border-radius: 3px 3px 0 0; border-bottom: none;
+  transition: all 0.1s;
+}
+.rtab:hover { color: var(--text0); }
+.rtab.active { background: var(--bg1); color: var(--text0); border-bottom: 1px solid var(--bg1); }
+#results-toolbar .spacer { flex: 1; }
+#results-info { font-size: 11px; color: var(--text2); font-family: var(--font-mono); }
+#results-info .ok { color: var(--green); }
+#results-info .err { color: var(--red); }
+
+#results-content { flex: 1; overflow: auto; position: relative; }
+#results-content::-webkit-scrollbar { width: 6px; height: 6px; }
+#results-content::-webkit-scrollbar-track { background: var(--bg0); }
+#results-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ── DATA GRID ── */
+#data-grid { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+#data-grid thead tr { background: var(--bg2); position: sticky; top: 0; z-index: 5; }
+#data-grid th {
+  padding: 6px 12px; text-align: left;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid var(--accent2);
+  color: var(--accent); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.04em;
+  white-space: nowrap; cursor: pointer; user-select: none;
+}
+#data-grid th:hover { background: var(--bg3); }
+#data-grid th .sort-icon { margin-left: 4px; color: var(--text3); }
+#data-grid tbody tr { border-bottom: 1px solid var(--border); transition: background 0.08s; }
+#data-grid tbody tr:hover { background: var(--bg2); }
+#data-grid tbody tr.selected { background: var(--accent-dim); }
+#data-grid td {
+  padding: 5px 12px; color: var(--text0);
+  border-right: 1px solid var(--border);
+  max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  vertical-align: middle;
+}
+#data-grid td.null { color: var(--text3); font-style: italic; }
+#data-grid td.num { color: var(--orange); }
+#data-grid td.bool-t { color: var(--green); }
+#data-grid td.bool-f { color: var(--red); }
+#data-grid td.obj { color: var(--purple); cursor: pointer; }
+#data-grid td.obj:hover { text-decoration: underline; }
+#data-grid td.id-col { color: var(--text2); font-size: 11px; }
+
+.empty-state {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; gap: 12px; color: var(--text3); padding: 40px;
+}
+.empty-state svg { width: 48px; height: 48px; opacity: 0.3; }
+.empty-state p { font-size: 13px; }
+
+/* ── JSON VIEWER ── */
+#json-panel {
+  display: none; padding: 12px; font-family: var(--font-mono); font-size: 12px;
+  line-height: 1.7; overflow: auto;
+}
+#json-panel.active { display: block; }
+.json-key { color: var(--accent); }
+.json-str { color: var(--green); }
+.json-num { color: var(--orange); }
+.json-bool { color: var(--red); }
+.json-null { color: var(--text3); font-style: italic; }
+
+/* ── STATUS BAR ── */
+#statusbar {
+  height: var(--statusbar-h);
+  background: var(--accent2);
+  display: flex; align-items: center; padding: 0 12px; gap: 16px;
+  flex-shrink: 0;
+}
+#statusbar .seg { font-size: 11px; color: rgba(255,255,255,0.9); display: flex; align-items: center; gap: 5px; }
+#statusbar .seg.right { margin-left: auto; }
+#statusbar .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+#statusbar .dot.err { background: var(--red); }
+
+/* ── MODAL ── */
+#modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+#modal-overlay.open { display: flex; }
+#modal {
+  background: var(--bg1); border: 1px solid var(--border2);
+  border-radius: 6px; width: min(600px, 92vw);
+  max-height: 80vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+}
+#modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px; border-bottom: 1px solid var(--border);
+}
+#modal-title { font-size: 13px; font-weight: 600; color: var(--text0); }
+#modal-close {
+  width: 24px; height: 24px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 4px; cursor: pointer; color: var(--text2);
+  display: flex; align-items: center; justify-content: center; font-size: 14px;
+}
+#modal-close:hover { background: var(--red); color: #fff; }
+#modal-body { flex: 1; overflow: auto; padding: 16px; font-family: var(--font-mono); font-size: 12px; line-height: 1.7; }
+#modal-body::-webkit-scrollbar { width: 4px; }
+#modal-body::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* ── NOTIFICATION ── */
+#notif {
+  position: fixed; bottom: 32px; right: 16px; z-index: 200;
+  background: var(--bg2); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 10px 16px;
+  font-size: 12px; color: var(--text0);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  display: none; animation: slideIn 0.2s ease;
+  max-width: 320px;
+}
+#notif.ok { border-color: var(--green); }
+#notif.err { border-color: var(--red); }
+@keyframes slideIn { from { transform: translateY(8px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* ── LOADING ── */
+.spinner {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border2); border-top-color: var(--accent);
+  animation: spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 220px; }
+  #sidebar { position: absolute; z-index: 50; height: 100%; }
+  #sidebar:not(.collapsed) { box-shadow: 4px 0 20px rgba(0,0,0,0.5); }
+  #sidebar.collapsed { width: 0; pointer-events: none; }
+  #query-panel { height: 120px; }
+  #data-grid td, #data-grid th { padding: 4px 8px; }
+}
+@media (max-width: 480px) {
+  #query-panel { height: 100px; }
+  #query-editor { font-size: 11px; }
+  .tb-btn span { display: none; }
+  #results-info .label { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TITLEBAR -->
+<div id="titlebar">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.657 4.03 3 9 3s9-1.343 9-3V5"/><path d="M3 11v6c0 1.657 4.03 3 9 3s9-1.343 9-3v-6"/>
+    </svg>
+    <span>IDB Workbench</span>
+  </div>
+  <div class="sep"></div>
+  <button class="tb-btn" onclick="toggleSidebar()" title="Toggle Sidebar">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="12" rx="1.5"/><path d="M5 2v12"/></svg>
+    <span>Schema</span>
+  </button>
+  <button class="tb-btn primary" onclick="executeQuery()" title="Run (Ctrl+Enter)">
+    <svg viewBox="0 0 16 16" fill="currentColor"><path d="M4 3l10 5-10 5V3z"/></svg>
+    <span>Run</span>
+  </button>
+  <button class="tb-btn" onclick="refreshAll()" title="Refresh">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8a6 6 0 0 1 10.5-4M14 8a6 6 0 0 1-10.5 4"/><path d="M12.5 2L14 4l-2 1"/><path d="M3.5 14L2 12l2-1"/></svg>
+    <span>Refresh</span>
+  </button>
+  <div class="sep"></div>
+  <select id="db-selector" onchange="selectDB(this.value)">
+    <option value="">— Select Database —</option>
+  </select>
+  <div class="spacer"></div>
+  <button class="tb-btn" onclick="exportData()" title="Export">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 4 3-4"/><path d="M2 12v2h12v-2"/></svg>
+    <span>Export</span>
+  </button>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <span>Object Browser</span>
+      <button class="tb-btn" style="height:22px;padding:0 6px;font-size:10px;" onclick="scanDatabases()">↻</button>
+    </div>
+    <div id="db-tree"><div class="empty-state" style="height:120px;">
+      <p style="font-size:11px;">Scanning databases…</p>
+    </div></div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+
+    <!-- QUERY PANEL -->
+    <div id="query-panel">
+      <div id="query-toolbar">
+        <span>Query</span>
+        <div class="spacer"></div>
+        <kbd class="kbd">Ctrl+Enter</kbd>&nbsp;<span style="font-size:10px;color:var(--text3)">Run</span>
+        &nbsp;&nbsp;<kbd class="kbd">Ctrl+L</kbd>&nbsp;<span style="font-size:10px;color:var(--text3)">Clear</span>
+      </div>
+      <textarea id="query-editor"
+        placeholder="-- IDB Query&#10;-- Examples:&#10;-- SELECT * FROM spv&#10;-- SELECT * FROM spv WHERE id = 1&#10;-- COUNT spv&#10;-- DELETE FROM spv WHERE id = 1&#10;-- CLEAR spv"
+        spellcheck="false"></textarea>
+      <div id="resize-handle"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div id="results-area">
+      <div id="results-toolbar">
+        <div class="tabs">
+          <div class="rtab active" data-tab="grid" onclick="switchTab('grid')">Grid</div>
+          <div class="rtab" data-tab="json" onclick="switchTab('json')">JSON</div>
+        </div>
+        <div class="spacer"></div>
+        <div id="results-info"></div>
+      </div>
+      <div id="results-content">
+        <table id="data-grid" style="display:none"><thead></thead><tbody></tbody></table>
+        <div id="json-panel"></div>
+        <div class="empty-state" id="empty-state">
+          <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
+            <ellipse cx="24" cy="10" rx="18" ry="6"/><path d="M6 10v8c0 3.314 8.059 6 18 6s18-2.686 18-6v-8"/><path d="M6 18v8c0 3.314 8.059 6 18 6s18-2.686 18-6v-8"/><path d="M6 26v8c0 3.314 8.059 6 18 6s18-2.686 18-6v-8"/>
+          </svg>
+          <p>Select a store from the sidebar or run a query</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- STATUSBAR -->
+<div id="statusbar">
+  <div class="seg"><div class="dot" id="status-dot"></div><span id="status-db">No database</span></div>
+  <div class="seg"><span id="status-store">—</span></div>
+  <div class="seg right"><span id="status-rows">0 rows</span></div>
+  <div class="seg"><span id="status-time">—</span></div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" onclick="closeModal(event)">
+  <div id="modal">
+    <div id="modal-header">
+      <div id="modal-title">Record Detail</div>
+      <div id="modal-close" onclick="closeModal()">✕</div>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- NOTIFICATION -->
+<div id="notif"></div>
+
+<script>
+'use strict';
+
+// ── STATE ──
+let currentDB = null;
+let currentStore = null;
+let currentData = [];
+let sortCol = null;
+let sortAsc = true;
+let openDBs = {};       // name → IDBDatabase
+let dbMeta = {};        // name → { stores, version }
+let queryHistory = [];
+let activeTab = 'grid';
+
+// ── INIT ──
+document.addEventListener('DOMContentLoaded', () => {
+  setupQueryEditor();
+  setupResizeHandle();
+  scanDatabases();
+});
+
+// ── KEYBOARD ──
+function setupQueryEditor() {
+  const ed = document.getElementById('query-editor');
+  ed.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); executeQuery(); }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'l') { e.preventDefault(); ed.value = ''; }
+    if (e.key === 'Tab') { e.preventDefault(); const s=ed.selectionStart,el=ed.selectionEnd; ed.value=ed.value.substring(0,s)+'  '+ed.value.substring(el); ed.selectionStart=ed.selectionEnd=s+2; }
+  });
+}
+
+// ── RESIZE HANDLE ──
+function setupResizeHandle() {
+  const handle = document.getElementById('resize-handle');
+  const panel = document.getElementById('query-panel');
+  let dragging = false, startY = 0, startH = 0;
+  handle.addEventListener('mousedown', e => {
+    dragging = true; startY = e.clientY; startH = panel.offsetHeight;
+    document.body.style.cursor = 'ns-resize'; document.body.style.userSelect = 'none';
+  });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const h = Math.max(60, Math.min(400, startH + (e.clientY - startY)));
+    panel.style.height = h + 'px';
+  });
+  document.addEventListener('mouseup', () => {
+    dragging = false; document.body.style.cursor = ''; document.body.style.userSelect = '';
+  });
+}
+
+// ── DB SCANNER ──
+async function scanDatabases() {
+  const tree = document.getElementById('db-tree');
+  tree.innerHTML = '<div class="empty-state" style="height:80px;"><div class="spinner"></div><p>Scanning…</p></div>';
+
+  let dbs = [];
+
+  // Method 1: indexedDB.databases() (Chrome 76+)
+  try {
+    const list = await indexedDB.databases();
+    dbs = list.map(d => ({ name: d.name, version: d.version }));
+  } catch(e) {
+    // Fallback: try known names
+    dbs = [];
+  }
+
+  // Method 2: probe known/common names if list is empty
+  const probeNames = [
+    'ConduitFundI_v8','ConduitTestResults_v1',
+    'sentinel_os','sentinel','db',
+    'app','data','store','mydb','testdb',
+    'firebase-heartbeat-database','firebase-installations-database',
+    'keyval-store','localforage'
+  ];
+  const probeResults = await Promise.all(probeNames.map(n => probeDB(n)));
+  probeResults.forEach((r,i) => {
+    if (r && !dbs.find(d => d.name === probeNames[i]))
+      dbs.push({ name: probeNames[i], version: r.version });
+  });
+
+  // Populate selector
+  const sel = document.getElementById('db-selector');
+  sel.innerHTML = '<option value="">— Select Database —</option>';
+  dbs.forEach(d => {
+    const o = document.createElement('option');
+    o.value = d.name; o.textContent = d.name;
+    sel.appendChild(o);
+  });
+
+  if (dbs.length === 0) {
+    tree.innerHTML = `<div class="empty-state" style="height:120px;">
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5" style="width:32px;height:32px;opacity:0.3"><ellipse cx="24" cy="24" rx="18" ry="8"/><path d="M6 24v8c0 4.418 8.059 8 18 8s18-3.582 18-8v-8"/></svg>
+      <p style="font-size:11px;">No IndexedDB found</p>
+      <p style="font-size:10px;color:var(--text3)">Open an app in this tab first</p>
+    </div>`;
+    return;
+  }
+
+  renderTree(dbs);
+  notify(`Found ${dbs.length} database${dbs.length>1?'s':''}`, 'ok');
+}
+
+async function probeDB(name) {
+  return new Promise(res => {
+    try {
+      const req = indexedDB.open(name);
+      req.onsuccess = e => {
+        const db = e.target.result;
+        const v = db.version;
+        const stores = Array.from(db.objectStoreNames);
+        db.close();
+        if (stores.length > 0 || v > 1) res({ version: v, stores });
+        else { try { indexedDB.deleteDatabase(name); } catch(e){} res(null); }
+      };
+      req.onerror = () => res(null);
+      req.onblocked = () => res(null);
+      setTimeout(() => res(null), 1000);
+    } catch(e) { res(null); }
+  });
+}
+
+async function openDB(name) {
+  if (openDBs[name]) return openDBs[name];
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(name);
+    req.onsuccess = e => {
+      const db = e.target.result;
+      openDBs[name] = db;
+      dbMeta[name] = {
+        version: db.version,
+        stores: Array.from(db.objectStoreNames)
+      };
+      res(db);
+    };
+    req.onerror = e => rej(e.target.error);
+  });
+}
+
+// ── TREE RENDER ──
+async function renderTree(dbs) {
+  const tree = document.getElementById('db-tree');
+  tree.innerHTML = '';
+  for (const d of dbs) {
+    const div = document.createElement('div');
+    div.className = 'tree-db';
+    div.innerHTML = `<div class="tree-db-header" onclick="toggleDB('${d.name}',this)">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="8" cy="4" rx="6" ry="2.5"/><path d="M2 4v4c0 1.381 2.686 2.5 6 2.5s6-1.119 6-2.5V4"/><path d="M2 8v4c0 1.381 2.686 2.5 6 2.5s6-1.119 6-2.5V8"/></svg>
+      <span class="db-name">${d.name}</span>
+      <svg class="caret" viewBox="0 0 10 10" fill="currentColor" width="8" height="8"><path d="M3 2l4 3-4 3V2z"/></svg>
+    </div>
+    <div class="tree-stores" id="stores-${CSS.escape(d.name)}"></div>`;
+    tree.appendChild(div);
+  }
+}
+
+async function toggleDB(name, el) {
+  const header = el.closest ? el : el;
+  header.classList.toggle('open');
+  const storesDiv = document.getElementById(`stores-${CSS.escape(name)}`);
+  if (storesDiv.classList.contains('open')) {
+    storesDiv.classList.remove('open');
+    return;
+  }
+  storesDiv.innerHTML = '<div style="padding:6px 10px;color:var(--text3);font-size:11px;">Loading…</div>';
+  storesDiv.classList.add('open');
+  header.classList.add('active');
+
+  try {
+    const db = await openDB(name);
+    const stores = Array.from(db.objectStoreNames);
+    const counts = await Promise.all(stores.map(s => countStore(db, s)));
+    storesDiv.innerHTML = '';
+    stores.forEach((s, i) => {
+      const d = document.createElement('div');
+      d.className = 'tree-store';
+      d.dataset.db = name; d.dataset.store = s;
+      d.innerHTML = `<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1"/><path d="M1 7h14"/></svg>
+        ${s}<span class="count">${counts[i]}</span>`;
+      d.onclick = () => browseStore(name, s);
+      storesDiv.appendChild(d);
+    });
+    // Update selector
+    const sel = document.getElementById('db-selector');
+    if (!Array.from(sel.options).find(o => o.value === name)) {
+      const o = document.createElement('option');
+      o.value = name; o.textContent = name;
+      sel.appendChild(o);
+    }
+  } catch(e) {
+    storesDiv.innerHTML = `<div style="padding:6px 10px;color:var(--red);font-size:11px;">Error: ${e.message}</div>`;
+  }
+}
+
+async function countStore(db, storeName) {
+  return new Promise(res => {
+    try {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).count();
+      req.onsuccess = e => res(e.target.result);
+      req.onerror = () => res('?');
+    } catch(e) { res('?'); }
+  });
+}
+
+// ── BROWSE STORE ──
+async function browseStore(dbName, storeName) {
+  currentDB = dbName; currentStore = storeName;
+
+  // Update tree selection
+  document.querySelectorAll('.tree-store').forEach(el => {
+    el.classList.toggle('active', el.dataset.db === dbName && el.dataset.store === storeName);
+  });
+
+  // Update selector
+  const sel = document.getElementById('db-selector');
+  if (Array.from(sel.options).find(o => o.value === dbName)) sel.value = dbName;
+
+  // Set query
+  document.getElementById('query-editor').value = `SELECT * FROM ${storeName}`;
+
+  // Load data
+  await loadStoreData(dbName, storeName);
+}
+
+async function loadStoreData(dbName, storeName) {
+  const t0 = performance.now();
+  try {
+    const db = await openDB(dbName);
+    const records = await getAllRecords(db, storeName);
+    currentData = records;
+    const ms = (performance.now() - t0).toFixed(1);
+    renderGrid(records);
+    setStatus(dbName, storeName, records.length, `${ms}ms`, true);
+    setResultsInfo(`<span class="ok">✓</span> ${records.length} row${records.length!==1?'s':''} · ${ms}ms`);
+  } catch(e) {
+    showError(e.message);
+    setStatus(dbName, storeName, 0, '—', false);
+  }
+}
+
+async function getAllRecords(db, storeName) {
+  return new Promise((res, rej) => {
+    try {
+      const tx = db.transaction(storeName, 'readonly');
+      const req = tx.objectStore(storeName).getAll();
+      req.onsuccess = e => res(e.target.result);
+      req.onerror = e => rej(e.target.error);
+    } catch(e) { rej(e); }
+  });
+}
+
+// ── QUERY ENGINE ──
+async function executeQuery() {
+  const raw = document.getElementById('query-editor').value.trim();
+  if (!raw) return;
+
+  queryHistory.unshift(raw);
+  const t0 = performance.now();
+
+  try {
+    const result = await parseAndRun(raw);
+    const ms = (performance.now() - t0).toFixed(1);
+    if (Array.isArray(result)) {
+      currentData = result;
+      renderGrid(result);
+      setResultsInfo(`<span class="ok">✓</span> ${result.length} row${result.length!==1?'s':''} · ${ms}ms`);
+      setStatus(currentDB||'—', currentStore||'—', result.length, `${ms}ms`, true);
+    } else {
+      currentData = [];
+      renderGrid([]);
+      setResultsInfo(`<span class="ok">✓</span> ${result} · ${ms}ms`);
+      notify(result, 'ok');
+    }
+  } catch(e) {
+    showError(e.message);
+    setResultsInfo(`<span class="err">✗</span> ${e.message}`);
+  }
+}
+
+async function parseAndRun(q) {
+  q = q.replace(/--[^\n]*/g, '').trim();
+  const upper = q.toUpperCase();
+
+  // SELECT * FROM store
+  // SELECT * FROM store WHERE field = value
+  // SELECT * FROM store WHERE field LIKE value
+  if (upper.startsWith('SELECT')) {
+    const m = q.match(/SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?(?:\s+LIMIT\s+(\d+))?/i);
+    if (!m) throw new Error('Syntax: SELECT * FROM <store> [WHERE field = value] [LIMIT n]');
+    const [,store, where, limit] = m;
+    const db = await requireDB();
+    let rows = await getAllRecords(db, store);
+    currentStore = store;
+    if (where) rows = applyWhere(rows, where);
+    if (limit) rows = rows.slice(0, parseInt(limit));
+    return rows;
+  }
+
+  // COUNT store
+  if (upper.startsWith('COUNT')) {
+    const m = q.match(/COUNT\s+(\w+)/i);
+    if (!m) throw new Error('Syntax: COUNT <store>');
+    const db = await requireDB();
+    const count = await countStore(db, m[1]);
+    return `COUNT(${m[1]}) = ${count}`;
+  }
+
+  // DELETE FROM store WHERE id = n
+  if (upper.startsWith('DELETE')) {
+    const m = q.match(/DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*(.+)/i);
+    if (!m) throw new Error('Syntax: DELETE FROM <store> WHERE <field> = <value>');
+    const [, store, field, val] = m;
+    const db = await requireDB();
+    const parsed = parseValue(val.trim());
+    await deleteRecord(db, store, field === 'id' ? parsed : field, parsed);
+    await refreshTreeCount(store);
+    return `Deleted from ${store} where ${field} = ${parsed}`;
+  }
+
+  // CLEAR store
+  if (upper.startsWith('CLEAR')) {
+    const m = q.match(/CLEAR\s+(\w+)/i);
+    if (!m) throw new Error('Syntax: CLEAR <store>');
+    if (!confirm(`Clear all records from "${m[1]}"?`)) return 'Cancelled';
+    const db = await requireDB();
+    await clearStore(db, m[1]);
+    await refreshTreeCount(m[1]);
+    return `Cleared ${m[1]}`;
+  }
+
+  // SHOW STORES
+  if (upper.startsWith('SHOW STORES') || upper.startsWith('SHOW TABLES')) {
+    const db = await requireDB();
+    return Array.from(db.objectStoreNames).map((s,i) => ({ '#': i+1, store: s }));
+  }
+
+  // SHOW DATABASES
+  if (upper.startsWith('SHOW DB') || upper.startsWith('SHOW DATABASE')) {
+    const list = await indexedDB.databases().catch(() => []);
+    return list.map((d,i) => ({ '#': i+1, name: d.name, version: d.version }));
+  }
+
+  throw new Error(`Unknown query. Try: SELECT * FROM <store> | COUNT <store> | DELETE FROM <store> WHERE id = n | CLEAR <store> | SHOW STORES`);
+}
+
+function applyWhere(rows, where) {
+  const likeMatch = where.match(/(\w+)\s+LIKE\s+'?([^']+)'?/i);
+  const eqMatch   = where.match(/(\w+)\s*=\s*(.+)/i);
+  if (likeMatch) {
+    const [,field, pattern] = likeMatch;
+    const re = new RegExp(pattern.replace(/%/g,'.*').replace(/_/g,'.'), 'i');
+    return rows.filter(r => re.test(String(r[field]??'')));
+  }
+  if (eqMatch) {
+    const [,field, val] = eqMatch;
+    const parsed = parseValue(val.trim());
+    return rows.filter(r => r[field] == parsed || String(r[field]) === String(parsed));
+  }
+  return rows;
+}
+
+function parseValue(v) {
+  if (v === 'null') return null;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  if (/^['"].*['"]$/.test(v)) return v.slice(1,-1);
+  if (!isNaN(Number(v))) return Number(v);
+  return v;
+}
+
+async function deleteRecord(db, store, keyPath, keyValue) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).delete(keyValue);
+    req.onsuccess = () => res();
+    req.onerror = e => rej(e.target.error);
+  });
+}
+
+async function clearStore(db, store) {
+  return new Promise((res, rej) => {
+    const tx = db.transaction(store, 'readwrite');
+    const req = tx.objectStore(store).clear();
+    req.onsuccess = () => res();
+    req.onerror = e => rej(e.target.error);
+  });
+}
+
+async function requireDB() {
+  if (!currentDB) {
+    const sel = document.getElementById('db-selector');
+    if (sel.value) { currentDB = sel.value; } else throw new Error('No database selected. Use the selector or click a database in the sidebar.');
+  }
+  return await openDB(currentDB);
+}
+
+async function refreshTreeCount(storeName) {
+  const db = openDBs[currentDB];
+  if (!db) return;
+  const count = await countStore(db, storeName);
+  document.querySelectorAll('.tree-store').forEach(el => {
+    if (el.dataset.db === currentDB && el.dataset.store === storeName) {
+      const c = el.querySelector('.count');
+      if (c) c.textContent = count;
+    }
+  });
+}
+
+// ── GRID RENDER ──
+function renderGrid(rows) {
+  const grid = document.getElementById('data-grid');
+  const empty = document.getElementById('empty-state');
+  const json = document.getElementById('json-panel');
+
+  if (!rows || rows.length === 0) {
+    grid.style.display = 'none'; json.innerHTML = ''; json.classList.remove('active');
+    empty.style.display = 'flex';
+    empty.querySelector('p').textContent = rows ? 'No records found' : 'Select a store or run a query';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  if (activeTab === 'json') {
+    grid.style.display = 'none';
+    json.classList.add('active');
+    json.innerHTML = syntaxHighlight(JSON.stringify(rows, null, 2));
+    return;
+  }
+
+  json.classList.remove('active');
+  grid.style.display = 'table';
+
+  // Collect all keys
+  const keys = [];
+  rows.forEach(r => Object.keys(r).forEach(k => { if (!keys.includes(k)) keys.push(k); }));
+
+  // Sort if needed
+  let sorted = [...rows];
+  if (sortCol) {
+    sorted.sort((a,b) => {
+      const av = a[sortCol], bv = b[sortCol];
+      if (av==null) return 1; if (bv==null) return -1;
+      const r = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortAsc ? r : -r;
+    });
+  }
+
+  // Header
+  const thead = grid.querySelector('thead');
+  thead.innerHTML = '<tr>' + keys.map(k => `
+    <th onclick="sortBy('${k}')">${k}<span class="sort-icon">${sortCol===k?(sortAsc?'▲':'▼'):'⇅'}</span></th>
+  `).join('') + '</tr>';
+
+  // Body
+  const tbody = grid.querySelector('tbody');
+  tbody.innerHTML = sorted.map((row, ri) => `
+    <tr onclick="selectRow(${ri})" data-row="${ri}">
+      ${keys.map(k => cellHTML(row[k], k)).join('')}
+    </tr>
+  `).join('');
+}
+
+function cellHTML(val, key) {
+  if (val === null || val === undefined) return `<td class="null">NULL</td>`;
+  if (typeof val === 'boolean') return `<td class="${val?'bool-t':'bool-f'}">${val}</td>`;
+  if (typeof val === 'number') return `<td class="${key==='id'?'id-col':'num'}">${val}</td>`;
+  if (typeof val === 'object') {
+    const json = JSON.stringify(val);
+    const preview = json.length > 40 ? json.substring(0,40)+'…' : json;
+    return `<td class="obj" onclick="showJSON(event,${JSON.stringify(json)},${JSON.stringify(key)})" title="Click to expand">{…} ${preview}</td>`;
+  }
+  const s = String(val);
+  const display = s.length > 80 ? s.substring(0,80)+'…' : s;
+  return `<td title="${s.replace(/"/g,'&quot;')}">${display}</td>`;
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortAsc = !sortAsc; else { sortCol = col; sortAsc = true; }
+  renderGrid(currentData);
+}
+
+function selectRow(ri) {
+  document.querySelectorAll('#data-grid tbody tr').forEach((el,i) => {
+    el.classList.toggle('selected', i === ri);
+  });
+}
+
+function showJSON(e, json, field) {
+  e.stopPropagation();
+  document.getElementById('modal-title').textContent = field + ' — Detail';
+  document.getElementById('modal-body').innerHTML = `<pre style="white-space:pre-wrap;word-break:break-word;">${syntaxHighlight(JSON.stringify(JSON.parse(json),null,2))}</pre>`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    if (/^"/.test(match)) return /:$/.test(match) ? `<span class="json-key">${match}</span>` : `<span class="json-str">${match}</span>`;
+    if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+    if (/null/.test(match)) return `<span class="json-null">${match}</span>`;
+    return `<span class="json-num">${match}</span>`;
+  });
+}
+
+// ── TABS ──
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.rtab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  renderGrid(currentData);
+}
+
+// ── SELECT DB ──
+async function selectDB(name) {
+  if (!name) return;
+  currentDB = name;
+  try {
+    const db = await openDB(name);
+    const stores = Array.from(db.objectStoreNames);
+    setStatus(name, '—', 0, '—', true);
+    notify(`Connected: ${name} (v${db.version}, ${stores.length} stores)`, 'ok');
+
+    // Open in tree
+    const header = document.querySelector(`.tree-db-header .db-name`);
+    // Find matching tree node
+    document.querySelectorAll('.tree-db-header .db-name').forEach(el => {
+      if (el.textContent === name) {
+        const h = el.closest('.tree-db-header');
+        if (!h.classList.contains('open')) toggleDB(name, h);
+      }
+    });
+  } catch(e) {
+    notify(`Error: ${e.message}`, 'err');
+  }
+}
+
+// ── REFRESH ──
+async function refreshAll() {
+  openDBs = {}; dbMeta = {};
+  await scanDatabases();
+  if (currentDB && currentStore) await loadStoreData(currentDB, currentStore);
+}
+
+// ── EXPORT ──
+function exportData() {
+  if (!currentData || currentData.length === 0) { notify('No data to export', 'err'); return; }
+  const json = JSON.stringify(currentData, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${currentStore||'export'}_${Date.now()}.json`;
+  a.click();
+  notify(`Exported ${currentData.length} records`, 'ok');
+}
+
+// ── SIDEBAR TOGGLE ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('collapsed');
+}
+
+// ── STATUS ──
+function setStatus(db, store, rows, time, ok) {
+  document.getElementById('status-db').textContent = db;
+  document.getElementById('status-store').textContent = store;
+  document.getElementById('status-rows').textContent = `${rows} rows`;
+  document.getElementById('status-time').textContent = time;
+  document.getElementById('status-dot').className = 'dot' + (ok ? '' : ' err');
+}
+
+function setResultsInfo(html) {
+  document.getElementById('results-info').innerHTML = html;
+}
+
+function showError(msg) {
+  currentData = [];
+  const grid = document.getElementById('data-grid');
+  const empty = document.getElementById('empty-state');
+  grid.style.display = 'none';
+  empty.style.display = 'flex';
+  empty.querySelector('p').textContent = '⚠ ' + msg;
+}
+
+// ── MODAL ──
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.target === document.getElementById('modal-close')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal({target: document.getElementById('modal-overlay')}); });
+
+// ── NOTIFICATION ──
+let notifTimer = null;
+function notify(msg, type='ok') {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.className = type;
+  el.style.display = 'block';
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.style.display = 'none', 3000);
+}
+</script>
+</body>
+</html>
