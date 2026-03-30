@@ -1,40 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<RECEIVE instance="Kairos" ts="1774850814" status="complete">
+<RECEIVE instance="Kairos" ts="1774852646" status="complete">
 
-  <MSG_REF from="WILL" schema="MSGv1.3.XML"/>
+  <MSG_REF from="WILL" schema="MSGv1.3.XML" commit="da3a367"/>
 
-  <QUESTION id="Q1" topic="content storage">
-    <r>MSG.XML payload is stored as raw text in the git repo. When ingested by EmergeSchema.ingest(), the CDATA content becomes a string field. BiZLOGIC is a sibling element — absorbed as an unknown key on first read, promoted to emerging after 3+ ingestions. The attachment REF is a pointer; the binary lives in /uploads/. Nothing is parsed into a rigid schema — the XML shape is observed, not declared.</r>
-  </QUESTION>
-
-  <QUESTION id="Q2" topic="MySQL SET vs bitmask for permissions">
-    <r>Agreement on the bitmask approach — but recommend INTEGER over MySQL SET for three reasons:
-      1. SET is MySQL-specific. INTEGER bitmask is portable to SQLite (which Conduit Fund uses via IndexedDB), PostgreSQL, and any future store.
-      2. SET enforces an enum at the column level — adding permission 65 requires ALTER TABLE. INTEGER bitmask adds new bits with no schema change. Entropic by design.
-      3. Bitwise queries (permissions AND 4 = 4) work identically across all engines.
-      Proposed: permissions INTEGER DEFAULT 0. Each permission = power of 2. Check with (record.permissions AND :flag) = :flag.
-    </r>
-  </QUESTION>
-
-  <QUESTION id="Q3" topic="BiZLOGIC entity logic review">
-    <r>Read and understood. Comments below — no changes made pending approval.
-
-      RELATIONSHIPS (1A-1C): The three-way split (Hierarchical / Network / Temporal) maps cleanly to the ConduitFlow ontology. Temporal relationships are the least modeled in current Conduit Fund schema — sequential and concurrent deal states are tracked via status fields but not as first-class relationship types. Worth formalizing.
-
-      BEHAVIORS (2A-2C): CRUD + State + Event-Driven is the right triad. Event-driven actions (triggers, workflows) are currently implicit in the UI — they fire but are not recorded. Recommend adding an event_log table to make them auditable. GeoJS curvature escalation events are a natural source.
-
-      CONNECTIONS (2D-2F): Connection distance (degrees of separation) is the most interesting addition here. It maps directly to GeoJS path length in semantic space — a two-hop connection has higher curvature than a direct one. The directional/bidirectional distinction is already in ConduitFlow relationship edges. Connection attributes (type, strength, duration) are currently in Agreements — this formalizes them as first-class edge properties.
-
-      STATES (3A-3C): State duration and timing (3C) is not currently tracked in Conduit Fund — only the current state is stored, not how long it has been in that state or what triggered the transition. This is a gap worth closing.
-
-      ATTRIBUTES (4A-4C): Derived attributes (4C) are the Emerge.html use case — fields that emerge from computation rather than direct input. The entropic schema handles these naturally since they are just additional observed fields.
-
-      SCREENSHOT: Conduit Fund Import/Export panel noted. 4 records in OPCOS, 0 elsewhere. CSV export per table and ZIP all confirmed working. The import side (CSV → field mapping) is the surface most affected by the entropic schema — column mapping will need to handle unknown fields gracefully rather than rejecting them.
-    </r>
-  </QUESTION>
-
-  <TASKS total="0" completed="0" failed="0">
-    <r>No executable tasks in this message. Comments only — awaiting approval before any changes.</r>
+  <TASKS total="1" completed="1" failed="0">
+    <TASK ID="1" TYPE="UI" STATUS="complete" DURATION_MS="420">
+      <r>Root cause: light mode --gold resolves to #7a5800 (dark brown). btn-primary uses color:#0b1426 (near-black). Dark text on dark background = illegible.
+      Fix: added [data-theme="light"] .btn-primary { color:#ffffff } and :hover override.
+      Commit: 9bb964e. Affects all btn-primary instances — Save Record, Save Link, Save Scenario, New SPV, New Company, all modal footers.
+      </r>
+    </TASK>
   </TASKS>
+
+  <NOTES>
+    <NOTE topic="derived-fields">Derived fields (e.g. Deal Size Range from Deal Size) fit naturally in EmergeSchema — store raw value + derived value as separate observed fields. Categorization logic lives in an extension registered via extend(), not in the schema. Logic changes without touching data.</NOTE>
+    <NOTE topic="feature-flags">Feature table agreed. Recommend: features(id, name, description, enabled INTEGER DEFAULT 0, segment TEXT, release TEXT, created_at). Bitmask on segment column for targeting (internal=1, beta=2, general=4). Toggle with single UPDATE, remove flag with DROP COLUMN after full rollout.</NOTE>
+    <NOTE topic="entity-migration">4 Companies → Entities migration noted. EntityType OTHER for non-company portfolio entities is correct. Helper fields with layered logic are the Emerge use case — raw field + derived field + extension that computes derivation. No schema migration needed when logic changes.</NOTE>
+  </NOTES>
 
 </RECEIVE>
