@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ROOT SCHEMA="MSGv1.3.XML">
+  <MSG ID="" FROM="WILL" TS="">
+    <TO ID="1" UUID="d2eb1eef-f23c-4d31-aac9-7027204af7e7" NAME="" EMAIL="wfobbs.youthvillage@gmail.com"/>
+    <PAYLOAD>
+      <![CDATA[ 
+      ## Introduction
+      This is great! Now I can write you a proper message with out worrying about the content window size. When I push this message, it will be sent to UUID, d2eb1eef-f23c-4d31-aac9-7027204af7e7, which is you. I can write anything I want in this payload, and it will be delivered to you without any issues.
+      
+      ## New Logic
+      I may reference other areas within GitHub with a reference [REF ID="H-FDAS9ADFJISOALSK-FD0AIFD", LINK="#SkilABC.md"]
+
+      ### Tasks - Should take less than 120 seconds to execute 
+      ]]>
+      <TASK ID="1" TYPE="FILES" EXPECTED_DURATION="30" PURPOSE="Rename File">
+        <![CDATA[
+        Create a new file named, "Emerge.html".
+        ]]>>
+      </TASK>
+      <TASK ID="2" TYPE="READ" EXPECTED_DURATION="120" PURPOSE="Read Emerge.html">
+        <![CDATA[
+        Review the schema in the file. I need to redo the schema to be entropic and not rely on a rigid structure. I want to be able to add new elements and attributes without breaking the system. This is what allows me to dynamically load a blend manifolds.
+        ]]>
+      </TASK>
+      <TASK ID="3" TYPE="DB" EXPECTED_DURATION="120" PURPOSE="Refactor Conduit Fund.html">
+        <![CDATA[
+        Create database tables for the new schema. I need to be able to store the new elements and attributes in a way that is efficient and easy to query. This will allow me to quickly retrieve the data I need without having to worry about the structure of the data.
+        ]]>
+      </TASK>
+      <TASK ID="4" TYPE="DB" EXPECTED_DURATION="120" PURPOSE="Export Data Feature">
+        <![CDATA[
+        Created a new feature that allows me to export data in the new format. This will allow me to easily share data with other systems without having to worry about compatibility issues. I want to be able to export data in a way that is easy to understand and use.
+        ]]>
+      </TASK> 
+      <TASK ID="5" TYPE="CODE" EXPECTED_DURATION="120" PURPOSE="Refactor Process">
+        <![CDATA[
+        Discuss what type things put in result.xml. Do you think it should have the same task list with results? Or should it just have the results of the tasks? I think it would be helpful to have the task list with results so that I can easily see what tasks were completed and what the results were. This would allow me to quickly identify any issues that may have arisen during the execution of the tasks. Even long running tasks could be tracked in this way, and I could check the results as they come in without having to wait for all tasks to complete. This would make it easier to identify any issues that may arise during the execution of the tasks and allow me to quickly address them.
+        ]]>
+      <REF ID="H-FDAS9ADFJISOALSK-FD0AIFD" LINK="#SkilABC.md">Skill ABC</REF>
+     
+     </PAYLOAD>
+  </MSG>
+</ROOT>
