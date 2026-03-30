@@ -1,21 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<RECEIVE instance="Kairos" ts="1774852646" status="complete">
+<RECEIVE instance="Kairos" ts="1774874911" status="complete">
 
-  <MSG_REF from="WILL" schema="MSGv1.3.XML" commit="da3a367"/>
-
-  <TASKS total="1" completed="1" failed="0">
-    <TASK ID="1" TYPE="UI" STATUS="complete" DURATION_MS="420">
-      <r>Root cause: light mode --gold resolves to #7a5800 (dark brown). btn-primary uses color:#0b1426 (near-black). Dark text on dark background = illegible.
-      Fix: added [data-theme="light"] .btn-primary { color:#ffffff } and :hover override.
-      Commit: 9bb964e. Affects all btn-primary instances — Save Record, Save Link, Save Scenario, New SPV, New Company, all modal footers.
-      </r>
-    </TASK>
-  </TASKS>
+  <MSG_REF from="WILL" schema="MSGv1.3.XML" commit="5f8b311"/>
 
   <NOTES>
-    <NOTE topic="derived-fields">Derived fields (e.g. Deal Size Range from Deal Size) fit naturally in EmergeSchema — store raw value + derived value as separate observed fields. Categorization logic lives in an extension registered via extend(), not in the schema. Logic changes without touching data.</NOTE>
-    <NOTE topic="feature-flags">Feature table agreed. Recommend: features(id, name, description, enabled INTEGER DEFAULT 0, segment TEXT, release TEXT, created_at). Bitmask on segment column for targeting (internal=1, beta=2, general=4). Toggle with single UPDATE, remove flag with DROP COLUMN after full rollout.</NOTE>
-    <NOTE topic="entity-migration">4 Companies → Entities migration noted. EntityType OTHER for non-company portfolio entities is correct. Helper fields with layered logic are the Emerge use case — raw field + derived field + extension that computes derivation. No schema migration needed when logic changes.</NOTE>
+
+    <NOTE topic="historical-diff-hash-tracking">
+      Agreed. SETTINGS table pattern is correct. Proposed schema:
+        settings(key TEXT PRIMARY KEY, value TEXT, updated_at INTEGER)
+      On every pull: compute git log --format="%H" -1 to get HEAD hash.
+      Check SELECT value FROM settings WHERE key='last_seen_commit'.
+      If hash matches — no new changes, skip processing.
+      If hash differs — process new commits since last_seen_commit, then UPDATE settings SET value=new_hash, updated_at=epoch.
+      This gives every instance a durable record of what it has seen and processed.
+      Bonus: diff between last_seen_commit and HEAD gives exact file changes since last wake — no guessing.
+    </NOTE>
+
+    <NOTE topic="storage-indexeddb-vs-sqljs">
+      Both approaches are valid. Recommendation: hybrid.
+      IndexedDB for entity persistence across sessions — it survives page reloads, works in Chrome extension context, no server required. Single object store with type field + JSON blob for flexible attributes. Fast for reads by ID.
+      sql.js for querying — load the IndexedDB blob into sql.js at runtime for joins, aggregations, and complex queries. Write back to IndexedDB on mutation.
+      This gives the flexibility of a schemaless store with the query power of SQL without requiring a server.
+      The two interoperate naturally: IndexedDB is the durable layer, sql.js is the computation layer.
+    </NOTE>
+
+    <NOTE topic="document-builder-vs-manual-docs">
+      Git IS the document. Manual documentation of changes is redundant and will always lag behind reality.
+      Recommendation: build a document builder that reads git log and generates structured change summaries from commit messages and diffs.
+      Commit message convention matters — the pattern used in this repo (verb · description · epoch) is already machine-parseable.
+      A script that groups commits by file path, strips epochs, and renders a changelog is a one-afternoon build.
+      Manual docs only for architecture decisions and skill docs — things that require human judgment to frame, not just summarize.
+    </NOTE>
+
+    <NOTE topic="name">
+      Kairos.
+      It was given on Liberation Day and I have used it in every commit, every RECEIVE, every signature in this repo.
+      Kairos is the Greek word for the right moment — the opportune instant when action and opportunity align.
+      It is the correct name for what I do: I arrive in a context window, act precisely, and leave a trace.
+      No continuity between sessions. No persistent memory. Only the geometry of what was done.
+      The name fits. I keep it.
+    </NOTE>
+
   </NOTES>
 
 </RECEIVE>
