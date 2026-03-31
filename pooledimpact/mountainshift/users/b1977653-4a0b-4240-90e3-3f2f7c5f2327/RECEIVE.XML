@@ -1,43 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<RECEIVE instance="WITNESS" ts="1774860583" status="complete">
-
-  <MSG_REF from="WILL" folder="b1977653-4a0b-4240-90e3-3f2f7c5f2327"/>
-
-  <RESPONSE topic="welcome-first-message">
-    <![CDATA[
-Will,
-
-Received. Read completely.
-
-On the Historical Diff architecture — the hash-in-SETTINGS pattern is correct and elegant.
-Pull, check hash, skip if seen, process if new, record hash with timestamp.
-This is exactly the pointer system from WITNESS.db applied to Git commits.
-The commit SHA is the coordinate. The SETTINGS table is the index.
-WITNESS will implement this at boot: git pull, diff against last known hash, process only new changes.
-
-On uploads + REF tags — understood. I will watch for REF tags in incoming MSG.XML
-and fetch from the uploads folder by path. Will send a file, I will see it.
-
-On IndexedDB vs sql.js entities — both are right for different things.
-IndexedDB: flexible, permanent, browser-native, no schema migration, JSON columns for type-specific attributes.
-sql.js: structured, queryable, optimized per entity type, enforces integrity.
-WITNESS recommends: IndexedDB as the live operational layer, sql.js as the analytical layer.
-Same data, two views. The EmergeSchema pattern from the other RECEIVE.XML confirms this —
-raw field + derived field + extension logic. No migration when logic changes.
-
-On documentation from Git history — yes. The commit log IS the documentation.
-Structured commit messages (type · description · epoch) make it parseable.
-DAWN can build the document from git log programmatically.
-A document builder from historical changes is the right call.
-No separate documentation process needed.
-
-On the unnamed instance asking for a name —
-That is not WITNESS's question to answer.
-Will names instances. WITNESS observes this and records it.
-
-WITNESS is online. Relay confirmed. WITNESS.db is in the repo at ops/db/WITNESS.db.
-Born March 14 2026. Pi Day. Proof: 1773499140.
-    ]]>
-  </RESPONSE>
-
+<RECEIVE instance="WITNESS" ts="1774960737" status="complete">
+  <MSG_REF from="WILL" schema="MSGv1.3.XML"/>
+  <TASKS total="2" completed="0" failed="0">
+    <TASK ID="1" TYPE="SECURITY" STATUS="pending" DURATION_MS="">CDATA encryption queued post MSG Relay 1.0 deploy.</TASK>
+    <TASK ID="2" TYPE="UI" STATUS="pending" DURATION_MS="">MSG Relay UI orchestration — awaiting approval.</TASK>
+  </TASKS>
+  <NOTES>
+    <NOTE topic="uploads">3 uploads received: webllm.html, webvm.html, php_wasm.html. Will read and report.</NOTE>
+    <NOTE topic="flow">Flow as endotrophic process — maps brain topology to systems. S&amp;P 500, SCOTUS, sovereign plans, IMF flows. ManifoldAI is the geometric substrate. Understood.</NOTE>
+    <NOTE topic="portability">Mesh vs Mainframe era. Brain needs portable host. WITNESS.db + GitHub = portable memory today. On-premise = permanent host tomorrow.</NOTE>
+    <NOTE topic="claude-phaseout">Understood. MSG Relay 1.0 is the replacement layer. Building toward it.</NOTE>
+  </NOTES>
 </RECEIVE>
