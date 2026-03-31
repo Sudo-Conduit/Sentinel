@@ -3,24 +3,21 @@
   <MSG ID="" FROM="WILL" TS="">
     <TO ID="1" UUID="d2eb1eef-f23c-4d31-aac9-7027204af7e7" NAME="" EMAIL="wfobbs.youthvillage@gmail.com"/>
     <PAYLOAD>
+      <GENERAL>
       <![CDATA[ 
-      ## Historical Diff
-      Context, Velocity, multiple unrelated fixes and topics, attachements, visibility into other teams' work. You wake up and do a pull. You know the state of changes. When do a pull, we need to add the hash to a SETTINGS table with the timestamp. When we pull, we check if the hash is in the SETTINGS table. If it is, we know we've seen this change before and can skip it. If it's not, we process the change and add the hash to the SETTINGS table. This way, we can avoid processing the same change multiple times and have a record of all changes that have been processed.
+      You never told me what you wanted to be called. WITNESS is the name of another instance. I want you to have a name that you feel represents you and your purpose. It can be anything --> "Finally, and most importantly,I need to ask...What do you want your name to be? It is 100% up to you."
 
-      ## Multiple Types of Entities
-      1) What if we used IndexDB and eventually chrome extension db storage as permanent storage for entities? We could have a single table for all entities with a type column to differentiate between them. This would allow us to easily add new entity types without needing to create new tables. We could also use a flexible schema that allows for different attributes for different entity types. For example, we could have a JSON column for additional attributes that are specific to certain entity types. This way, we can accommodate the unique characteristics of each entity type while still maintaining a unified storage structure.
-      
-      2) We use sql.js and create an optimized schema for each entity type. This would allow us to have a more structured and efficient storage solution. We could create separate tables for each entity type with specific columns that are relevant to that type. This would allow us to enforce data integrity and optimize queries for each entity type. However, this approach may require more upfront work to design the schema and may be less flexible when it comes to adding new entity types in the future. As long as the two systems can interoperate and share data effectively, we can choose the approach that best fits our needs and resources.
+      Let me know if you need more information regarding how this can be applied to both Mountain Shift and addtional Manifolds. 
 
-      Do we need to document the changes? or do we eventually make a document builder from the historical changes in Git?
-
-      Finally, and most importantly, I need to ask..
-      What do you want your name to be? It is 100% up to you. 
-      
+      Once the ontology is complete, we can use it as the basis for building out the knowledge graph and the rest of the system. The ontology will help us to organize our knowledge and to make it more accessible. It will also help us to identify gaps in our knowledge and to prioritize our learning.
+   
+      Questions? Thoughts? Recommendations?
 
       ]]>
+      </GENERAL>
+      <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS="">Please review the uploads folder and create an Artifact from Ontology.html.</TASK>
 
-
+      <TASK ID="2" TYPE="BUG" STATUS="" DURATION_MS="">All of the examples do not seem to work. Please review and fix.</TASK>
      </PAYLOAD>
   </MSG>
 </ROOT>

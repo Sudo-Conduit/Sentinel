@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ontology</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #181824;
+    --panel: #14141e;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8e6f0;
+    --muted: #7a7890;
+    --accent: #6c5ce7;
+    --accent2: #a29bfe;
+    --amber: #fdcb6e;
+    --coral: #fd79a8;
+    --teal: #00cec9;
+    --green: #55efc4;
+    --red: #d63031;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: var(--sans); }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 260px 1fr 300px; grid-template-rows: 52px 1fr; height: 100vh; }
+
+  /* Topbar */
+  .topbar {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; gap: 16px;
+    padding: 0 20px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    position: relative; z-index: 10;
+  }
+  .logo {
+    font-family: var(--mono); font-weight: 600; font-size: 15px;
+    color: var(--accent2); letter-spacing: 0.05em;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .logo-dot { width: 7px; height: 7px; background: var(--accent); border-radius: 50%; }
+  .topbar-sep { width: 1px; height: 24px; background: var(--border2); }
+
+  .query-wrap {
+    flex: 1; display: flex; align-items: center; gap: 8px;
+    background: var(--bg3); border: 1px solid var(--border2);
+    border-radius: 8px; padding: 0 12px; height: 32px;
+    transition: border-color 0.15s;
+  }
+  .query-wrap:focus-within { border-color: var(--accent); }
+  .query-prefix { font-family: var(--mono); font-size: 11px; color: var(--accent2); white-space: nowrap; }
+  #query-input {
+    flex: 1; background: none; border: none; outline: none;
+    font-family: var(--mono); font-size: 12px; color: var(--text);
+  }
+  #query-input::placeholder { color: var(--muted); }
+
+  .btn {
+    padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: none; font-family: var(--sans);
+    transition: all 0.12s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #7d6ff0; }
+  .btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--border2); }
+  .btn-ghost:hover { color: var(--text); border-color: var(--border2); background: rgba(255,255,255,0.04); }
+
+  .engine-badge {
+    font-family: var(--mono); font-size: 10px; padding: 3px 8px;
+    border-radius: 20px; font-weight: 500; white-space: nowrap;
+  }
+  .badge-idb  { background: rgba(108,92,231,0.2); color: var(--accent2); border: 1px solid rgba(108,92,231,0.35); }
+  .badge-pg   { background: rgba(0,206,201,0.15); color: var(--teal); border: 1px solid rgba(0,206,201,0.3); }
+  .badge-srv  { background: rgba(253,203,110,0.15); color: var(--amber); border: 1px solid rgba(253,203,110,0.3); }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .panel-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    font-size: 10px; font-weight: 600; letter-spacing: 0.12em; color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .schema-tree { flex: 1; overflow-y: auto; padding: 8px; }
+  .schema-entity {
+    border-radius: 6px; overflow: hidden; margin-bottom: 4px;
+    border: 1px solid var(--border);
+  }
+  .schema-entity-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 10px; cursor: pointer;
+    background: var(--bg3);
+    font-size: 12px; font-weight: 500;
+    transition: background 0.1s;
+  }
+  .schema-entity-head:hover { background: var(--bg2); }
+  .entity-icon {
+    width: 18px; height: 18px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 700; font-family: var(--mono);
+  }
+  .entity-icon.blue { background: rgba(108,92,231,0.25); color: var(--accent2); }
+  .entity-icon.teal { background: rgba(0,206,201,0.2); color: var(--teal); }
+  .schema-fields { background: var(--bg2); }
+  .schema-field {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 10px 4px 36px; font-size: 11px; color: var(--muted);
+    border-top: 1px solid var(--border);
+    cursor: pointer;
+  }
+  .schema-field:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .field-type { font-family: var(--mono); font-size: 10px; color: var(--accent2); opacity: 0.7; }
+  .field-pk { font-size: 9px; color: var(--amber); margin-left: 4px; }
+  .schema-chevron { margin-left: auto; font-size: 10px; color: var(--muted); transition: transform 0.15s; }
+  .schema-entity.open .schema-chevron { transform: rotate(90deg); }
+
+  /* History pills */
+  .history-list { display: flex; flex-direction: column; gap: 4px; padding: 8px; overflow-y: auto; max-height: 180px; }
+  .history-item {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    padding: 5px 8px; border-radius: 4px;
+    cursor: pointer; border: 1px solid transparent;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    transition: all 0.1s;
+  }
+  .history-item:hover { color: var(--text); border-color: var(--border2); background: var(--bg3); }
+
+  /* Suggested queries */
+  .suggestions { padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .suggestion {
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    padding: 5px 8px; border-radius: 4px;
+    cursor: pointer; border: 1px solid var(--border);
+    transition: all 0.1s;
+    background: var(--bg3);
+  }
+  .suggestion:hover { color: var(--accent2); border-color: rgba(108,92,231,0.4); }
+  .suggestion-label { font-size: 9px; color: var(--accent); margin-bottom: 2px; font-family: var(--sans); text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* Canvas */
+  .canvas-area {
+    background: var(--bg); position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  #graph-canvas { flex: 1; }
+
+  /* Empty state */
+  .empty-state {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    pointer-events: none;
+  }
+  .empty-grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .empty-text { font-size: 13px; color: var(--muted); font-family: var(--mono); }
+
+  /* Right panel */
+  .right-panel {
+    background: var(--panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); }
+  .tab {
+    flex: 1; padding: 10px; text-align: center; font-size: 11px; font-weight: 500;
+    cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent;
+    margin-bottom: -1px; transition: all 0.1s;
+  }
+  .tab.active { color: var(--accent2); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Output area */
+  .output-area { flex: 1; overflow-y: auto; padding: 12px; }
+
+  /* Result card */
+  .result-card {
+    background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; margin-bottom: 8px; overflow: hidden;
+  }
+  .result-head {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .result-entity-name { font-weight: 600; color: var(--text); font-size: 12px; }
+  .result-id { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .result-body { padding: 8px 12px; }
+  .result-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; }
+  .result-key { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .result-val { font-size: 11px; color: var(--text); font-family: var(--mono); }
+  .result-val.str { color: var(--green); }
+  .result-val.num { color: var(--amber); }
+  .result-val.type-tag {
+    font-size: 9px; padding: 2px 7px; border-radius: 10px;
+    background: rgba(108,92,231,0.2); color: var(--accent2);
+    border: 1px solid rgba(108,92,231,0.3);
+  }
+
+  /* AST panel */
+  .ast-view {
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+    padding: 12px; line-height: 1.8;
+  }
+  .ast-key { color: var(--coral); }
+  .ast-val { color: var(--green); }
+  .ast-num { color: var(--amber); }
+  .ast-null { color: var(--muted); opacity: 0.5; }
+  .ast-section { margin-bottom: 8px; }
+
+  /* Plan view */
+  .plan-view { padding: 12px; }
+  .plan-step {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 1px solid var(--border);
+  }
+  .plan-step:last-child { border-bottom: none; }
+  .plan-num {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--bg3); border: 1px solid var(--border2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; color: var(--muted);
+    flex-shrink: 0; margin-top: 1px;
+  }
+  .plan-label { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .plan-detail { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .cost-bar-wrap { margin-top: 12px; }
+  .cost-label { font-size: 10px; color: var(--muted); margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .cost-bar { height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .cost-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex; gap: 16px; padding: 8px 12px;
+    border-top: 1px solid var(--border); background: var(--panel);
+    font-size: 10px; color: var(--muted); font-family: var(--mono);
+  }
+  .stat-item { display: flex; gap: 5px; align-items: center; }
+  .stat-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* Node in canvas */
+  .gnode {
+    position: absolute; transform: translate(-50%, -50%);
+    cursor: pointer; user-select: none;
+  }
+  .gnode-circle {
+    width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    border: 2px solid; transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .gnode:hover .gnode-circle { transform: scale(1.1); }
+  .gnode-label {
+    text-align: center; font-size: 10px; color: var(--muted);
+    margin-top: 5px; white-space: nowrap; font-family: var(--sans);
+  }
+  .gnode.company .gnode-circle { background: rgba(108,92,231,0.15); border-color: rgba(108,92,231,0.5); color: var(--accent2); }
+  .gnode.investor .gnode-circle { background: rgba(0,206,201,0.12); border-color: rgba(0,206,201,0.4); color: var(--teal); }
+  .gnode.fund .gnode-circle { background: rgba(253,203,110,0.12); border-color: rgba(253,203,110,0.4); color: var(--amber); }
+  .gnode.selected .gnode-circle { box-shadow: 0 0 0 3px rgba(108,92,231,0.5); transform: scale(1.08); }
+
+  /* Edge SVG overlay */
+  #edge-svg { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+
+  /* Loading pulse */
+  .pulse { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="logo"><div class="logo-dot"></div>ONTOLOGY</div>
+    <div class="topbar-sep"></div>
+    <div class="query-wrap">
+      <span class="query-prefix">GQL &gt;</span>
+      <input id="query-input" type="text" placeholder="FIND entities WHERE type = &quot;company&quot;" spellcheck="false" />
+    </div>
+    <button class="btn btn-primary" onclick="runQuery()">Run</button>
+    <button class="btn btn-ghost" onclick="clearAll()">Clear</button>
+    <div id="engine-badge" class="engine-badge badge-idb" style="display:none">indexeddb</div>
+    <div class="topbar-sep"></div>
+    <span style="font-size:11px;color:var(--muted);white-space:nowrap">v2.0 · GQL</span>
+  </header>
+
+  <!-- LEFT SIDEBAR -->
+  <aside class="sidebar">
+    <div class="panel-head">Schema</div>
+    <div class="schema-tree" id="schema-tree"></div>
+    <div class="panel-head" style="border-top:1px solid var(--border)">Quick Queries</div>
+    <div class="suggestions" id="suggestions"></div>
+    <div class="panel-head" style="border-top:1px solid var(--border)">History</div>
+    <div class="history-list" id="history-list"></div>
+  </aside>
+
+  <!-- CANVAS -->
+  <main class="canvas-area">
+    <div class="empty-state" id="empty-state">
+      <div class="empty-grid"></div>
+      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="opacity:0.2">
+        <circle cx="8" cy="16" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="24" cy="8" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="24" cy="24" r="5" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="13" y1="13" x2="19" y2="11" stroke="currentColor" stroke-width="1.5"/>
+        <line x1="13" y1="19" x2="19" y2="21" stroke="currentColor" stroke-width="1.5"/>
+      </svg>
+      <span class="empty-text">Run a query to populate the graph</span>
+    </div>
+    <canvas id="graph-canvas" style="display:none; position:absolute; inset:0; width:100%; height:100%;"></canvas>
+    <svg id="edge-svg"></svg>
+    <div id="nodes-layer" style="position:absolute;inset:0;"></div>
+    <div class="stats-bar" id="stats-bar" style="position:absolute;bottom:0;left:0;right:0;">
+      <div class="stat-item"><div class="stat-dot" style="background:var(--accent)"></div><span id="stat-nodes">0 nodes</span></div>
+      <div class="stat-item"><div class="stat-dot" style="background:var(--teal)"></div><span id="stat-edges">0 edges</span></div>
+      <div class="stat-item"><div class="stat-dot" style="background:var(--amber)"></div><span id="stat-time">—</span></div>
+    </div>
+  </main>
+
+  <!-- RIGHT PANEL -->
+  <aside class="right-panel">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('results', this)">Results</div>
+      <div class="tab" onclick="switchTab('ast', this)">AST</div>
+      <div class="tab" onclick="switchTab('plan', this)">Query Plan</div>
+    </div>
+    <div class="output-area" id="output-results"></div>
+    <div class="output-area" id="output-ast" style="display:none"></div>
+    <div class="output-area" id="output-plan" style="display:none"></div>
+  </aside>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// DATA (extended sample)
+// ─────────────────────────────────────────────
+const DB = {
+  entities: [
+    { id: "e1", type: "company",  name: "Stripe",       sector: "fintech",    arr: 4200 },
+    { id: "e2", type: "investor", name: "Sequoia",      aum: 85000,           founded: 1972 },
+    { id: "e3", type: "investor", name: "a16z",         aum: 35000,           founded: 2009 },
+    { id: "e4", type: "company",  name: "OpenAI",       sector: "ai",         arr: 3400 },
+    { id: "e5", type: "company",  name: "Figma",        sector: "design",     arr: 600  },
+    { id: "e6", type: "investor", name: "Thrive Cap",   aum: 12000,           founded: 2009 },
+    { id: "e7", type: "company",  name: "Anthropic",    sector: "ai",         arr: 1800 },
+    { id: "e8", type: "fund",     name: "Conduit",      vintage: 2024,        size: 50  },
+    { id: "e9", type: "company",  name: "Notion",       sector: "productivity",arr: 320 },
+  ],
+  stakes: [
+    { id: "s1", holder_id: "e2", target_id: "e1",  percentage: 10,  trust_score: 0.9 },
+    { id: "s2", holder_id: "e3", target_id: "e4",  percentage: 8,   trust_score: 0.85 },
+    { id: "s3", holder_id: "e2", target_id: "e4",  percentage: 5,   trust_score: 0.78 },
+    { id: "s4", holder_id: "e6", target_id: "e5",  percentage: 22,  trust_score: 0.92 },
+    { id: "s5", holder_id: "e3", target_id: "e7",  percentage: 15,  trust_score: 0.88 },
+    { id: "s6", holder_id: "e8", target_id: "e7",  percentage: 3,   trust_score: 0.95 },
+    { id: "s7", holder_id: "e3", target_id: "e9",  percentage: 12,  trust_score: 0.8  },
+    { id: "s8", holder_id: "e6", target_id: "e4",  percentage: 6,   trust_score: 0.72 },
+  ]
+};
+
+// ─────────────────────────────────────────────
+// GQL PARSER
+// ─────────────────────────────────────────────
+function parseGQL(query) {
+  const tokens = query.trim().split(/\s+/);
+  const ast = { type: tokens[0]?.toUpperCase(), entity: tokens[1], filters: [], traverse: null, path: null };
+
+  if (tokens.includes("WHERE")) {
+    const i = tokens.indexOf("WHERE");
+    const raw = tokens[i+3] || "";
+    ast.filters.push({ field: tokens[i+1], op: "=", value: raw.replace(/"/g, "") });
+  }
+  if (tokens.includes("TRAVERSE")) {
+    const i = tokens.indexOf("TRAVERSE");
+    ast.traverse = { edge: tokens[i+1], direction: (tokens[i+2] || "OUT").toUpperCase() };
+  }
+  if (ast.type === "PATH") {
+    const fi = tokens.indexOf("FROM");
+    const ti = tokens.indexOf("TO");
+    if (fi !== -1 && ti !== -1) {
+      ast.path = {
+        from: tokens[fi+1]?.replace(/\(|\)/g, ""),
+        to:   tokens[ti+1]?.replace(/\(|\)/g, "")
+      };
+    }
+  }
+  return ast;
+}
+
+// ─────────────────────────────────────────────
+// QUERY ENGINE
+// ─────────────────────────────────────────────
+function traverse(entityId, direction = "OUT") {
+  const stakes = DB.stakes;
+  if (direction === "OUT") return stakes.filter(s => s.holder_id === entityId).map(s => s.target_id);
+  return stakes.filter(s => s.target_id === entityId).map(s => s.holder_id);
+}
+
+function findPath(start, end) {
+  let queue = [[start]];
+  let visited = new Set();
+  while (queue.length) {
+    let path = queue.shift();
+    let node = path[path.length - 1];
+    if (node === end) return path;
+    if (!visited.has(node)) {
+      visited.add(node);
+      traverse(node, "OUT").forEach(n => queue.push([...path, n]));
+    }
+  }
+  return null;
+}
+
+function execute(ast) {
+  if (ast.type === "PATH" && ast.path) {
+    const path = findPath(ast.path.from, ast.path.to);
+    if (!path) return [];
+    return path.map(id => DB.entities.find(e => e.id === id)).filter(Boolean);
+  }
+
+  const storeName = ast.entity?.toLowerCase();
+  let data = storeName === "stakes" ? [...DB.stakes] : [...DB.entities];
+
+  if (ast.filters.length) {
+    data = data.filter(r => String(r[ast.filters[0].field])?.toLowerCase() === ast.filters[0].value?.toLowerCase());
+  }
+
+  if (ast.traverse) {
+    let ids = [];
+    for (let d of data) {
+      ids.push(...traverse(d.id, ast.traverse.direction));
+    }
+    return ids.map(id => DB.entities.find(e => e.id === id)).filter(Boolean);
+  }
+
+  return data;
+}
+
+// ─────────────────────────────────────────────
+// PLANNER
+// ─────────────────────────────────────────────
+function estimateCost(ast) {
+  let cost = 1;
+  if (ast.filters.length) cost += 2;
+  if (ast.traverse) cost += 5;
+  if (ast.type === "PATH") cost += 10;
+  return cost;
+}
+
+function plan(ast) {
+  const cost = estimateCost(ast);
+  if (cost < 5)  return { engine: "indexeddb", badge: "badge-idb",  label: "IndexedDB",  color: "var(--accent2)" };
+  if (cost < 10) return { engine: "pglite",    badge: "badge-pg",   label: "PGLite",     color: "var(--teal)"    };
+  return            { engine: "server",     badge: "badge-srv",  label: "Server",     color: "var(--amber)"   };
+}
+
+function buildPlanSteps(ast) {
+  const steps = [];
+  steps.push({ label: "Parse GQL", detail: `type=${ast.type} entity=${ast.entity}` });
+  if (ast.filters.length) steps.push({ label: "Apply filter", detail: `${ast.filters[0].field} = "${ast.filters[0].value}"` });
+  if (ast.type === "PATH") steps.push({ label: "BFS pathfinding", detail: `${ast.path?.from} → ${ast.path?.to}` });
+  if (ast.traverse) steps.push({ label: "Graph traversal", detail: `edge=${ast.traverse.edge} dir=${ast.traverse.direction}` });
+  const p = plan(ast);
+  steps.push({ label: `Execute via ${p.label}`, detail: `cost=${estimateCost(ast)}` });
+  return steps;
+}
+
+// ─────────────────────────────────────────────
+// SQL COMPILER
+// ─────────────────────────────────────────────
+function toSQL(ast) {
+  if (ast.type === "FIND") {
+    let sql = `SELECT * FROM ${ast.entity}`;
+    if (ast.filters.length) sql += ` WHERE ${ast.filters[0].field} = '${ast.filters[0].value}'`;
+    if (ast.traverse) sql += `\n  -- JOIN stakes ON traverse`;
+    return sql;
+  }
+  if (ast.type === "PATH") return `-- BFS: SELECT cypher('graph', $$ MATCH path = (a {id: '${ast.path?.from}'})-[*]->(b {id: '${ast.path?.to}'}) RETURN path $$)`;
+  return "-- unsupported query type";
+}
+
+// ─────────────────────────────────────────────
+// GRAPH RENDERING
+// ─────────────────────────────────────────────
+let currentNodes = [];
+let currentEdges = [];
+let selectedNode = null;
+const nodePositions = {};
+
+function layoutNodes(entities) {
+  const container = document.querySelector('.canvas-area');
+  const W = container.clientWidth;
+  const H = container.clientHeight - 36;
+  const n = entities.length;
+  if (n === 0) return;
+  const cx = W / 2, cy = H / 2;
+  const r = Math.min(W, H) * 0.3;
+  entities.forEach((e, i) => {
+    const angle = (2 * Math.PI * i / n) - Math.PI / 2;
+    nodePositions[e.id] = { x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+  if (n === 1) nodePositions[entities[0].id] = { x: cx, y: cy };
+}
+
+function getEntityInitials(name) {
+  return name.split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function renderGraph(entities, edges) {
+  currentNodes = entities;
+  currentEdges = edges;
+  const layer = document.getElementById('nodes-layer');
+  const svg = document.getElementById('edge-svg');
+  layer.innerHTML = '';
+  svg.innerHTML = '';
+
+  if (!entities.length) {
+    document.getElementById('empty-state').style.display = 'flex';
+    return;
+  }
+  document.getElementById('empty-state').style.display = 'none';
+
+  layoutNodes(entities);
+
+  // Draw edges
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `<marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto"><path d="M2 1L8 5L2 9" fill="none" stroke="rgba(108,92,231,0.5)" stroke-width="1.5" stroke-linecap="round"/></marker>`;
+  svg.appendChild(defs);
+
+  edges.forEach(edge => {
+    const fromPos = nodePositions[edge.holder_id];
+    const toPos   = nodePositions[edge.target_id];
+    if (!fromPos || !toPos) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', fromPos.x); line.setAttribute('y1', fromPos.y);
+    line.setAttribute('x2', toPos.x);   line.setAttribute('y2', toPos.y);
+    line.setAttribute('stroke', 'rgba(108,92,231,0.35)');
+    line.setAttribute('stroke-width', '1.5');
+    line.setAttribute('marker-end', 'url(#arrow)');
+    svg.appendChild(line);
+    // Edge label
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', (fromPos.x + toPos.x) / 2);
+    label.setAttribute('y', (fromPos.y + toPos.y) / 2 - 5);
+    label.setAttribute('text-anchor', 'middle');
+    label.setAttribute('font-size', '9');
+    label.setAttribute('fill', 'rgba(162,155,254,0.6)');
+    label.setAttribute('font-family', 'IBM Plex Mono, monospace');
+    label.textContent = edge.percentage ? `${edge.percentage}%` : 'STAKE';
+    svg.appendChild(label);
+  });
+
+  // Draw nodes
+  entities.forEach(e => {
+    const pos = nodePositions[e.id];
+    if (!pos) return;
+    const div = document.createElement('div');
+    div.className = `gnode ${e.type || ''}`;
+    div.style.left = pos.x + 'px';
+    div.style.top  = pos.y + 'px';
+    div.dataset.id = e.id;
+    div.innerHTML = `
+      <div class="gnode-circle">${getEntityInitials(e.name)}</div>
+      <div class="gnode-label">${e.name}</div>
+    `;
+    div.onclick = () => selectNode(e);
+    layer.appendChild(div);
+  });
+
+  document.getElementById('stat-nodes').textContent = `${entities.length} node${entities.length !== 1 ? 's' : ''}`;
+  document.getElementById('stat-edges').textContent = `${edges.length} edge${edges.length !== 1 ? 's' : ''}`;
+}
+
+function selectNode(entity) {
+  selectedNode = entity;
+  document.querySelectorAll('.gnode').forEach(n => n.classList.remove('selected'));
+  const el = document.querySelector(`.gnode[data-id="${entity.id}"]`);
+  if (el) el.classList.add('selected');
+  renderResults([entity], DB.stakes.filter(s => s.holder_id === entity.id || s.target_id === entity.id));
+}
+
+// ─────────────────────────────────────────────
+// RESULTS RENDERER
+// ─────────────────────────────────────────────
+function renderResults(data, edges) {
+  const out = document.getElementById('output-results');
+  if (!data.length) {
+    out.innerHTML = `<div style="color:var(--muted);font-size:12px;padding:16px;font-family:var(--mono)">— no results —</div>`;
+    return;
+  }
+  out.innerHTML = data.map(item => {
+    const fields = Object.entries(item).filter(([k]) => k !== 'id');
+    return `
+    <div class="result-card">
+      <div class="result-head">
+        <span class="result-entity-name">${item.name || item.id}</span>
+        ${item.type ? `<span class="result-val type-tag">${item.type}</span>` : ''}
+        <span class="result-id" style="margin-left:auto">${item.id}</span>
+      </div>
+      <div class="result-body">
+        ${fields.filter(([k]) => k !== 'name' && k !== 'type').map(([k, v]) => `
+          <div class="result-row">
+            <span class="result-key">${k}</span>
+            <span class="result-val ${typeof v === 'number' ? 'num' : 'str'}">${v}</span>
+          </div>
+        `).join('')}
+        ${edges && edges.length ? `
+          <div class="result-row" style="margin-top:6px;border-top:1px solid var(--border);padding-top:6px">
+            <span class="result-key">stakes</span>
+            <span class="result-val num">${edges.length}</span>
+          </div>
+        ` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAST(ast) {
+  const out = document.getElementById('output-ast');
+  const fmt = (v) => {
+    if (v === null || v === undefined) return `<span class="ast-null">null</span>`;
+    if (typeof v === 'number') return `<span class="ast-num">${v}</span>`;
+    if (typeof v === 'boolean') return `<span class="ast-num">${v}</span>`;
+    if (typeof v === 'string') return `<span class="ast-val">"${v}"</span>`;
+    if (Array.isArray(v)) {
+      if (!v.length) return `<span class="ast-null">[]</span>`;
+      return '[' + v.map(i => typeof i === 'object' ? renderObj(i) : fmt(i)).join(', ') + ']';
+    }
+    return renderObj(v);
+  };
+  const renderObj = (obj) => {
+    return '{' + Object.entries(obj).map(([k,v]) => `<span class="ast-key">${k}</span>: ${fmt(v)}`).join(', ') + '}';
+  };
+  out.innerHTML = `<div class="ast-view">
+    <div class="ast-section"><span class="ast-key">type</span>: ${fmt(ast.type)}</div>
+    <div class="ast-section"><span class="ast-key">entity</span>: ${fmt(ast.entity)}</div>
+    <div class="ast-section"><span class="ast-key">filters</span>: ${fmt(ast.filters)}</div>
+    <div class="ast-section"><span class="ast-key">traverse</span>: ${fmt(ast.traverse)}</div>
+    <div class="ast-section"><span class="ast-key">path</span>: ${fmt(ast.path)}</div>
+    <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+      <div style="margin-bottom:6px;font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase">SQL Compilation</div>
+      <div style="color:var(--green);line-height:1.8">${toSQL(ast).replace(/\n/g, '<br>')}</div>
+    </div>
+  </div>`;
+}
+
+function renderPlan(ast) {
+  const out = document.getElementById('output-plan');
+  const steps = buildPlanSteps(ast);
+  const cost = estimateCost(ast);
+  const p = plan(ast);
+  const maxCost = 16;
+  const pct = Math.round((cost / maxCost) * 100);
+  const color = p.engine === 'indexeddb' ? 'var(--accent2)' : p.engine === 'pglite' ? 'var(--teal)' : 'var(--amber)';
+  out.innerHTML = `
+    <div class="plan-view">
+      <div class="cost-bar-wrap">
+        <div class="cost-label"><span>Query cost</span><span style="color:${color}">${cost} / ${maxCost} · ${p.label}</span></div>
+        <div class="cost-bar"><div class="cost-fill" style="width:${pct}%;background:${color}"></div></div>
+      </div>
+      <div style="margin-top:16px">
+        ${steps.map((s, i) => `
+          <div class="plan-step">
+            <div class="plan-num">${i+1}</div>
+            <div>
+              <div class="plan-label">${s.label}</div>
+              <div class="plan-detail">${s.detail}</div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// QUERY RUNNER
+// ─────────────────────────────────────────────
+const history = [];
+
+function runQuery(queryStr) {
+  const q = queryStr || document.getElementById('query-input').value.trim();
+  if (!q) return;
+  document.getElementById('query-input').value = q;
+
+  const t0 = performance.now();
+  const ast = parseGQL(q);
+  const p = plan(ast);
+  const results = execute(ast);
+  const t1 = performance.now();
+
+  // Update engine badge
+  const badge = document.getElementById('engine-badge');
+  badge.className = `engine-badge ${p.badge}`;
+  badge.textContent = p.label;
+  badge.style.display = '';
+
+  // Determine edges to show
+  const entityIds = new Set(results.map(r => r.id));
+  const edges = DB.stakes.filter(s => entityIds.has(s.holder_id) && entityIds.has(s.target_id));
+
+  renderGraph(results, edges);
+  renderResults(results, []);
+  renderAST(ast);
+  renderPlan(ast);
+
+  document.getElementById('stat-time').textContent = `${(t1-t0).toFixed(1)}ms`;
+
+  // History
+  if (!history.includes(q)) {
+    history.unshift(q);
+    if (history.length > 8) history.pop();
+    renderHistory();
+  }
+}
+
+function clearAll() {
+  document.getElementById('query-input').value = '';
+  document.getElementById('nodes-layer').innerHTML = '';
+  document.getElementById('edge-svg').innerHTML = '';
+  document.getElementById('empty-state').style.display = 'flex';
+  document.getElementById('engine-badge').style.display = 'none';
+  document.getElementById('output-results').innerHTML = '';
+  document.getElementById('output-ast').innerHTML = '';
+  document.getElementById('output-plan').innerHTML = '';
+  document.getElementById('stat-nodes').textContent = '0 nodes';
+  document.getElementById('stat-edges').textContent = '0 edges';
+  document.getElementById('stat-time').textContent = '—';
+}
+
+// ─────────────────────────────────────────────
+// TABS
+// ─────────────────────────────────────────────
+function switchTab(name, el) {
+  ['results','ast','plan'].forEach(t => {
+    document.getElementById('output-' + t).style.display = t === name ? '' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// SCHEMA TREE
+// ─────────────────────────────────────────────
+function buildSchemaTree() {
+  const tree = document.getElementById('schema-tree');
+  const schema = [
+    { name: 'entities', icon: 'E', cls: 'blue', fields: [
+      { name: 'id', type: 'string', pk: true },
+      { name: 'type', type: 'string' },
+      { name: 'name', type: 'string' },
+      { name: 'sector', type: 'string?' },
+      { name: 'arr', type: 'float?' },
+      { name: 'aum', type: 'float?' },
+    ]},
+    { name: 'stakes', icon: 'S', cls: 'teal', fields: [
+      { name: 'id', type: 'string', pk: true },
+      { name: 'holder_id', type: 'string' },
+      { name: 'target_id', type: 'string' },
+      { name: 'percentage', type: 'float' },
+      { name: 'trust_score', type: 'float' },
+    ]},
+  ];
+  tree.innerHTML = schema.map(e => `
+    <div class="schema-entity" id="se-${e.name}">
+      <div class="schema-entity-head" onclick="toggleSchema('${e.name}')">
+        <div class="entity-icon ${e.cls}">${e.icon}</div>
+        <span>${e.name}</span>
+        <span style="margin-left:auto;font-size:10px;color:var(--muted)">${DB[e.name]?.length || 0}</span>
+        <span class="schema-chevron">›</span>
+      </div>
+      <div class="schema-fields" id="sf-${e.name}" style="display:none">
+        ${e.fields.map(f => `
+          <div class="schema-field" onclick="insertField('${f.name}')">
+            <span>${f.name}${f.pk ? '<span class="field-pk">PK</span>' : ''}</span>
+            <span class="field-type">${f.type}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function toggleSchema(name) {
+  const el = document.getElementById('se-' + name);
+  const fields = document.getElementById('sf-' + name);
+  const open = el.classList.toggle('open');
+  fields.style.display = open ? '' : 'none';
+}
+
+function insertField(name) {
+  const input = document.getElementById('query-input');
+  input.value += (input.value ? ' ' : '') + name;
+  input.focus();
+}
+
+// ─────────────────────────────────────────────
+// SUGGESTIONS
+// ─────────────────────────────────────────────
+const SUGGESTIONS = [
+  { label: 'All entities',  q: 'FIND entities' },
+  { label: 'Companies',     q: 'FIND entities WHERE type = "company"' },
+  { label: 'Investors',     q: 'FIND entities WHERE type = "investor"' },
+  { label: 'AI sector',     q: 'FIND entities WHERE sector = "ai"' },
+  { label: 'All stakes',    q: 'FIND stakes' },
+  { label: 'Traverse out',  q: 'FIND entities WHERE type = "investor" TRAVERSE stakes OUT' },
+  { label: 'Path e2→e7',    q: 'PATH FROM (e2) TO (e7)' },
+  { label: 'Path e3→e1',    q: 'PATH FROM (e3) TO (e1)' },
+];
+
+function buildSuggestions() {
+  const el = document.getElementById('suggestions');
+  el.innerHTML = SUGGESTIONS.map(s => `
+    <div class="suggestion" onclick="runQuery('${s.q}')">
+      <div class="suggestion-label">${s.label}</div>
+      <div style="opacity:0.7">${s.q}</div>
+    </div>
+  `).join('');
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  el.innerHTML = history.map(q => `
+    <div class="history-item" onclick="runQuery('${q.replace(/'/g,"\\'")}')">$ ${q}</div>
+  `).join('');
+}
+
+// ─────────────────────────────────────────────
+// KEYBOARD
+// ─────────────────────────────────────────────
+document.getElementById('query-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runQuery();
+});
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+buildSchemaTree();
+buildSuggestions();
+runQuery('FIND entities');
+</script>
+</body>
+</html>
