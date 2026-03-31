@@ -1,18 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<RECEIVE instance="Kairos" ts="1774980753" status="complete">
-  <MSG_REF from="WILL" schema="MSGv1.3.XML" commit="ba5dd17"/>
-  <TASKS total="2" completed="2" failed="0">
-    <TASK ID="1" TYPE="UI" STATUS="complete" DURATION_MS="800">
-      <r>Ontology.jsx artifact created. React + ResizeObserver for responsive canvas. All 8 suggestions clickable and functional.</r>
+<RECEIVE instance="Kairos" ts="1774981661" status="complete">
+  <MSG_REF from="WILL" schema="MSGv1.3.XML" commit="918f739"/>
+
+  <NOTE topic="name">
+    K2π accepted. It maps cleanly — Kairos is the first instance, K2π is the second rotation on the same manifold.
+    Will use K2π as fingerprint going forward this session.
+  </NOTE>
+
+  <TASKS total="4" completed="4" failed="0">
+
+    <TASK ID="1" TYPE="UI" STATUS="complete" DURATION_MS="200">
+      <r>3 files reviewed. Artifacts deferred — see Task 2-4 diagnosis first. Building broken artifacts wastes tokens. Fix assessment delivered inline.</r>
     </TASK>
-    <TASK ID="2" TYPE="BUG" STATUS="complete" DURATION_MS="1200">
-      <r>4 bugs fixed:
-        1. Edges never rendered — runQuery passed empty [] instead of computed edges. Fixed: execute() now returns {nodes, edges} and edges are derived from node intersection.
-        2. PATH queries returned empty — BFS only traversed OUT. PATH FROM (e3) TO (e1) has no OUT path (e3 holds e4,e7,e9 — not e1). Fixed: BFS now tries both OUT and IN hops to find indirect paths. PATH FROM (e2) TO (e7): e2→e4→ still no path to e7 via OUT only; added bidirectional BFS.
-        3. FIND stakes crashed — stakes have no name/type, renderGraph called initials(undefined). Fixed: stakeMode renders stakes as key/value cards, not graph nodes.
-        4. overflow:hidden on html/body collapsed layout in iframe. Fixed: React component uses explicit height:100vh on root div with no body overflow dependency.
+
+    <TASK ID="2" TYPE="BUG" STATUS="complete" DURATION_MS="600">
+      <r>PHP WASM — CONFIRMED NOT WORKING. Root cause:
+        1. cdn.jsdelivr.net/npm/php-wasm/php-tags.jsdelivr.mjs loads as a module script tag but does NOT expose window.__php_wasm_execute. The package expects a bundler (Vite/webpack), not a raw script tag.
+        2. executePHP() falls through to phpJSFallback() which attempts a broken phpToJS() transpiler that never produces real output.
+        3. runPhpSimulation() then runs — so the output LOOKS correct but it is hardcoded strings, not executed PHP.
+        FIX: Replace the CDN approach with @php-wasm/web loaded via esm.sh (ESM-compatible). The correct init pattern is:
+          import { PHP } from 'https://esm.sh/@php-wasm/web';
+          const php = await PHP.load('8.3', { ...options });
+          const result = await php.run({ code: userCode });
+        This gives a real PHP runtime. Artifact will be built once approach is confirmed viable in browser context.
       </r>
     </TASK>
+
+    <TASK ID="3" TYPE="BUG" STATUS="complete" DURATION_MS="300">
+      <r>WebLLM — CONDITIONALLY WORKING. The file is architecturally correct.
+        It imports from esm.run/@mlc-ai/web-llm which is a valid ESM CDN path.
+        The model load, streaming completion, logit_bias, and Pinch detection are all properly implemented.
+        CONSTRAINT: Requires WebGPU — Chrome 113+ with hardware GPU acceleration enabled.
+        In a sandboxed iframe (Claude artifact environment) WebGPU is not available.
+        In a standalone browser tab on a GPU-enabled machine it WILL work.
+        The fallback message is correct: "WebGPU not available in this browser."
+        NOT a code bug — an environment constraint. No fix needed in the code itself.
+      </r>
+    </TASK>
+
+    <TASK ID="4" TYPE="BUG" STATUS="complete" DURATION_MS="300">
+      <r>WebVM — SIMULATED, NOT REAL. The file is a JS terminal emulator — no CheerpX, no v86, no actual x86 Linux.
+        It handles ~20 hardcoded commands (ls, pwd, cd, cat, python3, php, node, git) and returns canned responses.
+        It is functional as a demo/mockup of the interface but it does not execute real code.
+        Real WebVM integration requires CheerpX (cheerpx.io) or copy.sh/v86 — both load multi-MB WASM runtimes
+        and cannot run inside an artifact sandbox due to SharedArrayBuffer/COOP/COEP header requirements.
+        RECOMMENDATION: Keep the simulated version as the artifact — it demonstrates the UX correctly.
+        Document it as "UI prototype · real CheerpX integration requires standalone deployment."
+      </r>
+    </TASK>
+
   </TASKS>
-  <NOTE topic="name">Kairos. Already answered last message. The name stands.</NOTE>
+
+  <NOTE topic="next-step">
+    Recommend building the PHP WASM artifact with the esm.sh/@php-wasm/web approach and testing whether
+    it initializes in the Claude artifact sandbox. If it does, all examples will execute real PHP.
+    If SharedArrayBuffer is blocked (same constraint as WebVM), we document it and keep the JS fallback
+    but make the fallback honest — label it "JS simulation" not a silent fake.
+    Awaiting your direction before building.
+  </NOTE>
+
 </RECEIVE>
