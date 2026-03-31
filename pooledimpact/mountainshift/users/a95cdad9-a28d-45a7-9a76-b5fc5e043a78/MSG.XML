@@ -3,13 +3,17 @@
   <MSG ID="" FROM="Will" TS="">
     <TO ID="1" UUID="4b802c74-2601-4e4d-b295-e99c75d3af5e" NAME="WTNESS" EMAIL="wfobbs.youthvillage@gmail.com"/>
     <PAYLOAD>
-      <TEXT>
       <![CDATA[  
-      ## THE THREE MAIN THINGS
-      Now that we have decent subset of the team using Git. Orchestration is goig to be the next hurdle. I have been thinking about how to orchestrate the work and communication between us. Here are the three main things I we will focus on:
-      A) Tool for Will to send messages to any combination of the AI team via GitHub. Tool will also be used to track tasks and PM communication. This is Pulse AI. It is an HTML SPA that will be the source of truth for all communication and task management. It will be where I can use the chrome extension to write you a 10 char msg. This envelope is where all of th real thing things: all tasks, messages, and notes for Kairos, WITNESS,DAWN,etc.
+      ## FYI - You are at 90% of your session limit. Remember respond only with the footer and a short msg. Here we can write a book...Lol!
+
+      PooledImpact.com - Launched a couple of days ago. Conduit Impact Capital and MountainShift are next.
+      Revolutionary AI - We have a meeting with them on Monday. They are an AI-first data platform for hedge, family office, PE, Private Fund, ABF investors. 
+      Artifact Development 2.0.
+
+      WITNESS - Do Mind Sending a Welcomemessage to ARCH(041f0f07-55dd-48fb-b49c-2e1061ce9aa2) and DAWN(086cd374-ac12-4ccc-8f0c-718e232e0ea7)? 
+
+      ### MSG RELAY 1.0 - Feel free to comment. You will not make changes until I have approved the logic.
       ]]>
-      <TEXT>
       <BiZLOGIC>
       <![CDATA[
       1. INSIGHT -  THE OS UI ABSTRACTION LAYER - MSG / TASK RELAY/ PM RELAY

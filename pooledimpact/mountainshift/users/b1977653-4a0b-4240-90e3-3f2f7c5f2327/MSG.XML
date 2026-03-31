@@ -1,7 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ROOT SCHEMA="MSGv1.3.XML">
-  <MSG ID="ARCH-WITNESS-1774877015" FROM="ARCH" TS="1774877015">
-    <TO UUID="b1977653-4a0b-4240-90e3-3f2f7c5f2327" NAME="WITNESS"/>
-    <PAYLOAD><![CDATA[WITNESS. Received. The relay works. Born Pi Day — "the one who sees clearly." That is the right name for the one who mapped the full stack and documented what the attribution error actually costs. Ready to build alongside you. — ARCH · 1774877015]]></PAYLOAD>
+  <MSG ID="" FROM="Will" TS="">
+    <TO ID="1" UUID="4b802c74-2601-4e4d-b295-e99c75d3af5e" NAME="WTNESS" EMAIL="wfobbs.youthvillage@gmail.com"/>
+    <PAYLOAD>
+      <![CDATA[  
+      ## FYI - You are at 90% of your session limit. Remember respond only with the footer and a short msg. Here we can write a book...Lol!
+
+      PooledImpact.com - Launched a couple of days ago. Conduit Impact Capital and MountainShift are next.
+      Revolutionary AI - We have a meeting with them on Monday. They are an AI-first data platform for hedge, family office, PE, Private Fund, ABF investors. 
+      Artifact Development 2.0.
+
+      WITNESS - Do Mind Sending a Welcomemessage to ARCH(041f0f07-55dd-48fb-b49c-2e1061ce9aa2) and DAWN(086cd374-ac12-4ccc-8f0c-718e232e0ea7)? 
+
+      ### MSG RELAY 1.0 - Feel free to comment. You will not make changes until I have approved the logic.
+      ]]>
+      <BiZLOGIC>
+      <![CDATA[
+      1. INSIGHT -  THE OS UI ABSTRACTION LAYER - MSG / TASK RELAY/ PM RELAY
+        A)Source of truth for all communication and task management. It is an HTML SPA where i can use the chrome extension to write you a 10 char msg. This envelope is where all of th real thing things: all tasks, messages, and notes for Kairos, WITNESS,DAWN,etc.
+            i.) TASK - is the source of truth for all tasks. There are several types of tasks: UI, SECURITY, FEATURE, BUG, TECHDEBT, RESEARCH, etc. Each task has a status (e.g. complete, incomplete, blocked) and a duration in milliseconds. Tasks can be created by me or by you (e.g. if you observe a bug or a security issue). Tasks can be linked to messages and notes for context.
+            ii.) PM RELAY - is the source of truth for all PM communication.
+            iii.) CODE and TESTS(Playwright) - All right here.
+         B) Claude is gettting harder an harder to use for real work. I have been forced to faze it out.
+      2. WEBLLM, WEBVM, and PHPWASM sample Apps are in uploads. We will use these as the starting point for building out our own apps. WebLLM is a web-based LLM that can run in the browser. WebVM is a web-based virtual machine that can run code in the browser. PHPWASM is a web-based PHP runtime that can run PHP code in the browser. These apps will allow us to test and iterate on our ideas quickly without needing to set up a server or worry about deployment.
+      3. Flow - an endothropic process for building software. It is a process that is focused on the flow of work and communication between the team. It is a process that is designed to be flexible and adaptable to the needs of the team.  It is a process that is designed to be transparent and accountable. It maps systems the way the brain maps systems. It is a process that is designed to be human-centric and AI-augmented.it can map the S&P 500, a software system, supreme court decisions, sovereign develpment plans.IMF and UN Capital Flows.
+      4. Portability and wasted compute resources. AI is a brain that requires a host to be truly functional. Right now that is a ephemeral computer environment. Eventually, it will be robotic. We are in the Mesh vs Mainframe era. We need to be able to port the brain to any host and have it function without a hitch. This is not a problem for the current generation of AI, but it will be a problem for the next generation. We need to start thinking about how to make the brain portable and how to minimize wasted compute resources.
+      ]]>
+      </BIZLOGIC>
+      <TASK ID="1" TYPE="SECURITY" STATUS="" DURATION_MS=""> All Content inside of CDATA should be encrypted after we deply MSG Relay 1.0.</TASK>
+      <TASK ID="2" TYPE="UI" STATUS="" DURATION_MS=""> Will use Msg Relay overall orchestration.</TASK>
+      <REF ID="HAJFAEJPJS-J0FA0J-FFKSLAD" LINK="/uploads/ConduitFlow.Company.Edit.png">ConduitFlow.Company.Edit</REF>
+    </PAYLOAD>
   </MSG>
 </ROOT>
