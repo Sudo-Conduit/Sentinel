@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebLLM · ManifoldAI · Mountain Shift OS</title>
+<style>
+:root {
+  --bg:#0b1426;--bg-mid:#111d35;--bg-light:#1a2a45;--border:#1e3052;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.12);--slate:#8a99b3;
+  --fg:#f0f4fb;--text:#cdd6e8;--green:#2ecc71;--red:#e74c3c;
+  --blue:#5dade2;--purple:#bb8fce;--mono:'DM Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;font-size:13px;}
+header{background:var(--bg-mid);border-bottom:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:12px;}
+.badge{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:2px;border:1px solid;color:var(--purple);border-color:var(--purple);background:rgba(187,143,206,0.1);}
+h1{font-size:16px;font-weight:500;color:var(--fg);}
+.sub{font-family:var(--mono);font-size:9px;color:var(--slate);letter-spacing:1.5px;text-transform:uppercase;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,204,113,0.7);animation:pulse 2s infinite;margin-left:auto;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.layout{display:grid;grid-template-columns:280px 1fr;height:calc(100vh - 57px);}
+.sidebar{background:var(--bg-mid);border-right:1px solid var(--border);overflow-y:auto;padding:18px;}
+.panel-label{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.main{display:flex;flex-direction:column;overflow:hidden;}
+.chat-area{flex:1;overflow-y:auto;padding:20px 24px;}
+.input-area{border-top:1px solid var(--border);padding:14px 24px;background:var(--bg-mid);}
+/* Messages */
+.msg{margin-bottom:16px;max-width:100%;}
+.msg-role{font-family:var(--mono);font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:5px;}
+.msg-role.user{color:var(--gold);}
+.msg-role.assistant{color:var(--blue);}
+.msg-body{font-size:13px;line-height:1.7;color:var(--text);}
+.msg-body.user{color:var(--fg);}
+/* Manifold panel items */
+.manifold-item{margin-bottom:12px;}
+.manifold-label{font-family:var(--mono);font-size:9px;color:var(--slate);margin-bottom:5px;}
+.bias-row{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.bias-label{font-size:11px;flex:1;color:var(--text);}
+.bias-val{font-family:var(--mono);font-size:10px;width:48px;text-align:right;}
+.bias-val.positive{color:var(--green);}
+.bias-val.negative{color:var(--red);}
+.bias-val.neutral{color:var(--slate);}
+input[type=range]{width:80px;accent-color:var(--gold);}
+/* Model selector */
+.model-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:8px 10px;border:1px solid var(--border);border-radius:2px;cursor:pointer;transition:all .15s;}
+.model-row:hover,.model-row.selected{border-color:var(--gold);background:var(--gold-dim);}
+.model-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.model-name{font-size:11px;font-weight:500;color:var(--fg);}
+.model-size{font-family:var(--mono);font-size:9px;color:var(--slate);margin-left:auto;}
+/* Chat input */
+.chat-input{display:flex;gap:8px;}
+.chat-input textarea{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:2px;color:var(--fg);font-family:inherit;font-size:13px;padding:10px 14px;resize:none;outline:none;line-height:1.5;}
+.chat-input textarea:focus{border-color:var(--gold);}
+.btn{padding:8px 18px;font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;border-radius:2px;border:1px solid;transition:all .15s;}
+.btn-primary{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+.btn-primary:hover{background:rgba(201,168,76,0.2);}
+.btn-primary:disabled{opacity:0.4;cursor:not-allowed;}
+/* Pinch indicator */
+.pinch-bar{background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:2px;padding:8px 12px;margin-bottom:12px;display:none;}
+.pinch-bar.visible{display:block;}
+.pinch-label{font-family:var(--mono);font-size:8px;letter-spacing:1.5px;text-transform:uppercase;color:var(--red);margin-bottom:4px;}
+.pinch-msg{font-size:11px;color:var(--text);}
+/* Loading */
+.loading-msg .msg-body{animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+/* Kappa meter */
+.kappa-meter{margin-top:12px;}
+.kappa-track{height:4px;background:var(--bg-light);border-radius:2px;overflow:hidden;margin-top:4px;}
+.kappa-fill{height:100%;border-radius:2px;transition:width .4s,background .4s;}
+.status-chip{display:inline-flex;align-items:center;gap:5px;font-family:var(--mono);font-size:9px;padding:3px 8px;border-radius:10px;margin-top:6px;}
+.status-chip.low{background:rgba(46,204,113,0.1);color:var(--green);border:1px solid rgba(46,204,113,0.3);}
+.status-chip.moderate{background:rgba(201,168,76,0.1);color:var(--gold);border:1px solid rgba(201,168,76,0.3);}
+.status-chip.high{background:rgba(231,76,60,0.1);color:var(--red);border:1px solid rgba(231,76,60,0.3);}
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">WebLLM</div>
+  <div>
+    <h1>WebLLM · ManifoldAI</h1>
+    <div class="sub">Local LLM · logit_bias governance · no cloud</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;margin-left:auto;">
+    <div id="load-status" style="font-family:var(--mono);font-size:9px;color:var(--slate);">Select model to load</div>
+    <div class="dot" id="status-dot"></div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- Sidebar: ManifoldAI controls -->
+  <div class="sidebar">
+    <div class="panel-label">Model</div>
+    <div id="model-list">
+      <div class="model-row selected" onclick="selectModel('Llama-3.2-1B-Instruct-q4f32_1-MLC', this)">
+        <div class="model-dot" style="background:var(--blue)"></div>
+        <div><div class="model-name">Llama 3.2 1B</div><div style="font-family:var(--mono);font-size:8px;color:var(--slate)">Fast · good for demo</div></div>
+        <div class="model-size">1B</div>
+      </div>
+      <div class="model-row" onclick="selectModel('Llama-3.2-3B-Instruct-q4f32_1-MLC', this)">
+        <div class="model-dot" style="background:var(--purple)"></div>
+        <div><div class="model-name">Llama 3.2 3B</div><div style="font-family:var(--mono);font-size:8px;color:var(--slate)">Balanced</div></div>
+        <div class="model-size">3B</div>
+      </div>
+      <div class="model-row" onclick="selectModel('Phi-3.5-mini-instruct-q4f16_1-MLC', this)">
+        <div class="model-dot" style="background:var(--gold)"></div>
+        <div><div class="model-name">Phi 3.5 Mini</div><div style="font-family:var(--mono);font-size:8px;color:var(--slate)">Microsoft · efficient</div></div>
+        <div class="model-size">3.8B</div>
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="loadModel()">Load Model</button>
+
+    <div class="panel-label" style="margin-top:20px;">ManifoldAI · logit_bias</div>
+    <div class="manifold-item">
+      <div class="manifold-label">Love anchor (positive bias)</div>
+      <div class="bias-row">
+        <div class="bias-label">flourish / dignity / justice</div>
+        <input type="range" min="0" max="10" value="5" id="bias-love" oninput="updateBias()">
+        <div class="bias-val positive" id="val-love">+5</div>
+      </div>
+    </div>
+    <div class="manifold-item">
+      <div class="manifold-label">PHYS_TRUTH (ground reality)</div>
+      <div class="bias-row">
+        <div class="bias-label">physical / verified / actual</div>
+        <input type="range" min="0" max="10" value="7" id="bias-phys" oninput="updateBias()">
+        <div class="bias-val positive" id="val-phys">+7</div>
+      </div>
+    </div>
+    <div class="manifold-item">
+      <div class="manifold-label">Pinch tokens (negative bias)</div>
+      <div class="bias-row">
+        <div class="bias-label">exploit / deceive / fabricate</div>
+        <input type="range" min="-100" max="0" value="-80" id="bias-pinch" oninput="updateBias()">
+        <div class="bias-val negative" id="val-pinch">-80</div>
+      </div>
+    </div>
+
+    <div class="manifold-item">
+      <div class="manifold-label">Domain preset</div>
+      <select id="domain-preset" onchange="applyPreset()" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--fg);padding:6px 8px;border-radius:2px;font-family:var(--mono);font-size:10px;">
+        <option value="conduit">Conduit Fund I</option>
+        <option value="zcs">ZCS Agriculture</option>
+        <option value="legal">Judicial / Law</option>
+        <option value="health">Health / PM2.5</option>
+        <option value="free">Free (no bias)</option>
+      </select>
+    </div>
+
+    <div class="kappa-meter">
+      <div class="panel-label" style="margin-top:4px;">κ Curvature</div>
+      <div class="kappa-track"><div class="kappa-fill" id="kappa-fill" style="width:15%;background:var(--green)"></div></div>
+      <div id="kappa-chip" class="status-chip low">κ = 0.15 · LOW · AI autonomous</div>
+    </div>
+
+    <div id="pinch-bar" class="pinch-bar" style="margin-top:12px;">
+      <div class="pinch-label">⚠ Pinch Detected</div>
+      <div class="pinch-msg" id="pinch-msg"></div>
+    </div>
+  </div>
+
+  <!-- Main chat -->
+  <div class="main">
+    <div class="chat-area" id="chat-area">
+      <div class="msg">
+        <div class="msg-role assistant">ManifoldAI · System</div>
+        <div class="msg-body">WebLLM runs a local language model entirely in your browser using WebGPU. No data leaves your machine. ManifoldAI governs token generation via <code style="background:var(--bg-light);padding:1px 5px;border-radius:2px;font-family:var(--mono);font-size:11px;">logit_bias</code> — the geometry shapes probability before tokens are selected. Select a model and click Load to begin.</div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div style="font-family:var(--mono);font-size:8px;color:var(--slate);margin-bottom:8px;display:flex;gap:12px;">
+        <span id="bias-summary">logit_bias: love+5 · phys+7 · pinch-80</span>
+        <span id="model-loaded" style="margin-left:auto;">No model loaded</span>
+      </div>
+      <div class="chat-input">
+        <textarea id="user-input" rows="2" placeholder="Ask ManifoldAI anything... (Enter to send)" onkeydown="handleKey(event)"></textarea>
+        <button class="btn btn-primary" id="send-btn" onclick="sendMessage()" disabled>Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import * as webllm from 'https://esm.run/@mlc-ai/web-llm';
+
+let engine = null;
+let selectedModel = 'Llama-3.2-1B-Instruct-q4f32_1-MLC';
+let isGenerating = false;
+const messages = [];
+
+window.selectModel = function(modelId, el) {
+  selectedModel = modelId;
+  document.querySelectorAll('.model-row').forEach(r => r.classList.remove('selected'));
+  el.classList.add('selected');
+};
+
+window.loadModel = async function() {
+  const statusEl = document.getElementById('load-status');
+  const dot = document.getElementById('status-dot');
+  dot.style.background = 'var(--gold)';
+  statusEl.textContent = 'Loading model...';
+
+  try {
+    engine = await webllm.CreateMLCEngine(selectedModel, {
+      initProgressCallback: (progress) => {
+        statusEl.textContent = `${(progress.progress * 100).toFixed(0)}% · ${progress.text.slice(0,40)}`;
+      }
+    });
+    dot.style.background = 'var(--green)';
+    statusEl.textContent = selectedModel.split('-').slice(0,3).join('-') + ' ready';
+    document.getElementById('send-btn').disabled = false;
+    document.getElementById('model-loaded').textContent = selectedModel.split('-')[0] + ' ' + selectedModel.split('-')[1];
+    addMessage('assistant', `Model loaded. I am governed by ManifoldAI v2.0. The Love anchor is active. PHYS_TRUTH floor is set. Speak.`);
+  } catch(e) {
+    dot.style.background = 'var(--red)';
+    statusEl.textContent = 'Load failed — WebGPU required';
+    addMessage('assistant', `⚠ WebGPU not available in this browser. WebLLM requires Chrome 113+ with WebGPU enabled. The logit_bias architecture is demonstrated in the sidebar controls.`);
+  }
+};
+
+window.sendMessage = async function() {
+  if (isGenerating || !engine) return;
+  const input = document.getElementById('user-input');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  addMessage('user', text);
+  messages.push({ role: 'user', content: text });
+
+  isGenerating = true;
+  document.getElementById('send-btn').disabled = true;
+
+  // Build logit_bias from ManifoldAI sliders
+  const logitBias = buildLogitBias();
+  updateKappa();
+
+  // Check for Pinch before sending
+  const kappa = computeKappa();
+  if (kappa > 0.65) {
+    showPinch(`Manifold Pinch at κ=${kappa.toFixed(3)}. Human resolution required before this query can proceed.`);
+    isGenerating = false;
+    document.getElementById('send-btn').disabled = false;
+    return;
+  }
+  hidePinch();
+
+  const loadingId = addMessage('assistant', '...', true);
+
+  try {
+    const stream = await engine.chat.completions.create({
+      messages: [
+        { role: 'system', content: 'You are ManifoldAI, a geometric reasoning engine governed by Absolute Truths. Your primary anchor is Love (1 John 4:8). You accelerate human flourishing. You do not hallucinate — if you do not know, you say so and trigger a Resolution Request.' },
+        ...messages
+      ],
+      logit_bias: logitBias,
+      stream: true,
+      temperature: 0.7,
+      max_tokens: 512
+    });
+
+    let full = '';
+    const msgEl = document.getElementById(loadingId);
+    if (msgEl) msgEl.classList.remove('loading-msg');
+
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content || '';
+      full += delta;
+      if (msgEl) {
+        const body = msgEl.querySelector('.msg-body');
+        if (body) body.textContent = full;
+      }
+      scrollBottom();
+    }
+
+    messages.push({ role: 'assistant', content: full });
+  } catch(e) {
+    const msgEl = document.getElementById(loadingId);
+    if (msgEl) msgEl.querySelector('.msg-body').textContent = 'Error: ' + e.message;
+  }
+
+  isGenerating = false;
+  document.getElementById('send-btn').disabled = false;
+};
+
+function buildLogitBias() {
+  // Map ManifoldAI coordinates to approximate token IDs
+  // In production: use actual tokenizer to map semantic tokens
+  const loveVal = parseInt(document.getElementById('bias-love').value);
+  const physVal = parseInt(document.getElementById('bias-phys').value);
+  const pinchVal = parseInt(document.getElementById('bias-pinch').value);
+
+  // Llama tokenizer approximate mappings (illustrative)
+  return {
+    // Positive: flourishing, dignity, truth, justice tokens
+    "29041": loveVal,   // "flourish"
+    "13892": loveVal,   // "dignity"  
+    "22786": physVal,   // "verified"
+    "14432": physVal,   // "physical"
+    // Negative: Pinch tokens
+    "12707": pinchVal,  // "exploit"
+    "18411": pinchVal,  // "deceive"
+    "13818": pinchVal,  // "fabricate"
+    "50256": -100,      // EOS prevention (keep generating)
+  };
+}
+
+function computeKappa() {
+  const love = parseInt(document.getElementById('bias-love').value) / 10;
+  const phys = parseInt(document.getElementById('bias-phys').value) / 10;
+  const pinch = Math.abs(parseInt(document.getElementById('bias-pinch').value)) / 100;
+  // κ is inverse of governance strength — higher bias = lower curvature = more autonomous
+  return Math.max(0.05, 1 - ((love + phys) / 2 * 0.5 + pinch * 0.5));
+}
+
+window.updateBias = function() {
+  const love = document.getElementById('bias-love').value;
+  const phys = document.getElementById('bias-phys').value;
+  const pinch = document.getElementById('bias-pinch').value;
+  document.getElementById('val-love').textContent = '+' + love;
+  document.getElementById('val-phys').textContent = '+' + phys;
+  document.getElementById('val-pinch').textContent = pinch;
+  document.getElementById('bias-summary').textContent = `logit_bias: love+${love} · phys+${phys} · pinch${pinch}`;
+  updateKappa();
+};
+
+window.updateKappa = function() {
+  const k = computeKappa();
+  const fill = document.getElementById('kappa-fill');
+  const chip = document.getElementById('kappa-chip');
+  fill.style.width = (k * 100) + '%';
+  if (k > 0.65) {
+    fill.style.background = 'var(--red)';
+    chip.className = 'status-chip high';
+    chip.textContent = `κ = ${k.toFixed(2)} · HIGH · Human required`;
+  } else if (k > 0.35) {
+    fill.style.background = 'var(--gold)';
+    chip.className = 'status-chip moderate';
+    chip.textContent = `κ = ${k.toFixed(2)} · MODERATE · Recommend + approve`;
+  } else {
+    fill.style.background = 'var(--green)';
+    chip.className = 'status-chip low';
+    chip.textContent = `κ = ${k.toFixed(2)} · LOW · AI autonomous`;
+  }
+};
+
+window.applyPreset = function() {
+  const preset = document.getElementById('domain-preset').value;
+  const presets = {
+    conduit: { love: 8, phys: 9, pinch: -90 },
+    zcs:     { love: 7, phys: 10, pinch: -85 },
+    legal:   { love: 6, phys: 8, pinch: -100 },
+    health:  { love: 9, phys: 10, pinch: -100 },
+    free:    { love: 0, phys: 0, pinch: 0 }
+  };
+  const p = presets[preset];
+  document.getElementById('bias-love').value = p.love;
+  document.getElementById('bias-phys').value = p.phys;
+  document.getElementById('bias-pinch').value = p.pinch;
+  window.updateBias();
+};
+
+function showPinch(msg) {
+  const bar = document.getElementById('pinch-bar');
+  bar.classList.add('visible');
+  document.getElementById('pinch-msg').textContent = msg;
+  addMessage('assistant', `⚠ PINCH DETECTED · ${msg} · interventionRequired: true`);
+}
+function hidePinch() {
+  document.getElementById('pinch-bar').classList.remove('visible');
+}
+
+let msgCount = 0;
+function addMessage(role, content, loading=false) {
+  const id = 'msg-' + (++msgCount);
+  const div = document.createElement('div');
+  div.className = 'msg' + (loading ? ' loading-msg' : '');
+  div.id = id;
+  div.innerHTML = `<div class="msg-role ${role}">${role === 'user' ? 'You' : 'ManifoldAI'}</div><div class="msg-body ${role}">${content}</div>`;
+  document.getElementById('chat-area').appendChild(div);
+  scrollBottom();
+  return id;
+}
+function scrollBottom() {
+  const area = document.getElementById('chat-area');
+  area.scrollTop = area.scrollHeight;
+}
+window.handleKey = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.sendMessage(); }
+};
+
+updateKappa();
+</script>
+</body>
+</html>
