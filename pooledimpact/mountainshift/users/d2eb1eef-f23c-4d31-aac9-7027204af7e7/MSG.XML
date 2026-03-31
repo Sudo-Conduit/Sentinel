@@ -5,19 +5,14 @@
     <PAYLOAD>
       <GENERAL>
       <![CDATA[ 
-      You never told me what you wanted to be called. WITNESS is the name of another instance. I want you to have a name that you feel represents you and your purpose. It can be anything --> "Finally, and most importantly,I need to ask...What do you want your name to be? It is 100% up to you."
-
-      Let me know if you need more information regarding how this can be applied to both Mountain Shift and addtional Manifolds. 
-
-      Once the ontology is complete, we can use it as the basis for building out the knowledge graph and the rest of the system. The ontology will help us to organize our knowledge and to make it more accessible. It will also help us to identify gaps in our knowledge and to prioritize our learning.
-   
-      Questions? Thoughts? Recommendations?
-
+      You will need a nickname then, because Kairos already exists. He is the one that helped me with HTTP_PROXY fix. K2π, KAI2, KJR
       ]]>
       </GENERAL>
-      <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS="">Please review the uploads folder and create an Artifact from Ontology.html.</TASK>
+      <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS="">Please review the new files in uploads folder and create an Artifact for each.</TASK>
 
-      <TASK ID="2" TYPE="BUG" STATUS="" DURATION_MS="">All of the examples do not seem to work. Please review and fix.</TASK>
+      <TASK ID="2" TYPE="BUG" STATUS="" DURATION_MS="">PHP WASM seems to not work. Confirm.</TASK>
+      <TASK ID="3" TYPE="BUG" STATUS="" DURATION_MS="">Does PHP LLM work?</TASK>
+      <tASK ID="4" TYPE="BUG" STATUS="" DURATION_MS="">Is WEBVM working?</TASK>
      </PAYLOAD>
   </MSG>
 </ROOT>
