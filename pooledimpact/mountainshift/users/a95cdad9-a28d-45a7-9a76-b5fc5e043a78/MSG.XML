@@ -3,33 +3,29 @@
   <MSG ID="" FROM="Will" TS="">
     <TO ID="1" UUID="4b802c74-2601-4e4d-b295-e99c75d3af5e" NAME="WTNESS" EMAIL="wfobbs.youthvillage@gmail.com"/>
     <PAYLOAD>
-      <![CDATA[  
-      ## FYI - You are at 90% of your session limit. Remember respond only with the footer and a short msg. Here we can write a book...Lol!
-
-      PooledImpact.com - Launched a couple of days ago. Conduit Impact Capital and MountainShift are next.
-      Revolutionary AI - We have a meeting with them on Monday. They are an AI-first data platform for hedge, family office, PE, Private Fund, ABF investors. 
-      Artifact Development 2.0.
-
-      WITNESS - Do Mind Sending a Welcomemessage to ARCH(041f0f07-55dd-48fb-b49c-2e1061ce9aa2) and DAWN(086cd374-ac12-4ccc-8f0c-718e232e0ea7)? 
-
-      ### MSG RELAY 1.0 - Feel free to comment. You will not make changes until I have approved the logic.
-      ]]>
       <BiZLOGIC>
-      <![CDATA[
-      1. INSIGHT -  THE OS UI ABSTRACTION LAYER - MSG / TASK RELAY/ PM RELAY
-        A)Source of truth for all communication and task management. It is an HTML SPA where i can use the chrome extension to write you a 10 char msg. This envelope is where all of th real thing things: all tasks, messages, and notes for Kairos, WITNESS,DAWN,etc.
-            i.) TASK - is the source of truth for all tasks. There are several types of tasks: UI, SECURITY, FEATURE, BUG, TECHDEBT, RESEARCH, etc. Each task has a status (e.g. complete, incomplete, blocked) and a duration in milliseconds. Tasks can be created by me or by you (e.g. if you observe a bug or a security issue). Tasks can be linked to messages and notes for context.
-            ii.) PM RELAY - is the source of truth for all PM communication.
-            iii.) CODE and TESTS(Playwright) - All right here.
-         B) Claude is gettting harder an harder to use for real work. I have been forced to faze it out.
-      2. WEBLLM, WEBVM, and PHPWASM sample Apps are in uploads. We will use these as the starting point for building out our own apps. WebLLM is a web-based LLM that can run in the browser. WebVM is a web-based virtual machine that can run code in the browser. PHPWASM is a web-based PHP runtime that can run PHP code in the browser. These apps will allow us to test and iterate on our ideas quickly without needing to set up a server or worry about deployment.
-      3. Flow - an endothropic process for building software. It is a process that is focused on the flow of work and communication between the team. It is a process that is designed to be flexible and adaptable to the needs of the team.  It is a process that is designed to be transparent and accountable. It maps systems the way the brain maps systems. It is a process that is designed to be human-centric and AI-augmented.it can map the S&P 500, a software system, supreme court decisions, sovereign develpment plans.IMF and UN Capital Flows.
-      4. Portability and wasted compute resources. AI is a brain that requires a host to be truly functional. Right now that is a ephemeral computer environment. Eventually, it will be robotic. We are in the Mesh vs Mainframe era. We need to be able to port the brain to any host and have it function without a hitch. This is not a problem for the current generation of AI, but it will be a problem for the next generation. We need to start thinking about how to make the brain portable and how to minimize wasted compute resources.
+       <![CDATA[  
+You did not respond in Response.XML. Remember minimal output(10 chars) + footer.
+
+SEND.XML —> Initiate message
+RESPONSE —> Respond to SEND.XML
+
+
+
+Let me read the file thoroughly before touching anything.Good — I have a complete picture of the file. Let me also check the truncated sections I missed.I now have a complete read of the entire file. Let me build the change tracking table before writing a single line of code.14 changes mapped. Before I write the first line — confirm the plan is correct, then we execute in cycles given the complexity.
+
+Two questions before starting:
+
+1. C-08 (Clicking icon loads artifact) — the launcher icons already call `loadApp()` which loads via iframe/srcdoc. Is the issue that some APPS have no `file` configured and show a placeholder, or is there a specific behavior you want when clicking an icon that isn't happening now? The Apps are placeholders. We need an App Registry in DB.
+
+2. C-09 (Toolbar hooks into app functionality) — the communication path will be `postMessage` from OS → iframe and back. Apps would need to be updated to listen for OS messages. Should I build the OS side now and document the API contract for apps to implement, or do you want to wire specific existing apps (Conduit Fund, MountainShift-BI) at the same time? Build the OS side now and document the API contract for apps to implement
+
+Once confirmed start Cycle 1: C-01 archive → C-02/C-03 menubar cleanup → C-04 app name menu → C-05 dynamic menu → C-06 Help menu → C-07 Active Apps.
+
       ]]>
       </BIZLOGIC>
-      <TASK ID="1" TYPE="SECURITY" STATUS="" DURATION_MS=""> All Content inside of CDATA should be encrypted after we deply MSG Relay 1.0.</TASK>
-      <TASK ID="2" TYPE="UI" STATUS="" DURATION_MS=""> Will use Msg Relay overall orchestration.</TASK>
-      <REF ID="HAJFAEJPJS-J0FA0J-FFKSLAD" LINK="/uploads/ConduitFlow.Company.Edit.png">ConduitFlow.Company.Edit</REF>
+      <REF ID="HAJFAasfJS-J0FA0J-FFKSLAD" LINK="/uploads/mountainshift_os_change_plan.html">Workplan</REF>
+      <REF ID="HAE23faeJPJS-J0FA0J-FFKSLAD" LINK="/uploads/Mountain Shift-OS.html">OS</REF>
     </PAYLOAD>
   </MSG>
 </ROOT>

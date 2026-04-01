@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Ontology · GQL Explorer</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#0a0a0f;color:#e8e6f0;font-family:'DM Sans',sans-serif;font-size:13px}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const DB = {
+  entities: [
+    { id:"e1", type:"company",  name:"Stripe",     sector:"fintech",      arr:4200 },
+    { id:"e2", type:"investor", name:"Sequoia",     aum:85000,             founded:1972 },
+    { id:"e3", type:"investor", name:"a16z",        aum:35000,             founded:2009 },
+    { id:"e4", type:"company",  name:"OpenAI",      sector:"ai",           arr:3400 },
+    { id:"e5", type:"company",  name:"Figma",       sector:"design",       arr:600  },
+    { id:"e6", type:"investor", name:"Thrive Cap",  aum:12000,             founded:2009 },
+    { id:"e7", type:"company",  name:"Anthropic",   sector:"ai",           arr:1800 },
+    { id:"e8", type:"fund",     name:"Conduit",     vintage:2024,          size:50  },
+    { id:"e9", type:"company",  name:"Notion",      sector:"productivity", arr:320  },
+  ],
+  stakes: [
+    { id:"s1", holder_id:"e2", target_id:"e1", percentage:10, trust_score:0.90 },
+    { id:"s2", holder_id:"e3", target_id:"e4", percentage:8,  trust_score:0.85 },
+    { id:"s3", holder_id:"e2", target_id:"e4", percentage:5,  trust_score:0.78 },
+    { id:"s4", holder_id:"e6", target_id:"e5", percentage:22, trust_score:0.92 },
+    { id:"s5", holder_id:"e3", target_id:"e7", percentage:15, trust_score:0.88 },
+    { id:"s6", holder_id:"e8", target_id:"e7", percentage:3,  trust_score:0.95 },
+    { id:"s7", holder_id:"e3", target_id:"e9", percentage:12, trust_score:0.80 },
+    { id:"s8", holder_id:"e6", target_id:"e4", percentage:6,  trust_score:0.72 },
+  ],
+};
+
+const SUGGESTIONS = [
+  { label:"All entities",  q:'FIND entities' },
+  { label:"Companies",     q:'FIND entities WHERE type = "company"' },
+  { label:"Investors",     q:'FIND entities WHERE type = "investor"' },
+  { label:"AI sector",     q:'FIND entities WHERE sector = "ai"' },
+  { label:"All stakes",    q:'FIND stakes' },
+  { label:"Traverse out",  q:'FIND entities WHERE type = "investor" TRAVERSE stakes OUT' },
+  { label:"Path e2 → e7",  q:'PATH FROM (e2) TO (e7)' },
+  { label:"Path e3 → e1",  q:'PATH FROM (e3) TO (e1)' },
+];
+
+const SCHEMA = [
+  { name:"entities", icon:"E", cls:"#6c5ce7", fields:[
+    { name:"id",     type:"string", pk:true },
+    { name:"type",   type:"string" },
+    { name:"name",   type:"string" },
+    { name:"sector", type:"string?" },
+    { name:"arr",    type:"float?" },
+    { name:"aum",    type:"float?" },
+  ]},
+  { name:"stakes", icon:"S", cls:"#00cec9", fields:[
+    { name:"id",         type:"string", pk:true },
+    { name:"holder_id",  type:"string" },
+    { name:"target_id",  type:"string" },
+    { name:"percentage", type:"float" },
+    { name:"trust_score",type:"float" },
+  ]},
+];
+
+// ── GQL Parser ────────────────────────────────────────────────────────────────
+function parseGQL(query) {
+  const tokens = query.trim().split(/\s+/);
+  const ast = { type:tokens[0]?.toUpperCase(), entity:tokens[1]?.toLowerCase(), filters:[], traverse:null, path:null };
+  if (tokens.includes("WHERE")) {
+    const i = tokens.indexOf("WHERE");
+    ast.filters.push({ field:tokens[i+1], op:"=", value:(tokens[i+3]||"").replace(/"/g,"") });
+  }
+  if (tokens.includes("TRAVERSE")) {
+    const i = tokens.indexOf("TRAVERSE");
+    ast.traverse = { edge:tokens[i+1], direction:(tokens[i+2]||"OUT").toUpperCase() };
+  }
+  if (ast.type === "PATH") {
+    const fi = tokens.indexOf("FROM"), ti = tokens.indexOf("TO");
+    if (fi !== -1 && ti !== -1) ast.path = { from:tokens[fi+1]?.replace(/[()]/g,""), to:tokens[ti+1]?.replace(/[()]/g,"") };
+  }
+  return ast;
+}
+
+// ── Query Engine ──────────────────────────────────────────────────────────────
+function traverseGraph(entityId, direction="OUT") {
+  if (direction === "OUT") return DB.stakes.filter(s => s.holder_id === entityId).map(s => s.target_id);
+  return DB.stakes.filter(s => s.target_id === entityId).map(s => s.holder_id);
+}
+
+function findPath(start, end) {
+  const queue = [[start]], visited = new Set();
+  while (queue.length) {
+    const path = queue.shift(), node = path[path.length-1];
+    if (node === end) return path;
+    if (!visited.has(node)) {
+      visited.add(node);
+      traverseGraph(node,"OUT").forEach(n => queue.push([...path,n]));
+      traverseGraph(node,"IN").forEach(n => { if (!visited.has(n)) queue.push([...path,n]); });
+    }
+  }
+  return null;
+}
+
+function execute(ast) {
+  if (ast.type === "PATH" && ast.path) {
+    const path = findPath(ast.path.from, ast.path.to);
+    if (!path) return { nodes:[], edges:[], pathIds:[] };
+    const nodes = path.map(id => DB.entities.find(e => e.id === id)).filter(Boolean);
+    const edges = [];
+    for (let i = 0; i < path.length-1; i++) {
+      const e = DB.stakes.find(s => (s.holder_id===path[i]&&s.target_id===path[i+1])||(s.holder_id===path[i+1]&&s.target_id===path[i]));
+      if (e) edges.push(e);
+    }
+    return { nodes, edges, pathIds:path };
+  }
+  if (ast.entity === "stakes") {
+    let data = [...DB.stakes];
+    if (ast.filters.length) data = data.filter(r => String(r[ast.filters[0].field])?.toLowerCase() === ast.filters[0].value?.toLowerCase());
+    return { nodes:[], edges:data, stakeMode:true };
+  }
+  let data = [...DB.entities];
+  if (ast.filters.length) data = data.filter(r => String(r[ast.filters[0].field])?.toLowerCase() === ast.filters[0].value?.toLowerCase());
+  if (ast.traverse) {
+    const ids = new Set();
+    data.forEach(d => traverseGraph(d.id, ast.traverse.direction).forEach(id => ids.add(id)));
+    const traversed = [...ids].map(id => DB.entities.find(e => e.id === id)).filter(Boolean);
+    const allIds = new Set([...data.map(d => d.id), ...ids]);
+    const edges = DB.stakes.filter(s => allIds.has(s.holder_id) && allIds.has(s.target_id));
+    return { nodes:[...new Set([...data,...traversed])], edges };
+  }
+  const nodeIds = new Set(data.map(d => d.id));
+  const edges = DB.stakes.filter(s => nodeIds.has(s.holder_id) && nodeIds.has(s.target_id));
+  return { nodes:data, edges };
+}
+
+function estimateCost(ast) {
+  let c = 1;
+  if (ast.filters.length) c += 2;
+  if (ast.traverse) c += 5;
+  if (ast.type === "PATH") c += 10;
+  return c;
+}
+
+function plan(ast) {
+  const cost = estimateCost(ast);
+  if (cost < 5)  return { badge:"idb", label:"IndexedDB" };
+  if (cost < 10) return { badge:"pg",  label:"PGLite" };
+  return              { badge:"srv", label:"Server" };
+}
+
+function toSQL(ast) {
+  if (ast.type === "FIND") {
+    let sql = `SELECT * FROM ${ast.entity}`;
+    if (ast.filters.length) sql += `\nWHERE ${ast.filters[0].field} = '${ast.filters[0].value}'`;
+    if (ast.traverse) sql += `\n-- JOIN stakes ON traverse(${ast.traverse.direction})`;
+    return sql;
+  }
+  if (ast.type === "PATH") return `-- BFS MATCH path\n--   (${ast.path?.from})-[*]->(${ast.path?.to})`;
+  return "-- unsupported";
+}
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+function layoutNodes(entities, W, H) {
+  const positions = {}, n = entities.length;
+  if (!n) return positions;
+  const cx = W/2, cy = (H-36)/2, r = Math.min(W,H-36)*0.32;
+  entities.forEach((e,i) => {
+    const angle = (2*Math.PI*i/n) - Math.PI/2;
+    positions[e.id] = { x: cx + r*Math.cos(angle), y: cy + r*Math.sin(angle) };
+  });
+  if (n===1) positions[entities[0].id] = { x:cx, y:cy };
+  return positions;
+}
+
+function initials(name) { return (name||"?").split(/\s+/).map(w=>w[0]).join("").toUpperCase().slice(0,2); }
+
+function nodeColor(type) {
+  if (type==="investor") return { bg:"rgba(0,206,201,0.12)",   border:"rgba(0,206,201,0.5)",   text:"#00cec9" };
+  if (type==="fund")     return { bg:"rgba(253,203,110,0.12)", border:"rgba(253,203,110,0.5)", text:"#fdcb6e" };
+  return                        { bg:"rgba(108,92,231,0.15)",  border:"rgba(108,92,231,0.5)",  text:"#a29bfe" };
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let state = {
+  query:      "FIND entities",
+  result:     { nodes:[], edges:[], stakeMode:false },
+  ast:        null,
+  activeTab:  "results",
+  selected:   null,
+  history:    [],
+  openSchema: {},
+  elapsed:    null,
+};
+
+// ── Render ─────────────────────────────────────────────────────────────────────
+function render() {
+  const { query, result, ast, activeTab, selected, history, openSchema, elapsed } = state;
+  const p = ast ? plan(ast) : null;
+  const badgeColor = !p ? "#a29bfe" : p.badge==="idb" ? "#a29bfe" : p.badge==="pg" ? "#00cec9" : "#fdcb6e";
+
+  const root = document.getElementById("root");
+  const canvasEl = document.getElementById("canvas");
+  const W = canvasEl ? canvasEl.offsetWidth : 600;
+  const H = canvasEl ? canvasEl.offsetHeight : 400;
+  const positions = layoutNodes(result.nodes||[], W, H);
+
+  root.innerHTML = `
+  <div style="display:grid;grid-template-columns:240px 1fr 280px;grid-template-rows:48px 1fr;height:100vh;background:#0a0a0f;color:#e8e6f0;font-family:'DM Sans',sans-serif;font-size:13px;overflow:hidden">
+
+    <!-- Topbar -->
+    <div style="grid-column:1/-1;display:flex;align-items:center;gap:12px;padding:0 16px;background:#14141e;border-bottom:1px solid rgba(255,255,255,0.07);z-index:10">
+      <div style="font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:14px;color:#a29bfe;display:flex;align-items:center;gap:8px">
+        <div style="width:7px;height:7px;border-radius:50%;background:#6c5ce7"></div>
+        ONTOLOGY
+      </div>
+      <div style="width:1px;height:24px;background:rgba(255,255,255,0.13)"></div>
+      <div style="flex:1;display:flex;align-items:center;gap:8px;background:#181824;border:1px solid rgba(255,255,255,0.13);border-radius:8px;padding:0 12px;height:32px">
+        <span style="font-family:monospace;font-size:11px;color:#a29bfe;white-space:nowrap">GQL &gt;</span>
+        <input id="gql-input" value="${escHtml(query)}"
+          placeholder='FIND entities WHERE type = &quot;company&quot;'
+          style="flex:1;background:none;border:none;outline:none;font-family:monospace;font-size:12px;color:#e8e6f0"/>
+      </div>
+      <button id="btn-run" style="padding:5px 14px;border-radius:6px;background:#6c5ce7;color:#fff;border:none;font-weight:500;cursor:pointer;font-size:12px">Run</button>
+      <button id="btn-clear" style="padding:5px 14px;border-radius:6px;background:transparent;color:#7a7890;border:1px solid rgba(255,255,255,0.13);cursor:pointer;font-size:12px">Clear</button>
+      ${p ? `<span style="font-family:monospace;font-size:10px;padding:3px 8px;border-radius:20px;background:${badgeColor}22;color:${badgeColor};border:1px solid ${badgeColor}44">${p.label}</span>` : ""}
+      <span style="font-size:11px;color:#7a7890;white-space:nowrap">v2.1 · GQL</span>
+    </div>
+
+    <!-- Left sidebar -->
+    <div style="background:#14141e;border-right:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;overflow:hidden">
+      <div style="padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:10px;font-weight:600;letter-spacing:0.12em;color:#7a7890;text-transform:uppercase">Schema</div>
+      <div style="flex:1;overflow-y:auto;padding:8px">
+        ${SCHEMA.map(ent => `
+          <div style="border-radius:6px;overflow:hidden;margin-bottom:4px;border:1px solid rgba(255,255,255,0.07)">
+            <div class="schema-toggle" data-name="${ent.name}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;background:#181824;font-size:12px;font-weight:500">
+              <div style="width:18px;height:18px;border-radius:4px;background:${ent.cls}33;color:${ent.cls};display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;font-family:monospace">${ent.icon}</div>
+              <span>${ent.name}</span>
+              <span style="margin-left:auto;font-size:10px;color:#7a7890">${DB[ent.name]?.length}</span>
+              <span style="font-size:10px;color:#7a7890;display:inline-block;transform:${openSchema[ent.name]?"rotate(90deg)":"none"};transition:transform 0.15s">›</span>
+            </div>
+            ${openSchema[ent.name] ? ent.fields.map(f => `
+              <div class="schema-field" data-field="${f.name}" style="display:flex;justify-content:space-between;padding:4px 10px 4px 36px;font-size:11px;color:#7a7890;border-top:1px solid rgba(255,255,255,0.07);cursor:pointer">
+                <span>${f.name}${f.pk ? `<span style="font-size:9px;color:#fdcb6e;margin-left:4px">PK</span>` : ""}</span>
+                <span style="font-family:monospace;font-size:10px;color:#a29bfe;opacity:0.7">${f.type}</span>
+              </div>`).join("") : ""}
+          </div>`).join("")}
+      </div>
+      <div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);font-size:10px;font-weight:600;letter-spacing:0.12em;color:#7a7890;text-transform:uppercase">Quick Queries</div>
+      <div style="padding:8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:200px">
+        ${SUGGESTIONS.map(s => `
+          <div class="suggestion" data-q="${escHtml(s.q)}" style="font-family:monospace;font-size:10px;color:#7a7890;padding:5px 8px;border-radius:4px;cursor:pointer;border:1px solid rgba(255,255,255,0.07);background:#181824">
+            <div style="font-size:9px;color:#6c5ce7;margin-bottom:2px;font-family:sans-serif;text-transform:uppercase;letter-spacing:0.08em">${s.label}</div>
+            <div style="opacity:0.7">${escHtml(s.q)}</div>
+          </div>`).join("")}
+      </div>
+      ${history.length ? `
+        <div style="padding:10px 14px;border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);font-size:10px;font-weight:600;letter-spacing:0.12em;color:#7a7890;text-transform:uppercase">History</div>
+        <div style="padding:8px;display:flex;flex-direction:column;gap:4px;overflow-y:auto;max-height:120px">
+          ${history.map(h => `
+            <div class="history-item" data-q="${escHtml(h)}" style="font-family:monospace;font-size:10px;color:#7a7890;padding:5px 8px;border-radius:4px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">$ ${escHtml(h)}</div>`).join("")}
+        </div>` : ""}
+    </div>
+
+    <!-- Canvas -->
+    <div id="canvas" style="position:relative;background:#0a0a0f;overflow:hidden">
+      <div style="position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none"></div>
+      ${!result.nodes?.length && !result.stakeMode ? `
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;pointer-events:none">
+          <svg width="32" height="32" viewBox="0 0 32 32" fill="none" style="opacity:0.2">
+            <circle cx="8" cy="16" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="24" cy="8" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <circle cx="24" cy="24" r="5" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="13" y1="13" x2="19" y2="11" stroke="currentColor" stroke-width="1.5"/>
+            <line x1="13" y1="19" x2="19" y2="21" stroke="currentColor" stroke-width="1.5"/>
+          </svg>
+          <span style="font-family:monospace;font-size:13px;color:#7a7890">Run a query to populate the graph</span>
+        </div>` : ""}
+      <svg id="edges-svg" style="position:absolute;inset:0;pointer-events:none;overflow:visible" width="${W}" height="${H}">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M2 1L8 5L2 9" fill="none" stroke="rgba(108,92,231,0.5)" stroke-width="1.5" stroke-linecap="round"/>
+          </marker>
+        </defs>
+        ${(result.edges||[]).map(edge => {
+          const from = positions[edge.holder_id], to = positions[edge.target_id];
+          if (!from || !to) return "";
+          const mx = (from.x+to.x)/2, my = (from.y+to.y)/2-5;
+          return `<g>
+            <line x1="${from.x}" y1="${from.y}" x2="${to.x}" y2="${to.y}" stroke="rgba(108,92,231,0.35)" stroke-width="1.5" marker-end="url(#arr)"/>
+            <text x="${mx}" y="${my}" text-anchor="middle" font-size="9" fill="rgba(162,155,254,0.7)" font-family="monospace">${edge.percentage}%</text>
+          </g>`;
+        }).join("")}
+      </svg>
+      ${(result.nodes||[]).map(e => {
+        const pos = positions[e.id];
+        if (!pos) return "";
+        const c = nodeColor(e.type);
+        const isSel = selected?.id === e.id;
+        return `<div class="graph-node" data-id="${e.id}" style="position:absolute;left:${pos.x}px;top:${pos.y}px;transform:translate(-50%,-50%);cursor:pointer;user-select:none;text-align:center">
+          <div style="width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:11px;font-weight:600;background:${c.bg};border:2px solid ${isSel?c.text:c.border};color:${c.text};box-shadow:${isSel?`0 0 0 3px ${c.text}44`:"none"};transform:${isSel?"scale(1.1)":"scale(1)"};transition:all 0.15s;margin:0 auto">${initials(e.name)}</div>
+          <div style="font-size:10px;color:#7a7890;margin-top:5px;white-space:nowrap">${e.name}</div>
+        </div>`;
+      }).join("")}
+      <div style="position:absolute;bottom:0;left:0;right:0;display:flex;gap:16px;padding:8px 12px;background:#14141e;border-top:1px solid rgba(255,255,255,0.07);font-family:monospace;font-size:10px;color:#7a7890">
+        <span>◆ ${result.nodes?.length??0} nodes</span>
+        <span>◆ ${result.edges?.length??0} edges</span>
+        <span>◆ ${elapsed ? `${elapsed}ms` : "—"}</span>
+        ${p ? `<span style="margin-left:auto;color:${badgeColor}">engine: ${p.label}</span>` : ""}
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div style="background:#14141e;border-left:1px solid rgba(255,255,255,0.07);display:flex;flex-direction:column;overflow:hidden">
+      <div style="display:flex;border-bottom:1px solid rgba(255,255,255,0.07)">
+        ${["results","ast","plan"].map(t => `
+          <div class="tab-btn" data-tab="${t}" style="flex:1;padding:10px;text-align:center;font-size:11px;font-weight:500;cursor:pointer;color:${activeTab===t?"#a29bfe":"#7a7890"};border-bottom:2px solid ${activeTab===t?"#6c5ce7":"transparent"};margin-bottom:-1px;transition:all 0.1s;text-transform:capitalize">${t}</div>`).join("")}
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px">
+        ${renderRightPanel(result, ast, activeTab, selected, p, badgeColor)}
+      </div>
+    </div>
+  </div>`;
+
+  bindEvents();
+}
+
+function renderRightPanel(result, ast, activeTab, selected, p, badgeColor) {
+  if (activeTab === "results") {
+    const items = selected ? [selected] : (result.stakeMode ? [] : (result.nodes||[]));
+    const stakes = selected ? DB.stakes.filter(s => s.holder_id===selected.id||s.target_id===selected.id) : [];
+    if (result.stakeMode) return (result.edges||[]).map(s => `
+      <div style="background:#181824;border:1px solid rgba(255,255,255,0.07);border-radius:8px;margin-bottom:8px;overflow:hidden">
+        <div style="padding:8px 12px;background:#111118;border-bottom:1px solid rgba(255,255,255,0.07);font-size:11px;display:flex;justify-content:space-between">
+          <span style="font-weight:600">${s.id}</span>
+          <span style="font-family:monospace;font-size:10px;color:#7a7890">stake</span>
+        </div>
+        <div style="padding:8px 12px">
+          ${Object.entries(s).filter(([k])=>k!=="id").map(([k,v])=>`
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="font-size:11px;color:#7a7890;font-family:monospace">${k}</span>
+              <span style="font-size:11px;font-family:monospace;color:${typeof v==="number"?"#fdcb6e":"#55efc4"}">${v}</span>
+            </div>`).join("")}
+        </div>
+      </div>`).join("");
+    if (!items.length) return `<div style="color:#7a7890;font-size:12px;padding:16px;font-family:monospace">— no results —</div>`;
+    return items.map(item => `
+      <div style="background:#181824;border:1px solid rgba(255,255,255,0.07);border-radius:8px;margin-bottom:8px;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#111118;border-bottom:1px solid rgba(255,255,255,0.07);font-size:11px">
+          <span style="font-weight:600;font-size:12px">${item.name}</span>
+          ${item.type?`<span style="font-size:9px;padding:2px 7px;border-radius:10px;background:rgba(108,92,231,0.2);color:#a29bfe;border:1px solid rgba(108,92,231,0.3)">${item.type}</span>`:""}
+          <span style="margin-left:auto;font-family:monospace;font-size:10px;color:#7a7890">${item.id}</span>
+        </div>
+        <div style="padding:8px 12px">
+          ${Object.entries(item).filter(([k])=>!["id","name","type"].includes(k)).map(([k,v])=>`
+            <div style="display:flex;justify-content:space-between;padding:3px 0">
+              <span style="font-size:11px;color:#7a7890;font-family:monospace">${k}</span>
+              <span style="font-size:11px;font-family:monospace;color:${typeof v==="number"?"#fdcb6e":"#55efc4"}">${v}</span>
+            </div>`).join("")}
+          ${stakes.length?`<div style="display:flex;justify-content:space-between;padding:3px 0;margin-top:6px;border-top:1px solid rgba(255,255,255,0.07);padding-top:6px">
+            <span style="font-size:11px;color:#7a7890;font-family:monospace">stakes</span>
+            <span style="font-size:11px;font-family:monospace;color:#fdcb6e">${stakes.length}</span>
+          </div>`:""}
+        </div>
+      </div>`).join("");
+  }
+
+  if (activeTab === "ast" && ast) {
+    return `<div style="font-family:monospace;font-size:11px;color:#7a7890;line-height:1.8">
+      ${[["type",ast.type],["entity",ast.entity],["filters",JSON.stringify(ast.filters)],["traverse",JSON.stringify(ast.traverse)],["path",JSON.stringify(ast.path)]].map(([k,v])=>`
+        <div style="margin-bottom:8px">
+          <span style="color:#fd79a8">${k}</span>: <span style="color:${v===null||!v?"#7a7890":"#55efc4"}">${String(v)}</span>
+        </div>`).join("")}
+      <div style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.07);padding-top:12px">
+        <div style="font-size:9px;color:#7a7890;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px">SQL Compilation</div>
+        <div style="color:#55efc4;line-height:1.8;white-space:pre">${escHtml(toSQL(ast))}</div>
+      </div>
+    </div>`;
+  }
+
+  if (activeTab === "plan" && ast && p) {
+    const cost = estimateCost(ast);
+    const pct = Math.round((cost/16)*100);
+    const steps = [
+      { label:"Parse GQL", detail:`type=${ast.type} entity=${ast.entity}` },
+      ...(ast.filters.length?[{ label:"Apply filter", detail:`${ast.filters[0].field} = "${ast.filters[0].value}"` }]:[]),
+      ...(ast.type==="PATH"?[{ label:"BFS pathfinding", detail:`${ast.path?.from} → ${ast.path?.to}` }]:[]),
+      ...(ast.traverse?[{ label:"Graph traversal", detail:`edge=${ast.traverse.edge} dir=${ast.traverse.direction}` }]:[]),
+      { label:`Execute via ${p.label}`, detail:`cost=${cost}` },
+    ];
+    return `<div>
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#7a7890;margin-bottom:6px">
+          <span>Query cost</span><span style="color:${badgeColor}">${cost} / 16 · ${p.label}</span>
+        </div>
+        <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${badgeColor};border-radius:2px;transition:width 0.4s"></div>
+        </div>
+      </div>
+      ${steps.map((s,i)=>`
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:${i<steps.length-1?"1px solid rgba(255,255,255,0.07)":"none"}">
+          <div style="width:22px;height:22px;border-radius:50%;background:#181824;border:1px solid rgba(255,255,255,0.13);display:flex;align-items:center;justify-content:center;font-family:monospace;font-size:10px;color:#7a7890;flex-shrink:0">${i+1}</div>
+          <div>
+            <div style="font-size:12px;font-weight:500;margin-bottom:3px">${s.label}</div>
+            <div style="font-size:11px;color:#7a7890;font-family:monospace">${s.detail}</div>
+          </div>
+        </div>`).join("")}
+    </div>`;
+  }
+
+  return `<div style="color:#7a7890;font-size:12px;padding:16px;font-family:monospace">— no data —</div>`;
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+function bindEvents() {
+  const input = document.getElementById("gql-input");
+  if (input) {
+    input.addEventListener("input", e => { state.query = e.target.value; });
+    input.addEventListener("keydown", e => { if (e.key==="Enter") runQuery(); });
+  }
+  document.getElementById("btn-run")?.addEventListener("click", runQuery);
+  document.getElementById("btn-clear")?.addEventListener("click", () => {
+    state.query=""; state.result={nodes:[],edges:[]}; state.ast=null; state.elapsed=null; state.selected=null;
+    render();
+  });
+  document.querySelectorAll(".tab-btn").forEach(el =>
+    el.addEventListener("click", () => { state.activeTab=el.dataset.tab; render(); }));
+  document.querySelectorAll(".schema-toggle").forEach(el =>
+    el.addEventListener("click", () => { state.openSchema[el.dataset.name]=!state.openSchema[el.dataset.name]; render(); }));
+  document.querySelectorAll(".schema-field").forEach(el =>
+    el.addEventListener("click", () => { state.query+=(state.query?" ":"")+el.dataset.field; render(); }));
+  document.querySelectorAll(".suggestion,.history-item").forEach(el =>
+    el.addEventListener("click", () => runQuery(el.dataset.q)));
+  document.querySelectorAll(".graph-node").forEach(el =>
+    el.addEventListener("click", () => {
+      const e = DB.entities.find(x=>x.id===el.dataset.id);
+      state.selected = state.selected?.id===el.dataset.id ? null : e;
+      render();
+    }));
+}
+
+function runQuery(q) {
+  const qs = (q||state.query||"").trim();
+  if (!qs) return;
+  state.query = qs;
+  const t0 = performance.now();
+  const parsed = parseGQL(qs);
+  const res = execute(parsed);
+  const t1 = performance.now();
+  state.ast = parsed;
+  state.result = res;
+  state.selected = null;
+  state.elapsed = (t1-t0).toFixed(1);
+  state.history = [qs, ...state.history.filter(x=>x!==qs)].slice(0,8);
+  render();
+}
+
+function escHtml(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+window.addEventListener("load", () => {
+  render();
+  runQuery("FIND entities");
+  // Re-render on resize so graph reflows
+  window.addEventListener("resize", render);
+});
+</script>
+</body>
+</html>

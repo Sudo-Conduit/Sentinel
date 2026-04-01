@@ -1,0 +1,178 @@
+
+<style>
+.section-label { font-size: 11px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--color-text-tertiary); margin: 0 0 8px; }
+.change-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.change-table th { text-align: left; font-size: 10px; font-weight: 500; color: var(--color-text-tertiary); padding: 6px 10px; border-bottom: 0.5px solid var(--color-border-secondary); letter-spacing: 0.06em; text-transform: uppercase; }
+.change-table td { padding: 9px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); vertical-align: top; }
+.change-table tr:last-child td { border-bottom: none; }
+.badge { display: inline-block; font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; }
+.badge-pending { background: var(--color-background-secondary); color: var(--color-text-secondary); }
+.badge-done { background: #EAF3DE; color: #27500A; }
+.badge-scope { background: var(--color-background-info); color: var(--color-text-info); }
+.change-id { font-family: var(--font-mono); font-size: 11px; color: var(--color-text-secondary); }
+.change-title { font-weight: 500; color: var(--color-text-primary); }
+.change-desc { font-size: 11px; color: var(--color-text-secondary); line-height: 1.5; margin-top: 3px; }
+.scope-tag { font-size: 10px; color: var(--color-text-tertiary); font-family: var(--font-mono); }
+</style>
+
+<div style="padding: 0.5rem 0">
+<p class="section-label">MountainShift OS — Change Register</p>
+
+<table class="change-table">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>Change</th>
+      <th>Scope</th>
+      <th>Status</th>
+      <th>Timestamp</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="change-id">C-01</td>
+      <td>
+        <div class="change-title">Archive — Create MountainShiftOS.html</div>
+        <div class="change-desc">Copy current file as-is to MountainShiftOS_Archive.html before any changes. Snapshot of pre-modification state.</div>
+      </td>
+      <td><span class="scope-tag">FILE</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-02</td>
+      <td>
+        <div class="change-title">Remove Git and Claude buttons</div>
+        <div class="change-desc">Hide/remove ⌥ Git button (showGitSetup) and ◑ Claude button (toggleClaudeUI) from menubar-right. Keep underlying functions intact for CMD use.</div>
+      </td>
+      <td><span class="scope-tag">HTML · CSS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-03</td>
+      <td>
+        <div class="change-title">Add Panel button where Git/Claude were</div>
+        <div class="change-desc">Reload button already exists in toolbar. Move ⊞ Panel toggle to where Git/Claude buttons were removed, keeping left-toggle behavior.</div>
+      </td>
+      <td><span class="scope-tag">HTML</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-04</td>
+      <td>
+        <div class="change-title">App name click → About / Quit menu</div>
+        <div class="change-desc">#app-name becomes clickable. Clicking opens a small dropdown with About and Quit. Quit removes the iframe and deregisters from _loadedApps. About shows app metadata.</div>
+      </td>
+      <td><span class="scope-tag">HTML · JS · CSS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-05</td>
+      <td>
+        <div class="change-title">Dynamic menu based on active app</div>
+        <div class="change-desc">File/Edit/View/Apps menu items load from the active app's manifest (app.menu[]). Default OS menus shown when no app loaded. App can inject custom menu items.</div>
+      </td>
+      <td><span class="scope-tag">HTML · JS · CSS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-06</td>
+      <td>
+        <div class="change-title">Help menu → Upload, Load URL, Load Artifact</div>
+        <div class="change-desc">Move Upload, Load URL, Load Artifact from toolbar into Help dropdown menu. Toolbar cleaned up. Help becomes a functional dropdown.</div>
+      </td>
+      <td><span class="scope-tag">HTML · JS · CSS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-07</td>
+      <td>
+        <div class="change-title">Active Apps replaces Favorites in Quick Launch</div>
+        <div class="change-desc">Rename "★ Favorites" → "⬡ Active Apps". Section shows currently loaded apps (_loadedApps) not static APPS list. Updates dynamically as apps open/close.</div>
+      </td>
+      <td><span class="scope-tag">HTML · JS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-08</td>
+      <td>
+        <div class="change-title">Clicking icon loads artifact</div>
+        <div class="change-desc">App icons in launcher already call loadApp(). Confirm and wire to artifact loading path (srcdoc/file). Ensure click-to-load works for all icon surfaces including Active Apps bar.</div>
+      </td>
+      <td><span class="scope-tag">JS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-09</td>
+      <td>
+        <div class="change-title">Toolbar buttons hooked into active app functionality</div>
+        <div class="change-desc">Toolbar Reload button already calls reloadActive(). Wire toolbar buttons to postMessage API so apps can register handlers. App declares supported toolbar actions in its manifest.</div>
+      </td>
+      <td><span class="scope-tag">JS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-10</td>
+      <td>
+        <div class="change-title">App inserts additional left nav tabs (4+ → dropdown)</div>
+        <div class="change-desc">App can postMessage to inject tabs into left panel header. If total tabs > 4, collapse into a dropdown selector. Left panel modes become dynamic per app.</div>
+      </td>
+      <td><span class="scope-tag">HTML · JS · CSS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-11</td>
+      <td>
+        <div class="change-title">Two-finger swipe: right → prev app, left → next app</div>
+        <div class="change-desc">Add touchstart/touchend listeners on #main-content. Horizontal swipe distance > 60px triggers _cycleLoaded(). Right swipe = previous app, left swipe = next app.</div>
+      </td>
+      <td><span class="scope-tag">JS</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-12</td>
+      <td>
+        <div class="change-title">Save app state on window close</div>
+        <div class="change-desc">beforeunload handler saves _loadedApps, _loadedIndex, and per-app state to IndexedDB. OS state table added to VFS schema. Restore on next load.</div>
+      </td>
+      <td><span class="scope-tag">JS · IndexedDB</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-13</td>
+      <td>
+        <div class="change-title">OS state stored in IndexedDB relationally + JSON cache</div>
+        <div class="change-desc">New os_state table in IndexedDB. Relational: per-app rows with id, name, icon, file, srcdoc, tabIndex, position. JSON cache field per row for flexible state. VFS extended.</div>
+      </td>
+      <td><span class="scope-tag">JS · IndexedDB</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td class="change-id">C-14</td>
+      <td>
+        <div class="change-title">Footer: double height, remove bottom text</div>
+        <div class="change-desc">#statusbar height: 24px → 48px. Remove "P₃₁₀ · Paul" and any fixed bottom text. Keep functional status items. Rebalance padding/alignment.</div>
+      </td>
+      <td><span class="scope-tag">CSS · HTML</span></td>
+      <td><span class="badge badge-pending">Pending</span></td>
+      <td>—</td>
+    </tr>
+  </tbody>
+</table>
+
+<div style="margin-top: 16px; padding: 10px 12px; background: var(--color-background-secondary); border-radius: var(--border-radius-md); font-size: 12px; color: var(--color-text-secondary);">
+  14 changes identified · Cycle 1 will execute C-01 through C-07 · Remaining in Cycle 2
+</div>
+</div>
