@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<surfaceManifest release="hope-shelters" tier="2" minAppVersion="1.4.0" issuedAt="2026-07-22T00:00:00Z"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xsi:noNamespaceSchemaLocation="SurfaceManifest.xsd">
+  <node id="grp-reports" label="Reports" group="Reports" requiredRole="viewer" order="1">
+    <node id="report-staff-expense-month" label="#1 Comprehensive Staff Expense by Month" group="Reports" requiredRole="viewer" order="1"/>
+    <node id="report-expense-season" label="#2 Expenses by Season" group="Reports" requiredRole="viewer" order="2"/>
+    <node id="report-payroll" label="#3 Payroll Report" group="Reports" requiredRole="payroll-finance" order="3"/>
+  </node>
+</surfaceManifest>

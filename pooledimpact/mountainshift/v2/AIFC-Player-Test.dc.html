@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>body { margin:0; background:#1c2733; }</style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#1c2733;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:16px;font-weight:700;">AIFC Player Test</div>
+  <div style="font-size:11.5px;color:#8e99a8;max-width:360px;text-align:center;">Tests whether this browser's Web Audio API can decode an AIFC (compressed AIFF) file. Uncompressed AIFF usually decodes; true AIFC compression (e.g. IMA4, u-law) support varies by browser/OS codec.</div>
+
+  <input type="file" accept=".aif,.aiff,.aifc" onChange="{{ onFileChange }}" style="color:#e8eaf0;font-size:12.5px;" />
+
+  <sc-if value="{{ fileName }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:12px;color:#c9d3de;">{{ fileName }}</div>
+  </sc-if>
+
+  <sc-if value="{{ statusText }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:13px;padding:8px 14px;border-radius:8px;background:{{ statusBg }};color:{{ statusColor }};max-width:400px;text-align:center;">{{ statusText }}</div>
+  </sc-if>
+
+  <sc-if value="{{ decoded }}" hint-placeholder-val="{{ false }}">
+    <div style="font-size:12px;color:#8e99a8;display:flex;flex-direction:column;gap:2px;text-align:center;">
+      <div>Duration: {{ durationLabel }}</div>
+      <div>Sample rate: {{ sampleRateLabel }}</div>
+      <div>Channels: {{ channelsLabel }}</div>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <div onClick="{{ onPlay }}" style="cursor:pointer;background:#0a84ff;padding:8px 18px;border-radius:8px;font-size:13px;">▶ Play</div>
+      <div onClick="{{ onStop }}" style="cursor:pointer;background:#2c3947;padding:8px 18px;border-radius:8px;font-size:13px;">⏹ Stop</div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { fileName: null, statusText: null, statusOk: false, decoded: null, playing: false };
+  _audioCtx = null;
+  _sourceNode = null;
+
+  getCtx() {
+    if (!this._audioCtx) this._audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return this._audioCtx;
+  }
+
+  onFileChange = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    this.setState({ fileName: file.name, statusText: 'Decoding\u2026', statusOk: true, decoded: null });
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const ctx = this.getCtx();
+        // decodeAudioData is the real, only real-codec test here \u2014 it either succeeds with a
+        // genuine AudioBuffer (proof this browser's native decoder handled the AIFC compression
+        // variant) or rejects, which IS the honest result to surface, not a guessed compatibility list.
+        const buffer = await new Promise((resolve, reject) => {
+          ctx.decodeAudioData(ev.target.result.slice(0), resolve, reject);
+        });
+        this.setState({ statusText: 'Decoded successfully \u2014 native decodeAudioData supports this file.', statusOk: true, decoded: buffer });
+      } catch (err) {
+        this.setState({ statusText: 'Decode failed: ' + (err && err.message ? err.message : 'unsupported codec/format in this browser'), statusOk: false, decoded: null });
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  onPlay = () => {
+    if (!this.state.decoded) return;
+    this.onStop();
+    const ctx = this.getCtx();
+    const src = ctx.createBufferSource();
+    src.buffer = this.state.decoded;
+    src.connect(ctx.destination);
+    src.start(0);
+    this._sourceNode = src;
+    this.setState({ playing: true });
+    src.onended = () => this.setState({ playing: false });
+  };
+  onStop = () => {
+    if (this._sourceNode) { try { this._sourceNode.stop(); } catch (e) {} this._sourceNode = null; }
+    this.setState({ playing: false });
+  };
+
+  renderVals() {
+    const s = this.state;
+    const buf = s.decoded;
+    return {
+      fileName: s.fileName, statusText: s.statusText,
+      statusBg: s.statusOk ? 'rgba(102,187,106,0.15)' : 'rgba(255,82,82,0.15)',
+      statusColor: s.statusOk ? '#66bb6a' : '#ff8080',
+      onFileChange: this.onFileChange,
+      decoded: !!buf,
+      durationLabel: buf ? buf.duration.toFixed(2) + 's' : '',
+      sampleRateLabel: buf ? buf.sampleRate + ' Hz' : '',
+      channelsLabel: buf ? String(buf.numberOfChannels) : '',
+      onPlay: this.onPlay, onStop: this.onStop
+    };
+  }
+}
+</script>
+</body>
+</html>

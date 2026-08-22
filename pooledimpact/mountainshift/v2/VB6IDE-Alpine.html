@@ -1,0 +1,1323 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1f2430"/><text x="40" y="32" font-size="14" fill="#4ec9b0" text-anchor="middle" font-family="monospace">VB6</text></svg></template>
+<script src="./UTF24Timestamp.js"></script>
+<script src="./BaseClassX.js"></script>
+<script src="./FileFsX.js"></script>
+<script src="./AppClasses.js"></script>
+<script src="./CodeUtils_007.js"></script>
+<script src="./Procd.js"></script>
+<script src="./PosixCommands.js"></script>
+<script src="./Environment.js"></script>
+<script src="./CPU.js"></script>
+<script src="./Physical.js"></script>
+<script src="./Memory.js"></script>
+<script src="./Kernel.js"></script>
+<script src="./BIOS.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+const _cellSurfaces = new Map();
+let _cellIdCounter = 0;
+function ideController() {
+  const app = new App({ projectName: 'Project' });
+  const mod = new Module({ name: 'Default', moduleName: 'Module1' });
+  const form = new Form({ name: 'Form1', formName: 'Form1', moduleId: mod.id });
+  
+  const l1 = new Component({ controlType: 'label', name: 'Label1', left: 40, top: 58, width: 100, height: 18, caption: 'Name:' });
+  const t1 = new Component({ controlType: 'textbox', name: 'Text1', left: 150, top: 55, width: 150, height: 22, text: '' });
+  const b1 = new Component({ controlType: 'commandbutton', name: 'Command1', left: 480, top: 280, width: 80, height: 30, caption: 'Save' });
+  
+  form.addComponent(l1);
+  form.addComponent(t1);
+  form.addComponent(b1);
+  
+  mod.addForm(form);
+  app.addModule(mod);
+
+  form.formClassCode = form.formClassCode || `class Form1_Class {\n  Command1_Click(ctx) {\n    ctx.runStatus = 'Record saved (Form1_Class.Command1_Click)';\n  }\n}`;
+
+  let fsInstance = null;
+  let projectFileHandle = null;
+  const STATE_PATH = '/home/wfobbs/.config/meshui/state.json'; // conceptual target; browser pickers can't target absolute OS paths directly
+
+  // ─── TermCommand ─── legacy shim kept for older /bin command files that
+  // still `extends TermCommand`; current-style commands (see ls.js) are
+  // plain classes with static metadata and execute(args, {stdout, stderr, cwd, vfs}).
+  function idbOpen() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open('meshui-filefsx', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  function idbGetHandle(key) {
+    return idbOpen().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readonly');
+      const req = tx.objectStore('handles').get(key);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    }));
+  }
+  function idbSetHandle(key, handle) {
+    return idbOpen().then(db => new Promise((resolve, reject) => {
+      const tx = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, key);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    }));
+  }
+  function verifyHandlePermission(handle, mode) {
+    return handle.queryPermission({ mode }).then(status => {
+      if (status === 'granted') return true;
+      return handle.requestPermission({ mode }).then(s => s === 'granted');
+    });
+  }
+
+  const ctrl = {
+    app, form, mod, mode: 'design', armedTool: null, selectedId: null, runStatus: '', fs: null,
+    dragState: { active: false, id: null, startMouse: null, startPos: null },
+    resizeState: { active: false, id: null, startMouse: null, startSize: null },
+    toolbarPinned: true, propertiesPinned: true, toolbarHovered: false, propertiesHovered: false,
+    toolbarHoverTimer: null, propertiesHoverTimer: null,
+    menuOpen: null, toolboxLibOpen: false, controlLibrary: 'pines',
+    controlLibraries: [
+      { id: 'pines', label: 'Pines' },
+      { id: 'alpine', label: 'Alpine' },
+      { id: 'default', label: 'Default' }
+    ],
+    codeLanguage: 'js', codeLanguageOpen: false,
+    codeLanguages: [
+      { id: 'js', label: 'JavaScript' },
+      { id: 'php', label: 'PHP' },
+      { id: 'python', label: 'Python' }
+    ],
+    codeLanguageLabel() { return (this.codeLanguages.find(l => l.id === this.codeLanguage) || {}).label || 'JavaScript'; },
+    selectCodeLanguage(id) { this.codeLanguage = id; this.codeLanguageOpen = false; this.runStatus = 'Code language set to ' + this.codeLanguageLabel() + '.'; },
+    toggleMenu(id) { this.menuOpen = this.menuOpen === id ? null : id; },
+    selectControlLibrary(id) { this.controlLibrary = id; this.menuOpen = false; this.toolboxLibOpen = false; this.runStatus = 'Control library set to ' + id + '.'; },
+    tools: [
+      { id: 'label', icon: 'A', label: 'Label' },
+      { id: 'textbox', icon: 'ab', label: 'TextBox' },
+      { id: 'commandbutton', icon: 'Cmd', label: 'CommandButton' },
+      { id: 'frame', icon: 'Frm', label: 'Frame' },
+      { id: 'checkbox', icon: 'Chk', label: 'CheckBox' },
+      { id: 'combobox', icon: 'Cbo', label: 'ComboBox' }
+    ],
+    controlLibraryLabel() { return (this.controlLibraries.find(l => l.id === this.controlLibrary) || {}).label || 'Pines'; },
+    getComponents() { return this.form.components; },
+    getSelectedComponent() { return this.form.components.find(c => c.id === this.selectedId); },
+    activeMode: 'designer',
+    modes: [
+      { id: 'designer', label: 'Designer' },
+      { id: 'code', label: 'Code' },
+      { id: 'data', label: 'Data' },
+      { id: 'chat', label: 'Chat' },
+      { id: 'tasks', label: 'Tasks' },
+      { id: 'terminal', label: 'Terminal' }
+    ],
+    chatMessages: [{ from: 'ai', text: 'Hi! Ask me anything about this project.' }],
+    chatInput: '',
+    sendChat() {
+      if (!this.chatInput.trim()) return;
+      this.chatMessages.push({ from: 'user', text: this.chatInput });
+      const q = this.chatInput; this.chatInput = '';
+      setTimeout(() => { this.chatMessages.push({ from: 'ai', text: 'Noted: "' + q + '". (demo response)' }); }, 400);
+    },
+    tasks: [
+      { id: 1, text: 'Design Form1 layout', done: true },
+      { id: 2, text: 'Wire Command1_Click handler', done: false },
+      { id: 3, text: 'Add data validation', done: false }
+    ],
+    newTaskText: '',
+    addTask() {
+      if (!this.newTaskText.trim()) return;
+      this.tasks.push({ id: Date.now(), text: this.newTaskText, done: false });
+      this.newTaskText = '';
+    },
+    toggleTask(t) { t.done = !t.done; },
+    removeTask(t) { const i = this.tasks.indexOf(t); if (i !== -1) this.tasks.splice(i, 1); },
+    terminalLines: ['MountainShift Terminal v1.0', 'Type "help" for commands.'],
+    logStatus(msg) { this.runStatus = msg; this.terminalLines.push(msg); },
+    terminalInput: '',
+    terminalHistory: [],
+    terminalHistoryIndex: -1,
+    terminalCwd: '/',
+    commands: new Map(),
+    currentUser: 'root',
+    users: {
+      root: { uid: 0, gid: 0, home: '/root', passwordHash: null },
+      guest: { uid: 1000, gid: 1000, home: '/home/guest', passwordHash: null }
+    },
+    loginTime: Date.now(),
+    sessionLog: [],
+    async hashPassword(pw) {
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+    },
+    terminalInputKeydown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.runTerminalCommand(); return; }
+      if (e.key === 'ArrowUp' && this.terminalHistory.length) {
+        e.preventDefault();
+        this.terminalHistoryIndex = Math.min(this.terminalHistoryIndex + 1, this.terminalHistory.length - 1);
+        this.terminalInput = this.terminalHistory[this.terminalHistory.length - 1 - this.terminalHistoryIndex];
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (this.terminalHistoryIndex <= 0) { this.terminalHistoryIndex = -1; this.terminalInput = ''; }
+        else { this.terminalHistoryIndex--; this.terminalInput = this.terminalHistory[this.terminalHistory.length - 1 - this.terminalHistoryIndex]; }
+      }
+    },
+    autoGrowTerminalInput() {
+      const el = this.$refs.terminalTextarea;
+      if (!el) return;
+      el.style.height = 'auto';
+      el.style.height = el.scrollHeight + 'px';
+    },
+    monitorOpen: false,
+    monitorSurface: 'svg',
+    setMonitorSurface(s) {
+      this.monitorSurface = s;
+      this.$nextTick(() => { if (s === 'three') this.initThreeCells(); });
+    },
+    initCanvasCell(cell, canvas) {
+      let surf = _cellSurfaces.get(cell.id);
+      if (!surf) { surf = {}; _cellSurfaces.set(cell.id, surf); }
+      surf.canvasEl = canvas;
+    },
+    drawCanvasCell(cell) {
+      const canvas = _cellSurfaces.get(cell.id)?.canvasEl;
+      if (!canvas) return;
+      const w = canvas.width = canvas.clientWidth, h = canvas.height = canvas.clientHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0, 0, w, h);
+      const data = cell.data;
+      const barW = w / data.length;
+      ctx.fillStyle = '#e0a458';
+      data.forEach((v, i) => {
+        const bh = (v / 100) * h;
+        ctx.fillRect(i * barW, h - bh, Math.max(1, barW - 1), bh);
+      });
+    },
+    initThreeCells() {
+      if (typeof THREE === 'undefined') return;
+      this.monitorCells.forEach(cell => {
+        const surf = _cellSurfaces.get(cell.id);
+        if (!surf || surf.three || !surf.canvasEl) return;
+        const canvas = surf.canvasEl;
+        const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+        camera.position.set(0, 1.2, 3.2);
+        camera.lookAt(0, 0.5, 0);
+        scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+        const dir = new THREE.DirectionalLight(0xffffff, 0.8); dir.position.set(2, 3, 2); scene.add(dir);
+        const geo = new THREE.BoxGeometry(0.6, 1, 0.6);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x4ec9b0 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.y = 0;
+        scene.add(mesh);
+        surf.three = { renderer, scene, camera, mesh };
+      });
+    },
+    renderThreeCell(cell) {
+      const t = _cellSurfaces.get(cell.id)?.three;
+      if (!t) return;
+      const canvas = t.renderer.domElement;
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      t.renderer.setSize(w, h, false);
+      t.camera.aspect = w / h; t.camera.updateProjectionMatrix();
+      const scale = Math.max(0.1, cell.value / 50);
+      t.mesh.scale.y = scale;
+      t.mesh.position.y = (scale - 1) / 2;
+      t.mesh.rotation.y += 0.02;
+      t.renderer.render(t.scene, t.camera);
+    },
+    animDemoTimer: null,
+    topActive: false,
+    topHeader: {},
+    topRows: [],
+    _termCharWidth: null,
+    terminalCols() {
+      const el = this.$refs.terminalOutput;
+      if (!el) return 80;
+      if (this._termCharWidth === null) {
+        const probe = document.createElement('span');
+        probe.style.font = "12px 'Courier New',monospace";
+        probe.style.position = 'absolute';
+        probe.style.visibility = 'hidden';
+        probe.textContent = '0'.repeat(40);
+        document.body.appendChild(probe);
+        this._termCharWidth = probe.getBoundingClientRect().width / 40;
+        document.body.removeChild(probe);
+      }
+      const usableWidth = el.clientWidth - 24;
+      return Math.max(40, Math.floor(usableWidth / this._termCharWidth));
+    },
+    async waitForProcd(timeoutMs) {
+      const start = Date.now();
+      while (typeof Procd === 'undefined') {
+        if (Date.now() - start > (timeoutMs || 15000)) return null;
+        await new Promise(r => setTimeout(r, 30));
+      }
+      return Procd;
+    },
+    ensureProcdAttached() {
+      if (typeof Procd !== 'undefined' && this.kernel && Procd.getAttachedKernel() !== this.kernel) {
+        Procd.attachKernel(this.kernel);
+      }
+      if (typeof Procd !== 'undefined' && !this._procdSinkWired) {
+        this._procdSinkWired = true;
+        Procd.setConsoleSink((text) => {
+          if (this._lastDemoLines) this.terminalLines.splice(this.terminalLines.length - this._lastDemoLines, this._lastDemoLines);
+          const newLines = text.split('\n');
+          this.terminalLines.push(...newLines);
+          this._lastDemoLines = newLines.length;
+        });
+      }
+    },
+    async bootKernel() {
+      try {
+        const ProcdRef = await this.waitForProcd();
+        let shared = null;
+        try { shared = (window.parent && window.parent !== window && window.parent.__meshKernel) || null; } catch (e) { shared = null; }
+        if (shared) {
+          this.kernel = shared;
+          if (ProcdRef && ProcdRef.attachKernel) ProcdRef.attachKernel(this.kernel);
+          const init = this.kernel.ps().find(p => p.cmd === 'kernel.js');
+          this.shellPid = this.kernel.fork('bsh', init ? init.pid : 0).pid;
+          return;
+        }
+        const physical = new Physical({ capacityMHz: 2600, ramBytes: 0x400000 });
+        const bios = new BIOS();
+        this.kernel = await bios.boot(physical, null, null);
+        if (ProcdRef && ProcdRef.attachKernel) ProcdRef.attachKernel(this.kernel);
+        this.kernel.fork('kernel.js', 0);
+        this.shellPid = this.kernel.fork('bsh', 1).pid;
+      } catch (e) { console.warn('bootKernel:', e); }
+    },
+    stopTop() {
+      if (this.topJob) { this.topJob.stop(); this.topJob = null; }
+      this.topActive = false;
+    },
+    runTop() {
+      this.stopTop();
+      if (typeof Procd === 'undefined') { this.terminalLines.push('top: Procd not loaded'); return; }
+      this.topActive = true;
+      this.terminalLines.push('__TOP_TABLE__');
+      let ticks = 0;
+      // tick() must stay cheap and NOT call Procd.cpuTick() itself — that cost
+      // would get measured as top's OWN job weight, inflating it above every
+      // other job just for taking the system measurement.
+      const tick = () => {
+        if (this.kernel) this.kernel.tick(); // advance real scheduler
+      };
+      const render = () => {
+        const procs = (this.kernel ? this.kernel.ps() : []).map(p => ({ pid: p.pid, user: p.user || 'root', cmd: p.cmd, memBytes: p.memBytes }));
+        const real = Procd.cpuTick(this.kernel ? this.kernel.cores : 1); // real measured, per-core-normalized load
+        const pidWeights = Procd.pidWorkWeights(); // real per-job measured tick cost, keyed by pid — not a flat share
+        const weights = procs.map(p => (pidWeights[p.pid] || 0));
+        const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+        const memory = this.kernel && this.kernel.getMemory ? this.kernel.getMemory() : null;
+        const totalMemBytes = memory ? memory.sizeBytes : 0;
+        this._topState = procs.map((p, i) => ({
+          ...p,
+          cpu: real.loadPercent * (weights[i] / totalW),
+          mem: totalMemBytes ? (100 * (p.memBytes || 0) / totalMemBytes) : 0
+        })).sort((a, b) => b.cpu - a.cpu);
+        const now = new Date();
+        const rows = this._topState;
+        const totalCpu = rows.reduce((s, r) => s + r.cpu, 0);
+        this.topHeader = {
+          time: now.toLocaleTimeString(), uptime: ticks, load: (totalCpu / 100).toFixed(2),
+          tasks: rows.length, running: Math.round(Math.random() * 2),
+          cpuPct: totalCpu.toFixed(1), memFree: (256 - Math.random() * 40).toFixed(0)
+        };
+        this.topRows = rows.map(r => ({ pid: r.pid, user: r.user, cpu: r.cpu.toFixed(1), mem: r.mem.toFixed(1), cmd: r.cmd }));
+        ticks++;
+      };
+      tick();
+      render();
+      this.topJob = Procd.registerJob('top', 'console', 1000, tick, render, () => {});
+    },
+    runAnimDemo() {
+      if (this.animDemoTimer) { clearInterval(this.animDemoTimer); this.animDemoTimer = null; }
+      if (!this.monitorOpen) { this.monitorOpen = true; this.$nextTick(() => this.startMonitor()); }
+      const barLineIdx = this.terminalLines.length;
+      this.terminalLines.push('');
+      this.terminalLines.push('(console-surface bar, ~10fps — SVG cell above updates the same data at the same rate)');
+      let t = 0, ticks = 0;
+      this.animDemoTimer = setInterval(() => {
+        t += 0.35;
+        const v = 50 + Math.sin(t) * 45;
+        const width = Math.round(v / 2);
+        this.terminalLines[barLineIdx] = '[' + '█'.repeat(width) + ' '.repeat(50 - width) + '] ' + v.toFixed(0).padStart(3);
+        this.terminalLines = [...this.terminalLines];
+        if (this.monitorCells[0]) {
+          this.monitorCells[0].value = v;
+          this.monitorCells[0].data.push(v);
+          if (this.monitorCells[0].data.length > 40) this.monitorCells[0].data.shift();
+          if (this.monitorSurface === 'canvas') this.drawCanvasCell(this.monitorCells[0]);
+          if (this.monitorSurface === 'three') this.renderThreeCell(this.monitorCells[0]);
+          this.monitorCells = [...this.monitorCells];
+        }
+        ticks++;
+        if (ticks >= 60) { clearInterval(this.animDemoTimer); this.animDemoTimer = null; this.terminalLines.push('animdemo: done (60 frames @ ~100ms — both surfaces stayed in sync at display-safe rate)'); }
+      }, 100);
+    },
+    monitorGrid: 1,
+    monitorCells: [],
+    monitorTimer: null,
+    monitorResizeObserver: null,
+    toggleMonitor() {
+      this.monitorOpen = !this.monitorOpen;
+      if (this.monitorOpen) { this.$nextTick(() => this.startMonitor()); }
+      else { this.stopMonitor(); }
+    },
+    computeMonitorGrid() {
+      const el = this.$refs.monitorContainer;
+      if (!el) return;
+      const w = el.clientWidth, h = el.clientHeight;
+      const minDim = Math.min(w, h);
+      const grid = minDim >= 560 ? 4 : (minDim >= 260 ? 2 : 1);
+      if (grid !== this.monitorGrid || this.monitorCells.length !== grid * grid) {
+        for (const surf of _cellSurfaces.values()) { if (surf.three) surf.three.renderer.dispose(); }
+        _cellSurfaces.clear();
+        this.monitorGrid = grid;
+        this.monitorCells = Array.from({ length: grid * grid }, () => ({ id: ++_cellIdCounter, data: Array.from({ length: 30 }, () => 50), value: 50, label: '' }));
+        if (this.monitorSurface === 'three') this.$nextTick(() => this.initThreeCells());
+      }
+    },
+    startMonitor() {
+      this.computeMonitorGrid();
+      if (this.monitorResizeObserver) this.monitorResizeObserver.disconnect();
+      this.monitorResizeObserver = new ResizeObserver(() => this.computeMonitorGrid());
+      if (this.$refs.monitorContainer) this.monitorResizeObserver.observe(this.$refs.monitorContainer);
+      if (this.monitorTimer) clearInterval(this.monitorTimer);
+      this.monitorTimer = setInterval(() => {
+        this.monitorCells.forEach(cell => {
+          const next = Math.max(2, Math.min(98, cell.value + (Math.random() - 0.5) * 18));
+          cell.value = next;
+          cell.data.push(next);
+          if (cell.data.length > 40) cell.data.shift();
+          if (this.monitorSurface === 'canvas') this.drawCanvasCell(cell);
+          if (this.monitorSurface === 'three') this.renderThreeCell(cell);
+        });
+        this.monitorCells = [...this.monitorCells];
+      }, 400);
+    },
+    stopMonitor() {
+      if (this.monitorTimer) { clearInterval(this.monitorTimer); this.monitorTimer = null; }
+      if (this.monitorResizeObserver) { this.monitorResizeObserver.disconnect(); this.monitorResizeObserver = null; }
+    },
+    monitorPoints(cell, w, h) {
+      const data = cell.data;
+      if (!data.length) return '';
+      return data.map((v, i) => `${(i / (data.length - 1 || 1) * w).toFixed(1)},${(h - (v / 100) * h).toFixed(1)}`).join(' ');
+    },
+    runTerminalCommand() {
+      const cmd = this.terminalInput.trim();
+      if (!cmd) return;
+      this.terminalHistory.push(cmd);
+      this.terminalHistoryIndex = -1;
+      this.terminalLines.push('$ ' + cmd);
+      if (typeof Procd !== 'undefined') Procd.fg(0);
+      const push = (s) => this.terminalLines.push(s);
+      const cwd = () => this.terminalCwd || '/';
+      const resolvePath = (p) => {
+        if (!p) return cwd();
+        if (p.startsWith('/')) return p;
+        const base = cwd() === '/' ? '' : cwd();
+        return (base + '/' + p).replace(/\/+/g, '/');
+      };
+      if (cmd === 'help') push('Commands: help, ' + Array.from(this.commands.keys()).join(', ') + ', cat <file>, mkdir <dir>, cd [path], pwd, touch <file>, rm <path>, clear, version, echo <string>, top, ps, jobs, fg <id>, bg <id>, kill <id>, logout, animdemo, demo lasagna, demo chart, demo downloads, demo anomaly-scan');
+      else if (cmd === 'pwd') push(cwd());
+      else if (cmd === 'clear') { this.stopTop(); this.terminalLines = []; }
+      else if (cmd === 'version') push('Project v' + String(this.app.versionNumber).padStart(4, '0'));
+      else if (cmd.startsWith('echo ')) push(cmd.slice(5));
+      else if (cmd === 'echo') push('');
+      else if (cmd === 'animdemo') this.runAnimDemo();
+      else if (cmd === 'top') { this.ensureProcdAttached(); this.runTop(); }
+      else if (cmd === 'top stop' || cmd === 'stop') this.stopTop();
+      else if (cmd.startsWith('demo ') && typeof Procd !== 'undefined') {
+        this.ensureProcdAttached();
+        try {
+          const r = Procd.run(cmd);
+          if (typeof r === 'string') push(r);
+        } catch (e) { push(e.message); }
+      }
+      else if (this.commands.has(cmd.split(' ')[0])) {
+        const parts = cmd.split(' ');
+        const verb = parts.shift();
+        const CmdClass = this.commands.get(verb);
+        if (!fsInstance) { push(verb + ': FileFsX not ready yet'); }
+        else {
+          this.expandGlobs(parts).then(expandedArgs => {
+            const inst = new CmdClass();
+            let buf = '';
+            const writer = { write: (s) => { buf += s; } };
+            const flush = () => { buf.split('\n').forEach((line, i, arr) => { if (i < arr.length - 1 || line) push(line); }); buf = ''; };
+            const vfsCtx = {
+              readFile: (...a) => fsInstance.readFile(...a),
+              writeFile: (...a) => fsInstance.writeFile(...a),
+              mkdir: (...a) => fsInstance.mkdir(...a),
+              readdir: (...a) => fsInstance.readdir(...a),
+              stat: (...a) => fsInstance.stat(...a),
+              lstat: (...a) => fsInstance.lstat(...a),
+              unlink: (...a) => fsInstance.unlink(...a),
+              rmdir: (...a) => fsInstance.rmdir(...a),
+              rename: (...a) => fsInstance.rename(...a),
+              exists: (path) => fsInstance.stat(path).then(() => true).catch(() => false),
+              chmod: (...a) => fsInstance.chmod(...a),
+              chown: (...a) => fsInstance.chown(...a),
+              readClass: (path) => fsInstance.readFile(path, 'utf8').then(src => {
+                const mod = { exports: {} };
+                new Function('module', 'exports', 'TermCommand', String(src))(mod, mod.exports, TermCommand);
+                return mod.exports;
+              }),
+              mounts: () => {
+                const mount = fsInstance.mount;
+                const device = mount && mount.backend !== 'picker' ? (mount.backend + ':' + mount.key) : (mount.source ? (mount.source.name || 'connected file') : 'memory');
+                const opts = (mount && mount._autoSave ? 'rw,autosave' : 'rw') + ',nodes=' + (mount ? mount._nodeCount : 0);
+                return Promise.resolve([{ device, path: '/', type: 'filefsx-' + (mount ? mount.backend : 'json'), options: opts }]);
+              }
+            };
+            const ctx = { stdin: (async function*(){})(), stdout: writer, stderr: writer, cwd: cwd(), vfs: vfsCtx, session: this.sessionCtx(), system: (() => {
+              let llmd = null;
+              try { llmd = window.Llmd || (window.parent && window.parent !== window && window.parent.Llmd) || null; } catch (e) { llmd = null; }
+              return { kernel: this.kernel, procd: (typeof Procd !== 'undefined' ? Procd : null), llmd, contextId: 'ide-terminal' };
+            })() };
+            return Promise.resolve(inst.execute(expandedArgs, ctx)).then(flush);
+          }).catch(e => push(verb + ': ' + e.message));
+        }
+      }
+      else if (cmd.startsWith('cd')) {
+        const p = cmd.slice(2).trim();
+        const target = p ? resolvePath(p) : '/';
+        if (!fsInstance) { push('cd: FileFsX not ready yet'); }
+        else fsInstance.stat(target).then(st => {
+          if (st.isDirectory && !st.isDirectory()) { push('cd: not a directory: ' + target); return; }
+          this.terminalCwd = target;
+        }).catch(e => push('cd: ' + e.message));
+      }
+      else if (cmd.startsWith('mkdir ')) {
+        if (!fsInstance) { push('mkdir: FileFsX not ready yet'); }
+        else {
+          const target = resolvePath(cmd.slice(6).trim());
+          fsInstance.mkdir(target, { recursive: true }).then(() => push('created ' + target)).catch(e => push('mkdir: ' + e.message));
+        }
+      }
+      else if (cmd.startsWith('touch ')) {
+        if (!fsInstance) { push('touch: FileFsX not ready yet'); }
+        else {
+          const target = resolvePath(cmd.slice(6).trim());
+          fsInstance.writeFile(target, '').then(() => push('created ' + target)).catch(e => push('touch: ' + e.message));
+        }
+      }
+      else if (cmd.startsWith('rm ')) {
+        if (!fsInstance) { push('rm: FileFsX not ready yet'); }
+        else {
+          const target = resolvePath(cmd.slice(3).trim());
+          fsInstance.unlink(target).then(() => push('removed ' + target)).catch(e => fsInstance.rmdir(target, { recursive: true }).then(() => push('removed ' + target)).catch(e2 => push('rm: ' + e2.message)));
+        }
+      }
+      else if (cmd === 'ps') {
+        if (typeof Procd !== 'undefined') Procd.run('ps');
+        if (!this.kernel) push('ps: kernel not booted');
+        else {
+          const rows = this.kernel.ps();
+          push('  PID  USER      CMD');
+          rows.forEach(p => push(`  ${String(p.pid).padEnd(4)} ${String(p.user || 'root').padEnd(9)} ${p.cmd}`));
+        }
+      }
+      else if (cmd === 'jobs') {
+        if (typeof Procd === 'undefined') push('jobs: Procd not loaded');
+        else { this.ensureProcdAttached(); Procd.fg(0); const list = Procd.ps(); push('  ID NAME                  STATE'); list.forEach(j => push(`  ${String(j.id).padStart(2)}   ${String(j.name).padEnd(21)} ${j.state}`)); }
+      }
+      else if (/^fg\s+\d+$/.test(cmd)) {
+        if (typeof Procd === 'undefined') push('fg: Procd not loaded');
+        else { try { Procd.fg(parseInt(cmd.split(/\s+/)[1], 10)); } catch (e) { push('fg: ' + e.message); return; } const list = Procd.ps(); push('  ID NAME                  STATE'); list.forEach(j => push(`  ${String(j.id).padStart(2)}   ${String(j.name).padEnd(21)} ${j.state}`)); }
+      }
+      else if (/^bg\s+\d+$/.test(cmd)) {
+        if (typeof Procd === 'undefined') push('bg: Procd not loaded');
+        else { try { Procd.bg(parseInt(cmd.split(/\s+/)[1], 10)); } catch (e) { push('bg: ' + e.message); return; } const list = Procd.ps(); push('  ID NAME                  STATE'); list.forEach(j => push(`  ${String(j.id).padStart(2)}   ${String(j.name).padEnd(21)} ${j.state}`)); }
+      }
+      else if (/^kill\s+\d+$/.test(cmd)) {
+        const pid = parseInt(cmd.split(/\s+/)[1], 10);
+        if (!this.kernel) push('kill: kernel not booted');
+        else { this.kernel.kill(pid); push('kill: pid ' + pid + ' terminated'); }
+      }
+      else this.terminalLines.push(cmd + ': command not found');
+      this.terminalInput = '';
+      this.$nextTick(() => this.autoGrowTerminalInput());
+    },
+    storeApps: [
+      { name: 'Grid Pro', desc: 'Advanced data grid control' },
+      { name: 'Chart Kit', desc: 'Bar / line / pie charts' },
+      { name: 'Rich TextBox', desc: 'RTF editing control' },
+      { name: 'Calendar', desc: 'Date picker control' }
+    ],
+    formClassInstance: null,
+    formClassError: '',
+    analysisReport: null,
+    analysisOpen: false,
+    analysisCopied: false,
+    copyAnalysisReport() {
+      if (!this.analysisReport) return;
+      navigator.clipboard.writeText(JSON.stringify(this.analysisReport, null, 2)).then(() => {
+        this.analysisCopied = true;
+        setTimeout(() => { this.analysisCopied = false; }, 1500);
+      }).catch(err => { this.logStatus('Copy failed: ' + err.message); });
+    },
+    codeLineCount() { return Math.max(1, (this.form.formClassCode || '').split('\n').length); },
+    formClassMembers() {
+      const code = this.form.formClassCode || '';
+      const skip = new Set(['if', 'for', 'while', 'switch', 'catch', 'function']);
+      const members = [];
+      const regex = /(\w+)\s*\(([^)]*)\)\s*\{/g;
+      let m;
+      while ((m = regex.exec(code))) { if (!skip.has(m[1]) && !members.includes(m[1])) members.push(m[1]); }
+      return members;
+    },
+    nextName(type) {
+      const prefix = { label: 'Label', textbox: 'Text', commandbutton: 'Command', frame: 'Frame', checkbox: 'Check', combobox: 'Combo' }[type] || 'Ctrl';
+      let n = 1;
+      while (this.form.components.some(c => c.name === prefix + n)) n++;
+      return prefix + n;
+    },
+    compileFormClass() {
+      if (this.codeLanguage !== 'js') {
+        this.runStatus = 'Compiled (' + this.codeLanguageLabel() + ' \u2192 WAT, demo) \u2014 ' + (this.form.name || 'Form1') + '_Class.';
+        return;
+      }
+      try {
+        const Ctor = new Function('return (' + this.form.formClassCode + ')')();
+        this.formClassInstance = new Ctor();
+        this.formClassError = '';
+        this.runStatus = 'Compiled ' + (Ctor.name || 'Form_Class') + ' successfully.';
+      } catch (e) {
+        this.formClassInstance = null;
+        this.formClassError = e.message;
+        this.runStatus = 'Compile error: ' + e.message;
+      }
+    },
+    analyzeCode() {
+      try {
+        const utils = new CodeUtils_007(this.form.formClassCode, (this.form.name || 'Form1') + '_Class.js');
+        this.analysisReport = utils.generateFullReport((this.form.name || 'Form1') + ' Analysis');
+        this.analysisOpen = true;
+        this.runStatus = 'Analysis complete: ' + this.analysisReport.filteredFunctions + ' function(s).';
+      } catch (e) {
+        this.runStatus = 'Analyze error: ' + e.message;
+      }
+    },
+    dispatchEvent(comp, eventName) {
+      if (!this.formClassInstance || !comp.name) return false;
+      const fname = comp.name + '_' + eventName;
+      const fn = this.formClassInstance[fname];
+      if (typeof fn === 'function') {
+        try { fn.call(this.formClassInstance, this); } catch (e) { console.error(e); this.runStatus = 'Error in ' + fname + ': ' + e.message; }
+        return true;
+      }
+      return false;
+    },
+    formCanvasStyle() {
+      return { cursor: this.armedTool ? 'crosshair' : 'default', backgroundImage: this.mode === 'design' ? 'radial-gradient(circle, #d7dce3 1px, transparent 1px)' : 'none', backgroundSize: this.mode === 'design' ? '14px 14px' : 'auto' };
+    },
+    componentStyle(comp) {
+      return {
+        position: 'absolute', left: comp.left + 'px', top: comp.top + 'px', width: comp.width + 'px', height: comp.height + 'px',
+        outline: this.selectedId === comp.id && this.mode === 'design' ? '2px dashed #3b6fd1' : 'none',
+        outlineOffset: '2px', cursor: this.mode === 'design' ? 'move' : 'default', zIndex: this.selectedId === comp.id ? 5 : 1,
+        display: 'block', boxSizing: 'border-box'
+      };
+    },
+    init() {
+      const params = new URLSearchParams(location.search);
+      if (params.get('mode') === 'terminal') this.activeMode = 'terminal';
+      this.embedHeadless = params.get('embed') === '1';
+      if (this.embedHeadless) { this.propertiesPinned = false; this.toolbarPinned = false; }
+      this.hashPassword('wfobbs').then(h => { this.users.root.passwordHash = h; });
+      this.bootKernel();
+      this.initFS();
+      this.attachMouseListeners();
+      this.compileFormClass();
+      this.attachDeleteKeyListener();
+      idbGetHandle('project').then(handle => {
+        if (!handle) return;
+        projectFileHandle = handle;
+        return handle.queryPermission({ mode: 'readwrite' }).then(status => {
+          this.runStatus = status === 'granted'
+            ? 'Reconnected to ' + (handle.name || 'file') + '.'
+            : 'Found previous file (' + (handle.name || 'file') + ') — click Save or Load once to confirm access.';
+        });
+      }).catch(() => {});
+    },
+    attachDeleteKeyListener() {
+      document.addEventListener('keydown', (e) => {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId && this.mode === 'design' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+          e.preventDefault();
+          this.deleteSelectedComponent();
+        }
+      });
+    },
+    deleteSelectedComponent() {
+      const comp = this.getSelectedComponent();
+      if (!comp) return;
+      if (!confirm('Delete ' + comp.name + '? This will also remove its function(s) from the Form Class.')) return;
+      this.form.removeComponent(comp);
+      if (this.selectedId === comp.id) this.selectedId = null;
+      const before = this.form.formClassCode;
+      const fnRegex = new RegExp('\\n?\\s*' + comp.name + '_[A-Za-z]+\\s*\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\s*\\}', 'g');
+      this.form.formClassCode = this.form.formClassCode.replace(fnRegex, '');
+      if (this.form.formClassCode !== before) this.compileFormClass();
+      this.runStatus = 'Deleted ' + comp.name + ' and its Form Class function(s).';
+    },
+    async doLogin(user, password) {
+      const u = this.users[user];
+      if (!u) return { error: 'unknown user: ' + user };
+      if (u.passwordHash) {
+        const attempt = password ? await this.hashPassword(password) : null;
+        if (attempt !== u.passwordHash) return { error: 'incorrect password' };
+      }
+      if (this.currentUser) this.sessionLog.push({ user: this.currentUser, action: 'logout', time: Date.now() });
+      this.currentUser = user;
+      this.loginTime = Date.now();
+      this.sessionLog.push({ user, action: 'login', time: Date.now() });
+      return { ok: true };
+    },
+    doLogout() {
+      if (!this.currentUser) return { error: 'not logged in' };
+      this.sessionLog.push({ user: this.currentUser, action: 'logout', time: Date.now() });
+      this.currentUser = null;
+      this.loginTime = null;
+      return { ok: true };
+    },
+    async doUseradd(actingUser, username, password) {
+      const acting = this.users[actingUser];
+      if (!acting || acting.uid !== 0) return { error: 'permission denied (root only)' };
+      if (this.users[username]) return { error: 'user already exists: ' + username };
+      const nextUid = Math.max(...Object.values(this.users).map(u => u.uid)) + 1;
+      this.users[username] = {
+        uid: nextUid, gid: nextUid, home: '/home/' + username,
+        passwordHash: password ? await this.hashPassword(password) : null
+      };
+      return { ok: true, uid: nextUid };
+    },
+    sessionCtx() {
+      return {
+        user: () => this.currentUser || '(no session)',
+        isActive: () => !!this.currentUser,
+        users: () => this.users,
+        loginTime: () => this.loginTime,
+        log: () => this.sessionLog,
+        login: (user, password) => this.doLogin(user, password),
+        logout: () => this.doLogout(),
+        useradd: (username, password) => this.doUseradd(this.currentUser, username, password)
+      };
+    },
+    initFS() {
+      if (typeof FileFsX === 'undefined') return;
+      FileFsX.create({ autoSave: false, backend: 'idb', key: 'meshui-root' }).then(fs => {
+        fsInstance = fs;
+        this.fs = true;
+        return this.setupUnixFS().then(() => this.loadCommands());
+      }).catch(e => { console.warn('FileFsX init:', e); this.runStatus = 'FileFsX init failed: ' + e.message; });
+    },
+    setupUnixFS() {
+      if (typeof PosixCommands === 'undefined') return Promise.resolve();
+      return PosixCommands.setupUnixFS(fsInstance);
+    },
+    loadCommands() {
+      // Glob expansion belongs to the shell layer, not to individual commands
+      // (ls/cat etc. only ever see literal paths) — matches real Unix, where
+      // glob(3) pathname expansion happens before argv reaches the command.
+      const GLOB_CHARS = /[*?[]/;
+      this.expandGlobs = (args) => {
+        return args.reduce((accP, arg) => accP.then(acc => {
+          if (!GLOB_CHARS.test(arg)) { acc.push(arg); return acc; }
+          const slash = arg.lastIndexOf('/');
+          const dir = slash === -1 ? this.terminalCwd : (arg.slice(0, slash) || '/');
+          const pattern = slash === -1 ? arg : arg.slice(slash + 1);
+          const re = new RegExp('^' + pattern
+            .replace(/[.+^${}()|\\]/g, '\\$&')
+            .replace(/\*/g, '.*')
+            .replace(/\?/g, '.') + '$');
+          return fsInstance.readdir(dir).then(entries => {
+            const matches = entries.filter(e => re.test(e)).sort()
+              .map(e => (dir === '/' ? '/' + e : dir + '/' + e));
+            if (matches.length) acc.push(...matches); else acc.push(arg);
+            return acc;
+          }).catch(() => { acc.push(arg); return acc; });
+        }), Promise.resolve([]));
+      };
+      this.commands = this.commands || new Map();
+      const dirs = ['/bin', '/usr/bin'];
+      return dirs.reduce((p, dir) => p.then(() =>
+        fsInstance.readdir(dir).catch(() => []).then(files => {
+          const jsFiles = files.filter(f => f.endsWith('.js'));
+          return jsFiles.reduce((p2, file) => p2.then(() =>
+            fsInstance.readFile(dir + '/' + file, 'utf8').then(src => {
+              try {
+                const mod = { exports: {} };
+                new Function('module', 'exports', 'TermCommand', String(src))(mod, mod.exports, TermCommand);
+                const CmdClass = mod.exports;
+                if (typeof CmdClass === 'function' && CmdClass.prototype && typeof CmdClass.prototype.execute === 'function') {
+                  const key = CmdClass.name || (new CmdClass()).name;
+                  this.commands.set(key, CmdClass);
+                }
+              } catch (e) { console.warn('loadCommands: failed to load ' + file, e); }
+            })
+          ), Promise.resolve());
+        })
+      ), Promise.resolve()).then(() => { this.runStatus = 'Loaded ' + this.commands.size + ' command(s) from /bin, /usr/bin.'; });
+    },
+    newForm() { this.form.components = []; this.selectedId = null; this.menuOpen = null; },
+    connectFile() {
+      if (!fsInstance) { this.runStatus = 'FileFsX not ready yet — try again in a moment.'; return; }
+      fsInstance.env.saveFilePicker('json').then(handle => {
+        projectFileHandle = handle;
+        idbSetHandle('project', handle).catch(() => {});
+        this.logStatus('Connected to ' + (handle.name || 'file') + '. Intended state path: ' + STATE_PATH);
+      }).catch(err => {
+        console.error('showSaveFilePicker error:', err);
+        if (err.name === 'AbortError') return;
+        if (err.name === 'SecurityError') { this.logStatus('Connect failed: this embedded preview frame blocks the file picker. Open this page in its own browser tab (not embedded) and try Connect File again.'); return; }
+        this.logStatus('Connect failed: ' + err.message);
+      });
+    },
+    saveApp() {
+      if (!fsInstance) { this.runStatus = 'FileFsX not ready yet — try again in a moment.'; return; }
+      const data = JSON.stringify(app.toJSON(), null, 2);
+      const writeToHandle = (handle) => fsInstance.env.writeFile(handle, data).then(() => {
+        projectFileHandle = handle;
+        idbSetHandle('project', handle).catch(() => {});
+        this.logStatus('Project saved to ' + (handle.name || 'file') + '.');
+        this.menuOpen = null;
+      });
+      if (!projectFileHandle) { this.logStatus('No file connected yet. Use Connect File… first.'); return; }
+      verifyHandlePermission(projectFileHandle, 'readwrite').then(ok => {
+        if (!ok) { this.logStatus('Permission denied for connected file.'); return; }
+        return writeToHandle(projectFileHandle);
+      }).catch(err => { console.error('Save error:', err); this.logStatus('Save failed: ' + err.message); });
+    },
+    loadApp() {
+      if (!fsInstance) { this.runStatus = 'FileFsX not ready yet — try again in a moment.'; return; }
+      if (!projectFileHandle) { this.logStatus('No file connected yet. Use Connect File… first.'); return; }
+      verifyHandlePermission(projectFileHandle, 'read').then(ok => {
+        if (!ok) throw new Error('Read permission denied.');
+        return fsInstance.env.readFile(projectFileHandle, 1024);
+      }).then(bytes => {
+        const text = new TextDecoder().decode(bytes);
+        const loaded = App.fromJSON(JSON.parse(text));
+        this.app = loaded;
+        this.form = loaded.modules[0]?.forms[0] || this.form;
+        this.selectedId = null;
+        this.logStatus('Project loaded from ' + (projectFileHandle.name || 'file') + '.');
+        this.menuOpen = null;
+      }).catch(err => { console.error('Load error:', err); this.logStatus('Load failed: ' + err.message); });
+    },
+    handleFileLoad(e) {
+      const file = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!file) return;
+      file.text().then(text => {
+        const loaded = App.fromJSON(JSON.parse(text));
+        this.app = loaded;
+        this.form = loaded.modules[0]?.forms[0] || this.form;
+        this.selectedId = null;
+        this.runStatus = 'Project loaded from file.';
+        this.menuOpen = null;
+      }).catch(err => { console.error('Load error:', err); this.runStatus = 'Load failed: ' + err.message; });
+    },
+    attachMouseListeners() {
+      document.addEventListener('mousemove', e => {
+        if (this.dragState.active && this.dragState.id) { 
+          const dx = e.clientX - this.dragState.startMouse.x; 
+          const dy = e.clientY - this.dragState.startMouse.y; 
+          const comp = this.form.components.find(c => c.id === this.dragState.id); 
+          if (comp) { 
+            comp.left = Math.max(0, Math.round(this.dragState.startPos.x + dx)); 
+            comp.top = Math.max(0, Math.round(this.dragState.startPos.y + dy)); 
+          } 
+        } else if (this.resizeState.active && this.resizeState.id) { 
+          const dx = e.clientX - this.resizeState.startMouse.x; 
+          const dy = e.clientY - this.resizeState.startMouse.y; 
+          const comp = this.form.components.find(c => c.id === this.resizeState.id); 
+          if (comp) { 
+            comp.width = Math.max(12, Math.round(this.resizeState.startSize.w + dx)); 
+            comp.height = Math.max(12, Math.round(this.resizeState.startSize.h + dy)); 
+          } 
+        }
+      });
+      document.addEventListener('mouseup', () => { this.dragState.active = false; this.resizeState.active = false; });
+    },
+    onComponentMouseDown(e, comp) { e.stopPropagation(); if (this.mode === 'design') { e.preventDefault(); this.beginDrag(e, comp); } },
+    beginDrag(e, comp) { this.dragState.active = true; this.dragState.id = comp.id; this.dragState.startMouse = { x: e.clientX, y: e.clientY }; this.dragState.startPos = { x: comp.left, y: comp.top }; },
+    beginResize(e, comp) { this.resizeState.active = true; this.resizeState.id = comp.id; this.resizeState.startMouse = { x: e.clientX, y: e.clientY }; this.resizeState.startSize = { w: comp.width, h: comp.height }; },
+    addComponent(type, x, y) {
+      const defaults = { label: { width: 110, height: 18, caption: 'Label' }, textbox: { width: 130, height: 22, text: '' }, commandbutton: { width: 90, height: 28, caption: 'Command' }, frame: { width: 200, height: 140, caption: 'Frame' }, checkbox: { width: 130, height: 20, caption: 'Check', checked: false }, combobox: { width: 130, height: 22, text: 'Item 1', items: ['Item 1', 'Item 2', 'Item 3'] } };
+      const def = defaults[type] || { width: 100, height: 30 };
+      const comp = new Component({ controlType: type, name: this.nextName(type), left: Math.max(0, Math.round(x - def.width / 2)), top: Math.max(0, Math.round(y - def.height / 2)), ...def });
+      this.form.addComponent(comp);
+      this.selectedId = comp.id;
+      this.armedTool = null;
+    },
+    handleButtonClick(comp) { if (this.dispatchEvent(comp, 'Click')) return; const cap = (comp.caption || '').toLowerCase(); if (cap === 'save') this.runStatus = 'Record saved.'; else if (cap === 'cancel') this.runStatus = 'Cancelled.'; else this.runStatus = `"${comp.caption}" clicked.`; },
+    cycleCombo(comp) { if (!comp.items?.length) return; const idx = comp.items.indexOf(comp.text); comp.text = comp.items[(idx + 1) % comp.items.length]; this.dispatchEvent(comp, 'Change'); },
+    toggleCheckbox(comp) { comp.checked = !comp.checked; this.dispatchEvent(comp, 'Click'); },
+    onTextInput(comp, e) { comp.text = e.target.value; this.dispatchEvent(comp, 'Change'); },
+    onToolbarMouseEnter() { this.toolbarHovered = true; clearTimeout(this.toolbarHoverTimer); this.toolbarHoverTimer = setTimeout(() => { this.toolbarPinned = true; }, 2000); },
+    onToolbarMouseLeave() { clearTimeout(this.toolbarHoverTimer); if (!this.toolbarPinned) this.toolbarHovered = false; },
+    onFormCanvasClickEdge(e) { const rect = e.currentTarget.getBoundingClientRect(); const x = e.clientX - rect.left; if (x < 30) { this.toolbarPinned = true; } else if (x > rect.width - 30) { this.propertiesPinned = true; } else if (this.armedTool) { const y = e.clientY - rect.top; this.addComponent(this.armedTool, x, y); } else if (!this.selectedId) { this.selectedId = null; } },
+    onPropertiesMouseEnter() { this.propertiesHovered = true; clearTimeout(this.propertiesHoverTimer); this.propertiesHoverTimer = setTimeout(() => { this.propertiesPinned = true; }, 2000); },
+    onPropertiesMouseLeave() { clearTimeout(this.propertiesHoverTimer); if (!this.propertiesPinned) this.propertiesHovered = false; }
+  };
+  return ctrl;
+}
+</script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, sans-serif; background: #eef1f5; }
+  button { background: none; border: none; padding: 0; cursor: pointer; }
+</style>
+</head>
+<body>
+<div x-data="ideController()" @init="init()" style="width:100vw;height:100vh;display:flex;flex-direction:column;background:#eef1f5">
+<input type="file" x-ref="fileInput" accept="application/json,.json" @change="handleFileLoad($event)" style="display:none">
+
+  <div :style="{display: embedHeadless ? 'none' : 'flex'}" style="height:30px;background:#1f2430;color:#fff;align-items:center;padding:0 12px;font:12px system-ui;justify-content:space-between;flex-shrink:0">
+    <span><span>Visual Basic 6.0 (Alpine) — </span><span x-text="(app?.projectName || 'Project') + ' v' + (app ? String(app.versionNumber).padStart(4, '0') : '0001')"></span></span>
+    <div style="display:flex;gap:6px"><div style="width:12px;height:12px;border-radius:2px;background:#4a5568"></div><div style="width:12px;height:12px;border-radius:2px;background:#4a5568"></div><div style="width:12px;height:12px;border-radius:2px;background:#c65a5a"></div></div>
+  </div>
+
+  <div :style="{display: embedHeadless ? 'none' : 'flex'}" style="height:26px;background:#f7f8fa;border-bottom:1px solid #e2e6ec;align-items:center;padding:0 8px;gap:14px;font:12px system-ui;color:#2b3140;flex-shrink:0;position:relative">
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer" @click="toggleMenu('file')">
+      <span>File</span>
+      <div x-show="menuOpen === 'file'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:150px;z-index:100">
+        <div @click="newForm(); menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">New Form</div>
+        <div @click="saveApp(); menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Save Project</div>
+        <div @click="loadApp(); menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Load Project</div>
+        <div @click="connectFile(); menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer">Connect File…</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer;position:relative" @click="toggleMenu('edit')">
+      <span>Edit</span>
+      <div x-show="menuOpen === 'edit'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:120px;z-index:100">
+        <template x-for="item in ['Undo','Redo','Cut','Copy','Paste']" :key="item">
+          <div @click="runStatus = item + ' (demo)'; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5" x-text="item"></div>
+        </template>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer;position:relative" @click="toggleMenu('view')">
+      <span>View</span>
+      <div x-show="menuOpen === 'view'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:140px;z-index:100">
+        <div @click="toolbarPinned = !toolbarPinned; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Toolbox</div>
+        <div @click="propertiesPinned = !propertiesPinned; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer">Properties</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer;position:relative" @click="toggleMenu('custom')">
+      <span>Custom</span>
+      <div x-show="menuOpen === 'custom'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:170px;z-index:100">
+        <template x-for="lib in controlLibraries" :key="lib.id">
+          <div @click="selectControlLibrary(lib.id)" :style="{padding:'6px 12px',font:'12px system-ui',color: controlLibrary === lib.id ? '#3b6fd1':'#2b3140',fontWeight: controlLibrary === lib.id ? 'bold':'normal',cursor:'pointer',borderBottom:'1px solid #eef1f5'}" x-text="(controlLibrary === lib.id ? '✓ ' : '') + lib.label + ' Controls'"></div>
+        </template>
+        <div @click="activeMode = 'store'; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer">Browse App Store…</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer;position:relative" @click="toggleMenu('window')">
+      <span>Window</span>
+      <div x-show="menuOpen === 'window'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:150px;z-index:100">
+        <template x-for="item in ['Cascade','Tile Horizontally','Tile Vertically']" :key="item">
+          <div @click="runStatus = item + ' (demo)'; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5" x-text="item"></div>
+        </template>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:2px;cursor:pointer;position:relative" @click="toggleMenu('help')">
+      <span>Help</span>
+      <div x-show="menuOpen === 'help'" @click.away="menuOpen = null" style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:150px;z-index:100">
+        <div @click="runStatus = 'Documentation (demo)'; menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Documentation</div>
+        <div @click="menuOpen = null" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer">About Visual Basic 6.0 (Alpine)</div>
+      </div>
+    </div>
+  </div>
+
+  <div :style="{display: embedHeadless ? 'none' : 'flex'}" style="gap:4px;align-items:center;padding:6px 12px;border-bottom:1px solid #bcc7d0;background:#f7f8fa;flex-shrink:0">
+    <button @click="activeMode = 'navigator'" :style="{background: activeMode === 'navigator' ? '#3b6fd1' : '#fff', color: activeMode === 'navigator' ? '#fff' : '#333', padding: '5px 14px', borderRadius: '4px', fontSize: '12px', fontWeight: activeMode === 'navigator' ? 'bold' : 'normal', border: '1px solid #c3c8d0'}">Navigator</button>
+    <div style="width:1px;height:18px;background:#c3c8d0;margin:0 4px"></div>
+    <template x-for="m in modes" :key="m.id">
+      <button @click="activeMode = m.id" :style="{background: activeMode === m.id ? '#3b6fd1' : '#fff', color: activeMode === m.id ? '#fff' : '#333', padding: '5px 14px', borderRadius: '4px', fontSize: '12px', fontWeight: activeMode === m.id ? 'bold' : 'normal', border: '1px solid #c3c8d0'}" x-text="m.label"></button>
+    </template>
+    <span style="margin-left:auto"></span>
+    <button @click="activeMode = 'store'" style="background:#1f9d55;color:#fff;padding:5px 14px;border-radius:4px;font-size:12px;font-weight:bold;border:none;cursor:pointer">App Store</button>
+  </div>
+
+  <div style="display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid #bcc7d0;background:#fff;flex-shrink:0;min-height:20px">
+    <template x-if="activeMode === 'designer'">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button @click="mode = mode === 'run' ? 'design' : 'run'" :style="{background: mode === 'run' ? '#1f9d55' : '#1f2430', color: '#fff', padding: '4px 10px', borderRadius: '3px', fontSize: '12px', fontWeight: 'bold', border: 'none', cursor: 'pointer'}" x-text="mode === 'run' ? '■ End' : '▶ Start'"></button>
+        <button @click="mode === 'run' && (runStatus = 'Break (demo)')" :disabled="mode !== 'run'" :style="{background: mode === 'run' ? '#1f2430' : '#e2e6ec', color: mode === 'run' ? '#fff' : '#a8b0bc', padding: '4px 10px', borderRadius: '3px', fontSize: '12px', fontWeight: 'bold', border: 'none', cursor: mode === 'run' ? 'pointer' : 'default'}">⏸ Break</button>
+      </div>
+    </template>
+    <template x-if="activeMode === 'code'">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button style="background:#3b6fd1;color:#fff;padding:4px 10px;border-radius:3px;font-size:12px">Class</button>
+        <button style="background:#fff;color:#666;padding:4px 10px;border:1px solid #c3c8d0;border-radius:3px;font-size:12px">Module</button>
+        <button @click="analyzeCode()" style="color:#666;padding:4px 10px;border:1px solid #c3c8d0;border-radius:3px;font-size:12px">Analyze</button>
+      </div>
+    </template>
+    <template x-if="activeMode === 'tasks'">
+      <div style="display:flex;gap:8px;align-items:center;flex:1">
+        <input x-model="newTaskText" @keydown.enter="addTask()" type="text" placeholder="New task…" style="flex:1;max-width:280px;padding:5px 10px;border:1px solid #bcc7d0;border-radius:4px;font-size:12px">
+        <button @click="addTask()" style="background:#3b6fd1;color:#fff;padding:5px 14px;border-radius:4px;font-size:12px">Add</button>
+      </div>
+    </template>
+    <template x-if="activeMode === 'terminal'">
+      <div style="display:flex;gap:8px;align-items:center">
+        <button @click="toggleMonitor()" :style="{color: monitorOpen ? '#fff' : '#666', background: monitorOpen ? '#3b6fd1' : 'transparent', padding: '4px 10px', borderRadius: '3px'}">Monitor</button>
+        <template x-if="monitorOpen">
+          <div style="display:flex;gap:4px">
+            <template x-for="s in ['svg','canvas','three']" :key="s">
+              <button @click="setMonitorSurface(s)" :style="{color: monitorSurface === s ? '#fff' : '#666', background: monitorSurface === s ? '#1f9d55' : 'transparent', padding: '3px 8px', borderRadius: '3px', fontSize: '11px', textTransform: 'capitalize'}" x-text="s === 'three' ? 'Three.js' : s"></button>
+            </template>
+          </div>
+        </template>
+        <button @click="terminalLines = []" style="color:#666;padding:4px 10px">Clear</button>
+      </div>
+    </template>
+  </div>
+
+  <div style="display:flex;flex:1;overflow:hidden;position:relative">
+    
+    <template x-if="activeMode === 'designer'">
+    <div @mouseenter="onToolbarMouseEnter()" @mouseleave="onToolbarMouseLeave()" :style="{ position: toolbarPinned ? 'relative' : 'absolute', left: toolbarPinned ? '0' : (toolbarHovered ? '0' : '-120px'), top: '0', bottom: '0', width: '120px', background: '#f0f2f5', borderRight: '1px solid #bcc7d0', overflowY: 'auto', zIndex: toolbarPinned ? 2 : (toolbarHovered ? 10 : 1), transition: toolbarPinned ? 'none' : 'left 0.3s ease', boxShadow: !toolbarPinned && toolbarHovered ? '2px 0 8px rgba(0,0,0,0.1)' : 'none', flexShrink: toolbarPinned ? 0 : 1 }">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #bcc7d0;background:#fff">
+        <span style="font-weight:bold;font-size:11px;color:#333;text-transform:uppercase">Toolbox</span>
+        <button @click="toolbarPinned = !toolbarPinned" title="Pin toolbox" :style="{display:'flex',alignItems:'center',justifyContent:'center',width:'26px',height:'26px',fontSize:'13px',color: toolbarPinned ? '#fff' : '#666',background: toolbarPinned ? '#3b6fd1' : '#fff',border: '1px solid #3b6fd1',borderRadius:'6px',cursor:'pointer'}">📌</button>
+      </div>
+      <div style="position:relative;border-bottom:1px solid #e0e5eb">
+        <button @click="toolboxLibOpen = !toolboxLibOpen" style="display:flex;justify-content:space-between;align-items:center;width:100%;padding:6px 8px;font-size:11px;color:#2b3140;background:#f7f8fa;border:none;cursor:pointer">
+          <span x-text="controlLibraryLabel()"></span><span style="font-size:9px;color:#8b93a0">▾</span>
+        </button>
+        <div x-show="toolboxLibOpen" @click.away="toolboxLibOpen = false" style="position:absolute;top:26px;left:4px;right:4px;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);z-index:50">
+          <template x-for="lib in controlLibraries" :key="lib.id">
+            <div @click="selectControlLibrary(lib.id)" :style="{padding:'6px 8px',fontSize:'11px',color: controlLibrary === lib.id ? '#3b6fd1':'#2b3140',cursor:'pointer',borderBottom:'1px solid #eef1f5'}" x-text="(controlLibrary === lib.id ? '✓ ' : '') + lib.label"></div>
+          </template>
+        </div>
+      </div>
+      <template x-for="tool in tools" :key="tool.id">
+        <button @click="armedTool = armedTool === tool.id ? null : tool.id" :style="{background: armedTool === tool.id ? '#d0dce8' : 'transparent', display: 'block', width: '100%', padding: '8px', fontSize: '12px', color: '#333', borderBottom: '1px solid #e0e5eb', cursor: 'pointer', textAlign: 'center'}" x-text="tool.icon"></button>
+      </template>
+    </div>
+    </template>
+
+    <template x-if="activeMode === 'code'">
+    <div style="width:150px;flex-shrink:0;background:#f0f2f5;border-right:1px solid #bcc7d0;overflow-y:auto">
+      <div style="padding:8px;border-bottom:1px solid #bcc7d0;background:#fff;font-weight:bold;font-size:11px;color:#333;text-transform:uppercase">Members</div>
+      <template x-for="member in formClassMembers()" :key="member">
+        <div style="padding:7px 10px;font-size:12px;color:#2b3140;border-bottom:1px solid #e0e5eb;font-family:'Courier New',monospace" x-text="member"></div>
+      </template>
+      <template x-if="formClassMembers().length === 0">
+        <div style="padding:10px;font-size:11px;color:#8b93a0">No functions found.</div>
+      </template>
+    </div>
+    </template>
+
+    <div style="flex:1;display:flex;flex-direction:column;background:#eef1f5;position:relative">
+      <template x-if="activeMode === 'designer'">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+          <div style="padding:8px;background:#f0f2f5;border-bottom:1px solid #bcc7d0;font-size:12px;color:#666;flex-shrink:0" x-text="(form?.name || 'Form1') + ' (Form)'"></div>
+          <div @click="onFormCanvasClickEdge($event)" :style="formCanvasStyle()" style="flex:1;position:relative;overflow:auto;background-color:#fff">
+            <template x-for="comp in getComponents()" :key="comp.id">
+              <div @click.stop="selectedId = comp.id" @mousedown="onComponentMouseDown($event, comp)" :style="componentStyle(comp)">
+                <template x-if="comp.controlType === 'label'"><div style="width:100%;height:100%;display:flex;align-items:center;font:12px system-ui;color:#20242c;white-space:nowrap;overflow:hidden" x-text="comp.caption" @click.stop="selectedId = comp.id"></div></template>
+                <template x-if="comp.controlType === 'textbox' && mode === 'design'"><div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;padding:2px 5px;font:12px system-ui;color:#1f2430;overflow:hidden;white-space:nowrap;box-sizing:border-box" x-text="comp.text || '(empty)'" @click.stop="selectedId = comp.id"></div></template>
+                <template x-if="comp.controlType === 'textbox' && mode === 'run'"><input :value="comp.text" @input="onTextInput(comp, $event)" style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;padding:2px 5px;font:12px system-ui;color:#1f2430;box-sizing:border-box"/></template>
+                <template x-if="comp.controlType === 'commandbutton'"><div @click="mode==='run' && handleButtonClick(comp)" style="width:100%;height:100%;background:#f4f6f9;border:1px solid #c3c8d0;border-radius:4px;display:flex;align-items:center;justify-content:center;font:12px system-ui;color:#1f2430;box-shadow:0 1px 0 rgba(0,0,0,.04);cursor:pointer" x-text="comp.caption"></div></template>
+                <template x-if="comp.controlType === 'checkbox'"><div @click="mode==='run' && toggleCheckbox(comp)" style="display:flex;align-items:center;gap:6px;height:100%;font:12px system-ui;color:#20242c;cursor:pointer"><div style="width:14px;height:14px;border:1px solid #8b93a0;border-radius:2px;background:#fff;display:flex;align-items:center;justify-content:center;font:11px system-ui;color:#3b6fd1;flex-shrink:0" x-text="comp.checked ? '✓' : ''"></div><span style="overflow:hidden;white-space:nowrap" x-text="comp.caption"></span></div></template>
+                <template x-if="comp.controlType === 'combobox'"><div @click="mode==='run' && cycleCombo(comp)" style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:2px 5px;font:12px system-ui;color:#1f2430;cursor:pointer;box-sizing:border-box"><span style="overflow:hidden;white-space:nowrap" x-text="comp.text"></span><span style="color:#6b7280">▾</span></div></template>
+                <template x-if="comp.controlType === 'frame'"><div style="width:100%;height:100%;border:1px solid #c3c8d0;border-radius:3px;position:relative;background:#eef1f2"><div style="position:absolute;top:-8px;left:8px;background:#eef1f2;padding:0 4px;font:12px system-ui;color:#3a4150" x-text="comp.caption"></div></div></template>
+                <template x-if="selectedId === comp.id && mode === 'design'"><div @mousedown.stop="beginResize($event, comp)" style="position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b6fd1;border:1px solid #fff;border-radius:2px;cursor:nwse-resize"></div></template>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+      <template x-if="activeMode === 'code'">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0">
+          <div style="padding:8px;background:#f0f2f5;border-bottom:1px solid #bcc7d0;font-size:12px;color:#666;flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
+            <span x-text="(form?.name || 'Form1') + ' (Code)'"></span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <div style="position:relative">
+                <button @click="codeLanguageOpen = !codeLanguageOpen" style="display:flex;align-items:center;gap:6px;background:#fff;color:#2b3140;padding:4px 10px;border:1px solid #c3c8d0;border-radius:3px;font-size:12px;cursor:pointer">
+                  <span x-text="codeLanguageLabel()"></span><span style="font-size:9px;color:#8b93a0">▾</span>
+                </button>
+                <div x-show="codeLanguageOpen" @click.away="codeLanguageOpen = false" style="position:absolute;top:28px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:130px;z-index:100">
+                  <template x-for="lang in codeLanguages" :key="lang.id">
+                    <div @click="selectCodeLanguage(lang.id)" :style="{padding:'6px 10px',fontSize:'12px',color: codeLanguage === lang.id ? '#3b6fd1':'#2b3140',cursor:'pointer',borderBottom:'1px solid #eef1f5'}" x-text="(codeLanguage === lang.id ? '✓ ' : '') + lang.label"></div>
+                  </template>
+                </div>
+              </div>
+              <button @click="compileFormClass()" style="background:#3b6fd1;color:#fff;padding:4px 10px;border-radius:3px;font-size:12px">Compile</button>
+            </div>
+          </div>
+          <div style="flex:1;display:flex;min-height:0;background:#fff">
+            <div x-ref="codeGutter" style="width:46px;flex-shrink:0;overflow:hidden;background:#f7f8fa;border-right:1px solid #e2e6ec;padding:12px 0;text-align:right">
+              <template x-for="n in codeLineCount()" :key="n">
+                <div style="font:13px/1.5 'Courier New',monospace;color:#a8b0bc;padding-right:8px" x-text="String(n).padStart(5,'0')"></div>
+              </template>
+            </div>
+            <textarea x-ref="codeArea" @scroll="$refs.codeGutter.scrollTop = $event.target.scrollTop" x-model="form.formClassCode" spellcheck="false" style="flex:1;padding:12px;font:13px/1.5 'Courier New',monospace;color:#1f2430;background:#fff;border:none;outline:none;resize:none"></textarea>
+          </div>
+          <div x-show="formClassError" style="padding:6px 12px;background:#fdecea;color:#c0392b;font:12px monospace;border-top:1px solid #f0c4c0" x-text="formClassError"></div>
+        </div>
+      </template>
+      <template x-if="activeMode === 'navigator'">
+        <div style="flex:1;overflow:auto;background:#fff;padding:16px">
+          <div style="display:flex;gap:8px;margin-bottom:14px">
+            <button @click="newForm()" style="background:#3b6fd1;color:#fff;padding:5px 12px;border-radius:4px;font-size:12px">New Form</button>
+            <button @click="saveApp()" style="background:#fff;color:#2b3140;padding:5px 12px;border-radius:4px;font-size:12px;border:1px solid #c3c8d0">Save Project</button>
+            <button @click="loadApp()" style="background:#fff;color:#2b3140;padding:5px 12px;border-radius:4px;font-size:12px;border:1px solid #c3c8d0">Load Project</button>
+            <button @click="connectFile()" style="background:#fff;color:#2b3140;padding:5px 12px;border-radius:4px;font-size:12px;border:1px solid #c3c8d0">Connect File…</button>
+          </div>
+          <div style="font-size:13px;font-weight:bold;color:#333;margin-bottom:8px" x-text="(app?.projectName || 'Project')"></div>
+          <div style="padding-left:14px;border-left:1px solid #e2e6ec">
+            <div style="font-size:12px;color:#2b3140;padding:4px 0">📦 <span x-text="mod.moduleName || mod.name"></span></div>
+            <div style="padding-left:18px;border-left:1px solid #e2e6ec">
+              <div style="font-size:12px;color:#2b3140;padding:4px 0;cursor:pointer" @click="activeMode = 'designer'">🗔 <span x-text="form.formName || form.name"></span></div>
+              <div style="padding-left:18px">
+                <template x-for="comp in getComponents()" :key="comp.id">
+                  <div style="font-size:12px;color:#6b7280;padding:3px 0;cursor:pointer" @click="activeMode = 'designer'; selectedId = comp.id" x-text="'— ' + comp.name"></div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+      <template x-if="activeMode === 'data'">
+        <div style="flex:1;overflow:auto;background:#fff;padding:16px">
+          <div style="font-size:13px;font-weight:bold;color:#333;margin-bottom:10px">Form1 Components — Data View</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="background:#f0f2f5;text-align:left"><th style="padding:6px;border:1px solid #d7dce3">Name</th><th style="padding:6px;border:1px solid #d7dce3">Type</th><th style="padding:6px;border:1px solid #d7dce3">Left</th><th style="padding:6px;border:1px solid #d7dce3">Top</th><th style="padding:6px;border:1px solid #d7dce3">Caption/Text</th></tr></thead>
+            <tbody>
+              <template x-for="comp in getComponents()" :key="comp.id">
+                <tr>
+                  <td style="padding:6px;border:1px solid #d7dce3" x-text="comp.name"></td>
+                  <td style="padding:6px;border:1px solid #d7dce3" x-text="comp.controlType"></td>
+                  <td style="padding:6px;border:1px solid #d7dce3" x-text="comp.left"></td>
+                  <td style="padding:6px;border:1px solid #d7dce3" x-text="comp.top"></td>
+                  <td style="padding:6px;border:1px solid #d7dce3" x-text="comp.caption || comp.text"></td>
+                </tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </template>
+      <template x-if="activeMode === 'store'">
+        <div style="flex:1;overflow:auto;background:#fff;padding:16px">
+          <div style="font-size:13px;font-weight:bold;color:#333;margin-bottom:10px">Component Store</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px">
+            <template x-for="app in storeApps" :key="app.name">
+              <div style="border:1px solid #d7dce3;border-radius:6px;padding:12px;background:#f7f8fa">
+                <div style="font-size:13px;font-weight:bold;color:#20242c;margin-bottom:4px" x-text="app.name"></div>
+                <div style="font-size:11px;color:#666" x-text="app.desc"></div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </template>
+      <template x-if="activeMode === 'chat'">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0;background:#fff">
+          <div style="flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:8px">
+            <template x-for="(msg, idx) in chatMessages" :key="idx">
+              <div :style="{alignSelf: msg.from === 'user' ? 'flex-end' : 'flex-start', background: msg.from === 'user' ? '#3b6fd1' : '#f0f2f5', color: msg.from === 'user' ? '#fff' : '#20242c', padding: '8px 12px', borderRadius: '8px', maxWidth: '70%', fontSize: '13px'}" x-text="msg.text"></div>
+            </template>
+          </div>
+          <div style="display:flex;gap:8px;padding:10px;border-top:1px solid #d7dce3">
+            <input x-model="chatInput" @keydown.enter="sendChat()" type="text" placeholder="Type a message…" style="flex:1;padding:6px 10px;border:1px solid #bcc7d0;border-radius:4px;font-size:12px">
+            <button @click="sendChat()" style="background:#3b6fd1;color:#fff;padding:6px 14px;border-radius:4px;font-size:12px">Send</button>
+          </div>
+        </div>
+      </template>
+      <template x-if="activeMode === 'tasks'">
+        <div style="flex:1;overflow:auto;background:#fff;padding:16px">
+          <div style="font-size:13px;font-weight:bold;color:#333;margin-bottom:10px">Tasks</div>
+          <template x-for="t in tasks" :key="t.id">
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eef1f5">
+              <div @click="toggleTask(t)" style="width:16px;height:16px;border:1px solid #8b93a0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#3b6fd1;cursor:pointer;flex-shrink:0" x-text="t.done ? '✓' : ''"></div>
+              <span :style="{fontSize: '13px', color: t.done ? '#999' : '#20242c', textDecoration: t.done ? 'line-through' : 'none', flex: 1}" x-text="t.text"></span>
+              <button @click="removeTask(t)" style="color:#c0392b;font-size:12px;padding:2px 6px">✕</button>
+            </div>
+          </template>
+        </div>
+      </template>
+      <template x-if="activeMode === 'terminal'">
+        <div style="display:flex;flex-direction:column;flex:1;min-height:0;background:#1e1e1e">
+          <div x-show="monitorOpen" x-ref="monitorContainer" style="height:220px;flex-shrink:0;border-bottom:1px solid #333;display:grid;gap:1px;background:#111" :style="{gridTemplateColumns: 'repeat(' + monitorGrid + ', 1fr)', gridTemplateRows: 'repeat(' + monitorGrid + ', 1fr)'}">
+            <template x-for="(cell, i) in monitorCells" :key="i">
+              <div style="position:relative;background:#1a1a1a;overflow:hidden">
+                <template x-if="monitorSurface === 'svg'">
+                  <svg width="100%" height="100%" viewBox="0 0 200 100" preserveAspectRatio="none" style="display:block">
+                    <polyline :points="monitorPoints(cell, 200, 100)" fill="none" stroke="#4ec9b0" stroke-width="1.5"></polyline>
+                  </svg>
+                </template>
+                <template x-if="monitorSurface === 'canvas'">
+                  <canvas x-init="initCanvasCell(cell, $el); drawCanvasCell(cell)" style="width:100%;height:100%;display:block"></canvas>
+                </template>
+                <template x-if="monitorSurface === 'three'">
+                  <canvas x-init="initCanvasCell(cell, $el); initThreeCells()" style="width:100%;height:100%;display:block"></canvas>
+                </template>
+                <span style="position:absolute;top:4px;left:6px;font:10px 'Courier New',monospace;color:#8b93a0" x-text="'#' + (i+1) + ' · ' + cell.value.toFixed(0)"></span>
+              </div>
+            </template>
+          </div>
+          <div x-ref="terminalOutput" style="flex:1;overflow:auto;padding:12px;font:12px/1.6 'Courier New',monospace;color:#d4d4d4">
+            <template x-for="(line, idx) in terminalLines" :key="idx">
+            <div>
+              <template x-if="line === '__TOP_TABLE__'">
+                <div>
+                  <div style="color:#8b93a0" x-text="'top - ' + topHeader.time + ' up, ' + topHeader.uptime + 's, load: ' + topHeader.load"></div>
+                  <div style="color:#8b93a0" x-text="'Tasks: ' + topHeader.tasks + ' total, ' + topHeader.running + ' running'"></div>
+                  <div style="color:#8b93a0" x-text="'CPU(s): ' + topHeader.cpuPct + '% used'"></div>
+                  <div style="color:#8b93a0;margin-bottom:6px" x-text="'Mem: ' + topHeader.memFree + 'M free'"></div>
+                  <table style="width:100%;border-collapse:collapse;font:12px 'Courier New',monospace;color:#d4d4d4">
+                    <thead>
+                      <tr style="color:#6b9;text-align:left;border-bottom:1px solid #333">
+                        <th style="padding:2px 8px;text-align:right;width:50px">PID</th>
+                        <th style="padding:2px 8px">USER</th>
+                        <th style="padding:2px 8px;text-align:right;width:60px">CPU%</th>
+                        <th style="padding:2px 8px;text-align:right;width:60px">MEM%</th>
+                        <th style="padding:2px 8px">COMMAND</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <template x-for="row in topRows" :key="row.pid">
+                        <tr>
+                          <td style="padding:1px 8px;text-align:right" x-text="row.pid"></td>
+                          <td style="padding:1px 8px" x-text="row.user"></td>
+                          <td style="padding:1px 8px;text-align:right" x-text="row.cpu"></td>
+                          <td style="padding:1px 8px;text-align:right" x-text="row.mem"></td>
+                          <td style="padding:1px 8px" x-text="row.cmd"></td>
+                        </tr>
+                      </template>
+                    </tbody>
+                  </table>
+                </div>
+              </template>
+              <template x-if="line !== '__TOP_TABLE__'">
+                <div style="white-space:pre-wrap" x-text="line"></div>
+              </template>
+            </div>
+            </template>
+          </div>
+          <div style="display:flex;align-items:flex-start;padding:8px 12px;border-top:1px solid #333;background:#252526">
+            <span style="color:#6b9;font:12px 'Courier New',monospace;margin-right:6px;padding-top:2px">$</span>
+            <textarea x-model="terminalInput" x-ref="terminalTextarea" @keydown="terminalInputKeydown($event)" @input="autoGrowTerminalInput()" rows="1" style="flex:1;background:transparent;border:none;outline:none;resize:none;overflow-y:auto;color:#d4d4d4;font:12px 'Courier New',monospace;max-height:calc(1.5em + 50px)"></textarea>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <template x-if="activeMode !== 'code'">
+    <div @mouseenter="onPropertiesMouseEnter()" @mouseleave="onPropertiesMouseLeave()" :style="{ position: propertiesPinned ? 'relative' : 'absolute', right: propertiesPinned ? '0' : (propertiesHovered ? '0' : '-280px'), top: '0', bottom: '0', width: '280px', background: '#f0f2f5', borderLeft: '1px solid #bcc7d0', overflowY: 'auto', zIndex: propertiesPinned ? 2 : (propertiesHovered ? 10 : 1), transition: propertiesPinned ? 'none' : 'right 0.3s ease', boxShadow: !propertiesPinned && propertiesHovered ? '-2px 0 8px rgba(0,0,0,0.1)' : 'none', flexShrink: propertiesPinned ? 0 : 1 }">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px;border-bottom:1px solid #bcc7d0;background:#fff">
+        <span style="font-weight:bold;font-size:11px;color:#333;text-transform:uppercase">Properties</span>
+        <button @click="propertiesPinned = !propertiesPinned" title="Pin properties" :style="{display:'flex',alignItems:'center',justifyContent:'center',width:'26px',height:'26px',fontSize:'13px',color: propertiesPinned ? '#fff' : '#666',background: propertiesPinned ? '#3b6fd1' : '#fff',border: '1px solid #3b6fd1',borderRadius:'6px',cursor:'pointer'}">📌</button>
+      </div>
+      <template x-if="selectedId">
+        <template x-for="comp in getComponents()" :key="comp.id">
+          <template x-if="comp.id === selectedId">
+            <div style="padding:8px">
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Name</label><input x-model="comp.name" type="text" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Type</label><div style="font-size:12px;color:#333" x-text="comp.controlType"></div></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Left</label><input x-model.number="comp.left" type="number" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Top</label><input x-model.number="comp.top" type="number" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Width</label><input x-model.number="comp.width" type="number" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Height</label><input x-model.number="comp.height" type="number" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Caption</label><input x-model="comp.caption" type="text" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <div style="margin-bottom:12px"><label style="display:block;font-size:11px;color:#666;margin-bottom:4px">Text</label><input x-model="comp.text" type="text" style="width:100%;padding:4px;border:1px solid #bcc7d0;font-size:12px;background:#fff;border-radius:2px"></div>
+              <button @click="deleteSelectedComponent()" style="width:100%;padding:6px;background:#fff;color:#c0392b;border:1px solid #c0392b;border-radius:4px;font-size:12px;font-weight:bold;cursor:pointer">Delete Control</button>
+            </div>
+          </template>
+        </template>
+      </template>
+      <template x-if="!selectedId">
+        <div style="padding:16px;color:#8b93a0;font:12px system-ui;text-align:center">No control selected.<br/>Click a control on the form.</div>
+      </template>
+    </div>
+    </template>
+  </div>
+
+  <div style="height:22px;background:#f7f8fa;border-top:1px solid #e2e6ec;display:flex;align-items:center;padding:0 10px;font:11px system-ui;color:#5b6472;flex-shrink:0">
+    <span x-text="mode==='design' ? 'Design mode' : 'Run mode'"></span>
+    <template x-if="mode==='run'"><span style="margin-left:16px" x-text="runStatus"></span></template>
+  </div>
+
+  <template x-if="analysisOpen && analysisReport">
+    <div style="position:fixed;inset:0;background:rgba(20,25,35,.45);z-index:200;display:flex;align-items:center;justify-content:center" @click.self="analysisOpen = false">
+      <div style="width:720px;max-height:82vh;background:#fff;border-radius:6px;box-shadow:0 12px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:hidden">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:#1f2430;color:#fff">
+          <span style="font:13px system-ui;font-weight:bold" x-text="analysisReport.title"></span>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button @click="copyAnalysisReport()" style="color:#fff;background:transparent;border:1px solid rgba(255,255,255,.4);border-radius:3px;font-size:11px;padding:3px 8px;cursor:pointer" x-text="analysisCopied ? 'Copied!' : 'Copy'"></button>
+            <button @click="analysisOpen = false" style="color:#fff;font-size:14px;padding:2px 8px">✕</button>
+          </div>
+        </div>
+        <div style="padding:12px 16px;overflow:auto">
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+            <div style="background:#f7f8fa;border:1px solid #e2e6ec;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:bold;color:#2b3140" x-text="analysisReport.filteredFunctions"></div>
+              <div style="font-size:10px;color:#8b93a0;text-transform:uppercase">Functions</div>
+            </div>
+            <div style="background:#f7f8fa;border:1px solid #e2e6ec;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:bold;color:#2b3140" x-text="analysisReport.summary.loc.total"></div>
+              <div style="font-size:10px;color:#8b93a0;text-transform:uppercase">Total LOC</div>
+            </div>
+            <div style="background:#f7f8fa;border:1px solid #e2e6ec;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:bold;color:#2b3140" x-text="analysisReport.summary.complexity.max"></div>
+              <div style="font-size:10px;color:#8b93a0;text-transform:uppercase">Max Complexity</div>
+            </div>
+            <div style="background:#f7f8fa;border:1px solid #e2e6ec;border-radius:4px;padding:8px;text-align:center">
+              <div style="font-size:18px;font-weight:bold;color:#2b3140" x-text="analysisReport.summary.smells.total"></div>
+              <div style="font-size:10px;color:#8b93a0;text-transform:uppercase">Code Smells</div>
+            </div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:11px">
+            <thead>
+              <tr style="background:#f0f2f5;text-align:left">
+                <th style="padding:5px;border:1px solid #d7dce3">Function</th>
+                <th style="padding:5px;border:1px solid #d7dce3">Lines</th>
+                <th style="padding:5px;border:1px solid #d7dce3">LOC</th>
+                <th style="padding:5px;border:1px solid #d7dce3">CC</th>
+                <th style="padding:5px;border:1px solid #d7dce3">Cov%</th>
+                <th style="padding:5px;border:1px solid #d7dce3">Smells</th>
+              </tr>
+            </thead>
+            <tbody>
+              <template x-for="fn in analysisReport.functions" :key="fn.name + fn.startLine">
+                <tr>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.visibilityLabel + ' ' + fn.name"></td>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.lineRange"></td>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.loc"></td>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.complexity"></td>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.coverage"></td>
+                  <td style="padding:5px;border:1px solid #d7dce3" x-text="fn.smells.length"></td>
+                </tr>
+              </template>
+              <template x-if="analysisReport.functions.length === 0">
+                <tr><td colspan="6" style="padding:10px;text-align:center;color:#8b93a0;border:1px solid #d7dce3">No functions detected.</td></tr>
+              </template>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </template>
+
+</div>
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</body>
+</html>

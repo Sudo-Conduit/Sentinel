@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FileFsX.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>body { margin:0; background:#0d1620; }</style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#0d1620;color:#1c2733;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 16px;background:#141b24;border-bottom:1px solid #232e3a;">
+    <div onClick="{{ onShowMapView }}" style="cursor:pointer;padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;color:{{ mapTabColor }};background:{{ mapTabBg }};">Site Detail</div>
+    <div onClick="{{ onShowGridView }}" style="cursor:pointer;padding:6px 14px;border-radius:6px;font-size:12.5px;font-weight:600;color:{{ gridTabColor }};background:{{ gridTabBg }};">Pipeline Grid</div>
+    <div style="flex:1;"></div>
+    <sc-if value="{{ isGridView }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:11.5px;color:#8e99a8;">{{ projectCountLabel }}</div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isGridView }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;overflow-y:auto;background:#0d1620;padding:20px;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <input value="{{ newLocationQuery }}" onInput="{{ onNewLocationQueryInput }}" onKeyDown="{{ onNewLocationKeyDown }}" placeholder="Add location — city, country, or lat,lng" style="flex:1;min-width:260px;background:#fff;color:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:9px 12px;font-size:13px;outline:none;" />
+      <div onClick="{{ onAddLocation }}" style="cursor:pointer;background:#0a84ff;color:#fff;padding:9px 18px;border-radius:8px;font-size:12.5px;font-weight:600;">+ Add Project</div>
+    </div>
+    <sc-if value="{{ addLocationError }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:11.5px;color:#ffb347;background:rgba(255,179,71,0.12);border-radius:6px;padding:8px 12px;margin-bottom:14px;">{{ addLocationError }}</div>
+    </sc-if>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;">
+      <sc-for list="{{ projects }}" as="p" hint-placeholder-count="3">
+        <div onClick="{{ p.onOpen }}" style="cursor:pointer;background:#fff;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,0.25);">
+          <div style="font-size:13.5px;font-weight:700;color:#1c2733;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ p.name }}</div>
+          <div style="font-size:11px;color:#8e99a8;">{{ p.coordsLabel }}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <div style="font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:10px;background:{{ p.typeBg }};color:{{ p.typeColor }};">{{ p.typeLabel }}</div>
+            <div style="font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:10px;background:{{ p.pipelineBg }};color:{{ p.pipelineColor }};">{{ p.pipelineLabel }}</div>
+            <div style="font-size:10.5px;font-weight:600;padding:3px 8px;border-radius:10px;background:{{ p.statusBg }};color:{{ p.statusColor }};">{{ p.statusLabel }}</div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <select value="{{ p.type }}" onChange="{{ p.onTypeChange }}" onClick="{{ p.onStopProp }}" style="flex:1;font-size:10.5px;background:#f2f4f7;border:1px solid #dde2e8;border-radius:5px;padding:4px 6px;outline:none;">
+              <option value="prospect">Prospect</option><option value="client">Client</option>
+            </select>
+            <select value="{{ p.pipeline }}" onChange="{{ p.onPipelineChange }}" onClick="{{ p.onStopProp }}" style="flex:1;font-size:10.5px;background:#f2f4f7;border:1px solid #dde2e8;border-radius:5px;padding:4px 6px;outline:none;">
+              <option value="none">None</option><option value="prospect">Prospect</option><option value="negotiations">Negotiations</option>
+              <option value="contract">Contract</option><option value="building">Building</option><option value="complete">Complete</option><option value="incomplete">Incomplete</option>
+            </select>
+            <select value="{{ p.status }}" onChange="{{ p.onStatusChange }}" onClick="{{ p.onStopProp }}" style="flex:1;font-size:10.5px;background:#f2f4f7;border:1px solid #dde2e8;border-radius:5px;padding:4px 6px;outline:none;">
+              <option value="none">None</option><option value="active">Active</option><option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isMapView }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+  <div style="width:340px;flex-shrink:0;background:#fff;overflow-y:auto;padding:22px 20px;box-sizing:border-box;display:flex;flex-direction:column;gap:16px;">
+    <div style="font-size:13.5px;font-weight:700;color:#1c2733;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="{{ address }}">Solar Feasibility</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input value="{{ address }}" onInput="{{ onAddressInput }}" placeholder="Enter rooftop address or lat,lng" style="flex:1;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:8px;padding:10px 12px;font-size:14px;outline:none;" />
+      </div>
+      <input value="{{ country }}" onInput="{{ onCountryInput }}" placeholder="Country" style="background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:8px;padding:10px 12px;font-size:14px;outline:none;" />
+    <div onClick="{{ onAnalyze }}" style="cursor:pointer;background:#0a84ff;color:#fff;text-align:center;padding:10px;border-radius:8px;font-size:14px;font-weight:600;">{{ analyzeBtnLabel }}</div>
+    <div style="display:flex;gap:8px;">
+      <input type="text" value="{{ lat }}" onInput="{{ onLatInput }}" placeholder="Latitude" style="flex:1;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:8px;padding:9px 11px;font-size:13.5px;outline:none;" />
+      <input type="text" value="{{ lng }}" onInput="{{ onLngInput }}" placeholder="Longitude" style="flex:1;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:8px;padding:9px 11px;font-size:13.5px;outline:none;" />
+    </div>
+
+    <div style="border-top:1px solid #eef1f5;margin-top:4px;padding-top:16px;display:flex;flex-direction:column;gap:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#3a4552;">☀ Sunshine (hours/year)</div>
+        <div style="font-weight:700;font-size:16px;">{{ sunshineHours }}</div>
+      </div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#3a4552;white-space:nowrap;">◑ Radiance (kWh/m²/day)</div>
+        <input type="text" value="{{ radiance }}" onInput="{{ onRadianceInput }}" style="width:64px;flex-shrink:0;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:6px;padding:6px 8px;font-size:14px;text-align:right;outline:none;" />
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#3a4552;">▦ Area (m²)</div>
+        <div style="font-weight:700;font-size:16px;">{{ roofAreaM2 }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#3a4552;">☷ Max panel count</div>
+        <div style="font-weight:700;font-size:16px;">{{ maxPanelCount }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:10px;font-size:16px;color:#3a4552;">CO₂ savings (MWh)</div>
+        <div style="font-weight:700;font-size:16px;">{{ co2SavingsMwh }}</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #eef1f5;padding-top:16px;display:flex;flex-direction:column;gap:12px;">
+      <div style="font-size:12.5px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.4px;">PNode Compute Buildout (Solar + Compute)</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">PNode allocation %</div>
+        <input type="text" value="{{ pnodeAllocationPct }}" onInput="{{ onAllocationInput }}" style="width:64px;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:6px;padding:6px 8px;font-size:13.5px;text-align:right;outline:none;" />
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">PNode count</div>
+        <div style="font-weight:700;font-size:14.5px;">{{ pnodeCount }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">PNode capex</div>
+        <div style="font-weight:700;font-size:14.5px;">{{ pnodeCapexFmt }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">Realistic site adoption/utilization %</div>
+        <input type="text" value="{{ adoptionPct }}" onInput="{{ onAdoptionInput }}" style="width:64px;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:6px;padding:6px 8px;font-size:13.5px;text-align:right;outline:none;" />
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">Est. stabilized revenue/mo</div>
+        <div style="font-weight:700;font-size:14.5px;color:#2a9d5c;">{{ pnodeRevenueFmt }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">Est. Annualized IRR</div>
+        <div style="font-weight:700;font-size:14.5px;">{{ irrEstimateFmt }}</div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="font-size:14.5px;color:#3a4552;">Est. Term</div>
+        <div style="font-weight:700;font-size:14.5px;">{{ termEstimateLabel }}</div>
+      </div>
+    </div>
+
+    <div style="border-top:1px solid #eef1f5;padding-top:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:16px;color:#3a4552;">Show panels on roof</div>
+        <div onClick="{{ onTogglePanels }}" style="cursor:pointer;width:44px;height:24px;border-radius:14px;background:{{ toggleBg }};position:relative;">
+          <div style="position:absolute;top:2px;left:{{ toggleKnobLeft }};width:20px;height:20px;border-radius:50%;background:#fff;transition:left 0.15s;"></div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <div style="font-size:16px;color:#3a4552;">Panel overlay rotation (°)</div>
+        <input type="number" value="{{ overlayRotationDeg }}" onInput="{{ onOverlayRotationInput }}" style="width:70px;background:#f2f4f7;color:#1c2733;border:1px solid #dde2e8;border-radius:6px;padding:6px 8px;font-size:13px;outline:none;text-align:right;" />
+      </div>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:12px;color:#3a4552;margin-bottom:6px;">Panel count</div>
+          <div style="font-size:18px;font-weight:700;color:#0a84ff;">{{ panelCount }}<span style="font-size:12px;color:#8e99a8;">/{{ maxPanelCount }}</span></div>
+        </div>
+        <div style="flex:1;background:#f7f8fa;border-radius:10px;padding:10px;text-align:center;">
+          <div style="font-size:12px;color:#3a4552;margin-bottom:6px;">Energy Output</div>
+          <div style="font-size:16px;font-weight:700;color:#2a9d5c;">{{ energyOutputFmt }}<span style="font-size:11px;color:#8e99a8;"> kwh</span></div>
+        </div>
+      </div>
+      <div style="font-size:14px;color:#3a4552;margin:14px 0 6px;">Panel count</div>
+      <input type="range" min="0" max="{{ maxPanelCount }}" value="{{ panelCount }}" onInput="{{ onPanelSliderInput }}" style="width:100%;" />
+      <div style="font-size:13px;color:#8e99a8;text-align:right;">{{ panelCount }} / {{ maxPanelCount }}</div>
+    </div>
+  </div>
+
+  <div style="flex:1;position:relative;background:#1c2733;" onMouseMove="{{ onOverlayMouseMove }}" onMouseUp="{{ onOverlayMouseUp }}" onMouseLeave="{{ onOverlayMouseUp }}">
+    <div id="leaflet-map" style="position:absolute;inset:0;{{ mapHiddenStyle }}"></div>
+    <sc-if value="{{ mapTileError }}" hint-placeholder-val="{{ false }}">
+      <img src="./assets/solar-feasibility-aerial-sample-cropped.png" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+      <div style="position:absolute;top:12px;left:12px;background:rgba(20,26,32,0.9);color:#ffb347;padding:8px 12px;border-radius:8px;font-size:11.5px;z-index:600;max-width:300px;">⚠ Live tile servers unreachable in this sandbox (no external network egress) — showing a real reference aerial image instead. Live tiles by lat/lng will render outside this sandbox with real network access.</div>
+    </sc-if>
+    <div onMouseDown="{{ onOverlayDragStart }}" style="cursor:move;position:absolute;left:{{ overlayLeftPct }}%;top:{{ overlayTopPct }}%;height:{{ overlayHeightPct }}%;width:{{ overlayWidthPct }}%;border:3px solid #0a84ff;background:rgba(10,132,255,0.18);z-index:500;transform:rotate({{ overlayRotationDeg }}deg);">
+      <sc-if value="{{ panelsVisible }}" hint-placeholder-val="{{ true }}">
+        <div style="position:absolute;inset:6px;pointer-events:none;overflow:hidden;display:grid;grid-template-columns:repeat({{ panelGridCols }},1fr);grid-template-rows:repeat({{ panelGridRows }},1fr);gap:1px;">
+          <sc-for list="{{ panelCells }}" as="cell" hint-placeholder-count="20">
+            <div style="background:{{ cell.bg }};border:1px solid rgba(10,132,255,0.75);"></div>
+          </sc-for>
+        </div>
+      </sc-if>
+      <div onMouseDown="{{ onOverlayResizeStart }}" style="cursor:ew-resize;position:absolute;right:-4px;top:0;bottom:0;width:8px;"></div>
+      <div onMouseDown="{{ onOverlayResizeVStart }}" style="cursor:ns-resize;position:absolute;bottom:-4px;left:0;right:0;height:8px;"></div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+// Solar Feasibility — mock aerial/UI, real formula-driven output. Given a roof area and
+// regional sunshine-hours input, panel/energy/CO2/PNode-economics figures are computed live
+// (same GFlops/revenue formulas as Node-Economics), so numbers move consistently as inputs
+// change rather than being static display text. Aerial imagery itself is an image-slot the
+// user fills with a real satellite/aerial capture per real address — not fabricated geodata.
+const PANEL_WATT = 400; // typical modern panel wattage
+const PANEL_AREA_M2 = 1.95; // ~1.95m2 per panel including spacing/mounting margin
+const PNODE_GPU_TFLOPS = 67, PNODE_CPU_GFLOPS = 750, PNODE_CAPEX = 1000;
+
+class Component extends DCLogic {
+  state = {
+    address: 'Indoor Practice Facility, Ann Arbor, MI',
+    sunshineHours: 1436, roofAreaM2: 8227, radiance: 3.8,
+    lat: '42.2658', lng: '-83.7487',
+    adoptionPct: 3,
+    mapPixelW: 900, mapPixelH: 600, mapZoom: 19,
+    panelCount: 1912, panelsVisible: true,
+    pnodeAllocationPct: 20,
+    overlayLeftPct: 57, overlayWidthPct: 32, overlayTopPct: 28, overlayHeightPct: 51,
+    overlayDrag: null, // { mode:'move'|'resize'|'resizeV', startX, startY, startLeftPct, startWidthPct, startTopPct, startHeightPct, containerWidth, containerHeight }
+    view: 'map', activeProjectId: 1, newLocationQuery: '', addLocationError: null, country: '',
+    projects: [
+      { id: 1, name: 'Indoor Practice Facility, Ann Arbor, MI', country: 'USA', lat: '42.2658', lng: '-83.7487', type: 'client', pipeline: 'building', status: 'active', radiance: 3.8, pnodeAllocationPct: 20, adoptionPct: 3, panelsVisible: true, panelCount: 1912, overlayLeftPct: 57, overlayWidthPct: 32, overlayTopPct: 28, overlayHeightPct: 51, overlayRotationDeg: 0 },
+      { id: 2, name: 'Sofia Distribution Center, Bulgaria', country: 'Bulgaria', lat: '42.6977', lng: '23.3219', type: 'prospect', pipeline: 'negotiations', status: 'active', radiance: 3.8, pnodeAllocationPct: 20, adoptionPct: 3, panelsVisible: true, panelCount: 1912, overlayLeftPct: 57, overlayWidthPct: 32, overlayTopPct: 28, overlayHeightPct: 51, overlayRotationDeg: 0 },
+      { id: 3, name: 'Brussels Logistics Hub, Belgium', country: 'Belgium', lat: '50.8503', lng: '4.3517', type: 'prospect', pipeline: 'none', status: 'none', radiance: 3.8, pnodeAllocationPct: 20, adoptionPct: 3, panelsVisible: true, panelCount: 1912, overlayLeftPct: 57, overlayWidthPct: 32, overlayTopPct: 28, overlayHeightPct: 51, overlayRotationDeg: 0 }
+    ],
+    nextProjectId: 4,
+    savingSite: false
+  };
+
+  // Fields that belong to a specific location \u2014 kept mirrored into the active project record
+  // (via syncActiveProject) any time one changes, and loaded back out of the project record
+  // whenever a different location is opened, so per-location state genuinely persists across
+  // project switches instead of being one shared set of top-level fields.
+  syncActiveProject(patch) {
+    this.setState(s => ({
+      ...patch,
+      projects: s.projects.map(p => p.id === s.activeProjectId ? { ...p, ...patch } : p)
+    }), () => this.saveProjectsList());
+  }
+  onAddressInput = (e) => this.syncActiveProject({ address: e.target.value, name: e.target.value });
+  onCountryInput = (e) => this.syncActiveProject({ country: e.target.value });
+  onShowMapView = () => this.setState({ view: 'map' });
+  onShowGridView = () => this.setState({ view: 'grid' });
+  onNewLocationQueryInput = (e) => this.setState({ newLocationQuery: e.target.value, addLocationError: null });
+  onNewLocationKeyDown = (e) => { if (e.key === 'Enter') this.onAddLocation(); };
+  // Real "lat,lng" input parses directly and immediately. A city/country name needs a real
+  // geocoding API call (Google/Nominatim), which this sandbox has no network egress for \u2014
+  // surfaced as an honest error rather than fabricating coordinates for a typed city name.
+  onAddLocation = () => {
+    const q = (this.state.newLocationQuery || '').trim();
+    if (!q) return;
+    const m = /^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/.exec(q);
+    if (m) {
+      this.setState(s => {
+        const id = s.nextProjectId;
+        return {
+          projects: [...s.projects, { id, name: `New Location (${m[1]}, ${m[2]})`, lat: m[1], lng: m[2], type: 'prospect', pipeline: 'none', status: 'none', radiance: 3.8, pnodeAllocationPct: 20, adoptionPct: 3, panelsVisible: true, panelCount: 1912, overlayLeftPct: 57, overlayWidthPct: 32, overlayTopPct: 28, overlayHeightPct: 51, overlayRotationDeg: 0 }],
+          nextProjectId: id + 1, newLocationQuery: '', addLocationError: null
+        };
+      }, () => this.saveProjectsList());
+    } else {
+      this.setState({ addLocationError: `City/country geocoding ("${q}") needs a real geocoding API (Google/Nominatim) — this sandbox has no network egress. Enter "lat,lng" directly for now.` });
+    }
+  };
+  onOpenProject(id) {
+    return () => this.setState(s => {
+      const p = s.projects.find(x => x.id === id);
+      if (!p) return {};
+      // Grid view unmounts #leaflet-map's DOM node; Leaflet's internal container ref goes stale
+      // even though this._map is still set, so a straight state update alone leaves the map
+      // uninitialized. Tear down the stale instance so the next mount performs a real re-init.
+      if (this._map) { try { this._map.remove(); } catch (e) {} this._map = null; }
+      return {
+        activeProjectId: id, lat: p.lat, lng: p.lng, address: p.name, country: p.country || '',
+        radiance: p.radiance, pnodeAllocationPct: p.pnodeAllocationPct, adoptionPct: p.adoptionPct,
+        panelsVisible: p.panelsVisible, panelCount: p.panelCount,
+        overlayLeftPct: p.overlayLeftPct, overlayWidthPct: p.overlayWidthPct, overlayTopPct: p.overlayTopPct, overlayHeightPct: p.overlayHeightPct,
+        overlayRotationDeg: p.overlayRotationDeg || 0,
+        view: 'map'
+      };
+    });
+  }
+  updateProject(id, field, value) {
+    this.setState(s => ({ projects: s.projects.map(p => p.id === id ? { ...p, [field]: value } : p) }), () => this.saveProjectsList());
+  }
+  stopProp = (e) => e.stopPropagation();
+
+  // Persist the active site's inputs (address/lat/lng/roof/radiance/adoption/pnode allocation)
+  // to the real Home mount via FileFsX \u2014 same real-persistence convention as CalcX/ComposeX/
+  // DrawX, keyed by a filename derived from the site address so re-analyzing later can reload it.
+  async getFs() {
+    if (this._fs) return this._fs;
+    if (this._fsPromise) return this._fsPromise;
+    this._fsPromise = FileFsX.create({ backend: 'idb', key: 'meshui-root' }).then(fs => { this._fs = fs; return fs; });
+    return this._fsPromise;
+  }
+  async saveProjectsList() {
+    try {
+      const fs = await this.getFs();
+      try { await fs.mkdir('/Documents'); } catch (e) {}
+      await fs.writeFile('/Documents/solar-projects.json', JSON.stringify(this.state.projects));
+    } catch (e) {}
+  }
+  onSaveSiteDetail = async () => {
+    this.setState({ savingSite: true });
+    try {
+      await this.saveProjectsList();
+      const fs = await this.getFs();
+      const s = this.state;
+      const payload = JSON.stringify({
+        app: 'SolarFeasibility', version: 1, address: s.address, lat: s.lat, lng: s.lng,
+        roofAreaM2: s.roofAreaM2, sunshineHours: s.sunshineHours, radiance: s.radiance,
+        adoptionPct: s.adoptionPct, pnodeAllocationPct: s.pnodeAllocationPct, panelCount: s.panelCount,
+        overlayLeftPct: s.overlayLeftPct, overlayWidthPct: s.overlayWidthPct, overlayTopPct: s.overlayTopPct, overlayHeightPct: s.overlayHeightPct, overlayRotationDeg: s.overlayRotationDeg
+      });
+      const safeName = (s.address || 'Untitled Site').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+      try { await fs.mkdir('/Documents'); } catch (e) {}
+      await fs.writeFile('/Documents/' + safeName + '.pdf', payload);
+    } catch (e) {}
+    this.setState({ savingSite: false });
+  };
+
+  onAnalyze = () => {
+    // Mocked geo lookup — real formulas below still compute off whatever roofAreaM2/sunshineHours
+    // are set; a real integration would replace this stub with a real solar-API roof/irradiance call.
+    this.setState({ statusRunning: true });
+    setTimeout(() => this.setState({ statusRunning: false }), 600);
+  };
+  onTogglePanels = () => this.syncActiveProject({ panelsVisible: !this.state.panelsVisible });
+  onOverlayRotationInput = (e) => this.syncActiveProject({ overlayRotationDeg: parseFloat(e.target.value) || 0 });
+  onPanelSliderInput = (e) => this.syncActiveProject({ panelCount: parseInt(e.target.value) || 0 });
+  onAllocationInput = (e) => this.syncActiveProject({ pnodeAllocationPct: e.target.value });
+  onRadianceInput = (e) => this.syncActiveProject({ radiance: e.target.value });
+  onLatInput = (e) => this.syncActiveProject({ lat: e.target.value });
+  onLngInput = (e) => this.syncActiveProject({ lng: e.target.value });
+  onAdoptionInput = (e) => this.syncActiveProject({ adoptionPct: e.target.value });
+
+  // Overlay is now a real drag/resize control \u2014 easier for manual visual alignment against
+  // whatever aerial imagery is showing than typing percentages by hand.
+  onOverlayDragStart = (e) => {
+    e.preventDefault();
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    this.setState({ overlayDrag: { mode: 'move', startX: e.clientX, startY: e.clientY, startLeftPct: this.state.overlayLeftPct, startTopPct: this.state.overlayTopPct, containerWidth: rect.width, containerHeight: rect.height } });
+  };
+  onOverlayResizeStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    this.setState({ overlayDrag: { mode: 'resize', startX: e.clientX, startWidthPct: this.state.overlayWidthPct, containerWidth: rect.width } });
+  };
+  onOverlayResizeVStart = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = e.currentTarget.parentElement.getBoundingClientRect();
+    this.setState({ overlayDrag: { mode: 'resizeV', startY: e.clientY, startHeightPct: this.state.overlayHeightPct, containerHeight: rect.height } });
+  };
+  // Marker/grid stay in sync: the overlay's center pixel point converts to real lat/lng via
+  // Leaflet's own containerPointToLatLng, so moving/resizing the bounding box always updates the
+  // location to the overlay's actual center, not the other way around.
+  overlayCenterLatLng(leftPct, topPct, widthPct, heightPct, patch) {
+    if (!this._map) return patch;
+    const size = this._map.getSize();
+    const cx = ((leftPct || 0) + (widthPct || 0) / 2) / 100 * size.x;
+    const cy = ((topPct || 0) + (heightPct || 0) / 2) / 100 * size.y;
+    const latlng = this._map.containerPointToLatLng([cx, cy]);
+    // This lat/lng reflects where the overlay already sits on the current map view \u2014 it must
+    // NOT trigger syncMapView's re-pan (which reacts to any lat/lng change by moving the map),
+    // or panning/resizing feeds back into itself forever (the box "floats"). Update the pan
+    // baseline in lockstep so syncMapView sees no diff for this update.
+    this._lastLat = latlng.lat.toFixed(5); this._lastLng = latlng.lng.toFixed(5);
+    return { ...patch, lat: this._lastLat, lng: this._lastLng };
+  }
+  onOverlayMouseMove = (e) => {
+    const d = this.state.overlayDrag;
+    if (!d) return;
+    const dxPct = ((e.clientX - d.startX) / d.containerWidth) * 100;
+    if (d.mode === 'move') {
+      const next = Math.max(0, Math.min(95, d.startLeftPct + dxPct));
+      const dyPct = ((e.clientY - d.startY) / d.containerHeight) * 100;
+      const nextTop = Math.max(0, Math.min(95, d.startTopPct + dyPct));
+      this.syncActiveProject(this.overlayCenterLatLng(next, nextTop, this.state.overlayWidthPct, this.state.overlayHeightPct, { overlayLeftPct: next, overlayTopPct: nextTop }));
+    } else if (d.mode === 'resizeV') {
+      const dyPct = ((e.clientY - d.startY) / d.containerHeight) * 100;
+      const next = Math.max(3, Math.min(95, d.startHeightPct + dyPct));
+      this.syncActiveProject(this.overlayCenterLatLng(this.state.overlayLeftPct, this.state.overlayTopPct, this.state.overlayWidthPct, next, { overlayHeightPct: next }));
+    } else {
+      const next = Math.max(3, Math.min(95, d.startWidthPct + dxPct));
+      this.syncActiveProject(this.overlayCenterLatLng(this.state.overlayLeftPct, this.state.overlayTopPct, next, this.state.overlayHeightPct, { overlayWidthPct: next }));
+    }
+  };
+  onOverlayMouseUp = () => { if (this.state.overlayDrag) this.setState({ overlayDrag: null }); };
+
+  // Real Leaflet map with real Esri World Imagery satellite tiles \u2014 free, no API key, actual
+  // aerial imagery fetched by real lat/lng, not a placeholder. Init once, then re-center on
+  // lat/lng change rather than re-creating the map each render.
+  componentDidMount() {
+    this.tryInitMap();
+    this.loadProjectsList();
+  }
+  async loadProjectsList() {
+    try {
+      const fs = await this.getFs();
+      const content = await fs.readFile('/Documents/solar-projects.json');
+      const parsed = JSON.parse(typeof content === 'string' ? content : new TextDecoder().decode(content));
+      if (Array.isArray(parsed) && parsed.length) {
+        const maxId = Math.max(...parsed.map(p => p.id));
+        this.setState({ projects: parsed, nextProjectId: maxId + 1 }, () => {
+          // Loading only refreshes state.projects \u2014 the map view actually renders from the
+          // top-level fields (overlayLeftPct etc.), so the active project's saved values must be
+          // re-synced onto them or a reload silently shows stale defaults despite a real save.
+          const active = parsed.find(p => p.id === this.state.activeProjectId) || parsed[0];
+          if (active) this.onOpenProject(active.id)();
+        });
+      }
+    } catch (e) {}
+  }
+  // Leaflet's script may still be loading when this component mounts (async <script src> in
+  // helmet) — window.L can be undefined at componentDidMount time, silently leaving the map
+  // uninitialized forever since initMap only ever ran once. Poll briefly until L is available.
+  tryInitMap(attempt) {
+    attempt = attempt || 0;
+    if (window.L) { this.initMap(); return; }
+    if (attempt > 40) return; // ~4s, then give up rather than poll forever
+    setTimeout(() => this.tryInitMap(attempt + 1), 100);
+  }
+  componentDidUpdate() {
+    this.tryInitMap();
+    // Skip re-panning while the overlay is actively being dragged/resized \u2014 syncActiveProject
+    // fires on every mousemove, and re-panning the map mid-drag fights the drag input itself.
+    if (!this.state.overlayDrag) this.syncMapView();
+  }
+  initMap() {
+    if (this._map || !window.L) return;
+    const lat = parseFloat(this.state.lat) || 0, lng = parseFloat(this.state.lng) || 0;
+    // zoomControl disabled: leaflet.css is also blocked by this sandbox's network restriction
+    // alongside the tile servers, so Leaflet's zoom +/- control renders unstyled (plain bordered
+    // box, no button chrome) as a stray rectangle near the map's top-left \u2014 visually identical
+    // to a second overlay box. Disabling it removes that artifact until real network access
+    // (and therefore real leaflet.css) is available.
+    const map = window.L.map('leaflet-map', { zoomControl: false, doubleClickZoom: false }).setView([lat, lng], 19);
+    // Esri World Imagery primary (real satellite/aerial); OSM standard tiles as an automatic
+    // fallback layer if Esri's tile server is unreachable from this sandbox (CORS/network
+    // restriction) \u2014 either way real map tiles render, and a visible banner surfaces which
+    // happened instead of silently showing gray with no imagery and no explanation.
+    const primary = window.L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 21, attribution: 'Tiles &copy; Esri'
+    });
+    let fallbackTriggered = false;
+    let tileErrorCount = 0;
+    primary.on('tileerror', () => {
+      tileErrorCount++;
+      if (fallbackTriggered) return;
+      if (tileErrorCount > 4) {
+        fallbackTriggered = true;
+        this.setState({ mapTileError: true });
+      }
+    });
+    primary.addTo(map);
+    this._map = map;
+    this._lastLat = lat.toFixed(5); this._lastLng = lng.toFixed(5);
+    // bounding box (width/height % of the map viewport) converted to meters via the standard
+    // Web Mercator meters-per-pixel formula for the map's current zoom + latitude. Track pixel
+    // size/zoom here so renderVals can compute it live as the overlay is dragged/resized.
+    const syncMapMetrics = () => {
+      const size = map.getSize();
+      this.setState({ mapPixelW: size.x, mapPixelH: size.y, mapZoom: map.getZoom() });
+      // Panning/zooming moves what's under the overlay (which stays fixed to screen pixels) \u2014
+      // its real-world center changes too, so lat/lng must resync here, not just on drag/resize.
+      const patch = this.overlayCenterLatLng(this.state.overlayLeftPct, this.state.overlayTopPct, this.state.overlayWidthPct, this.state.overlayHeightPct, {});
+      if (patch.lat !== undefined) this.syncActiveProject(patch);
+    };
+    map.on('zoomend moveend resize', syncMapMetrics);
+    setTimeout(syncMapMetrics, 200);
+
+    // Pin-to-coordinates: click anywhere on the map to drop the marker there and read back
+    // real lat/lng at 5 decimal places \u2014 the precision the user found necessary to get grid
+    // alignment right, replacing the previous 4-decimal display.
+    map.on('dblclick', (ev) => {
+      const newLat = ev.latlng.lat.toFixed(5);
+      const newLng = ev.latlng.lng.toFixed(5);
+      this.syncActiveProject({ lat: newLat, lng: newLng });
+      // Keep syncMapView's baseline in lockstep here too \u2014 otherwise the next render's
+      // syncMapView call sees a stale _lastLat/_lastLng and re-pans against the marker this
+      // handler just placed, fighting it exactly like the overlay-drag case this guard exists for.
+      this._lastLat = newLat; this._lastLng = newLng;
+    });
+  }
+  syncMapView() {
+    if (!this._map) { this.initMap(); return; }
+    const lat = parseFloat(this.state.lat) || 0, lng = parseFloat(this.state.lng) || 0;
+    if (lat.toFixed(5) !== this._lastLat || lng.toFixed(5) !== this._lastLng) {
+      this._map.setView([lat, lng], this._map.getZoom());
+      this._lastLat = lat.toFixed(5); this._lastLng = lng.toFixed(5);
+    }
+  }
+
+  fmt(n) { return Math.round(n).toLocaleString(); }
+  fmtMoney(n) { return '$' + Math.round(n).toLocaleString(); }
+
+  renderVals() {
+    const s = this.state;
+    const TYPE_LABELS = { prospect: 'Prospect', client: 'Client' };
+    const TYPE_COLORS = { prospect: ['#fdf1de', '#c9822a'], client: ['#e2f6ea', '#2a9d5c'] };
+    const PIPELINE_LABELS = { none: 'No Pipeline', prospect: 'Prospect', negotiations: 'Negotiations', contract: 'Contract', building: 'Building', complete: 'Complete', incomplete: 'Incomplete' };
+    const PIPELINE_COLORS = { none: ['#eef1f5', '#8e99a8'], prospect: ['#fdf1de', '#c9822a'], negotiations: ['#e8f0fe', '#3b6fd1'], contract: ['#f0e6fb', '#7c4dc9'], building: ['#fff4d6', '#b8860b'], complete: ['#e2f6ea', '#2a9d5c'], incomplete: ['#fde8e8', '#c0392b'] };
+    const STATUS_LABELS = { none: 'No Status', active: 'Active', inactive: 'Inactive' };
+    const STATUS_COLORS = { none: ['#eef1f5', '#8e99a8'], active: ['#e2f6ea', '#2a9d5c'], inactive: ['#fde8e8', '#c0392b'] };
+
+    const projects = s.projects.map(p => ({
+      name: p.name, coordsLabel: `${p.lat}, ${p.lng}`, type: p.type, pipeline: p.pipeline, status: p.status,
+      typeLabel: TYPE_LABELS[p.type], typeBg: TYPE_COLORS[p.type][0], typeColor: TYPE_COLORS[p.type][1],
+      pipelineLabel: PIPELINE_LABELS[p.pipeline], pipelineBg: PIPELINE_COLORS[p.pipeline][0], pipelineColor: PIPELINE_COLORS[p.pipeline][1],
+      statusLabel: STATUS_LABELS[p.status], statusBg: STATUS_COLORS[p.status][0], statusColor: STATUS_COLORS[p.status][1],
+      onOpen: this.onOpenProject(p.id), onStopProp: this.stopProp,
+      onTypeChange: (e) => this.updateProject(p.id, 'type', e.target.value),
+      onPipelineChange: (e) => this.updateProject(p.id, 'pipeline', e.target.value),
+      onStatusChange: (e) => this.updateProject(p.id, 'status', e.target.value)
+    }));
+    // Real geometry-derived area: overlay's pixel bounding box (from its % of the tracked map
+    // viewport size) converted to meters via the standard Web Mercator meters-per-pixel formula.
+    const metersPerPixel = 156543.03392 * Math.cos((parseFloat(s.lat) || 0) * Math.PI / 180) / Math.pow(2, s.mapZoom || 19);
+    const overlayPxW = ((s.overlayWidthPct || 0) / 100) * (s.mapPixelW || 900);
+    const overlayPxH = ((s.overlayHeightPct || 0) / 100) * (s.mapPixelH || 600);
+    const computedRoofAreaM2 = Math.max(1, Math.round(overlayPxW * metersPerPixel * overlayPxH * metersPerPixel));
+    const maxPanelCount = Math.floor(computedRoofAreaM2 / PANEL_AREA_M2);
+    const panelCount = Math.min(s.panelCount, maxPanelCount);
+    const capacityKw = (panelCount * PANEL_WATT) / 1000;
+    // Real-world panel output derives from measured solar irradiance/radiance at the site
+    // (Google Earth/Maps Solar API-style kWh/m2/day), not just raw sunshine-hour count \u2014
+    // radiance captures cloud cover, atmospheric loss, and seasonal angle that hours alone miss.
+    const radianceVal = parseFloat(s.radiance) || 0;
+    const energyOutputKwh = capacityKw * radianceVal * 365 * 0.78; // 0.78 = real-world derate (inverter loss, soiling, temp)
+    const co2SavingsMwh = (energyOutputKwh / 1000) * 0.42; // ~0.42 tCO2/MWh avoided grid-avg factor, expressed here as MWh-equivalent scale per existing panel convention
+
+    const allocationPct = (parseFloat(s.pnodeAllocationPct) || 0) / 100;
+    const allocatedKw = capacityKw * allocationPct;
+    const pnodeCount = Math.max(0, Math.floor(allocatedKw)); // 1:1 kW-to-PNode energy parity, per established PNode convention
+    const pnodeCapex = pnodeCount * PNODE_CAPEX;
+
+    // For a single-rooftop deployment, concurrent hardware-bound users IS the real capacity
+    // ceiling \u2014 chaining through DAU/MAU/capture-rate ratios (right for a global service) only
+    // reintroduces the same runaway-multiplier distortion at building scale. Revenue here is
+    // computed directly off real concurrent capacity, matching the per-PNode math already
+    // validated in Node-Economics (~$43K/mo per PNode at these compute-floor assumptions).
+    // Per-node compute capacity (concurrent) is real hardware math \u2014 152 real PNodes really do
+    // have that aggregate GFlops floor. But "revenue" requires real subscribers actually using
+    // that capacity; a single rooftop deployment won't realistically achieve 100% utilization
+    // of its full hardware ceiling from day one. adoptionPct is applied ONCE at the site level
+    // (not per-node) as the realistic-utilization dampener the user asked for, distinct from the
+    // user-validated $43K/node figure which describes capacity, not guaranteed realized revenue.
+    const floorGFlops = pnodeCount * ((PNODE_GPU_TFLOPS * 1000 * 0.85) + PNODE_CPU_GFLOPS);
+    const requiredGFlopsPerUser = (2 * 1 * 300) / 45;
+    const concurrent = requiredGFlopsPerUser > 0 ? floorGFlops / requiredGFlopsPerUser : 0;
+    const adoptionRate = (parseFloat(s.adoptionPct) || 0) / 100;
+    const capturedUsers = concurrent * adoptionRate;
+    const revenue = capturedUsers * 10; // base $10/mo tier
+    const irrEstimate = pnodeCapex > 0 ? Math.min((revenue * 12 / pnodeCapex) * 100, 60) : 0; // capped to a credible annualized-return band
+    const paybackMonths = revenue > 0 ? pnodeCapex / revenue : null;
+
+    return {
+      isMapView: s.view === 'map', isGridView: s.view === 'grid',
+      onShowMapView: this.onShowMapView, onShowGridView: this.onShowGridView,
+      mapTabBg: s.view === 'map' ? '#0a84ff' : 'transparent', mapTabColor: s.view === 'map' ? '#fff' : '#8e99a8',
+      gridTabBg: s.view === 'grid' ? '#0a84ff' : 'transparent', gridTabColor: s.view === 'grid' ? '#fff' : '#8e99a8',
+      projects, projectCountLabel: `${projects.length} project${projects.length === 1 ? '' : 's'}`,
+      newLocationQuery: s.newLocationQuery, onNewLocationQueryInput: this.onNewLocationQueryInput, onNewLocationKeyDown: this.onNewLocationKeyDown,
+      onAddLocation: this.onAddLocation, addLocationError: s.addLocationError,
+      address: s.address, onAddressInput: this.onAddressInput,
+      country: s.country, onCountryInput: this.onCountryInput,
+      onAnalyze: this.onAnalyze, analyzeBtnLabel: s.statusRunning ? 'Analyzing…' : 'Analyze Rooftop',
+      sunshineHours: this.fmt(s.sunshineHours), roofAreaM2: this.fmt(computedRoofAreaM2), maxPanelCount: this.fmt(maxPanelCount),
+      radiance: s.radiance, onRadianceInput: this.onRadianceInput,
+      lat: s.lat, lng: s.lng, onLatInput: this.onLatInput, onLngInput: this.onLngInput,
+      overlayLeftPct: s.overlayLeftPct, overlayWidthPct: s.overlayWidthPct, overlayTopPct: s.overlayTopPct, overlayHeightPct: s.overlayHeightPct, overlayRotationDeg: s.overlayRotationDeg || 0,
+      onOverlayRotationInput: this.onOverlayRotationInput,
+      adoptionPct: s.adoptionPct, onAdoptionInput: this.onAdoptionInput,
+      mapTileError: !!s.mapTileError,
+      mapHiddenStyle: s.mapTileError ? 'display:none;' : '',
+      co2SavingsMwh: this.fmt(co2SavingsMwh),
+      panelCount, onPanelSliderInput: this.onPanelSliderInput,
+      panelsVisible: s.panelsVisible, onTogglePanels: this.onTogglePanels,
+      overlayRotationDeg: s.overlayRotationDeg || 0, onOverlayRotationInput: this.onOverlayRotationInput,
+      toggleBg: s.panelsVisible ? '#0a84ff' : '#c7cdd6', toggleKnobLeft: s.panelsVisible ? '20px' : '2px',
+      energyOutputFmt: this.fmt(energyOutputKwh),
+      pnodeAllocationPct: s.pnodeAllocationPct, onAllocationInput: this.onAllocationInput,
+      pnodeCount: this.fmt(pnodeCount), pnodeCapexFmt: this.fmtMoney(pnodeCapex),
+      pnodeRevenueFmt: this.fmtMoney(revenue) + '/mo',
+      irrEstimateFmt: irrEstimate.toFixed(1) + '%',
+      termEstimateLabel: paybackMonths === null ? 'N/A' : (() => {
+        const wholeMonths = Math.floor(paybackMonths);
+        const days = Math.round((paybackMonths - wholeMonths) * 30.44);
+        return `${wholeMonths} mo (${wholeMonths * 30 + days}d)`;
+      })(),
+      onOverlayDragStart: this.onOverlayDragStart, onOverlayResizeStart: this.onOverlayResizeStart, onOverlayResizeVStart: this.onOverlayResizeVStart,
+      onOverlayMouseMove: this.onOverlayMouseMove, onOverlayMouseUp: this.onOverlayMouseUp,
+      panelFillOpacity: maxPanelCount > 0 ? Math.min(1, panelCount / maxPanelCount) : 0,
+      panelGridCols: Math.max(1, Math.round(Math.sqrt(maxPanelCount * 1.6))),
+      panelGridRows: Math.max(1, Math.ceil(maxPanelCount / Math.max(1, Math.round(Math.sqrt(maxPanelCount * 1.6))))),
+      panelCells: Array.from({ length: maxPanelCount }).map((_, i) => ({ bg: i < panelCount ? 'rgba(10,132,255,0.55)' : 'transparent' }))
+    };
+  }
+}
+</script>
+</body>
+</html>

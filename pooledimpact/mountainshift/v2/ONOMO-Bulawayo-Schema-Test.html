@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>ONOMO Allure Bulawayo — Schema Mapping Test</title>
+<script src="./BaseClassX.js"></script>
+<script src="./FieldACL.js"></script>
+<script src="./Investor.js"></script>
+<script src="./Lender.js"></script>
+<script src="./Instrument.js"></script>
+<script src="./Scenario.js"></script>
+<script src="./Schedule.js"></script>
+<script src="./Advisor.js"></script>
+<script src="./RevenueAttachment.js"></script>
+<script src="./Deal.js"></script>
+<script src="./Fund.js"></script>
+<style>
+  body { font:13px/1.5 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; padding:16px; }
+  h1 { color:#6b9; font-size:15px; }
+  h2 { color:#8ab4f8; font-size:13px; margin-top:22px; }
+  h3 { color:#e0a866; font-size:12px; margin-top:14px; margin-bottom:4px; }
+  pre { background:#141414; border:1px solid #333; border-radius:4px; padding:10px; overflow-x:auto; white-space:pre-wrap; }
+  .ok { color:#1f9d55; } .err { color:#e05555; } .note { color:#8e99a8; }
+  table { border-collapse:collapse; margin:6px 0; font-size:12px; }
+  td, th { border:1px solid #333; padding:4px 8px; text-align:right; }
+  th { color:#8ab4f8; text-align:left; }
+  td:first-child, th:first-child { text-align:left; }
+  .gap { color:#e0a866; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="12" fill="#6b9" text-anchor="middle" font-family="monospace">ONOMO</text></svg></template>
+</head>
+<body>
+<h1>ONOMO Allure Bulawayo — Finance Portal Pro Schema Mapping Test</h1>
+<div class="ok">Real deal data from ONOMO_Allure_Bulawayo_IM_Model.xlsx, seeded through Fund/Deal/Instrument/Lender/Advisor/Scenario/Schedule — the three top-level schema additions (Scenario, Schedule, flexible Advisor fees) built specifically for this deal.</div>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+function section(title, fn) {
+  const h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+  const pre = document.createElement('pre'); out.appendChild(pre);
+  try { pre.textContent = JSON.stringify(fn(), null, 2); }
+  catch (e) { pre.innerHTML = '<span class="err">ERROR: ' + e.message + '</span>'; }
+}
+function note(html) { const d = document.createElement('div'); d.className = 'note'; d.innerHTML = html; out.appendChild(d); }
+function gapNote(html) { const d = document.createElement('div'); d.className = 'gap'; d.innerHTML = '⚠ ' + html; out.appendChild(d); }
+
+// ─── Fund ────────────────────────────────────────────────────────────────
+const fund = new Fund({ name: 'ONOMO Bulawayo SPV', entityTypeName: 'SPV', vintageDate: '2026-01-01', fundSize: 13255000, reportingCurrency: 'USD' });
+
+// ─── Deal ────────────────────────────────────────────────────────────────
+const deal = fund.addDeal(new Deal({
+  name: 'ONOMO Allure Bulawayo — 80-Key Modular Hotel Development', fundId: fund.id, dealType: 'hotel-development',
+  holdPeriodYears: 10, startDate: '2026-Q3 (14-month modular build)', expectedExitDate: '2036',
+  description: '80-key ONOMO Allure hotel in Bulawayo, Zimbabwe — rooftop bar/pool deck, conference facilities, SABA restaurant concept. Modular construction, ~18% savings over conventional build at $115,000/key. Market ~44% occupancy, undersupplied for branded midscale.',
+  status: 'active', createdBy: 'system-seed',
+  // Baseline = Fee Scenario A, 60:40 gearing (matches the model's own "Base Case" framing)
+  keyMetrics: {
+    totalDevelopmentCostUSD: 13255000, seniorDebtUSD: 7953000, equityRequiredUSD: 5302000,
+    y1TotalRevenueUSD: 3010621, y1GOPUSD: 1383380, y1FeesUSD: 617977, stabFeePercentOfRevenue: 0.14096,
+    y1NOItoOwnerUSD: 705191, projectIRR: 0.1212504097741546, equityIRR: 0.1098108609724011,
+    npvAt12PercentUSD: 110635, equityMultiple: 2.9196451845285321,
+    minDSCRYear1: 0.59498139109821979, year5DSCR: 1.152185978403437, terminalValueUSD: 19365547
+  }
+}));
+
+// ─── Instruments (both gearing scenarios — Instruments are combinatory) ──
+const seniorLoan6040 = fund.addInstrument(new Instrument({
+  name: 'ONOMO Bulawayo Senior Term Loan — 60:40 Gearing', instrumentType: 'bond', dealId: deal.id,
+  collateralDescription: '10-year fully amortizing term loan, 8.0% fixed (Tadi USD term), 60% of total development cost',
+  faceValue: 7953000, currency: 'USD', originationDate: '2026-Q3', status: 'active', createdBy: 'system-seed'
+}));
+const seniorLoan5050 = fund.addInstrument(new Instrument({
+  name: 'ONOMO Bulawayo Senior Term Loan — 50:50 Gearing (alt.)', instrumentType: 'bond', dealId: deal.id,
+  collateralDescription: '10-year fully amortizing term loan, 8.0% fixed (Tadi USD term), 50% of total development cost — alternate gearing scenario',
+  faceValue: 6627500, currency: 'USD', originationDate: '2026-Q3', status: 'active', createdBy: 'system-seed'
+}));
+
+// ─── Lender ────────────────────────────────────────────────────────────────
+fund.addLender(new Lender({ name: 'Tadi (USD Term Facility)', lenderType: 'bank', instrumentId: seniorLoan6040.id, facilityAmount: 7953000, outstandingBalance: 7953000, seniorityRank: 1, createdBy: 'system-seed' }));
+
+// ─── Advisors — Fee Scenario A (LOI v3), flat_percent / flat_amount / formula ──
+deal.addAdvisor(new Advisor({ name: 'ONOMO Brand Fee', feeType: 'brand', feeStructureType: 'flat_percent', feePercent: 2.5, dealSizeBasis: 3010621, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'ONOMO Marketing', feeType: 'marketing', feeStructureType: 'flat_percent', feePercent: 2.0, dealSizeBasis: 3010621, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'ONOMO Loyalty', feeType: 'loyalty', feeStructureType: 'flat_percent', feePercent: 3.5, dealSizeBasis: 3010621, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'ONOMO Reservation', feeType: 'reservation', feeStructureType: 'flat_percent', feePercent: 1.0, dealSizeBasis: 1746160, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'Aleph Base Mgt', feeType: 'management', feeStructureType: 'flat_percent', feePercent: 2.0, dealSizeBasis: 3010621, currency: 'USD', role: 'operator', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({
+  name: 'Aleph Incentive Mgt', feeType: 'incentive-management', feeStructureType: 'formula', dealSizeBasis: 3010621, currency: 'USD', role: 'operator',
+  formulaDescription: 'Tiered on AGOP margin — exact tier breakpoints not present in source model, only resulting $ amounts. Real per-year figures captured via aleph-incentive-schedule below rather than fabricated tiers.',
+  createdBy: 'system-seed'
+}));
+deal.addAdvisor(new Advisor({ name: 'ONOMO TSA (one-off)', feeType: 'technical-services', feeStructureType: 'flat_amount', flatAmount: 105600, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'Aleph POTSA (one-off)', feeType: 'technical-services', feeStructureType: 'flat_amount', flatAmount: 88000, currency: 'USD', role: 'operator', createdBy: 'system-seed' }));
+
+// ─── Scenarios — the actual Scenario entity, comparable via deltaVsBaseline() ──
+const scenarioA = deal.addScenario(new Scenario({
+  name: 'Fee Scenario A (LOI v3 as-is)', scenarioType: 'fee-structure', isBaseline: true,
+  assumptionOverrides: { feesBasis: 'Total Revenue', loyaltyFeePercent: 3.5 },
+  keyMetrics: deal.keyMetrics, description: 'Fees on TOTAL revenue per LOI.', createdBy: 'system-seed'
+}));
+const scenarioB = deal.addScenario(new Scenario({
+  name: 'Fee Scenario B (Market-rebased)', scenarioType: 'fee-structure', isBaseline: false,
+  assumptionOverrides: { feesBasis: 'Room Revenue (brand fees) / Total Revenue (Aleph)', loyaltyFeePercent: 2.0 },
+  keyMetrics: {
+    y1FeesUSD: 490628, stabFeePercentOfRevenue: 0.09866, y1NOItoOwnerUSD: 832540,
+    projectIRR: 0.14192012425907241, equityIRR: 0.1397976809102971, npvAt12PercentUSD: 2028898,
+    equityMultiple: 3.5891896639576881, minDSCRYear1: 0.70242812419283351, year5DSCR: 1.315438697926667, terminalValueUSD: 22109443
+  },
+  description: 'ONOMO fees rebased to room revenue; loyalty cut to 2.0%. Aleph unchanged.', createdBy: 'system-seed'
+}));
+
+// ─── Schedules — the actual Schedule entity, 10-year Debt & Returns table ──
+const debtSchedule6040A = deal.addSchedule(new Schedule({ name: 'Debt Service & Returns — Scenario A, 60:40', scenarioId: scenarioA.id, periodType: 'annual', startPeriod: 1, createdBy: 'system-seed' }));
+const noiA = [705191,1052622,1200534,1300578,1365607,1433887,1505582,1580861,1659904,1742899];
+const dsA6040 = [1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232];
+const dscrA6040 = [0.595,0.888,1.013,1.097,1.152,1.210,1.270,1.334,1.400,1.471];
+const taxA6040 = [0,0,3940,29702,46447,64029,82490,101875,122228,143599];
+const fcfA6040 = [-480041,-132609,11362,85645,133929,184627,237860,293755,352444,414068];
+for (let y = 0; y < 10; y++) debtSchedule6040A.addPoint(y + 1, { noi: noiA[y], debtService: dsA6040[y], dscr: dscrA6040[y], tax: taxA6040[y], fcf: fcfA6040[y] });
+
+const alephIncentiveSchedule = deal.addSchedule(new Schedule({ name: 'Aleph Incentive Mgt — actual $ by year (tiered on AGOP margin)', periodType: 'annual', startPeriod: 1, createdBy: 'system-seed' }));
+const alephIncentive = [105853.42,123970.64,141390.66,153173.21,160831.87,168873.47,177317.14,186182.99,195492.15,205266.75];
+alephIncentive.forEach((v, i) => alephIncentiveSchedule.addPoint(i + 1, { incentiveFeeUSD: v }));
+
+// ─── Output ─────────────────────────────────────────────────────────────
+section('Fund', () => fund.toJSON());
+
+section('Deal — dueDiligenceFlags() run against real numbers', () => deal.dueDiligenceFlags());
+
+section('Scenario B vs A — deltaVsBaseline()', () => scenarioB.deltaVsBaseline(scenarioA));
+
+section('Debt Schedule — min/max DSCR via Schedule methods', () => ({
+  minDSCR: debtSchedule6040A.minMetric('dscr'), maxDSCR: debtSchedule6040A.maxMetric('dscr'),
+  dscrSeries: debtSchedule6040A.series('dscr')
+}));
+
+section('Advisor fee amounts (feeAmount() across all 4 structure types)', () => deal.advisors.map(a => ({
+  name: a.name, feeStructureType: a.feeStructureType, computedFeeAmount: a.feeAmount()
+})));
+
+section('Capital stack (Fund.capitalStackProjection)', () => fund.capitalStackProjection());
+
+gapNote('Aleph Incentive Mgt uses feeStructureType "formula" (returns null from feeAmount()) rather than fabricated tier breakpoints — the real per-year $ amounts live in the alephIncentiveSchedule Schedule instead, which is the honest representation given what the source model actually discloses.');
+note('Equity contributor identity (Batipart Group / Crédit Mutuel vs. a Bulawayo-specific sponsor) was intentionally NOT modeled as an Investor — not confirmed in the extracted sheets, so no Investor record was fabricated for this deal.');
+</script>
+</body>
+</html>

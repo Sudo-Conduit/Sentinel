@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" />
+  <style>
+    @keyframes cx-spin { to { transform: rotate(360deg); } }
+    body { margin:0; background:#1c2733; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+  </style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#1c2733;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:4px;padding:5px 14px;background:#cccccc;font-size:12.5px;position:relative;">
+    <div style="font-weight:700;font-size:14px;margin-right:10px;color:#222;">CalcX</div>
+    <div style="position:relative;">
+      <div onClick="{{ onToggleFileMenu }}" style="cursor:pointer;padding:4px 10px;border-radius:5px;color:{{ fileMenuColor }};background:{{ fileMenuBg }};">File</div>
+      <sc-if value="{{ fileMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onMouseLeave="{{ onCloseMenus }}" style="position:absolute;top:30px;left:0;background:#2c3947;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);padding:6px;z-index:40;min-width:140px;">
+          <div onClick="{{ onNew }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;color:#fff;">New</div>
+          <div onClick="{{ onOpenFinderOpen }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;color:#fff;">Open…</div>
+          <div onClick="{{ onOpenFinderSave }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;color:#fff;">Save…</div>
+        </div>
+      </sc-if>
+    </div>
+    <sc-for list="{{ stubMenus }}" as="mnu" hint-placeholder-count="5">
+      <div style="position:relative;">
+        <div onClick="{{ mnu.onToggle }}" style="cursor:pointer;padding:4px 10px;border-radius:5px;color:{{ mnu.color }};background:{{ mnu.bg }};">{{ mnu.label }}</div>
+        <sc-if value="{{ mnu.open }}" hint-placeholder-val="{{ false }}">
+          <div onMouseLeave="{{ onCloseMenus }}" style="position:absolute;top:30px;left:0;background:#2c3947;color:#9aa7b8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);padding:10px 14px;z-index:40;min-width:160px;font-size:12px;">Not yet implemented</div>
+        </sc-if>
+      </div>
+    </sc-for>
+    <div style="position:relative;">
+      <div onClick="{{ onToggleFormatMenu }}" style="cursor:pointer;padding:4px 10px;border-radius:5px;color:{{ formatMenuColor }};background:{{ formatMenuBg }};">Format</div>
+      <sc-if value="{{ formatMenuOpen }}" hint-placeholder-val="{{ false }}">
+        <div onMouseLeave="{{ onCloseMenus }}" style="position:absolute;top:30px;left:0;background:#2c3947;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);padding:6px;z-index:40;min-width:140px;">
+          <div onClick="{{ onToggleBold }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;font-weight:800;color:#fff;background:{{ boldMenuBg }};">Bold</div>
+          <div onClick="{{ onToggleItalic }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;font-style:italic;color:#fff;background:{{ italicMenuBg }};">Italic</div>
+          <div onClick="{{ onToggleUnderline }}" style="cursor:pointer;padding:7px 12px;border-radius:5px;font-size:12.5px;text-decoration:underline;color:#fff;background:{{ underlineMenuBg }};">Underline</div>
+        </div>
+      </sc-if>
+    </div>
+    <sc-for list="{{ stubMenus2 }}" as="mnu" hint-placeholder-count="2">
+      <div style="position:relative;">
+        <div onClick="{{ mnu.onToggle }}" style="cursor:pointer;padding:4px 10px;border-radius:5px;color:{{ mnu.color }};background:{{ mnu.bg }};">{{ mnu.label }}</div>
+        <sc-if value="{{ mnu.open }}" hint-placeholder-val="{{ false }}">
+          <div onMouseLeave="{{ onCloseMenus }}" style="position:absolute;top:30px;left:0;background:#2c3947;color:#9aa7b8;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.4);padding:10px 14px;z-index:40;min-width:160px;font-size:12px;">Not yet implemented</div>
+        </sc-if>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:4px;padding:5px 14px;border-bottom:1px solid #2c3947;background:#212c38;font-size:12.5px;position:relative;">
+    <div onClick="{{ onAddTable }}" style="cursor:pointer;background:#2c3947;padding:5px 12px;border-radius:6px;font-size:12px;">+ Table</div>
+    <div style="flex:1;"></div>
+    <div onClick="{{ onZoomOut }}" style="cursor:pointer;background:#2c3947;padding:5px 10px;border-radius:6px;font-size:13px;">−</div>
+    <div style="font-size:11.5px;color:#8e99a8;width:42px;text-align:center;">{{ zoomLabel }}</div>
+    <div onClick="{{ onZoomIn }}" style="cursor:pointer;background:#2c3947;padding:5px 10px;border-radius:6px;font-size:13px;">+</div>
+    <div onClick="{{ onZoomReset }}" style="cursor:pointer;background:#2c3947;padding:5px 10px;border-radius:6px;font-size:11px;">Reset</div>
+    <div style="width:1px;height:20px;background:#2c3947;margin:0 4px;"></div>
+    <div onClick="{{ onToggleProperties }}" title="Properties" style="cursor:pointer;width:24px;height:24px;border-radius:50%;background:{{ propertiesBtnBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-left:6px;">
+      <span class="material-symbols-outlined" style="font-size:15px;color:{{ propertiesBtnColor }};">edit_note</span>
+    </div>
+    <div onClick="{{ onToggleFilter }}" title="Filter" style="cursor:pointer;width:24px;height:24px;border-radius:50%;background:{{ filterBtnBg }};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <span class="material-symbols-outlined" style="font-size:15px;color:{{ filterBtnColor }};">filter_list</span>
+    </div>
+  </div>
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:6px 14px;border-bottom:1px solid #2c3947;background:#1c2733;">
+    <div style="font-size:12px;font-weight:700;color:#8e99a8;width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ activeTableLabel }}</div>
+    <input value="{{ formulaBarValue }}" onInput="{{ onFormulaBarInput }}" onKeyDown="{{ onFormulaBarKeyDown }}" placeholder="Enter value or =formula" style="flex:1;background:#0d1620;border:1px solid #2c3947;border-radius:6px;color:#fff;padding:6px 10px;font-size:13px;outline:none;" />
+  </div>
+
+  <div style="flex:1;display:flex;overflow:hidden;">
+  <div onMouseDown="{{ onCanvasBackgroundClick }}" style="flex:1;overflow:auto;position:relative;background:#fff;">
+    <div onMouseDown="{{ onCanvasBackgroundClick }}" style="{{ canvasZoomStyle }}">
+      <sc-for list="{{ tables }}" as="tbl" hint-placeholder-count="2">
+        <div onMouseDown="{{ tbl.onSelectTable }}" style="{{ tbl.wrapperStyle }}">
+          <div onMouseDown="{{ tbl.onDragStart }}" style="cursor:move;display:flex;align-items:center;gap:6px;padding:0 0 4px 2px;">
+            <sc-if value="{{ tbl.isRenaming }}" hint-placeholder-val="{{ false }}">
+              <input value="{{ tbl.name }}" onInput="{{ tbl.onRenameInput }}" onBlur="{{ tbl.onRenameCommit }}" onKeyDown="{{ tbl.onRenameKeyDown }}" onMouseDown="{{ tbl.onStopPropagation }}" style="background:#0d1620;border:1px solid #0a84ff;border-radius:4px;color:#333;font-size:12px;padding:2px 6px;outline:none;" />
+            </sc-if>
+            <sc-if value="{{ tbl.isRenaming }}" hint-placeholder-val="{{ true }}">
+              <div onDoubleClick="{{ tbl.onStartRename }}" style="font-size:12px;font-weight:700;color:#333;cursor:move;">{{ tbl.name }}</div>
+            </sc-if>
+            <div onClick="{{ tbl.onDelete }}" onMouseDown="{{ tbl.onStopPropagation }}" style="cursor:pointer;color:#8e99a8;font-size:11px;">✕</div>
+          </div>
+          <table onKeyDown="{{ tbl.onGridKeyDown }}" tabIndex="0" style="{{ tbl.tableStyle }}">
+            <sc-if value="{{ tbl.showHeaders }}" hint-placeholder-val="{{ false }}">
+              <thead>
+                <tr>
+                  <th style="background:#ccc;width:34px;min-width:34px;border:1px solid #999;"></th>
+                  <sc-for list="{{ tbl.colHeaders }}" as="ch" hint-placeholder-count="8">
+                    <th style="background:#ccc;border:1px solid #999;padding:3px 0;font-size:11px;color:#000;font-weight:600;min-width:78px;">{{ ch.label }}</th>
+                  </sc-for>
+                </tr>
+              </thead>
+            </sc-if>
+            <tbody>
+              <sc-for list="{{ tbl.rows }}" as="row" hint-placeholder-count="10">
+                <tr>
+                  <sc-if value="{{ tbl.showHeaders }}" hint-placeholder-val="{{ false }}">
+                    <td style="background:#ccc;border:1px solid #999;text-align:center;font-size:10.5px;color:#000;">{{ row.num }}</td>
+                  </sc-if>
+                  <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="8">
+                    <td onClick="{{ cell.onClick }}" onDoubleClick="{{ cell.onDoubleClick }}" style="border:1px solid #d0d0d0;padding:0;background:{{ cell.bg }};min-width:78px;height:22px;">
+                      <sc-if value="{{ cell.isEditing }}" hint-placeholder-val="{{ false }}">
+                        <input ref="{{ cell.editInputRef }}" value="{{ cell.editValue }}" onInput="{{ cell.onEditInput }}" onKeyDown="{{ cell.onEditKeyDown }}" onBlur="{{ cell.onEditBlur }}" style="width:100%;height:100%;box-sizing:border-box;background:#fff;border:2px solid #0a84ff;color:#000;padding:2px 5px;font-size:12px;outline:none;" />
+                      </sc-if>
+                      <sc-if value="{{ cell.isEditing }}" hint-placeholder-val="{{ true }}"></sc-if>
+                      <div style="{{ cell.displayStyle }}">{{ cell.display }}</div>
+                    </td>
+                  </sc-for>
+                </tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="{{ rightPanelWrapperStyle }}">
+  <div style="width:240px;flex-shrink:0;border-left:1px solid #2c3947;background:#212c38;overflow-y:auto;height:100%;">
+    <sc-if value="{{ propertiesPanelOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="display:flex;border-bottom:1px solid #2c3947;">
+      <sc-for list="{{ inspectorTabs }}" as="itab" hint-placeholder-count="4">
+        <div onClick="{{ itab.onSelect }}" style="flex:1;text-align:center;cursor:pointer;padding:9px 4px;font-size:11.5px;font-weight:600;color:{{ itab.color }};border-bottom:2px solid {{ itab.borderColor }};">{{ itab.label }}</div>
+      </sc-for>
+    </div>
+    <div style="padding:14px;">
+
+      <sc-if value="{{ isTableInspectorTab }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Table Name</div>
+        <input value="{{ inspTableName }}" onInput="{{ onInspTableNameInput }}" style="width:100%;background:#0d1620;border:1px solid #2c3947;border-radius:6px;color:#fff;padding:6px 8px;font-size:12.5px;box-sizing:border-box;margin-bottom:14px;" />
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Border</div>
+        <div onClick="{{ onToggleTableBorder }}" style="cursor:pointer;background:{{ tableBorderBg }};color:{{ tableBorderColor }};padding:7px 10px;border-radius:6px;font-size:12px;text-align:center;margin-bottom:14px;">{{ tableBorderLabel }}</div>
+        <div onClick="{{ onDeleteActiveTable }}" style="cursor:pointer;background:#3a1f22;color:#ff8080;padding:7px 10px;border-radius:6px;font-size:12px;text-align:center;">Delete Table</div>
+      </sc-if>
+
+      <sc-if value="{{ isCellInspectorTab }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">General</div>
+        <select value="{{ numFormat }}" onChange="{{ onNumFormatChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:6px;padding:6px 8px;font-size:12.5px;outline:none;">
+          <option value="general">General</option><option value="number">Number</option><option value="currency">Currency</option><option value="percent">Percent</option>
+        </select>
+        <div style="font-size:11px;color:#8e99a8;margin:14px 0 6px;">Selected Cell</div>
+        <div style="font-size:12.5px;color:#c9d3de;">{{ selectedCellRef }}</div>
+      </sc-if>
+
+      <sc-if value="{{ isTextInspectorTab }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:8px;">Style</div>
+        <div style="display:flex;gap:6px;">
+          <div onClick="{{ onToggleBold }}" style="flex:1;cursor:pointer;text-align:center;background:{{ boldBg }};padding:7px;border-radius:6px;font-weight:800;font-size:12.5px;">B</div>
+          <div onClick="{{ onToggleItalic }}" style="flex:1;cursor:pointer;text-align:center;background:{{ italicBg }};padding:7px;border-radius:6px;font-style:italic;font-size:12.5px;">I</div>
+          <div onClick="{{ onToggleUnderline }}" style="flex:1;cursor:pointer;text-align:center;background:{{ underlineBg }};padding:7px;border-radius:6px;text-decoration:underline;font-size:12.5px;">U</div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isArrangeInspectorTab }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Position</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;">
+          <div style="flex:1;"><div style="font-size:10.5px;color:#6b7686;margin-bottom:3px;">X</div><input value="{{ inspTableX }}" onInput="{{ onInspTableXInput }}" style="width:100%;background:#0d1620;border:1px solid #2c3947;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;box-sizing:border-box;" /></div>
+          <div style="flex:1;"><div style="font-size:10.5px;color:#6b7686;margin-bottom:3px;">Y</div><input value="{{ inspTableY }}" onInput="{{ onInspTableYInput }}" style="width:100%;background:#0d1620;border:1px solid #2c3947;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;box-sizing:border-box;" /></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isInfoInspectorTab }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Excel / OpenOffice Compatibility Mode</div>
+        <div onClick="{{ onToggleCompatMode }}" style="cursor:pointer;background:{{ compatModeBg }};color:#fff;padding:7px 10px;border-radius:6px;font-size:12px;text-align:center;margin-bottom:8px;">{{ compatModeLabel }}</div>
+        <sc-if value="{{ compatModeOn }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:10.5px;color:#c99a4a;line-height:1.5;margin-bottom:14px;">Not compatible with .xlsx/.ods: multiple tables per sheet, freely-positioned tables, and Macros. Using these features will make this file CalcX-only on export.</div>
+        </sc-if>
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Sheet Name</div>
+        <input value="{{ inspSheetName }}" onInput="{{ onInspSheetNameInput }}" style="width:100%;background:#0d1620;border:1px solid #2c3947;border-radius:6px;color:#fff;padding:6px 8px;font-size:12.5px;box-sizing:border-box;margin-bottom:14px;" />
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Background Color</div>
+        <input type="color" value="{{ inspSheetBgColor }}" onInput="{{ onInspSheetBgColorInput }}" style="width:100%;height:30px;background:#0d1620;border:1px solid #2c3947;border-radius:6px;margin-bottom:14px;" />
+        <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Tab Color</div>
+        <input type="color" value="{{ inspSheetTabColor }}" onInput="{{ onInspSheetTabColorInput }}" style="width:100%;height:30px;background:#0d1620;border:1px solid #2c3947;border-radius:6px;margin-bottom:14px;" />
+        <div onClick="{{ onDeleteActiveSheet }}" style="cursor:pointer;background:#3a1f22;color:#ff8080;padding:7px 10px;border-radius:6px;font-size:12px;text-align:center;">Delete Sheet</div>
+      </sc-if>
+
+      <sc-if value="{{ isMacrosInspectorTab }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="cursor:pointer;background:#2c3947;padding:8px 10px;border-radius:6px;font-size:12px;">Create Macro</div>
+          <div style="cursor:pointer;background:#2c3947;padding:8px 10px;border-radius:6px;font-size:12px;">Edit</div>
+          <div style="cursor:pointer;background:#2c3947;padding:8px 10px;border-radius:6px;font-size:12px;">Run</div>
+          <div style="cursor:pointer;background:#2c3947;padding:8px 10px;border-radius:6px;font-size:12px;">Debug</div>
+        </div>
+        <div style="font-size:10.5px;color:#5f6b7c;margin-top:10px;line-height:1.5;">Macro authoring/execution engine not yet built \u2014 these are real UI entry points for the eventual sandboxed macro runtime.</div>
+      </sc-if>
+
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ filterPanelOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="padding:14px;">
+      <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Group By</div>
+      <select value="{{ groupByField }}" onChange="{{ onGroupByFieldChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:6px;padding:6px 8px;font-size:12.5px;outline:none;margin-bottom:14px;">
+        <option value="">None</option>
+        <sc-for list="{{ groupByOptions }}" as="opt" hint-placeholder-count="8">
+          <option value="{{ opt }}">{{ opt }}</option>
+        </sc-for>
+      </select>
+
+      <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Sort</div>
+      <select value="{{ sortScope }}" onChange="{{ onSortScopeChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:6px;padding:6px 8px;font-size:12.5px;outline:none;margin-bottom:8px;">
+        <option value="table">Entire Table</option>
+        <option value="selection">Selected Rows</option>
+        <option value="groups">By Groups</option>
+      </select>
+      <select value="{{ sortColumn }}" onChange="{{ onSortColumnChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:6px;padding:6px 8px;font-size:12.5px;outline:none;margin-bottom:14px;">
+        <option value="">Column…</option>
+        <sc-for list="{{ groupByOptions }}" as="opt" hint-placeholder-count="8">
+          <option value="{{ opt }}">{{ opt }}</option>
+        </sc-for>
+      </select>
+
+      <div style="font-size:11px;color:#8e99a8;margin-bottom:6px;">Filter Rules</div>
+      <sc-for list="{{ filterRules }}" as="rule" hint-placeholder-count="1">
+        <div style="background:#1c2733;border-radius:6px;padding:8px;margin-bottom:8px;">
+          <div style="display:flex;gap:4px;margin-bottom:6px;">
+            <select value="{{ rule.type }}" onChange="{{ rule.onTypeChange }}" style="flex:1;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:5px;padding:4px 6px;font-size:11.5px;outline:none;">
+              <option value="number">123 Number</option>
+              <option value="text">Abc Text</option>
+              <option value="date">Date</option>
+              <option value="cell">Cell</option>
+            </select>
+            <div onClick="{{ rule.onRemove }}" style="cursor:pointer;color:#8e99a8;font-size:11px;padding:4px 6px;">✕</div>
+          </div>
+          <select value="{{ rule.field }}" onChange="{{ rule.onFieldChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:5px;padding:4px 6px;font-size:11.5px;outline:none;margin-bottom:6px;">
+            <option value="">Column…</option>
+            <sc-for list="{{ groupByOptions }}" as="opt" hint-placeholder-count="8">
+              <option value="{{ opt }}">{{ opt }}</option>
+            </sc-for>
+          </select>
+          <select value="{{ rule.condition }}" onChange="{{ rule.onConditionChange }}" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:5px;padding:4px 6px;font-size:11.5px;outline:none;margin-bottom:6px;">
+            <sc-for list="{{ rule.conditionOptions }}" as="co" hint-placeholder-count="4">
+              <option value="{{ co }}">{{ co }}</option>
+            </sc-for>
+          </select>
+          <sc-if value="{{ rule.needsValue }}" hint-placeholder-val="{{ true }}">
+            <input value="{{ rule.value }}" onInput="{{ rule.onValueInput }}" placeholder="a value" style="width:100%;background:#0d1620;color:#fff;border:1px solid #2c3947;border-radius:5px;padding:5px 7px;font-size:11.5px;outline:none;box-sizing:border-box;" />
+          </sc-if>
+        </div>
+      </sc-for>
+      <div onClick="{{ onAddFilterRule }}" style="cursor:pointer;background:#2c3947;padding:7px 10px;border-radius:6px;font-size:12px;text-align:center;">+ Add Rule</div>
+    </div>
+  </sc-if>
+  </div>
+  </div>
+  </div>
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:4px;padding:6px 14px;border-top:1px solid #2c3947;background:#212c38;">
+    <sc-for list="{{ sheetTabs }}" as="tab" hint-placeholder-count="1">
+      <div onClick="{{ tab.onSelect }}" style="cursor:pointer;padding:5px 14px;border-radius:6px 6px 0 0;font-size:12px;background:{{ tab.bg }};color:{{ tab.color }};">{{ tab.name }}</div>
+    </sc-for>
+    <div onClick="{{ onAddSheet }}" style="cursor:pointer;padding:5px 10px;border-radius:6px;font-size:14px;color:#8e99a8;">+</div>
+  </div>
+
+  <sc-if value="{{ finderLoadOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderLoad }}">
+      <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+        <dc-import name="FinderDialog" initial-mode="open" onOpenFile="{{ onFinderOpenFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ finderSaveOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderSave }}">
+      <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+        <dc-import name="FinderDialog" initial-mode="save" save-filename="{{ pendingSaveFilename }}" onSaveFile="{{ onFinderSaveFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const COLS = ['A','B','C','D','E','F','G','H'];
+const ROW_COUNT = 16;
+const ROOT_BACKENDS = { Home: { backend:'idb', key:'meshui-root' } };
+
+// ---- Real formula engine (unchanged from v1): tokenizer + recursive-descent parser +
+// evaluator. Supports numbers, cell refs (A1), ranges (A1:B5), + - * / ^, parens, unary
+// minus, and functions SUM/AVERAGE/MIN/MAX/COUNT. Formulas are scoped to their own table
+// only \u2014 cross-table references are a deliberate v1 limitation, not yet supported.
+function tokenize(src) {
+  const toks = []; let i = 0;
+  while (i < src.length) {
+    const c = src[i];
+    if (/\s/.test(c)) { i++; continue; }
+    if (/[0-9.]/.test(c)) { let j = i; while (j < src.length && /[0-9.]/.test(src[j])) j++; toks.push({ t:'num', v: parseFloat(src.slice(i,j)) }); i = j; continue; }
+    if (/[A-Za-z]/.test(c)) { let j = i; while (j < src.length && /[A-Za-z0-9]/.test(src[j])) j++; toks.push({ t:'ident', v: src.slice(i,j).toUpperCase() }); i = j; continue; }
+    if (c === ':') { toks.push({ t:':' }); i++; continue; }
+    if (c === ',') { toks.push({ t:',' }); i++; continue; }
+    if (c === '(') { toks.push({ t:'(' }); i++; continue; }
+    if (c === ')') { toks.push({ t:')' }); i++; continue; }
+    if ('+-*/^'.includes(c)) { toks.push({ t:'op', v:c }); i++; continue; }
+    i++;
+  }
+  return toks;
+}
+function isCellRef(s) { return /^[A-Z]+[0-9]+$/.test(s); }
+function parseCellRef(s) { const m = /^([A-Z]+)([0-9]+)$/.exec(s); return m ? { col: m[1], row: parseInt(m[2]) } : null; }
+
+class Parser {
+  constructor(toks, getCell) { this.toks = toks; this.pos = 0; this.getCell = getCell; }
+  peek() { return this.toks[this.pos]; }
+  next() { return this.toks[this.pos++]; }
+  parseExpr() { return this.parseAdd(); }
+  parseAdd() {
+    let left = this.parseMul();
+    while (this.peek() && this.peek().t === 'op' && (this.peek().v === '+' || this.peek().v === '-')) {
+      const op = this.next().v; const right = this.parseMul();
+      left = op === '+' ? left + right : left - right;
+    }
+    return left;
+  }
+  parseMul() {
+    let left = this.parsePow();
+    while (this.peek() && this.peek().t === 'op' && (this.peek().v === '*' || this.peek().v === '/')) {
+      const op = this.next().v; const right = this.parsePow();
+      left = op === '*' ? left * right : (right === 0 ? NaN : left / right);
+    }
+    return left;
+  }
+  parsePow() {
+    let left = this.parseUnary();
+    if (this.peek() && this.peek().t === 'op' && this.peek().v === '^') { this.next(); const right = this.parsePow(); return Math.pow(left, right); }
+    return left;
+  }
+  parseUnary() {
+    if (this.peek() && this.peek().t === 'op' && this.peek().v === '-') { this.next(); return -this.parseUnary(); }
+    return this.parsePrimary();
+  }
+  parseRangeValues(startRef) {
+    this.next();
+    const endTok = this.next();
+    const end = parseCellRef(endTok.v);
+    const start = parseCellRef(startRef);
+    const vals = [];
+    if (!start || !end) return vals;
+    const colToNum = (c) => c.split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
+    const numToCol = (n) => { let s = ''; while (n > 0) { const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); } return s; };
+    const c1 = colToNum(start.col), c2 = colToNum(end.col), r1 = start.row, r2 = end.row;
+    for (let c = Math.min(c1,c2); c <= Math.max(c1,c2); c++) {
+      for (let r = Math.min(r1,r2); r <= Math.max(r1,r2); r++) {
+        vals.push(this.getCell(numToCol(c) + r));
+      }
+    }
+    return vals;
+  }
+  parsePrimary() {
+    const tok = this.peek();
+    if (!tok) return 0;
+    if (tok.t === 'num') { this.next(); return tok.v; }
+    if (tok.t === '(') { this.next(); const v = this.parseExpr(); if (this.peek() && this.peek().t === ')') this.next(); return v; }
+    if (tok.t === 'ident') {
+      this.next();
+      const name = tok.v;
+      if (this.peek() && this.peek().t === '(') {
+        this.next();
+        const args = [];
+        if (this.peek() && this.peek().t !== ')') {
+          while (true) {
+            const argStart = this.peek();
+            if (argStart && argStart.t === 'ident' && isCellRef(argStart.v) && this.toks[this.pos+1] && this.toks[this.pos+1].t === ':') {
+              this.next();
+              args.push(...this.parseRangeValues(argStart.v));
+            } else {
+              args.push(this.parseExpr());
+            }
+            if (this.peek() && this.peek().t === ',') { this.next(); continue; }
+            break;
+          }
+        }
+        if (this.peek() && this.peek().t === ')') this.next();
+        const nums = args.map(v => (typeof v === 'number' ? v : parseFloat(v))).filter(v => !isNaN(v));
+        if (name === 'SUM') return nums.reduce((a,b)=>a+b,0);
+        if (name === 'AVERAGE') return nums.length ? nums.reduce((a,b)=>a+b,0) / nums.length : 0;
+        if (name === 'MIN') return nums.length ? Math.min(...nums) : 0;
+        if (name === 'MAX') return nums.length ? Math.max(...nums) : 0;
+        if (name === 'COUNT') return nums.length;
+        return 0;
+      }
+      if (isCellRef(name)) {
+        if (this.peek() && this.peek().t === ':') {
+          const vals = this.parseRangeValues(name);
+          const nums = vals.map(v => (typeof v === 'number' ? v : parseFloat(v))).filter(v => !isNaN(v));
+          return nums.length ? nums[0] : 0;
+        }
+        const v = this.getCell(name);
+        const n = typeof v === 'number' ? v : parseFloat(v);
+        return isNaN(n) ? 0 : n;
+      }
+      return 0;
+    }
+    this.next();
+    return 0;
+  }
+}
+
+class Component extends DCLogic {
+  // Each sheet now holds 1:M independent tables (Numbers.app model) instead of one implicit
+  // grid \u2014 each table has its own A1 addressing, positioned freely on an infinite canvas.
+  // This is a deliberate break from Excel/Google Sheets' single-grid-per-sheet compatibility,
+  // in exchange for real multi-table power per sheet.
+  state = {
+    sheets: [{ id: 1, name: 'Sheet 1', tables: [{ id: 1, name: 'Table 1', x: 20, y: 20, cells: {} }], nextTableId: 2 }],
+    activeSheetId: 1, nextSheetId: 2,
+    activeTableId: 1,
+    selectedCell: 'A1', editingCell: null, editingValue: '',
+    cellFormats: {}, // key: `${tableId}:${ref}` -> {bold,italic,underline,numFormat}
+    renamingTableId: null, renameValue: '',
+    zoom: 1, fileMenuOpen: false, formatMenuOpen: false, genericMenuOpen: null,
+    inspectorTab: 'table', // table|cell|text|arrange (table context) or info|macros (sheet context)
+    sheetMeta: {}, // sheetId -> { bgColor, tabColor }
+    propertiesPanelOpen: true, filterPanelOpen: false, compatModeOn: false,
+    groupByField: '', sortScope: 'table', sortColumn: '',
+    filterRules: [], nextFilterRuleId: 1,
+    finderLoadOpen: false, finderSaveOpen: false, saveFilename: 'Untitled.pdf'
+  };
+
+  // Defensive migration: state surviving from before the multi-table rewrite (e.g. persisted
+  // across a hot-reload) can still have the old single-grid `cells` shape with no `tables`
+  // array at all \u2014 normalize any such sheet on read instead of crashing on sheet.tables.map.
+  normalizeSheet(sheet) {
+    if (sheet && Array.isArray(sheet.tables) && sheet.tables.length) return sheet;
+    return { id: sheet ? sheet.id : 1, name: sheet ? sheet.name : 'Sheet 1', tables: [{ id: 1, name: 'Table 1', x: 20, y: 20, cells: (sheet && sheet.cells) || {} }], nextTableId: 2 };
+  }
+  activeSheet() {
+    const found = this.state.sheets.find(s => s.id === this.state.activeSheetId) || this.state.sheets[0];
+    return this.normalizeSheet(found);
+  }
+  activeTable() {
+    const sheet = this.activeSheet();
+    return sheet.tables.find(t => t.id === this.state.activeTableId) || sheet.tables[0];
+  }
+  fmtKey(tableId, ref) { return tableId + ':' + ref; }
+
+  evaluateCell(table, ref, visiting) {
+    visiting = visiting || new Set();
+    if (visiting.has(ref)) return '#CIRCULAR';
+    const raw = table.cells[ref];
+    if (raw === undefined || raw === null || raw === '') return '';
+    if (typeof raw === 'string' && raw.startsWith('=')) {
+      visiting.add(ref);
+      const getCell = (r) => this.evaluateCell(table, r, visiting);
+      try {
+        const toks = tokenize(raw.slice(1));
+        const parser = new Parser(toks, getCell);
+        const result = parser.parseExpr();
+        visiting.delete(ref);
+        return typeof result === 'number' && !isNaN(result) ? result : (isNaN(result) ? '#ERROR' : result);
+      } catch (e) { visiting.delete(ref); return '#ERROR'; }
+    }
+    const n = parseFloat(raw);
+    return isNaN(n) ? raw : n;
+  }
+
+  formatValue(v, fmt) {
+    if (typeof v !== 'number') return v;
+    if (fmt === 'currency') return '$' + v.toFixed(2);
+    if (fmt === 'percent') return (v * 100).toFixed(1) + '%';
+    if (fmt === 'number') return v.toFixed(2);
+    return String(v);
+  }
+
+  onSelectTable(tableId) { return (e) => { if (e && e.target && e.target.tagName === 'INPUT') return; this.setState(s => ({ activeTableId: tableId, inspectorTab: ['table','cell','text','arrange'].includes(s.inspectorTab) ? s.inspectorTab : 'table' })); }; }
+  onSelectInspectorTab(tab) { return () => this.setState({ inspectorTab: tab }); }
+  onInspTableNameInput = (e) => {
+    const name = e.target.value;
+    this.setState(s => {
+      const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return { ...n, tables: n.tables.map(t => t.id === s.activeTableId ? { ...t, name } : t) }; })());
+      return { sheets };
+    });
+  };
+  onInspTableXY(axis) {
+    return (e) => {
+      const v = parseInt(e.target.value) || 0;
+      this.setState(s => {
+        const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return { ...n, tables: n.tables.map(t => t.id === s.activeTableId ? { ...t, [axis]: v } : t) }; })());
+        return { sheets };
+      });
+    };
+  }
+  onDeleteActiveTable = () => { const fn = this.onDeleteTable(this.state.activeTableId); fn({ stopPropagation: () => {} }); };
+  onToggleTableBorder = () => {
+    this.setState(s => {
+      const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return { ...n, tables: n.tables.map(t => t.id === s.activeTableId ? { ...t, showBorder: !(t.showBorder !== false) } : t) }; })());
+      return { sheets };
+    });
+  };
+  onToggleCompatMode = () => this.setState(s => ({ compatModeOn: !s.compatModeOn }));
+  onInspSheetNameInput = (e) => {
+    const name = e.target.value;
+    this.setState(s => ({ sheets: s.sheets.map(sh => sh.id === s.activeSheetId ? { ...sh, name } : sh) }));
+  };
+  updateSheetMeta(key, value) {
+    this.setState(s => ({ sheetMeta: { ...s.sheetMeta, [s.activeSheetId]: { ...(s.sheetMeta[s.activeSheetId] || {}), [key]: value } } }));
+  }
+  onInspSheetBgColorInput = (e) => this.updateSheetMeta('bgColor', e.target.value);
+  onInspSheetTabColorInput = (e) => this.updateSheetMeta('tabColor', e.target.value);
+  onDeleteActiveSheet = () => {
+    this.setState(s => {
+      if (s.sheets.length <= 1) return {};
+      const sheets = s.sheets.filter(sh => sh.id !== s.activeSheetId);
+      const next = sheets[0];
+      return { sheets, activeSheetId: next.id, activeTableId: this.normalizeSheet(next).tables[0].id };
+    });
+  };
+
+  onToggleProperties = () => this.setState(s => ({ propertiesPanelOpen: !s.propertiesPanelOpen, filterPanelOpen: s.propertiesPanelOpen ? s.filterPanelOpen : false }));
+  onToggleFilter = () => this.setState(s => ({ filterPanelOpen: !s.filterPanelOpen, propertiesPanelOpen: s.filterPanelOpen ? s.propertiesPanelOpen : false }));
+  onGroupByFieldChange = (e) => this.setState({ groupByField: e.target.value });
+  onSortScopeChange = (e) => this.setState({ sortScope: e.target.value });
+  onSortColumnChange = (e) => this.setState({ sortColumn: e.target.value });
+  onAddFilterRule = () => this.setState(s => ({
+    filterRules: [...s.filterRules, { id: s.nextFilterRuleId, type: 'number', field: '', condition: 'Equal to', value: '' }],
+    nextFilterRuleId: s.nextFilterRuleId + 1
+  }));
+  updateFilterRule(id, patch) {
+    this.setState(s => ({ filterRules: s.filterRules.map(r => r.id === id ? { ...r, ...patch } : r) }));
+  }
+  onRemoveFilterRule(id) { return () => this.setState(s => ({ filterRules: s.filterRules.filter(r => r.id !== id) })); }
+
+  onToggleFileMenu = () => this.setState(s => ({ fileMenuOpen: !s.fileMenuOpen, formatMenuOpen: false, genericMenuOpen: null }));
+  onToggleFormatMenu = () => this.setState(s => ({ formatMenuOpen: !s.formatMenuOpen, fileMenuOpen: false, genericMenuOpen: null }));
+  // Edit/Insert/Table/Organize/Arrange/Help are real menu-bar entries with no implemented
+  // content yet \u2014 a shared stub dropdown so the menu bar's full shape is real and clickable,
+  // rather than silently missing entries until each is built out.
+  onToggleMenu(name) { return () => this.setState(s => ({ genericMenuOpen: s.genericMenuOpen === name ? null : name, fileMenuOpen: false, formatMenuOpen: false })); }
+  onCloseMenus = () => this.setState({ fileMenuOpen: false, formatMenuOpen: false, genericMenuOpen: null });
+  onZoomIn = () => this.setState(s => ({ zoom: Math.min(2, Math.round((s.zoom + 0.1) * 100) / 100) }));
+  onZoomOut = () => this.setState(s => ({ zoom: Math.max(0.4, Math.round((s.zoom - 0.1) * 100) / 100) }));
+  onZoomReset = () => this.setState({ zoom: 1 });
+  onCanvasBackgroundClick = (e) => {
+    if (e.target !== e.currentTarget) return; // clicked a table/cell, not empty canvas
+    this.setState(s => ({ activeTableId: null, selectedCell: null, editingCell: null, selectionAnchor: null, selectionEnd: null,
+      inspectorTab: ['info','macros'].includes(s.inspectorTab) ? s.inspectorTab : 'info' }));
+  };
+
+  onDragStartTable(tableId) {
+    return (e) => {
+      if (e.target && e.target.tagName === 'INPUT') return;
+      e.preventDefault();
+      const sheet = this.activeSheet();
+      const table = sheet.tables.find(t => t.id === tableId);
+      this._drag = { tableId, startX: e.clientX, startY: e.clientY, origX: table.x, origY: table.y };
+      this.setState({ activeTableId: tableId });
+      const onMove = (ev) => {
+        if (!this._drag) return;
+        const dx = ev.clientX - this._drag.startX, dy = ev.clientY - this._drag.startY;
+        const newX = Math.max(0, this._drag.origX + dx), newY = Math.max(0, this._drag.origY + dy);
+        this.setState(s => {
+          const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return { ...n, tables: n.tables.map(t => t.id === this._drag.tableId ? { ...t, x: newX, y: newY } : t) }; })());
+          return { sheets };
+        });
+      };
+      const onUp = () => { this._drag = null; window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp); };
+      window.addEventListener('mousemove', onMove);
+      window.addEventListener('mouseup', onUp);
+    };
+  }
+
+  selectCell = (ref, shiftKey) => this.setState(s => ({
+    selectedCell: ref, editingCell: null,
+    selectionAnchor: shiftKey ? (s.selectionAnchor || s.selectedCell) : ref,
+    selectionEnd: shiftKey ? ref : ref
+  }));
+  onGridKeyDown = (e) => {
+    if (this.state.editingCell) return;
+    const dirs = { ArrowUp: [0,-1], ArrowDown: [0,1], ArrowLeft: [-1,0], ArrowRight: [1,0] };
+    if (dirs[e.key]) { e.preventDefault(); this.moveSelection(dirs[e.key][0], dirs[e.key][1], e.shiftKey); }
+    else if (e.key === 'Enter') { this.startEdit(this.state.selectedCell); }
+  };
+  inSelectionRange(ref) {
+    const s = this.state;
+    if (!s.selectionAnchor || !s.selectionEnd) return ref === s.selectedCell;
+    const a = parseCellRef(s.selectionAnchor), b = parseCellRef(s.selectionEnd), r = parseCellRef(ref);
+    if (!a || !b || !r) return ref === s.selectedCell;
+    const colIdx = (c) => COLS.indexOf(c);
+    const c1 = Math.min(colIdx(a.col), colIdx(b.col)), c2 = Math.max(colIdx(a.col), colIdx(b.col));
+    const r1 = Math.min(a.row, b.row), r2 = Math.max(a.row, b.row);
+    return colIdx(r.col) >= c1 && colIdx(r.col) <= c2 && r.row >= r1 && r.row <= r2;
+  }
+  _editInputEl = null;
+  editInputRef = (el) => { this._editInputEl = el; if (el) { el.focus(); el.select(); } };
+  startEdit = (ref) => {
+    const table = this.activeTable();
+    const raw = table.cells[ref];
+    this.setState({ selectedCell: ref, editingCell: ref, editingValue: raw !== undefined ? String(raw) : '' });
+  };
+  componentDidUpdate() {
+    if (this.state.editingCell && this._editInputEl && document.activeElement !== this._editInputEl) this._editInputEl.focus();
+  }
+  onEditInput = (ref) => (e) => this.setState({ editingValue: e.target.value });
+  commitEdit = (ref, value) => {
+    this.setState(s => {
+      const tableId = s.activeTableId;
+      const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return {
+        ...n, tables: n.tables.map(t => t.id === tableId ? { ...t, cells: { ...t.cells, [ref]: value } } : t)
+      }; })());
+      return { sheets, editingCell: null };
+    });
+  };
+  onEditKeyDown = (ref) => (e) => {
+    if (e.key === 'Enter') { this.commitEdit(ref, e.target.value); this.moveSelection(0, 1); }
+    else if (e.key === 'Escape') { this.setState({ editingCell: null }); }
+    else if (e.key === 'Tab') { e.preventDefault(); this.commitEdit(ref, e.target.value); this.moveSelection(1, 0); }
+  };
+  onEditBlur = (ref) => (e) => { if (this.state.editingCell === ref) this.commitEdit(ref, e.target.value); };
+  moveSelection(dCol, dRow, shiftKey) {
+    const parsed = parseCellRef(this.state.selectedCell);
+    if (!parsed) return;
+    const colIdx = COLS.indexOf(parsed.col);
+    const newCol = COLS[Math.max(0, Math.min(COLS.length - 1, colIdx + dCol))];
+    const newRow = Math.max(1, Math.min(ROW_COUNT, parsed.row + dRow));
+    const newRef = newCol + newRow;
+    this.setState(s => ({
+      selectedCell: newRef, editingCell: null,
+      selectionAnchor: shiftKey ? (s.selectionAnchor || s.selectedCell) : newRef,
+      selectionEnd: shiftKey ? newRef : newRef
+    }));
+  }
+
+  onFormulaBarInput = (e) => this.setState({ formulaBarValueOverride: e.target.value });
+  onFormulaBarKeyDown = (e) => {
+    if (e.key === 'Enter') { this.commitEdit(this.state.selectedCell, e.target.value); this.setState({ formulaBarValueOverride: undefined }); this.moveSelection(0, 1); }
+  };
+
+  toggleFormat(key) {
+    this.setState(s => {
+      const fk = this.fmtKey(s.activeTableId, s.selectedCell);
+      const cur = s.cellFormats[fk] || {};
+      return { cellFormats: { ...s.cellFormats, [fk]: { ...cur, [key]: !cur[key] } } };
+    });
+  }
+  onToggleBold = () => this.toggleFormat('bold');
+  onToggleItalic = () => this.toggleFormat('italic');
+  onToggleUnderline = () => this.toggleFormat('underline');
+  onNumFormatChange = (e) => {
+    this.setState(s => {
+      const fk = this.fmtKey(s.activeTableId, s.selectedCell);
+      return { cellFormats: { ...s.cellFormats, [fk]: { ...(s.cellFormats[fk]||{}), numFormat: e.target.value } } };
+    });
+  };
+
+  onAddSheet = () => this.setState(s => ({ sheets: [...s.sheets, { id: s.nextSheetId, name: 'Sheet ' + s.nextSheetId, tables: [{ id: 1, name: 'Table 1', x: 20, y: 20, cells: {} }], nextTableId: 2 }], activeSheetId: s.nextSheetId, nextSheetId: s.nextSheetId + 1, activeTableId: 1 }));
+  selectSheet(id) { return () => this.setState(s => ({ activeSheetId: id, editingCell: null, activeTableId: s.sheets.find(sh => sh.id === id).tables[0].id })); }
+
+  onAddTable = () => {
+    this.setState(s => {
+      const sheet = this.activeSheet();
+      const id = sheet.nextTableId;
+      const offset = sheet.tables.length * 30;
+      const newTable = { id, name: 'Table ' + id, x: 20 + offset, y: 20 + offset, cells: {} };
+      const sheets = s.sheets.map(sh => sh.id === s.activeSheetId ? (() => { const n = this.normalizeSheet(sh); return { ...n, tables: [...n.tables, newTable], nextTableId: id + 1 }; })() : sh);
+      return { sheets, activeTableId: id };
+    });
+  };
+  onDeleteTable(tableId) {
+    return (e) => {
+      e.stopPropagation();
+      this.setState(s => {
+        const sheet = this.activeSheet();
+        if (sheet.tables.length <= 1) return {}; // always keep at least one table
+        const tables = sheet.tables.filter(t => t.id !== tableId);
+        const sheets = s.sheets.map(sh => sh.id === s.activeSheetId ? { ...this.normalizeSheet(sh), tables } : sh);
+        return { sheets, activeTableId: s.activeTableId === tableId ? tables[0].id : s.activeTableId };
+      });
+    };
+  }
+  onStartRenameTable(tableId) { return (e) => { e.stopPropagation(); const t = this.activeSheet().tables.find(x => x.id === tableId); this.setState({ renamingTableId: tableId, renameValue: t.name }); }; }
+  onRenameInput = (e) => this.setState({ renameValue: e.target.value });
+  onRenameCommit = () => {
+    this.setState(s => {
+      const name = (s.renameValue || '').trim() || 'Table';
+      const sheets = s.sheets.map(sh => sh.id !== s.activeSheetId ? sh : (() => { const n = this.normalizeSheet(sh); return { ...n, tables: n.tables.map(t => t.id === s.renamingTableId ? { ...t, name } : t) }; })());
+      return { sheets, renamingTableId: null };
+    });
+  };
+  onRenameKeyDown = (e) => { if (e.key === 'Enter') this.onRenameCommit(); else if (e.key === 'Escape') this.setState({ renamingTableId: null }); };
+
+  onNew = () => this.setState({
+    sheets: [{ id: 1, name: 'Sheet 1', tables: [{ id: 1, name: 'Table 1', x: 20, y: 20, cells: {} }], nextTableId: 2 }],
+    activeSheetId: 1, nextSheetId: 2, activeTableId: 1, cellFormats: {}, selectedCell: 'A1', editingCell: null
+  });
+
+  rootSeg(path) { const m = /^\/([^\/]+)/.exec(path); return m ? m[1] : null; }
+  realPath(path) { const seg = this.rootSeg(path); if (!seg) return '/'; const rest = path.slice(seg.length + 1); return rest || '/'; }
+  async getFs(rootSeg) {
+    this._fsInstances = this._fsInstances || {};
+    if (this._fsInstances[rootSeg]) return this._fsInstances[rootSeg];
+    const cfg = ROOT_BACKENDS[rootSeg];
+    if (!cfg) return null;
+    const fs = await FileFsX.create({ backend: cfg.backend, key: cfg.key });
+    this._fsInstances[rootSeg] = fs;
+    return fs;
+  }
+  onOpenFinderOpen = () => this.setState({ finderLoadOpen: true });
+  onCloseFinderLoad = () => this.setState({ finderLoadOpen: false });
+  onOpenFinderSave = () => this.setState({ finderSaveOpen: true });
+  onCloseFinderSave = () => this.setState({ finderSaveOpen: false });
+  onStopPropagation = (e) => e.stopPropagation();
+
+  onFinderSaveFile = async (fileInfo) => {
+    const seg = this.rootSeg(fileInfo.path);
+    if (!seg || !ROOT_BACKENDS[seg]) { this.setState({ finderSaveOpen: false }); return; }
+    try {
+      const fs = await this.getFs(seg);
+      const real = this.realPath(fileInfo.path);
+      const payload = JSON.stringify({ app: 'CalcX', version: 2, sheets: this.state.sheets, cellFormats: this.state.cellFormats });
+      await fs.writeFile((real === '/' ? '' : real) + '/' + fileInfo.name, payload);
+    } catch (e) {}
+    this.setState({ finderSaveOpen: false, saveFilename: fileInfo.name });
+  };
+  onFinderOpenFile = async (fileInfo) => {
+    const seg = this.rootSeg(fileInfo.path);
+    if (!seg || !ROOT_BACKENDS[seg]) { this.setState({ finderLoadOpen: false }); return; }
+    try {
+      const fs = await this.getFs(seg);
+      const real = this.realPath(fileInfo.path);
+      const content = await fs.readFile((real === '/' ? '' : real) + '/' + fileInfo.name);
+      const parsed = JSON.parse(typeof content === 'string' ? content : new TextDecoder().decode(content));
+      if (parsed && parsed.app === 'CalcX') {
+        const sheets = parsed.version === 2 ? parsed.sheets : parsed.sheets.map(sh => ({ id: sh.id, name: sh.name, tables: [{ id: 1, name: 'Table 1', x: 20, y: 20, cells: sh.cells || {} }], nextTableId: 2 }));
+        this.setState({ sheets, cellFormats: parsed.cellFormats || {}, activeSheetId: sheets[0].id, activeTableId: sheets[0].tables[0].id, finderLoadOpen: false, saveFilename: fileInfo.name });
+      } else { this.setState({ finderLoadOpen: false }); }
+    } catch (e) { this.setState({ finderLoadOpen: false }); }
+  };
+
+  renderVals() {
+    const s = this.state;
+    const sheet = this.activeSheet();
+    const activeTableId = (s.activeTableId === null) ? null : (sheet.tables.find(t => t.id === s.activeTableId) ? s.activeTableId : sheet.tables[0].id);
+    const fmt = s.cellFormats[this.fmtKey(activeTableId, s.selectedCell)] || {};
+
+    const colHeaders = COLS.map(c => ({ label: c }));
+
+    const orderedTables = [...sheet.tables].sort((a, b) => (a.id === activeTableId ? 1 : 0) - (b.id === activeTableId ? 1 : 0));
+    const tables = orderedTables.map(table => {
+      const isActive = table.id === activeTableId;
+      const rows = [];
+      for (let r = 1; r <= ROW_COUNT; r++) {
+        const cells = COLS.map(c => {
+          const ref = c + r;
+          const isSelected = isActive && s.selectedCell === ref;
+          const isInRange = isActive && this.inSelectionRange(ref);
+          const isEditing = isActive && s.editingCell === ref;
+          const cellFmt = s.cellFormats[this.fmtKey(table.id, ref)] || {};
+          const rawVal = this.evaluateCell(table, ref);
+          const display = this.formatValue(rawVal, cellFmt.numFormat);
+          return {
+            ref, isEditing,
+            editValue: s.editingValue,
+            editInputRef: isEditing ? this.editInputRef : undefined,
+            onEditInput: this.onEditInput(ref), onEditKeyDown: this.onEditKeyDown(ref), onEditBlur: this.onEditBlur(ref),
+            onClick: (e) => { this.setState({ activeTableId: table.id }); this.selectCell(ref, e.shiftKey); },
+            onDoubleClick: () => { this.setState({ activeTableId: table.id }); this.startEdit(ref); },
+            bg: isSelected ? '#173654' : (isInRange ? 'rgba(23,54,84,0.35)' : 'transparent'),
+            display: display === '' ? '' : String(display),
+            displayStyle: `padding:2px 5px;font-size:12px;font-weight:${cellFmt.bold?'700':'400'};font-style:${cellFmt.italic?'italic':'normal'};text-decoration:${cellFmt.underline?'underline':'none'};color:${isSelected || isInRange ? '#ffffff' : '#000000'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;${typeof rawVal === 'number' ? 'text-align:right;' : ''}`
+          };
+        });
+        rows.push({ num: r, cells });
+      }
+      return {
+        colHeaders, rows, showHeaders: isActive && s.selectedCell !== null,
+        name: table.name, isRenaming: s.renamingTableId === table.id,
+        onRenameInput: this.onRenameInput, onRenameCommit: this.onRenameCommit, onRenameKeyDown: this.onRenameKeyDown,
+        onStartRename: this.onStartRenameTable(table.id),
+        onDelete: this.onDeleteTable(table.id),
+        onSelectTable: this.onSelectTable(table.id),
+        onDragStart: this.onDragStartTable(table.id),
+        onStopPropagation: this.onStopPropagation,
+        onGridKeyDown: this.onGridKeyDown,
+        wrapperStyle: `position:absolute;left:${table.x}px;top:${table.y}px;padding:4px;border-radius:6px;background:${isActive ? 'rgba(10,132,255,0.08)' : 'transparent'};border:1px dashed ${isActive ? '#0a84ff' : 'transparent'};z-index:${isActive ? 10 : 1};`,
+        tableStyle: `border-collapse:collapse;outline:none;background:#fff;${table.showBorder === false ? '' : 'border:1px solid #999;'}`
+      };
+    });
+
+    const sheetTabs = s.sheets.map(sh => ({
+      name: sh.name, bg: sh.id === s.activeSheetId ? '#1c2733' : 'transparent', color: sh.id === s.activeSheetId ? '#fff' : '#8e99a8',
+      onSelect: this.selectSheet(sh.id)
+    }));
+
+    const activeTable = this.activeTable();
+    const rawSelected = s.selectedCell ? activeTable.cells[s.selectedCell] : undefined;
+    const formulaBarValue = s.formulaBarValueOverride !== undefined ? s.formulaBarValueOverride : (rawSelected !== undefined ? String(rawSelected) : '');
+
+    const hasActiveTable = activeTableId !== null;
+    const tabDefs = hasActiveTable
+      ? [['table','Table'],['cell','Cell'],['text','Text'],['arrange','Arrange']]
+      : [['info','Info'],['macros','Macros']];
+    const inspectorTabs = tabDefs.map(([key, label]) => ({
+      label, onSelect: this.onSelectInspectorTab(key),
+      color: s.inspectorTab === key ? '#fff' : '#8e99a8', borderColor: s.inspectorTab === key ? '#0a84ff' : 'transparent'
+    }));
+    const meta = s.sheetMeta[s.activeSheetId] || {};
+
+    const CONDITIONS = {
+      number: ['Equal to','Not equal to','Greater than','Greater than or equal to','Less than','Less than or equal to','Is positive','Is negative'],
+      text: ['Equal to','Not equal to','Contains','Does not contain','Starts with','Ends with'],
+      date: ['Is','Is before','Is after','Is between'],
+      cell: ['Is empty','Is not empty']
+    };
+    const NO_VALUE_CONDITIONS = new Set(['Is positive','Is negative','Is empty','Is not empty']);
+    const filterRules = s.filterRules.map(rule => ({
+      type: rule.type, field: rule.field, condition: rule.condition, value: rule.value,
+      conditionOptions: CONDITIONS[rule.type] || CONDITIONS.number,
+      needsValue: !NO_VALUE_CONDITIONS.has(rule.condition),
+      onTypeChange: (e) => this.updateFilterRule(rule.id, { type: e.target.value, condition: (CONDITIONS[e.target.value] || CONDITIONS.number)[0] }),
+      onFieldChange: (e) => this.updateFilterRule(rule.id, { field: e.target.value }),
+      onConditionChange: (e) => this.updateFilterRule(rule.id, { condition: e.target.value }),
+      onValueInput: (e) => this.updateFilterRule(rule.id, { value: e.target.value }),
+      onRemove: this.onRemoveFilterRule(rule.id)
+    }));
+
+    return {
+      showRightPanel: s.propertiesPanelOpen || s.filterPanelOpen,
+      rightPanelWrapperStyle: `width:${(s.propertiesPanelOpen || s.filterPanelOpen) ? 240 : 0}px;flex-shrink:0;overflow:hidden;transition:width 0.2s ease;`,
+      propertiesPanelOpen: s.propertiesPanelOpen, filterPanelOpen: s.filterPanelOpen,
+      onToggleProperties: this.onToggleProperties, onToggleFilter: this.onToggleFilter,
+      propertiesBtnBg: s.propertiesPanelOpen ? '#0a84ff' : '#2c3947', propertiesBtnColor: s.propertiesPanelOpen ? '#fff' : '#8e99a8',
+      filterBtnBg: s.filterPanelOpen ? '#0a84ff' : '#2c3947', filterBtnColor: s.filterPanelOpen ? '#fff' : '#8e99a8',
+      groupByField: s.groupByField, onGroupByFieldChange: this.onGroupByFieldChange, groupByOptions: COLS,
+      sortScope: s.sortScope, onSortScopeChange: this.onSortScopeChange,
+      sortColumn: s.sortColumn, onSortColumnChange: this.onSortColumnChange,
+      filterRules, onAddFilterRule: this.onAddFilterRule,
+      inspectorTabs,
+      isTableInspectorTab: hasActiveTable && s.inspectorTab === 'table',
+      isCellInspectorTab: hasActiveTable && s.inspectorTab === 'cell',
+      isTextInspectorTab: hasActiveTable && s.inspectorTab === 'text',
+      isArrangeInspectorTab: hasActiveTable && s.inspectorTab === 'arrange',
+      isInfoInspectorTab: !hasActiveTable && s.inspectorTab === 'info',
+      isMacrosInspectorTab: !hasActiveTable && s.inspectorTab === 'macros',
+      inspTableName: hasActiveTable ? activeTable.name : '', onInspTableNameInput: this.onInspTableNameInput,
+      inspTableX: hasActiveTable ? String(activeTable.x) : '0', inspTableY: hasActiveTable ? String(activeTable.y) : '0',
+      onInspTableXInput: this.onInspTableXY('x'), onInspTableYInput: this.onInspTableXY('y'),
+      onDeleteActiveTable: this.onDeleteActiveTable,
+      onToggleTableBorder: this.onToggleTableBorder,
+      tableBorderLabel: hasActiveTable && activeTable.showBorder === false ? 'Add Border' : 'Remove Border',
+      tableBorderBg: '#2c3947', tableBorderColor: '#e8eaf0',
+      selectedCellRef: s.selectedCell || '\u2014',
+      compatModeOn: s.compatModeOn, onToggleCompatMode: this.onToggleCompatMode,
+      compatModeLabel: s.compatModeOn ? 'Compatibility Mode: ON' : 'Compatibility Mode: OFF',
+      compatModeBg: s.compatModeOn ? '#0a84ff' : '#2c3947',
+      inspSheetName: sheet.name, onInspSheetNameInput: this.onInspSheetNameInput,
+      inspSheetBgColor: meta.bgColor || '#ffffff', onInspSheetBgColorInput: this.onInspSheetBgColorInput,
+      inspSheetTabColor: meta.tabColor || '#212c38', onInspSheetTabColorInput: this.onInspSheetTabColorInput,
+      onDeleteActiveSheet: this.onDeleteActiveSheet,
+      tables, sheetTabs,
+      activeTableLabel: `${activeTable.name} · ${s.selectedCell || '\u2014'}`,
+      formulaBarValue, onFormulaBarInput: this.onFormulaBarInput, onFormulaBarKeyDown: this.onFormulaBarKeyDown,
+      boldBg: fmt.bold ? '#0a84ff' : '#2c3947', italicBg: fmt.italic ? '#0a84ff' : '#2c3947', underlineBg: fmt.underline ? '#0a84ff' : '#2c3947',
+      boldMenuBg: fmt.bold ? '#0a84ff' : 'transparent', italicMenuBg: fmt.italic ? '#0a84ff' : 'transparent', underlineMenuBg: fmt.underline ? '#0a84ff' : 'transparent',
+      onToggleBold: this.onToggleBold, onToggleItalic: this.onToggleItalic, onToggleUnderline: this.onToggleUnderline,
+      fileMenuOpen: s.fileMenuOpen, formatMenuOpen: s.formatMenuOpen, onToggleFileMenu: this.onToggleFileMenu, onToggleFormatMenu: this.onToggleFormatMenu, onCloseMenus: this.onCloseMenus,
+      fileMenuBg: s.fileMenuOpen ? '#3a4a5c' : 'transparent', fileMenuColor: s.fileMenuOpen ? '#fff' : '#222',
+      formatMenuBg: s.formatMenuOpen ? '#3a4a5c' : 'transparent', formatMenuColor: s.formatMenuOpen ? '#fff' : '#222',
+      onToggleMenu: (name) => this.onToggleMenu(name),
+      stubMenus: [['edit','Edit'],['insert','Insert'],['table','Table'],['organize','Organize']].map(([key, label]) => ({
+        label, onToggle: this.onToggleMenu(key), open: s.genericMenuOpen === key,
+        bg: s.genericMenuOpen === key ? '#3a4a5c' : 'transparent', color: s.genericMenuOpen === key ? '#fff' : '#222'
+      })),
+      stubMenus2: [['arrange','Arrange'],['help','Help']].map(([key, label]) => ({
+        label, onToggle: this.onToggleMenu(key), open: s.genericMenuOpen === key,
+        bg: s.genericMenuOpen === key ? '#3a4a5c' : 'transparent', color: s.genericMenuOpen === key ? '#fff' : '#222'
+      })),
+      numFormat: fmt.numFormat || 'general', onNumFormatChange: this.onNumFormatChange,
+      onAddSheet: this.onAddSheet, onAddTable: this.onAddTable, onNew: this.onNew,
+      statusLabel: s.saveFilename,
+      zoomLabel: Math.round(s.zoom * 100) + '%', onZoomIn: this.onZoomIn, onZoomOut: this.onZoomOut, onZoomReset: this.onZoomReset,
+      canvasZoomStyle: `position:relative;width:2400px;height:1600px;transform:scale(${s.zoom});transform-origin:top left;`,
+      onCanvasBackgroundClick: this.onCanvasBackgroundClick,
+      finderLoadOpen: s.finderLoadOpen, onOpenFinderOpen: this.onOpenFinderOpen, onCloseFinderLoad: this.onCloseFinderLoad, onFinderOpenFile: this.onFinderOpenFile,
+      finderSaveOpen: s.finderSaveOpen, onOpenFinderSave: this.onOpenFinderSave, onCloseFinderSave: this.onCloseFinderSave, onFinderSaveFile: this.onFinderSaveFile,
+      pendingSaveFilename: s.saveFilename, onStopPropagation: this.onStopPropagation
+    };
+  }
+}
+</script>
+</body>
+</html>

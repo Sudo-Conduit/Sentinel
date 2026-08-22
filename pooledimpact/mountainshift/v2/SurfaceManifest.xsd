@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           elementFormDefault="qualified">
+
+  <xs:element name="surfaceManifest">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="node" type="SurfaceNode" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="release" type="xs:string" use="required"/>
+      <xs:attribute name="tier" type="xs:string" use="required"/>
+      <xs:attribute name="minAppVersion" type="xs:string" use="required"/>
+      <xs:attribute name="issuedAt" type="xs:dateTime" use="optional"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="SurfaceNode">
+    <xs:sequence>
+      <xs:element name="node" type="SurfaceNode" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="id" type="xs:ID" use="required"/>
+    <xs:attribute name="label" type="xs:string" use="required"/>
+    <xs:attribute name="group" type="xs:string" use="required"/>
+    <xs:attribute name="requiredRole" type="RoleType" use="required"/>
+    <xs:attribute name="minAppVersion" type="xs:string" use="optional"/>
+    <xs:attribute name="order" type="xs:nonNegativeInteger" use="optional"/>
+  </xs:complexType>
+
+  <xs:simpleType name="RoleType">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="admin"/>
+      <xs:enumeration value="payroll-finance"/>
+      <xs:enumeration value="case-worker"/>
+      <xs:enumeration value="viewer"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

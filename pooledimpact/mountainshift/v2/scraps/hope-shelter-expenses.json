@@ -1,0 +1,1745 @@
+[
+  {
+    "date": "2026-01-08",
+    "category": "Food",
+    "amount": 740,
+    "vendor": "Unique Food Management",
+    "type": "Meals"
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Food",
+    "amount": 375,
+    "vendor": "Unique Food Management",
+    "type": "Meals"
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Food",
+    "amount": 750,
+    "vendor": "Unique Food Management",
+    "type": "Meals"
+  },
+  {
+    "date": "2026-04-16",
+    "category": "Food",
+    "amount": 143.02,
+    "vendor": "Meijer",
+    "type": "Food"
+  },
+  {
+    "date": "2026-04-22",
+    "category": "Food",
+    "amount": 252.08,
+    "vendor": "Meijer",
+    "type": "Food"
+  },
+  {
+    "date": "2026-04-26",
+    "category": "Food",
+    "amount": 200,
+    "vendor": "Kroger",
+    "type": "Food"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Food",
+    "amount": 63.39,
+    "vendor": "WM Supercenter",
+    "type": "Food"
+  },
+  {
+    "date": "2026-05-08",
+    "category": "Food",
+    "amount": 173.69,
+    "vendor": "Meijer",
+    "type": "Food"
+  },
+  {
+    "date": "2026-05-10",
+    "category": "Food",
+    "amount": 38.08,
+    "vendor": "WM Supercenter",
+    "type": "Food"
+  },
+  {
+    "date": "2026-05-13",
+    "category": "Food",
+    "amount": 279.79,
+    "vendor": "GFS",
+    "type": "Food"
+  },
+  {
+    "date": "2026-06-10",
+    "category": "Food",
+    "amount": 9.57,
+    "vendor": "Kroger",
+    "type": "Milk"
+  },
+  {
+    "date": "2026-06-24",
+    "category": "Food",
+    "amount": 55.04,
+    "vendor": "GFS",
+    "type": "Milk"
+  },
+  {
+    "date": "2026-06-24",
+    "category": "Food",
+    "amount": 144,
+    "vendor": "Market Place Meats",
+    "type": "Hot dogs &amp; Hamburgers"
+  },
+  {
+    "date": "2026-06-24",
+    "category": "Food",
+    "amount": 34.95,
+    "vendor": "Kroger",
+    "type": "Hot dogs &amp; Hamburgers buns"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Food",
+    "amount": 36.69,
+    "vendor": "Meijer",
+    "type": "Need to identify"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Food",
+    "amount": 45.1,
+    "vendor": "Meijer",
+    "type": "Need to identify"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Food",
+    "amount": 23.92,
+    "vendor": "Costco",
+    "type": "Ice"
+  },
+  {
+    "date": "2026-07-06",
+    "category": "Food",
+    "amount": 40.61,
+    "vendor": "Guidinos",
+    "type": "Pizza "
+  },
+  {
+    "date": "2026-07-06",
+    "category": "Food",
+    "amount": 220.79,
+    "vendor": "Little Caesars",
+    "type": "Pizza &amp; Pop"
+  },
+  {
+    "date": "2026-01-14",
+    "category": "Supplies",
+    "amount": 544.01,
+    "vendor": "Commerce Bank CC",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-01-14",
+    "category": "Supplies",
+    "amount": 276.84,
+    "vendor": "Gordon Food Service",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-01-17",
+    "category": "Supplies",
+    "amount": 132.12,
+    "vendor": "Home Depot",
+    "type": "Batteries, Salt, tape"
+  },
+  {
+    "date": "2026-01-17",
+    "category": "Supplies",
+    "amount": 228.17,
+    "vendor": "Gordon Food Service",
+    "type": "Toilet paper"
+  },
+  {
+    "date": "2026-01-23",
+    "category": "Supplies",
+    "amount": 17.99,
+    "vendor": "Aroma Housewares",
+    "type": "Knob for Crockpot"
+  },
+  {
+    "date": "2026-02-07",
+    "category": "Supplies",
+    "amount": 587.93,
+    "vendor": "Office Depot",
+    "type": "Ink"
+  },
+  {
+    "date": "2026-02-23",
+    "category": "Supplies",
+    "amount": 13.6,
+    "vendor": "Commerce Bank CC",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-03-02",
+    "category": "Supplies",
+    "amount": 117.98,
+    "vendor": "Elizabeth Kelly",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-03-16",
+    "category": "Supplies",
+    "amount": 658.87,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Checks"
+  },
+  {
+    "date": "2026-03-17",
+    "category": "Supplies",
+    "amount": 1111.5,
+    "vendor": "Elizabeth Kelly",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-03-22",
+    "category": "Supplies",
+    "amount": 162.35,
+    "vendor": "Elizabeth Kelly",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-03-17",
+    "category": "Supplies",
+    "amount": 625.99,
+    "vendor": "Elizabeth Kelly",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-04-22",
+    "category": "Supplies",
+    "amount": 124.78,
+    "vendor": "Amazon",
+    "type": "Food storage containers"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Supplies",
+    "amount": 113.16,
+    "vendor": "Menards",
+    "type": "Laundry Soap"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Supplies",
+    "amount": 322.95,
+    "vendor": "Office Depot",
+    "type": "Paper, Ink"
+  },
+  {
+    "date": "2026-05-04",
+    "category": "Supplies",
+    "amount": 46.8,
+    "vendor": "US Post Office",
+    "type": "Stamps"
+  },
+  {
+    "date": "2026-05-05",
+    "category": "Supplies",
+    "amount": 81.96,
+    "vendor": "Amazon",
+    "type": "Garbage bags"
+  },
+  {
+    "date": "2026-05-05",
+    "category": "Supplies",
+    "amount": 56.05,
+    "vendor": "Home Depot",
+    "type": "Carbon Monoxide Detectors"
+  },
+  {
+    "date": "2026-05-11",
+    "category": "Supplies",
+    "amount": 166.26,
+    "vendor": "Elizabeth",
+    "type": "Supplies CC"
+  },
+  {
+    "date": "2026-05-13",
+    "category": "Supplies",
+    "amount": 21.99,
+    "vendor": "Meijer",
+    "type": "Plates, bowls, etc."
+  },
+  {
+    "date": "2026-06-09",
+    "category": "Supplies",
+    "amount": 169.14,
+    "vendor": "Cabela's Elizabeth",
+    "type": "Need to identify"
+  },
+  {
+    "date": "2026-06-10",
+    "category": "Supplies",
+    "amount": 181.49,
+    "vendor": "Meijer",
+    "type": "Plates, bowls, etc."
+  },
+  {
+    "date": "2026-06-10",
+    "category": "Supplies",
+    "amount": 28.71,
+    "vendor": "Kroger",
+    "type": "Coffee cups"
+  },
+  {
+    "date": "2026-06-17",
+    "category": "Supplies",
+    "amount": 23.4,
+    "vendor": "USPS",
+    "type": "US Postal Stamps"
+  },
+  {
+    "date": "2026-06-19",
+    "category": "Supplies",
+    "amount": 246.96,
+    "vendor": "Best Buy",
+    "type": "External hardrive"
+  },
+  {
+    "date": "2026-06-22",
+    "category": "Supplies",
+    "amount": 163.96,
+    "vendor": "Amazon",
+    "type": "Garbage bags"
+  },
+  {
+    "date": "2026-06-24",
+    "category": "Supplies",
+    "amount": 138.51,
+    "vendor": "GFS",
+    "type": "Bowls and cups"
+  },
+  {
+    "date": "2026-06-26",
+    "category": "Supplies",
+    "amount": 6.08,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-06-26",
+    "category": "Supplies",
+    "amount": 101.92,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-06-19",
+    "category": "Supplies",
+    "amount": 26.48,
+    "vendor": "Yvonne Martin",
+    "type": "Garden Hose Reimburse"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Supplies",
+    "amount": 87.99,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Supplies",
+    "amount": 101.92,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Supplies",
+    "amount": 45.73,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Supplies",
+    "amount": 87.99,
+    "vendor": "Target",
+    "type": "Plug ins"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Supplies",
+    "amount": 18.29,
+    "vendor": "Family Dollar",
+    "type": "Batteries"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Supplies",
+    "amount": 119.22,
+    "vendor": "Menards",
+    "type": "Large water coolers"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Supplies",
+    "amount": 233.66,
+    "vendor": "GFS",
+    "type": "Plates, bowls, cups, etc."
+  },
+  {
+    "date": "2026-07-06",
+    "category": "Supplies",
+    "amount": 88.98,
+    "vendor": "Home Depot",
+    "type": "Storage tubs"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Building and Membership Expenses",
+    "amount": 279,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Building and Membership Expenses",
+    "amount": 137,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Building and Membership Expenses",
+    "amount": 3.88,
+    "vendor": "City of Pontiac",
+    "type": "Taxes"
+  },
+  {
+    "date": "2026-01-20",
+    "category": "Building and Membership Expenses",
+    "amount": 252,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-01-20",
+    "category": "Building and Membership Expenses",
+    "amount": 65.4,
+    "vendor": "Oakland County Treasurer",
+    "type": ""
+  },
+  {
+    "date": "2026-01-20",
+    "category": "Building and Membership Expenses",
+    "amount": 66,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-01-31",
+    "category": "Building and Membership Expenses",
+    "amount": 602.5,
+    "vendor": "RingCentral",
+    "type": "Phones"
+  },
+  {
+    "date": "2026-01-31",
+    "category": "Building and Membership Expenses",
+    "amount": 199,
+    "vendor": "Harness Giving",
+    "type": "Donation software (removing)"
+  },
+  {
+    "date": "2026-02-02",
+    "category": "Building and Membership Expenses",
+    "amount": 610.94,
+    "vendor": "Republic Services",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-02-03",
+    "category": "Building and Membership Expenses",
+    "amount": 2206.5,
+    "vendor": "Republic Services",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Building and Membership Expenses",
+    "amount": 64,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Building and Membership Expenses",
+    "amount": 73,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Building and Membership Expenses",
+    "amount": 137,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 58,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 50,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 60,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 115,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 220,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 130,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 165,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 50,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Building and Membership Expenses",
+    "amount": 60,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-03-02",
+    "category": "Building and Membership Expenses",
+    "amount": 300,
+    "vendor": "City of Pontiac",
+    "type": "Taxes"
+  },
+  {
+    "date": "2026-03-02",
+    "category": "Building and Membership Expenses",
+    "amount": 235,
+    "vendor": "City of Pontiac",
+    "type": "Taxes"
+  },
+  {
+    "date": "2026-03-10",
+    "category": "Building and Membership Expenses",
+    "amount": 130,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-03-10",
+    "category": "Building and Membership Expenses",
+    "amount": 125,
+    "vendor": "Lagrone Lawn",
+    "type": "Snow Removal"
+  },
+  {
+    "date": "2026-03-12",
+    "category": "Building and Membership Expenses",
+    "amount": 73,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-03-12",
+    "category": "Building and Membership Expenses",
+    "amount": 64,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-03-16",
+    "category": "Building and Membership Expenses",
+    "amount": 33,
+    "vendor": "Bonterra",
+    "type": "Constant Contact"
+  },
+  {
+    "date": "2026-03-23",
+    "category": "Building and Membership Expenses",
+    "amount": 96.77,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-03-23",
+    "category": "Building and Membership Expenses",
+    "amount": 25,
+    "vendor": "Village Club Foundation",
+    "type": "Event for grant"
+  },
+  {
+    "date": "2026-03-24",
+    "category": "Building and Membership Expenses",
+    "amount": 267,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-03-24",
+    "category": "Building and Membership Expenses",
+    "amount": 279,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-03-24",
+    "category": "Building and Membership Expenses",
+    "amount": 193.55,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-03-31",
+    "category": "Building and Membership Expenses",
+    "amount": 64,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-04-06",
+    "category": "Building and Membership Expenses",
+    "amount": 33,
+    "vendor": "Bonterra",
+    "type": "Constant Contact"
+  },
+  {
+    "date": "2026-04-06",
+    "category": "Building and Membership Expenses",
+    "amount": 60.04,
+    "vendor": "Carolyn",
+    "type": "Home Depot "
+  },
+  {
+    "date": "2026-04-17",
+    "category": "Building and Membership Expenses",
+    "amount": 204.97,
+    "vendor": "Safety King",
+    "type": "Dryer Vents"
+  },
+  {
+    "date": "2026-04-21",
+    "category": "Building and Membership Expenses",
+    "amount": 9.33,
+    "vendor": "RingCentral",
+    "type": "Phones"
+  },
+  {
+    "date": "2026-04-24",
+    "category": "Building and Membership Expenses",
+    "amount": 197,
+    "vendor": "Brave Fire Protection",
+    "type": "Extinguisher inspection"
+  },
+  {
+    "date": "2026-04-27",
+    "category": "Building and Membership Expenses",
+    "amount": 66,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-04-27",
+    "category": "Building and Membership Expenses",
+    "amount": 76,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Building and Membership Expenses",
+    "amount": 100,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Building and Membership Expenses",
+    "amount": 325,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Building and Membership Expenses",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": "Adobe software"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Building and Membership Expenses",
+    "amount": 670.47,
+    "vendor": "RingCentral",
+    "type": "Phones"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Building and Membership Expenses",
+    "amount": 199.99,
+    "vendor": "Harness Giving",
+    "type": "Donation software (removing)"
+  },
+  {
+    "date": "2026-05-05",
+    "category": "Building and Membership Expenses",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": "Adobe software"
+  },
+  {
+    "date": "2026-05-06",
+    "category": "Building and Membership Expenses",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": "Adobe software"
+  },
+  {
+    "date": "2026-05-07",
+    "category": "Building and Membership Expenses",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": "Adobe software"
+  },
+  {
+    "date": "2026-05-11",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-05-20",
+    "category": "Building and Membership Expenses",
+    "amount": 104.03,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-05-22",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Building and Membership Expenses",
+    "amount": 66,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Building and Membership Expenses",
+    "amount": 76,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Building and Membership Expenses",
+    "amount": 333.06,
+    "vendor": "GFL",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-05-29",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-06-04",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-06-05",
+    "category": "Building and Membership Expenses",
+    "amount": 223.44,
+    "vendor": "Brave Fire Protection",
+    "type": "Fire Extinguishers and Inspection"
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Building and Membership Expenses",
+    "amount": 288,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Building and Membership Expenses",
+    "amount": 276,
+    "vendor": "Rose Pest Control",
+    "type": "Bed bug control"
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Building and Membership Expenses",
+    "amount": 216.08,
+    "vendor": "GFL Environmental",
+    "type": "Waste Mgmt"
+  },
+  {
+    "date": "2026-06-09",
+    "category": "Building and Membership Expenses",
+    "amount": 199.99,
+    "vendor": "Universal Plumbing",
+    "type": "Deposit service 6/10/2026"
+  },
+  {
+    "date": "2026-06-12",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-06-19",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Building and Membership Expenses",
+    "amount": 4800,
+    "vendor": "Yvonne Martin",
+    "type": "Cleaning Organization Rundell"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Building and Membership Expenses",
+    "amount": 425,
+    "vendor": "Emory Nichols",
+    "type": "Removed trash from Rundell"
+  },
+  {
+    "date": "2026-06-26",
+    "category": "Building and Membership Expenses",
+    "amount": 225,
+    "vendor": "Kalvin Hadley",
+    "type": "Lawn Care"
+  },
+  {
+    "date": "2026-06-26",
+    "category": "Building and Membership Expenses",
+    "amount": 100,
+    "vendor": "ADR Deposit",
+    "type": "Dumpster for AS Cleanup"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Building and Membership Expenses",
+    "amount": 948.58,
+    "vendor": "Carter's Plumbing",
+    "type": "Rundell rag inbetween toilet/external plumbing"
+  },
+  {
+    "date": "2026-06-30",
+    "category": "Building and Membership Expenses",
+    "amount": 100,
+    "vendor": "ADR Deposit",
+    "type": "Dumpster for AS Cleanup swap"
+  },
+  {
+    "date": "2026-06-30",
+    "category": "Building and Membership Expenses",
+    "amount": 299,
+    "vendor": "ADR Dumpster",
+    "type": "Dumpster for AS Cleanup"
+  },
+  {
+    "date": "2026-07-01",
+    "category": "Building and Membership Expenses",
+    "amount": 199,
+    "vendor": "Harness Giving",
+    "type": "Software for donations"
+  },
+  {
+    "date": "2026-07-01",
+    "category": "Building and Membership Expenses",
+    "amount": 256.26,
+    "vendor": "Google Workspace",
+    "type": "Upgraded Google Workspace for mitigation risk"
+  },
+  {
+    "date": "2026-07-01",
+    "category": "Building and Membership Expenses",
+    "amount": 670.47,
+    "vendor": "Ring Central",
+    "type": "Phones"
+  },
+  {
+    "date": "2026-07-02",
+    "category": "Building and Membership Expenses",
+    "amount": 129.95,
+    "vendor": "Great Dane",
+    "type": "Furnace repair for AC at AS"
+  },
+  {
+    "date": "2026-07-06",
+    "category": "Building and Membership Expenses",
+    "amount": 203.95,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Gift card for transportation"
+  },
+  {
+    "date": "2026-01-26",
+    "category": "Loan Payment",
+    "amount": 1776.04,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commercial Loan"
+  },
+  {
+    "date": "2026-02-19",
+    "category": "Loan Payment",
+    "amount": 1732.35,
+    "vendor": "Kinsler Building",
+    "type": "Loan for RS building"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Loan Payment",
+    "amount": 1560.76,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commercial Loan"
+  },
+  {
+    "date": "2026-03-18",
+    "category": "Loan Payment",
+    "amount": 1732.35,
+    "vendor": "Kinsler Building",
+    "type": "Loan for RS building"
+  },
+  {
+    "date": "2026-03-25",
+    "category": "Loan Payment",
+    "amount": 1506.94,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commercial Loan"
+  },
+  {
+    "date": "2026-04-27",
+    "category": "Loan Payment",
+    "amount": 1668.4,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commercial Loan"
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Loan Payment",
+    "amount": 1668.4,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commercial Loan"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Loan Payment",
+    "amount": 1614.58,
+    "vendor": "Bank of Ann Arbor",
+    "type": "Commerical Loan"
+  },
+  {
+    "date": "2026-01-20",
+    "category": "Pro License & Fee",
+    "amount": 80,
+    "vendor": "Alliance Housing",
+    "type": "Membership"
+  },
+  {
+    "date": "2026-02-06",
+    "category": "Pro License & Fee",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": ""
+  },
+  {
+    "date": "2026-02-07",
+    "category": "Pro License & Fee",
+    "amount": 37.09,
+    "vendor": "Adobe License",
+    "type": ""
+  },
+  {
+    "date": "2026-02-12",
+    "category": "Pro License & Fee",
+    "amount": 300,
+    "vendor": "Kelly Johnson CPA",
+    "type": "Accounting"
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Pro License & Fee",
+    "amount": 762.3,
+    "vendor": "Dean &amp; Fulkerson",
+    "type": "Attorney "
+  },
+  {
+    "date": "2026-02-24",
+    "category": "Pro License & Fee",
+    "amount": 1282.05,
+    "vendor": "Dean &amp; Fulkerson",
+    "type": "Attorney "
+  },
+  {
+    "date": "2026-03-31",
+    "category": "Pro License & Fee",
+    "amount": 311.85,
+    "vendor": "Dean &amp; Fulkerson",
+    "type": "Attorney "
+  },
+  {
+    "date": "2026-06-20",
+    "category": "Pro License & Fee",
+    "amount": 250,
+    "vendor": "SSP Michigan Coalition",
+    "type": "Membership"
+  },
+  {
+    "date": "2026-06-22",
+    "category": "Pro License & Fee",
+    "amount": 900,
+    "vendor": "Dr. Tina",
+    "type": "Staff Certifications"
+  },
+  {
+    "date": "2026-06-26",
+    "category": "Pro License & Fee",
+    "amount": 1,
+    "vendor": "ISA",
+    "type": "Fee"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Utilities",
+    "amount": 427.7,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Utilities",
+    "amount": 302.67,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Utilities",
+    "amount": 276.99,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-01-13",
+    "category": "Utilities",
+    "amount": 381.56,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-01-13",
+    "category": "Utilities",
+    "amount": 113.34,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-01-13",
+    "category": "Utilities",
+    "amount": 381.56,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-01-28",
+    "category": "Utilities",
+    "amount": 521.82,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-01-28",
+    "category": "Utilities",
+    "amount": 2447.34,
+    "vendor": "MiComp Tech",
+    "type": "Comcast bills"
+  },
+  {
+    "date": "2026-01-29",
+    "category": "Utilities",
+    "amount": 61.51,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-01-29",
+    "category": "Utilities",
+    "amount": 140.44,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-02",
+    "category": "Utilities",
+    "amount": 616,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-02-12",
+    "category": "Utilities",
+    "amount": 338.09,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-02-13",
+    "category": "Utilities",
+    "amount": 634.44,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-02-13",
+    "category": "Utilities",
+    "amount": 824.49,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-13",
+    "category": "Utilities",
+    "amount": 417.43,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-13",
+    "category": "Utilities",
+    "amount": 174.85,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-20",
+    "category": "Utilities",
+    "amount": 99,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-02-23",
+    "category": "Utilities",
+    "amount": 648.85,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-02-24",
+    "category": "Utilities",
+    "amount": 894.05,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-24",
+    "category": "Utilities",
+    "amount": 178.04,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-24",
+    "category": "Utilities",
+    "amount": 420.33,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-02-25",
+    "category": "Utilities",
+    "amount": 616,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-02-27",
+    "category": "Utilities",
+    "amount": 105.82,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-03-02",
+    "category": "Utilities",
+    "amount": 634.44,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-03-10",
+    "category": "Utilities",
+    "amount": 153.62,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-03-16",
+    "category": "Utilities",
+    "amount": 1016,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-03-16",
+    "category": "Utilities",
+    "amount": 381.56,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-03-23",
+    "category": "Utilities",
+    "amount": 106.98,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-03-23",
+    "category": "Utilities",
+    "amount": 3.75,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-03-24",
+    "category": "Utilities",
+    "amount": 47.77,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-03-26",
+    "category": "Utilities",
+    "amount": 21.51,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-03-26",
+    "category": "Utilities",
+    "amount": 13.65,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-04-24",
+    "category": "Utilities",
+    "amount": 375.28,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-04-27",
+    "category": "Utilities",
+    "amount": 450.51,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-04-27",
+    "category": "Utilities",
+    "amount": 616,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Utilities",
+    "amount": 110.72,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Utilities",
+    "amount": 270.28,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "Utilities",
+    "amount": 450.51,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Utilities",
+    "amount": 46.4,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-05-04",
+    "category": "Utilities",
+    "amount": 180.18,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-05-04",
+    "category": "Utilities",
+    "amount": 92.75,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-05-07",
+    "category": "Utilities",
+    "amount": 1016,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-05-13",
+    "category": "Utilities",
+    "amount": 59.33,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-05-13",
+    "category": "Utilities",
+    "amount": 742.34,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-05-15",
+    "category": "Utilities",
+    "amount": 307.38,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-05-18",
+    "category": "Utilities",
+    "amount": 92.75,
+    "vendor": "Consumers",
+    "type": "Gas"
+  },
+  {
+    "date": "2026-05-27",
+    "category": "Utilities",
+    "amount": 1018,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Utilities",
+    "amount": 616,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Utilities",
+    "amount": 77.1,
+    "vendor": "Consumers",
+    "type": "gas"
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Utilities",
+    "amount": 375.65,
+    "vendor": "WRC",
+    "type": "Water"
+  },
+  {
+    "date": "2026-06-12",
+    "category": "Utilities",
+    "amount": 40.3,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-06-12",
+    "category": "Utilities",
+    "amount": 616,
+    "vendor": "DTE",
+    "type": "Electric"
+  },
+  {
+    "date": "2026-01-02",
+    "category": "Insurance",
+    "amount": 2154.62,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-01-06",
+    "category": "Insurance",
+    "amount": 869.34,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-01-06",
+    "category": "Insurance",
+    "amount": 25,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Insurance",
+    "amount": 600,
+    "vendor": "501 Group",
+    "type": ""
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Insurance",
+    "amount": 300,
+    "vendor": "501 Group",
+    "type": ""
+  },
+  {
+    "date": "2026-01-09",
+    "category": "Insurance",
+    "amount": 3608,
+    "vendor": "Accident Fund",
+    "type": ""
+  },
+  {
+    "date": "2026-01-12",
+    "category": "Insurance",
+    "amount": 780.45,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-01-14",
+    "category": "Insurance",
+    "amount": 869.34,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-01-20",
+    "category": "Insurance",
+    "amount": 95.66,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-02-02",
+    "category": "Insurance",
+    "amount": 6010.94,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-02-09",
+    "category": "Insurance",
+    "amount": 945.48,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-02-09",
+    "category": "Insurance",
+    "amount": 3647.18,
+    "vendor": "Premco Financial",
+    "type": ""
+  },
+  {
+    "date": "2026-02-11",
+    "category": "Insurance",
+    "amount": 869.34,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-02-17",
+    "category": "Insurance",
+    "amount": 3647.19,
+    "vendor": "Premco Financial",
+    "type": ""
+  },
+  {
+    "date": "2026-02-17",
+    "category": "Insurance",
+    "amount": 3647.18,
+    "vendor": "Premco Financial",
+    "type": ""
+  },
+  {
+    "date": "2026-02-17",
+    "category": "Insurance",
+    "amount": 2583.73,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Insurance",
+    "amount": 2583.73,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-02-18",
+    "category": "Insurance",
+    "amount": 152.9,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-03-09",
+    "category": "Insurance",
+    "amount": 838.98,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-03-16",
+    "category": "Insurance",
+    "amount": 300,
+    "vendor": "501 Group",
+    "type": ""
+  },
+  {
+    "date": "2026-03-18",
+    "category": "Insurance",
+    "amount": 152.9,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-03-24",
+    "category": "Insurance",
+    "amount": 869.34,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-04-01",
+    "category": "Insurance",
+    "amount": 1969.96,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-04-02",
+    "category": "Insurance",
+    "amount": 1076.91,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-04-06",
+    "category": "Insurance",
+    "amount": 2166.76,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-04-13",
+    "category": "Insurance",
+    "amount": 838.98,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-04-17",
+    "category": "Insurance",
+    "amount": 152.9,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Insurance",
+    "amount": 869.34,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-05-01",
+    "category": "Insurance",
+    "amount": 3299.81,
+    "vendor": "Premco Financial",
+    "type": ""
+  },
+  {
+    "date": "2026-05-11",
+    "category": "Insurance",
+    "amount": 302.96,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-05-15",
+    "category": "Insurance",
+    "amount": 2345.61,
+    "vendor": "Priority Health",
+    "type": ""
+  },
+  {
+    "date": "2026-05-18",
+    "category": "Insurance",
+    "amount": 152.9,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-05-19",
+    "category": "Insurance",
+    "amount": 3473.5,
+    "vendor": "Premco Financial",
+    "type": ""
+  },
+  {
+    "date": "2026-05-26",
+    "category": "Insurance",
+    "amount": 288,
+    "vendor": "Accident Fund",
+    "type": ""
+  },
+  {
+    "date": "2026-06-03",
+    "category": "Insurance",
+    "amount": 516,
+    "vendor": "HighStreet",
+    "type": ""
+  },
+  {
+    "date": "2026-06-03",
+    "category": "Insurance",
+    "amount": 288,
+    "vendor": "AF Group",
+    "type": ""
+  },
+  {
+    "date": "2026-06-05",
+    "category": "Insurance",
+    "amount": 1763.62,
+    "vendor": "CSU Producer",
+    "type": ""
+  },
+  {
+    "date": "2026-06-08",
+    "category": "Insurance",
+    "amount": 731.6,
+    "vendor": "Delta Dental",
+    "type": ""
+  },
+  {
+    "date": "2026-06-17",
+    "category": "Insurance",
+    "amount": 229.35,
+    "vendor": "AFLAC",
+    "type": ""
+  },
+  {
+    "date": "2026-02-03",
+    "category": "S2S",
+    "amount": 680,
+    "vendor": "ABG Properties",
+    "type": "Rent Deposit"
+  },
+  {
+    "date": "2026-03-12",
+    "category": "S2S",
+    "amount": 2255,
+    "vendor": "Unknown",
+    "type": "Rent Deposit"
+  },
+  {
+    "date": "2026-04-02",
+    "category": "S2S",
+    "amount": 2435,
+    "vendor": "Century Square Townhomes",
+    "type": "Rent"
+  },
+  {
+    "date": "2026-04-28",
+    "category": "S2S",
+    "amount": 142.97,
+    "vendor": "Greyhound",
+    "type": "Bus ride"
+  },
+  {
+    "date": "2026-05-12",
+    "category": "S2S",
+    "amount": 500,
+    "vendor": "Detroit Apt Corp",
+    "type": "Rent"
+  },
+  {
+    "date": "2026-05-21",
+    "category": "S2S",
+    "amount": 2010,
+    "vendor": "Property Projects LLC",
+    "type": "Rent"
+  }
+]

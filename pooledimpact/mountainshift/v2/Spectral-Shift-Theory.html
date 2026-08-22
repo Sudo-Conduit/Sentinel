@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Spectral Shift Theory of Representation Flow</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; max-width: 780px; margin: 0 auto; padding: 60px 24px 120px; line-height: 1.7; color: #1e1e1e; background: #fdfdfb; }
+  h1 { font-size: 28px; text-align: center; margin-bottom: 4px; }
+  .meta { text-align: center; color: #555; margin-bottom: 40px; font-size: 15px; }
+  h2 { font-size: 20px; border-bottom: 1px solid #ccc; padding-bottom: 6px; margin-top: 48px; }
+  h3 { font-size: 16px; margin-top: 28px; }
+  h4 { font-size: 15px; margin-top: 20px; color: #333; }
+  hr { border: none; border-top: 1px solid #ddd; margin: 40px 0; }
+  ul, ol { padding-left: 24px; }
+  .proof { margin-left: 12px; }
+</style>
+</head>
+<body>
+
+<h1>Spectral Shift Theory of Representation Flow</h1>
+<div class="meta">Version 6.0 &middot; Will Fobbs &middot; Pooled Impact &middot; June 2026</div>
+
+<h2>Abstract</h2>
+<p>This paper develops a dynamical systems framework for understanding transformer inference as deterministic evolution in representation space.</p>
+<p>Rather than analyzing learning dynamics through parameter updates, we analyze the evolution of internal representations during a forward pass. The central object of study is the shift field</p>
+<p>$$F(S) = \phi(S) - S$$</p>
+<p>where $S$ denotes the current representation and $\phi$ is the fixed inference operator induced by the model architecture and frozen parameters.</p>
+<p>We show that:</p>
+<ol>
+<li>Inference defines a deterministic representation flow.</li>
+<li>Symmetry induces spectral compression.</li>
+<li>Spectral compression induces dimensional collapse.</li>
+<li>Effective rank evolves continuously under symmetry perturbation.</li>
+<li>A critical symmetry threshold exists.</li>
+<li>Repeated-token inputs define a degenerate geometric limit, termed the <strong>Lasagna Limit</strong>.</li>
+<li>The Lasagna Limit persists under perturbation as a slow manifold.</li>
+<li>Representation flow exhibits bifurcation behavior governed by the Jacobian spectrum of the shift field.</li>
+</ol>
+<p>The resulting framework provides a geometric and spectral theory of inference independent of training dynamics.</p>
+
+<hr>
+<h2>Clarifications to Add (running list)</h2>
+<table style="width:100%; border-collapse: collapse; font-size: 15px;">
+<thead><tr style="border-bottom:2px solid #999; text-align:left;">
+<th style="padding:6px 10px;">Section</th><th style="padding:6px 10px;">Gap for a reader without author context</th><th style="padding:6px 10px;">Clarification to add</th>
+</tr></thead>
+<tbody style="vertical-align:top;">
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">Abstract / §1&ndash;2</td>
+<td style="padding:6px 10px;">$\phi$ looks like a single repeated per-layer map; real transformers use distinct $\phi_1,\dots,\phi_L$ per layer.</td>
+<td style="padding:6px 10px;">State explicitly that $\phi$ is a <strong>global-state coarse-graining operator</strong> &mdash; the whole forward pass collapsed to one transition &mdash; not a literal repeated single-layer map. $S_\alpha = S_1 + \Delta S$: $S_1$ is entering global state, $\Delta S$ is the aggregate of every local (per-layer/head) shift during the pass.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§3 (Thm 3.1&ndash;3.2)</td>
+<td style="padding:6px 10px;">Existence/uniqueness of $\Delta S_k$ reads as a trivial algebraic remark.</td>
+<td style="padding:6px 10px;">Note what these theorems guarantee vs. don't: $\Delta S_k$ <em>exists and is unique</em> regardless of whether any implementation exposes it for observation. Non-introspectability (of a model mid-pass, or of a mind under memory loss) is a contingent access limitation, not evidence against the state's uniqueness or reality &mdash; identity does not depend on retrievable trace.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§4 (Jacobian)</td>
+<td style="padding:6px 10px;">$S \in \mathbb{R}^{n\times d}$ is a matrix, so $J_\phi(S)$ is technically a 4th-order tensor; every later spectral claim (effective rank, $\rho(J_F)$, spectral gap) silently assumes a flattening to $\mathbb{R}^{nd}$.</td>
+<td style="padding:6px 10px;">State the flattening convention once here (vectorize $S$ to $\mathbb{R}^{nd}$, treat $J_F$ as an ordinary $nd \times nd$ matrix) so every downstream spectral theorem (6&ndash;14) inherits a stated, not implicit, convention.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§5 (Symmetry Parameter)</td>
+<td style="padding:6px 10px;">$H(S)$'s entropy type is unstated. If differential entropy over continuous $S$, it can be negative, breaking the stated $0 \le \sigma \le 1$ bound.</td>
+<td style="padding:6px 10px;">Either specify the entropy convention (discretization scheme, or a normalized/exponentiated differential entropy) here, or explicitly forward-reference §6: "$\sigma$'s exact functional form is intentionally underspecified; see §6 for the equivalence class this theory actually depends on."</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§6 (Equivalence Class)</td>
+<td style="padding:6px 10px;">Theorem 6.1 claims the theory depends only on equivalence classes in $\Sigma$, but $f_1 \sim f_2$ is only affine equivalence ($f_1 = af_2+b$). This does not show that structurally different admissible measures (e.g. Shannon vs. Rényi vs. differential entropy) are affine-related to each other &mdash; they can rank representations differently, not just rescale one ranking.</td>
+<td style="padding:6px 10px;">Either prove all functionals satisfying the three stated conditions (permutation invariance, normalization, coarse-graining stability) are pairwise affine-related, or weaken Theorem 6.1's claim to qualitative/ordinal stability across $\mathcal{F}$ rather than full equivalence-class independence.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§6 (Affine-Relatedness Proof)</td>
+<td style="padding:6px 10px;">The proof's Step 3, $g_i(\alpha h+\beta)=g_i(h)$, states literal <em>invariance</em> under the full coarse-graining group. Since that group acts transitively on $h$, invariance forces $g_i$ constant &mdash; contradicting the very next step's normalization $g_i(0)=0 \ne 1 = g_i(1)$. Additionally, even the correct condition needs a stated regularity assumption (continuity/monotonicity) to exclude pathological non-affine solutions (Cauchy's functional equation, Hamel-basis constructions).</td>
+<td style="padding:6px 10px;">Restate Step 3 as <em>equivariance</em>: $g_i(\alpha h+\beta) = \alpha\, g_i(h) + \beta$ (same $(\alpha,\beta)$ both sides). Add an explicit continuity-or-monotonicity admissibility condition. Consider citing representational measurement theory (Krantz/Luce/Suppes/Tversky uniqueness theorems) as the standard lineage for this exact argument form.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§6 (Equivariant Correction, Step 6) &mdash; <strong>RESOLVED</strong></td>
+<td style="padding:6px 10px;">"The group of conjugacies of a 1D dynamical system with a fixed point is the affine group" is not true in general (Koenigs linearization gives an analytic, not affine, conjugacy unless $\phi'$ is itself already affine &mdash; unstated assumption).</td>
+<td style="padding:6px 10px;">Resolved by standing assumption: $\phi'$ is explicitly taken to be affine/M&ouml;bius on $[0,1]$. Step 6 is then elementary linear algebra (two affine maps sharing a fixed point conjugate only via an affine map), not a general conjugacy-group claim.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§7 (Effective Rank)</td>
+<td style="padding:6px 10px;">$p_i$ is called "normalized singular values" without stating the normalization scheme. Shannon entropy requires $\sum_i p_i = 1$ (i.e. $p_i = \sigma_i/\sum_j\sigma_j$), but "normalized" is also commonly read as $\sigma_i/\sigma_{\max}$ or $\sigma_i^2/\sum_j\sigma_j^2$ &mdash; neither of which validates the entropy formula as written.</td>
+<td style="padding:6px 10px;">State explicitly: $p_i = \sigma_i / \sum_j \sigma_j$ (or the squared-singular-value/energy variant, if that's intended instead &mdash; common in PCA-style effective-rank definitions), so two implementers computing $r_{\text{eff}}$ from the paper get numerically comparable results.</td>
+</tr>
+<tr style="border-bottom:1px solid #ddd;">
+<td style="padding:6px 10px;">§8 (Lemma 8.1 / Cor. 8.1) &mdash; <strong>RESOLVED</strong></td>
+<td style="padding:6px 10px;">Lemma 8.1 (rising $\sigma$ concentrates the spectrum, lowering $r_{\text{eff}}$) was asserted with no proof or proof sketch &mdash; unlike nearly every other claim in the paper, and the architectural hinge connecting §5's symmetry parameter to §4/§7's spectral apparatus. Corollary 8.1's "piecewise" continuity was also unjustified.</td>
+<td style="padding:6px 10px;">Resolved by deriving Lemma 8.1 as a corollary of §9.1 + §9.2 rather than a free-standing claim: at $\sigma=1$ exactly, Theorem 9.1 forces $J_F(S_0)$ to rank one, so $r_{\text{eff}}\to1$ at that boundary. Theorem 9.2's expansion $J_F(S_\delta)=J_F(S_0)+\delta D+O(\delta^2)$, via Davis&ndash;Kahan/Bauer&ndash;Fike, bounds how the collapsed singular values separate from zero as $\delta$ (i.e. $1-\sigma$) grows &mdash; giving the monotone increase in $r_{\text{eff}}$ Lemma 8.1 claims. Corollary 8.1's discontinuity is now scoped: $r_{\text{eff}}(\sigma)$ is continuous except at the Phase II bifurcation boundaries of §14&ndash;15, where $\rho(J_F)$ crosses 1.</td>
+</tr>
+</tbody>
+</table>
+
+<hr>
+<h2>1. Introduction</h2>
+<p>Transformer inference is commonly viewed as a sequence of matrix operations applied to token representations.</p>
+<p>This perspective is computationally correct but obscures an important dynamical structure.</p>
+<p>Each layer transforms a representation into a new representation:</p>
+<p>$$S_{k+1} = \phi(S_k)$$</p>
+<p>The representation therefore evolves through a sequence of deterministic state transitions.</p>
+<p>The objective of this paper is to characterize the geometry of that evolution.</p>
+
+<hr>
+<h2>2. Representation Dynamics</h2>
+<p>Let</p>
+<p>$$S_0 \in \mathbb{R}^{n \times d}$$</p>
+<p>denote the initial representation.</p>
+<p>Inference is defined recursively:</p>
+<p>$$S_{k+1} = \phi(S_k)$$</p>
+<p>where:</p>
+<ul>
+<li>$n$ is sequence length,</li>
+<li>$d$ is embedding dimension,</li>
+<li>$\phi$ is fixed,</li>
+<li>model parameters are frozen.</li>
+</ul>
+<p>Inference is therefore a deterministic discrete dynamical system.</p>
+
+<hr>
+<h2>3. Shift Field</h2>
+<h3>Definition 3.1</h3>
+<p>Define the shift field</p>
+<p>$$F(S) = \phi(S) - S$$</p>
+<p>The representation update becomes</p>
+<p>$$S_{k+1} = S_k + F(S_k)$$</p>
+<h3>Definition 3.2</h3>
+<p>The layerwise shift is</p>
+<p>$$\Delta S_k = S_{k+1} - S_k$$</p>
+<p>Thus</p>
+<p>$$\Delta S_k = F(S_k)$$</p>
+<h3>Theorem 3.1 (Existence of Shift)</h3>
+<p>For every inference step, $\Delta S_k$ exists.</p>
+<p class="proof"><strong>Proof.</strong> Since both $S_k$ and $S_{k+1}$ are defined, $\Delta S_k = S_{k+1} - S_k$ is well-defined. $\blacksquare$</p>
+<h3>Theorem 3.2 (Deterministic Shift)</h3>
+<p>Given $S_0$, every shift is uniquely determined.</p>
+<p class="proof"><strong>Proof.</strong> Since $\phi$ is fixed, $S_1 = \phi(S_0)$ is unique. By induction, $S_{k+1} = \phi(S_k)$ is unique for all $k$. Therefore $\Delta S_k$ is unique. $\blacksquare$</p>
+
+<hr>
+<h2>4. Jacobian of the Shift Field</h2>
+<h3>Definition 4.1</h3>
+<p>The Jacobian of the shift field is</p>
+<p>$$J_F(S) = \frac{\partial F(S)}{\partial S}$$</p>
+<p>Since $F(S) = \phi(S) - S$, we obtain</p>
+<p>$$J_F(S) = J_\phi(S) - I$$</p>
+<p>where $I$ is the identity operator.</p>
+<h3>Interpretation</h3>
+<p>$J_F$ governs local deformation of representation space. Its spectrum determines:</p>
+<ul><li>contraction,</li><li>expansion,</li><li>stability,</li><li>bifurcation behavior.</li></ul>
+
+<hr>
+<h2>5. Symmetry Parameter</h2>
+<h3>Definition 5.1</h3>
+<p>Let $H(S)$ denote representation entropy. Define symmetry:</p>
+<p>$$\sigma = 1 - \frac{H(S)}{H_{\max}}$$</p>
+<p>where $0 \le \sigma \le 1$.</p>
+<h3>Interpretation</h3>
+<p>$\sigma \approx 1$ indicates strong redundancy. $\sigma \approx 0$ indicates high diversity.</p>
+
+<hr>
+<h2>6. Equivalence Class of Symmetry Measures</h2>
+<p>Different symmetry measures may be used. Let $\mathcal{F}$ denote the set of admissible symmetry functionals satisfying:</p>
+<ul><li>permutation invariance,</li><li>normalization,</li><li>stability under coarse graining.</li></ul>
+<p>Define $f_1 \sim f_2$ when $f_1 = a f_2 + b$ for constants $a, b$.</p>
+<p>The symmetry space becomes</p>
+<p>$$\Sigma = \mathcal{F} / \sim$$</p>
+<h3>Theorem 6.1</h3>
+<p>The theory depends only on equivalence classes in $\Sigma$.</p>
+<p><strong>Interpretation.</strong> No particular symmetry metric is privileged. The geometric structure is invariant under admissible transformations.</p>
+
+<hr>
+<h2>7. Effective Rank</h2>
+<p>Classical rank is discontinuous. We therefore define effective rank.</p>
+<h3>Definition 7.1</h3>
+<p>Let $p_i$ be normalized singular values of $J_F$. Define</p>
+<p>$$r_{\text{eff}} = \exp\left(-\sum_i p_i \log p_i\right)$$</p>
+<h3>Interpretation</h3>
+<p>Effective rank measures spectral complexity. Unlike ordinary rank, it varies continuously.</p>
+
+<hr>
+<h2>8. Symmetry&ndash;Spectrum Coupling</h2>
+<h3>Lemma 8.1</h3>
+<p>Increasing symmetry induces spectral concentration.</p>
+<p><strong>Statement.</strong> As $\sigma \uparrow$, the singular value spectrum concentrates. Consequently $r_{\text{eff}}$ decreases.</p>
+<p class="proof"><strong>Proof sketch.</strong> At $\sigma = 1$ exactly, $S_0 = \mathbf{1}_n \otimes s$ and Theorem 9.1 forces $J_F(S_0)$ to rank one, so $r_{\text{eff}} \to 1$ at this boundary. For $\sigma = 1 - O(\delta)$, Theorem 9.2 gives $J_F(S_\delta) = J_F(S_0) + \delta D + O(\delta^2)$; the Davis&ndash;Kahan and Bauer&ndash;Fike bounds (Appendices A&ndash;B) control how the collapsed singular values separate from zero as $\delta$ grows, monotonically raising $r_{\text{eff}}$ as $\sigma$ falls from 1. $\blacksquare$</p>
+<h3>Corollary 8.1</h3>
+<p>The map $\sigma \mapsto r_{\text{eff}}$ is continuous except at the Phase II bifurcation boundaries of §14&ndash;15, where $\rho(J_F)$ crosses 1.</p>
+<h3>Corollary 8.2</h3>
+<p>Symmetry should be measured in representation space. Let $\sigma_{\text{token}}$ be token entropy and $\sigma_{\text{rep}}$ representation entropy. Then</p>
+<p>$$\sigma_{\text{rep}} = \sigma_{\text{token}} + O(\delta)$$</p>
+<p>where $\delta$ captures symmetry-breaking perturbations such as positional encoding and masking.</p>
+
+<hr>
+<h2>9. Permutation Symmetry and Near-Degenerate Manifolds</h2>
+<h3>9.1 Exact Permutation Symmetry</h3>
+<p>Consider</p>
+<p>$$S_0 = \mathbf{1}_n \otimes s$$</p>
+<p>with identical token representations. Assume $\phi$ is permutation equivariant.</p>
+<h4>Theorem 9.1 (Exact Rank Collapse)</h4>
+<p>Under exact symmetry:</p>
+<ul><li>attention becomes rank one,</li><li>representation dynamics collapse onto an invariant manifold,</li><li>$J_F(S_0)$ collapses to rank exactly one &mdash; the case $r_{\text{eff}} \to 1$ anchoring Lemma 8.1: effective rank is not a side statistic here, it is the single number tracking how much of representation space is actually being used at any given symmetry level, from this rank-one floor up to full diversity in Phase III (§15).</li></ul>
+
+<h3>9.2 Symmetry Breaking</h3>
+<p>Real transformers include:</p>
+<ul><li>positional encoding,</li><li>causal masking,</li><li>architectural asymmetries.</li></ul>
+<p>Represent the perturbed system as</p>
+<p>$$S_\delta = S_0 + \delta P$$</p>
+<p>where $P$ represents aggregate symmetry-breaking effects.</p>
+<h4>Theorem 9.2 (Near-Degenerate Spectral Persistence)</h4>
+<p>For sufficiently small $\delta$,</p>
+<p>$$J_F(S_\delta) = J_F(S_0) + \delta D + O(\delta^2)$$</p>
+<p>for some perturbation operator $D$. Consequently:</p>
+<ol><li>Spectral splitting occurs continuously.</li><li>Effective rank changes continuously.</li><li>The degenerate manifold persists as a slow manifold.</li></ol>
+<p class="proof"><strong>Proof sketch.</strong> Apply: Davis&ndash;Kahan eigenspace perturbation bounds, Bauer&ndash;Fike eigenvalue perturbation bounds, Center Manifold persistence theory. $\blacksquare$</p>
+
+<hr>
+<h2>10. The Lasagna Limit</h2>
+<h3>Definition 10.1</h3>
+<p>The Lasagna Limit is defined as $\delta \rightarrow 0$ in the perturbed system $S_\delta = S_0 + \delta P$.</p>
+<h3>Interpretation</h3>
+<p>The Lasagna Limit represents perfect redundancy. All semantic variation vanishes. Only the symmetry structure remains.</p>
+<h3>Theorem 10.1</h3>
+<p>The Lasagna Limit defines a degenerate invariant manifold.</p>
+<p><strong>Interpretation.</strong> Repeated-token inputs become a geometric limit object rather than a special case.</p>
+
+<hr>
+<h2>11. Lasagna Manifold Persistence</h2>
+<h3>Definition 11.1</h3>
+<p>Let $M_0$ denote the degenerate manifold in the Lasagna Limit. For $\delta > 0$, define $M_\delta$ as the perturbed manifold.</p>
+<h3>Theorem 11.1</h3>
+<p>For sufficiently small $\delta$, $M_0$ persists as $M_\delta$ under perturbation.</p>
+<p class="proof"><strong>Proof sketch.</strong> Center Manifold Theory. $\blacksquare$</p>
+
+<hr>
+<h2>12. Critical Symmetry</h2>
+<h3>Definition 12.1</h3>
+<p>Let $S_\sigma$ denote the representation at symmetry level $\sigma$, i.e. $S_\sigma := S_{\delta(\sigma)}$ for whatever correspondence $\delta \leftrightarrow \sigma$ holds between the perturbation parameter of §9&ndash;11 and the symmetry parameter of §5 &mdash; a monotone bijection (justified informally by Lemma 8.1) is the simplest such correspondence but not asserted to be the only admissible one; see remarks following this review.</p>
+<p>Define the spectral radius $\rho(J_F)$ and the critical symmetry</p>
+<p>$$\sigma^* = \inf\{\sigma : \rho(J_F(S_\sigma)) \le 1\}$$</p>
+<h3>Interpretation</h3>
+<ul><li>$\rho < 1$: contraction regime</li><li>$\rho = 1$: critical regime</li><li>$\rho > 1$: expansion regime</li></ul>
+
+<hr>
+<h2>13. Spectral Gap Persistence</h2>
+<h3>Theorem 13.1</h3>
+<p>Let $J_F(S_0)$ possess a dominant eigenspace separated by spectral gap $\gamma > 0$. Then for sufficiently small perturbation $\delta < \delta_c$, the spectral gap remains open, where $\delta_c$ denotes the same transition as $\sigma^*$ (§12) under whatever $\delta \leftrightarrow \sigma$ correspondence is in force &mdash; i.e. $\delta_c$ and $\sigma^*$ are one threshold, not two independent phenomena.</p>
+<h3>Interpretation</h3>
+<p>The dominant geometric structure survives symmetry breaking.</p>
+
+<hr>
+<h2>14. Spectral Bifurcation Theorem</h2>
+<h3>Theorem 14.1</h3>
+<p>As symmetry varies, the Jacobian spectrum undergoes continuous deformation. When $\rho(J_F)$ crosses unity, a qualitative change in representation flow occurs.</p>
+<h3>Interpretation</h3>
+<p>Representation dynamics possess phase structure.</p>
+
+<hr>
+<h2>15. Representation Flow Phases</h2>
+<h3>Phase I &mdash; Symmetry Dominated</h3>
+<ul><li>high symmetry,</li><li>low effective rank,</li><li>strong contraction.</li></ul>
+<h3>Phase II &mdash; Critical</h3>
+<ul><li>spectral transition,</li><li>mixed stability,</li><li>bifurcation onset.</li></ul>
+<h3>Phase III &mdash; Diversity Dominated</h3>
+<ul><li>high effective rank,</li><li>expanded representation geometry,</li><li>increased dynamical freedom.</li></ul>
+
+<hr>
+<h2>16. Main Theorem</h2>
+<h3>Spectral Shift Theorem</h3>
+<p>Representation flow under a fixed operator $\phi$ is governed by symmetry-induced deformation of the shift-field spectrum. Specifically:</p>
+<ol><li>Symmetry compresses spectrum.</li><li>Spectral compression lowers effective rank.</li><li>Effective rank governs accessible representation geometry.</li><li>Symmetry breaking induces bifurcation.</li><li>A critical symmetry threshold $\sigma^*$ exists.</li></ol>
+<p>Therefore representation dynamics exhibit phase structure determined by the Jacobian spectrum of the shift field. $\blacksquare$</p>
+
+<hr>
+<h2>17. Discussion</h2>
+<p>The central object of the theory is not the model weight matrix. The central object is</p>
+<p>$$F(S) = \phi(S) - S$$</p>
+<p>Inference is therefore understood as deterministic evolution through representation space.</p>
+<p>The Lasagna Limit provides a symmetry anchor. The Jacobian provides local geometry. The spectrum provides phase structure. Together they define a spectral theory of representation flow.</p>
+
+<hr>
+<h2>Appendix A &mdash; Davis&ndash;Kahan Theorem</h2>
+<p>Used to bound eigenspace rotation under perturbation. Provides persistence guarantees for dominant symmetry subspaces.</p>
+<h2>Appendix B &mdash; Bauer&ndash;Fike Theorem</h2>
+<p>Used to bound eigenvalue movement under perturbation. Provides spectral splitting estimates for symmetry-breaking modes.</p>
+<h2>Appendix C &mdash; Center Manifold Theory</h2>
+<p>Used to establish persistence of the Lasagna manifold under small perturbations. Provides theoretical justification for slow manifold dynamics.</p>
+
+<hr>
+<h2>Conclusion</h2>
+<p>Inference is a deterministic dynamical system operating on representations rather than parameters.</p>
+<p>The geometry of this system is governed by the shift field. The stability of the shift field is governed by its Jacobian. The Jacobian spectrum is governed by symmetry.</p>
+<p>The resulting structure exhibits contraction, expansion, bifurcation, and manifold persistence.</p>
+<p>This framework provides a mathematical foundation for analyzing representation dynamics independent of learning dynamics.</p>
+
+</body>
+</html>

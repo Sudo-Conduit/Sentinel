@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>@font-face{font-family:'Noto Sans';src:local('Noto Sans');}</style>
+</helmet>
+<div style="min-height:100vh;background:#030f17;color:#fff;font-family:'Noto Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;padding:28px 36px;box-sizing:border-box;">
+  <div style="font-size:1.8em;font-weight:800;margin-bottom:2px;">Node Economics</div>
+  <div style="font-size:13px;color:#8e99a8;margin-bottom:18px;">PNode / BNode / CNode capacity, revenue, and margin modeling — house-money network economics, separate from any single deal.</div>
+
+  <div style="display:flex;gap:8px;margin-bottom:20px;border-bottom:1px solid #2c364480;">
+    <div onClick="{{ onTabOverview }}" style="cursor:pointer;padding:9px 18px;font-size:13px;font-weight:700;color:{{ tabColors.overview }};border-bottom:2px solid {{ tabColors.overviewBorder }};">Overview</div>
+    <div onClick="{{ onTabStabilized }}" style="cursor:pointer;padding:9px 18px;font-size:13px;font-weight:700;color:{{ tabColors.stabilized }};border-bottom:2px solid {{ tabColors.stabilizedBorder }};">Stabilized Model</div>
+    <div onClick="{{ onTabCashflow }}" style="cursor:pointer;padding:9px 18px;font-size:13px;font-weight:700;color:{{ tabColors.cashflow }};border-bottom:2px solid {{ tabColors.cashflowBorder }};">Cash Flow (Ramp)</div>
+  </div>
+
+  <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ false }}">
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:4px;">Scenarios</div>
+    <div style="font-size:11px;color:#6b7688;margin-bottom:12px;">Node Economics is a scenario builder — save named scenarios here, or export as JSON for Flow to ingest 1:M against its NodeType schema.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input type="text" value="{{ scenarioName }}" onInput="{{ onScenarioNameInput }}" placeholder="Scenario name" style="flex:1;background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:7px 9px;font-size:13px;box-sizing:border-box;"/>
+      <div onClick="{{ onSaveScenario }}" style="cursor:pointer;background:#1f3554;color:#fff;padding:7px 16px;border-radius:8px;font-size:12px;white-space:nowrap;">Save Scenario</div>
+      <div onClick="{{ onOpenFinderSave }}" style="cursor:pointer;background:#272e36;color:#e0a866;padding:7px 16px;border-radius:8px;font-size:12px;white-space:nowrap;border:1px solid #3a4552;">Save to File System</div>
+      <div onClick="{{ onOpenFinderLoad }}" style="cursor:pointer;background:#272e36;color:#66b2e0;padding:7px 16px;border-radius:8px;font-size:12px;white-space:nowrap;border:1px solid #3a4552;">Load from File System</div>
+    </div>
+    <sc-if value="{{ finderLoadOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderLoad }}">
+        <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+          <dc-import name="FinderDialog" initial-mode="open" onOpenFile="{{ onFinderOpenFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+        </div>
+      </div>
+    </sc-if>
+    <sc-if value="{{ finderSaveOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderSave }}">
+        <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+          <dc-import name="FinderDialog" initial-mode="save" save-filename="{{ pendingSaveFilename }}" onSaveFile="{{ onFinderSaveFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+        </div>
+      </div>
+    </sc-if>
+    <sc-for list="{{ scenarioRows }}" as="sc" hint-placeholder-count="2">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid #1c232c;font-size:12.5px;">
+        <div>{{ sc.name }}<span style="color:#6b7688;font-size:11px;margin-left:8px;">{{ sc.savedAtFmt }}</span></div>
+        <div style="display:flex;gap:10px;">
+          <div onClick="{{ sc.onLoad }}" style="cursor:pointer;color:#4a9eff;">Load</div>
+          <div onClick="{{ sc.onExport }}" style="cursor:pointer;color:#e0a866;">Export</div>
+          <div onClick="{{ sc.onDelete }}" style="cursor:pointer;color:#8e99a8;">✕</div>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
+    <div style="background:#272e3680;border-radius:10px;padding:20px 22px;">
+      <div style="font-size:14px;font-weight:700;color:#c9d3de;margin-bottom:6px;">Alpha Overview</div>
+      <sc-for list="{{ overviewParaObjs }}" as="p" hint-placeholder-count="4">
+        <div style="font-size:12.5px;line-height:1.7;opacity:0.7;color:#d5dbe3;white-space:pre-wrap;margin-bottom:14px;">{{ p.text }}<sc-if value="{{ p.rec }}" hint-placeholder-val="{{ false }}">{{ p.pre }}<span style="opacity:1;font-weight:800;color:{{ p.recColor }};">{{ p.rec }}</span>{{ p.post }}</sc-if></div>
+      </sc-for>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:20px 22px;">
+      <div style="font-size:14px;font-weight:700;color:#c9d3de;margin-bottom:12px;">Definitions</div>
+      <sc-for list="{{ definitions }}" as="d" hint-placeholder-count="8">
+        <div style="margin-bottom:12px;">
+          <div style="font-size:12.5px;font-weight:700;color:#e0a866;">{{ d.term }}</div>
+          <div style="font-size:12px;color:#aab1c1;line-height:1.5;">{{ d.desc }}</div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isStabilized }}" hint-placeholder-val="{{ true }}">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+    <div style="background:#272e3680;border-radius:10px;padding:16px 18px;">
+      <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:12px;">Global Assumptions</div>
+      <div style="display:grid;grid-template-columns:1fr 90px;gap:8px 12px;align-items:center;font-size:12.5px;">
+        <div style="color:#aab1c1;">Thermal/sustained derate</div>
+        <input type="text" value="{{ a.derate }}" onInput="{{ onAssumDerate }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Peak concurrency % (of DAU)</div>
+        <input type="text" value="{{ a.peakConcurrency }}" onInput="{{ onAssumPeakConcurrency }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">DAU/MAU stickiness %</div>
+        <input type="text" value="{{ a.daumau }}" onInput="{{ onAssumDaumau }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Target tok/s per user (perceived speed)</div>
+        <input type="text" value="{{ a.targetTokS }}" onInput="{{ onAssumTargetTokS }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Avg tokens per response</div>
+        <input type="text" value="{{ a.tokensPerResponse }}" onInput="{{ onAssumTokensPerResponse }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Avg seconds between requests/user</div>
+        <input type="text" value="{{ a.secondsBetweenRequests }}" onInput="{{ onAssumSecondsBetweenRequests }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Model size (B params)</div>
+        <input type="text" value="{{ a.modelParamsB }}" onInput="{{ onAssumModelParamsB }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Real-world market capture %</div>
+        <input type="text" value="{{ a.capture }}" onInput="{{ onAssumCapture }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">Realistic addressable market cap (MAU)</div>
+        <input type="text" value="{{ a.addressableCap }}" onInput="{{ onAssumAddressableCap }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+        <div style="color:#aab1c1;">CNode rewards payout % (of revenue)</div>
+        <input type="text" value="{{ a.rewardsPayoutPct }}" onInput="{{ onAssumRewardsPayoutPct }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;width:100%;box-sizing:border-box;"/>
+      </div>
+      <div style="font-size:11px;color:#6b7688;margin-top:10px;">Real cost driver is tokens/response (a markdown doc can run thousands), not the streaming tok/s rate. Avg GFlops/user = (2 × params(B) × tokens/response) ÷ seconds between requests — a burst-then-idle model, not continuous streaming. Percentages entered as decimals (0.15 = 15%).</div>
+    </div>
+
+    <div style="background:#272e3680;border-radius:10px;padding:16px 18px;">
+      <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:12px;">ARPU Stack (Base + Add-ons)</div>
+      <div style="display:grid;grid-template-columns:1fr 70px 70px 26px;gap:6px 8px;font-size:11px;color:#6b7688;margin-bottom:4px;">
+        <div>Tier</div><div>Attach %</div><div>$/mo</div><div></div>
+      </div>
+      <sc-for list="{{ arpuRows }}" as="row" hint-placeholder-count="3">
+        <div style="display:grid;grid-template-columns:1fr 70px 70px 26px;gap:6px 8px;margin-bottom:6px;align-items:center;">
+          <input type="text" value="{{ row.name }}" onInput="{{ row.onName }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+          <input type="text" value="{{ row.attach }}" onInput="{{ row.onAttach }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+          <input type="text" value="{{ row.price }}" onInput="{{ row.onPrice }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+          <div onClick="{{ row.onRemove }}" style="cursor:pointer;color:#8e99a8;text-align:center;">✕</div>
+        </div>
+      </sc-for>
+      <div onClick="{{ onAddArpuRow }}" style="cursor:pointer;color:#4a9eff;font-size:12px;margin-top:4px;">+ Add tier</div>
+    </div>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:#c9d3de;">Node Library</div>
+      <div onClick="{{ onAddNode }}" style="cursor:pointer;background:#1f3554;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;">+ Add Node</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1.3fr 90px 90px 90px 100px 100px 26px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 6px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div style="text-align:left;">Name</div><div>Type</div><div>GPU TFlops</div><div>CPU GFlops</div><div>$/mo (0=CNode)</div><div>Idle hrs/day</div><div></div>
+    </div>
+
+    <sc-for list="{{ nodeRows }}" as="n" hint-placeholder-count="2">
+      <div style="display:grid;grid-template-columns:1.3fr 90px 90px 90px 100px 100px 26px;gap:8px;padding:8px 4px;align-items:center;border-bottom:1px solid #1c232c;">
+        <input type="text" value="{{ n.name }}" onInput="{{ n.onName }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <select value="{{ n.type }}" onChange="{{ n.onType }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;">
+          <option value="PNode">PNode</option>
+          <option value="BNode">BNode</option>
+          <option value="CNode">CNode</option>
+        </select>
+        <input type="text" value="{{ n.gpuTFlops }}" onInput="{{ n.onGpu }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ n.cpuGFlops }}" onInput="{{ n.onCpu }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ n.costPerMonth }}" onInput="{{ n.onCost }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ n.idleHours }}" onInput="{{ n.onIdle }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <div onClick="{{ n.onRemove }}" style="cursor:pointer;color:#8e99a8;text-align:center;">✕</div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div style="font-size:13px;font-weight:700;color:#c9d3de;">Staff</div>
+      <div onClick="{{ onAddStaff }}" style="cursor:pointer;background:#1f3554;color:#fff;padding:6px 14px;border-radius:8px;font-size:12px;">+ Add Staff</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.4fr 100px 110px 26px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 6px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div style="text-align:left;">Role</div><div>Salary/yr ($)</div><div>Benefits (× salary)</div><div></div>
+    </div>
+    <sc-for list="{{ staffRows }}" as="st" hint-placeholder-count="3">
+      <div style="display:grid;grid-template-columns:1.4fr 100px 110px 26px;gap:8px;padding:8px 4px;align-items:center;border-bottom:1px solid #1c232c;">
+        <input type="text" value="{{ st.role }}" onInput="{{ st.onRole }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ st.salary }}" onInput="{{ st.onSalary }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ st.benefitsRate }}" onInput="{{ st.onBenefitsRate }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <div onClick="{{ st.onRemove }}" style="cursor:pointer;color:#8e99a8;text-align:center;">✕</div>
+      </div>
+    </sc-for>
+    <div style="font-size:11px;color:#6b7688;margin-top:8px;text-align:right;">Total staff cost: {{ totalStaffCostFmt }}/mo</div>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;">
+    <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:12px;">Ranked Results (by Rev/$ leased — CNode ranked separately, points-based)</div>
+    <div style="display:grid;grid-template-columns:1.1fr 70px 90px 90px 100px 100px 90px 90px 100px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 8px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div style="text-align:left;">Name</div><div>Type</div><div>Concurrent</div><div>DAU</div><div>MAU</div><div>Revenue/mo</div><div>Cost/mo</div><div>Margin %</div><div>Rev/$</div>
+    </div>
+    <sc-for list="{{ resultRows }}" as="r" hint-placeholder-count="2">
+      <div style="display:grid;grid-template-columns:1.1fr 70px 90px 90px 100px 100px 90px 90px 100px;gap:8px;padding:9px 4px;align-items:center;border-bottom:1px solid #1c232c;font-size:12.5px;text-align:right;">
+        <div style="font-weight:600;text-align:left;">{{ r.name }}</div>
+        <div style="color:{{ r.typeColor }};">{{ r.type }}</div>
+        <div>{{ r.concurrentFmt }}</div>
+        <div>{{ r.dauFmt }}</div>
+        <div>{{ r.mauFmt }}</div>
+        <div style="color:#7ee787;">{{ r.revenueFmt }}</div>
+        <div style="color:#aab1c19c;">{{ r.costFmt }}</div>
+        <div>{{ r.marginPctFmt }}</div>
+        <div style="font-weight:700;">{{ r.revPerDollarFmt }}</div>
+      </div>
+    </sc-for>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCashflow }}" hint-placeholder-val="{{ false }}">
+<sc-if value="{{ cfSummary.investmentWarning }}" hint-placeholder-val="{{ false }}">
+  <div style="background:rgba(255,82,82,0.12);border:1px solid #ff5252;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12.5px;color:#ff8080;">⚠ {{ cfSummary.investmentWarningFmt }}</div>
+  </sc-if>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;color:#aab1c1;margin-bottom:6px;">Investment Allocation (min {{ cfSummary.requiredMinInvestmentFmt }} — Node CapEx + 1yr Staff)</div>
+      <input type="text" value="{{ cf.investment }}" onInput="{{ onCfInvestment }}" style="background:#0d1620;border:1px solid {{ investmentBorderColor }};border-radius:6px;color:#fff;padding:6px 8px;width:100%;box-sizing:border-box;font-size:14px;"/>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;color:#aab1c1;margin-bottom:6px;">Starting Users (month 0)</div>
+      <input type="text" value="{{ cf.startUsers }}" onInput="{{ onCfStartUsers }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:6px 8px;width:100%;box-sizing:border-box;font-size:14px;"/>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;color:#aab1c1;margin-bottom:6px;">Monthly Growth Rate %</div>
+      <input type="text" value="{{ cf.monthlyGrowthPct }}" onInput="{{ onCfGrowthPct }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:6px 8px;width:100%;box-sizing:border-box;font-size:14px;"/>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;color:#aab1c1;margin-bottom:6px;">Months to display</div>
+      <input type="text" value="{{ cf.monthsDisplay }}" onInput="{{ onCfMonthsDisplay }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:6px 8px;width:100%;box-sizing:border-box;font-size:14px;"/>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:12px;color:#aab1c1;margin-bottom:6px;">Investor Preferred Return % (annualized, paid from house cash)</div>
+      <input type="text" value="{{ cf.investorPrefRate }}" onInput="{{ onCfInvestorPrefRate }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:6px 8px;width:100%;box-sizing:border-box;font-size:14px;"/>
+    </div>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;margin-bottom:20px;">
+    <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:12px;">Deployment Plan (unit counts + one-time capex apply to PNode; BNode uses $/mo lease × units; CNode is free)</div>
+    <div style="display:grid;grid-template-columns:1.1fr 70px 90px 90px 100px 90px 90px 26px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 6px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div style="text-align:left;">Name</div><div>Type</div><div>GPU TFlops</div><div>CPU GFlops</div><div>$/mo lease</div><div>Capex/unit</div><div>Units</div><div></div>
+    </div>
+    <sc-for list="{{ nodeRows }}" as="n" hint-placeholder-count="2">
+      <div style="display:grid;grid-template-columns:1.1fr 70px 90px 90px 100px 90px 90px 26px;gap:8px;padding:8px 4px;align-items:center;border-bottom:1px solid #1c232c;font-size:12px;text-align:right;">
+        <div style="font-weight:600;text-align:left;">{{ n.name }}</div>
+        <div style="color:{{ n.typeColorDp }};">{{ n.type }}</div>
+        <div>{{ n.gpuTFlops }}</div>
+        <div>{{ n.cpuGFlops }}</div>
+        <div>{{ n.costPerMonth }}</div>
+        <input type="text" value="{{ n.capexPerUnit }}" onInput="{{ n.onCapex }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <input type="text" value="{{ n.unitCount }}" onInput="{{ n.onUnits }}" style="background:#0d1620;border:1px solid #2c3644;border-radius:6px;color:#fff;padding:5px 7px;font-size:12px;width:100%;box-sizing:border-box;"/>
+        <div></div>
+      </div>
+    </sc-for>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:20px;">
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:11px;color:#8e99a8;">Total Capex (t=0)</div>
+      <div style="font-size:18px;font-weight:800;margin-top:4px;">{{ cfSummary.totalCapexFmt }}</div>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:11px;color:#8e99a8;">Stabilized Monthly Revenue</div>
+      <div style="font-size:18px;font-weight:800;margin-top:4px;color:#7ee787;">{{ cfSummary.stabRevenueFmt }}</div>
+    </div>
+    <div style="font-size:11px;color:#8e99a8;background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div>Operating Breakeven Month</div>
+      <div style="font-size:18px;font-weight:800;margin-top:4px;color:#fff;">{{ cfSummary.opBreakevenFmt }}</div>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:11px;color:#8e99a8;">Payback Month (recovers capex)</div>
+      <div style="font-size:18px;font-weight:800;margin-top:4px;color:#fff;">{{ cfSummary.paybackFmt }}</div>
+    </div>
+    <div style="background:#272e3680;border-radius:10px;padding:14px 16px;">
+      <div style="font-size:11px;color:#8e99a8;">Investor Preferred Return (annualized)</div>
+      <div style="font-size:18px;font-weight:800;margin-top:4px;color:#7ee787;">{{ cfSummary.irrAnnualFmt }}</div>
+    </div>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;">
+    <div onClick="{{ onToggleCfTable }}" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;{{ cfTableHeaderMargin }}">
+      <div style="font-size:13px;font-weight:700;color:#c9d3de;">Monthly Growth — Compounding from Starting Users, hard-capped at {{ cfSummary.capacityMauFmt }}</div>
+      <div style="color:#8e99a8;font-size:13px;">{{ cfTableToggleGlyph }}</div>
+    </div>
+    <sc-if value="{{ cfTableOpen }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:60px 100px 110px 110px 120px 110px 130px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 8px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div>Month</div><div>Active MAU</div><div>Revenue</div><div>Recurring Cost</div><div>Investor Return</div><div>House Net CF</div><div>House Cumulative Cash</div>
+    </div>
+    <sc-for list="{{ cfRows }}" as="m" hint-placeholder-count="6">
+      <div style="display:grid;grid-template-columns:60px 100px 110px 110px 120px 110px 130px;gap:8px;padding:7px 4px;align-items:center;border-bottom:{{ m.rowBorder }};background:{{ m.rowBg }};font-size:12px;text-align:right;">
+        <div>{{ m.month }}</div>
+        <div>{{ m.mauFmt }}</div>
+        <div style="color:{{ m.revenueColor }};">{{ m.revenueFmt }}</div>
+        <div style="color:#aab1c19c;">{{ m.costFmt }}</div>
+        <div style="color:#e0a866;">{{ m.investorDistFmt }}</div>
+        <div style="color:{{ m.netColor }};">{{ m.netFmt }}</div>
+        <div style="font-weight:700;color:{{ m.cumColor }};">{{ m.cumFmt }}</div>
+      </div>
+    </sc-for>
+    </sc-if>
+  </div>
+
+  <div style="background:#272e3680;border-radius:10px;padding:16px 18px;margin-top:16px;">
+    <div style="font-size:13px;font-weight:700;color:#c9d3de;margin-bottom:12px;">Totals — Monthly Growth — Compounding from Starting Users, hard-capped at {{ cfSummary.capacityMauFmt }}</div>
+    <div style="display:grid;grid-template-columns:60px 100px 110px 110px 120px 110px 130px;gap:8px;font-size:11px;color:#6b7688;padding:0 4px 8px;border-bottom:1px solid #2c364480;text-align:right;">
+      <div style="text-align:left;">Total</div><div></div><div>Revenue</div><div>Recurring Cost</div><div>Investor Return</div><div>House Net CF</div><div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:60px 100px 110px 110px 120px 110px 130px;gap:8px;padding:9px 4px;align-items:center;font-size:12px;text-align:right;font-weight:700;">
+      <div style="text-align:left;">All Months</div>
+      <div></div>
+      <div style="color:#7ee787;">{{ cfTotals.revenueFmt }}</div>
+      <div style="color:#aab1c19c;">{{ cfTotals.costFmt }}</div>
+      <div style="color:#e0a866;">{{ cfTotals.investorDistFmt }}</div>
+      <div style="color:{{ cfTotals.netColor }};">{{ cfTotals.netFmt }}</div>
+      <div></div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    // tokensPerResponse: 300 ~ a typical multi-sentence chat reply (real spread is 50-3000+ for
+    // long-form/markdown output). secondsBetweenRequests: 45 ~ average human read+type cadence
+    // in a back-and-forth chat session (not a GMAT-style think-time gap, which runs much longer).
+    // rewardsPayoutPct: 25 ~ CNode's real (non-cash) cost — points issued to contributors,
+    // redeemable against App subscription price, modeled as a % of the revenue that node
+    // attributed compute served. Not free; just not a dollar-cash cost.
+    a: { derate: 0.85, peakConcurrency: 0.15, daumau: 0.15, targetTokS: 20, modelParamsB: 1, capture: 0.01, addressableCap: 50000, tokensPerResponse: 300, secondsBetweenRequests: 45, rewardsPayoutPct: 25 },
+    arpu: [
+      { id: 1, name: 'Base OS + Inference', attach: 1.0, price: 10 },
+      { id: 2, name: 'Translate', attach: 0.3, price: 5 },
+      { id: 3, name: 'GMAT / Test-Prep', attach: 0.1, price: 15 }
+    ],
+    nodes: [
+      { id: 1, name: 'K80 BNode', type: 'BNode', gpuTFlops: 8.73, cpuGFlops: 100, costPerMonth: 64.50, idleHours: 0, capexPerUnit: 0, unitCount: 10 },
+      { id: 2, name: 'RTX 5060 BNode', type: 'BNode', gpuTFlops: 19.18, cpuGFlops: 150, costPerMonth: 85, idleHours: 0, capexPerUnit: 0, unitCount: 5 },
+      { id: 3, name: 'PNode (Orin Nano)', type: 'PNode', gpuTFlops: 67, cpuGFlops: 750, costPerMonth: 0, idleHours: 0, capexPerUnit: 1000, unitCount: 400 },
+      { id: 4, name: 'Student M-series CNode', type: 'CNode', gpuTFlops: 2.5, cpuGFlops: 0, costPerMonth: 0, idleHours: 12, capexPerUnit: 0, unitCount: 0 }
+    ],
+    nextArpuId: 4,
+    nextNodeId: 5,
+    staff: [
+      { id: 1, role: 'Operations', salary: 120000, benefitsRate: 1.32 },
+      { id: 2, role: 'Sales/Support', salary: 120000, benefitsRate: 1.32 },
+      { id: 3, role: 'Tech', salary: 120000, benefitsRate: 1.32 }
+    ],
+    nextStaffId: 4,
+    activeTab: 'overview',
+    cfTableOpen: true,
+    scenarioName: '',
+    scenarios: (() => { try { return JSON.parse(localStorage.getItem('node-economics-scenarios') || '[]'); } catch (e) { return []; } })(),
+    finderLoadOpen: false,
+    finderSaveOpen: false,
+    // investorPrefRate: fixed annualized preferred return owed to the investor (18-22% band —
+    // default sits at the midpoint), paid out of house cash monthly (rate/12), NOT computed from
+    // the venture's raw net cash flows. This is a preferred-return/waterfall structure: the
+    // investor's return is a contractual draw against house cash, separate from whatever the
+    // underlying model's IRR happens to compute to.
+    cf: { investment: 400000, startUsers: 100, monthlyGrowthPct: 50, monthsDisplay: 24, investorPrefRate: 20 }
+  };
+
+  setAssum(key, raw) {
+    this.setState(s => ({ a: { ...s.a, [key]: raw } }));
+  }
+  onAssumDerate = (e) => this.setAssum('derate', e.target.value);
+  onAssumPeakConcurrency = (e) => this.setAssum('peakConcurrency', e.target.value);
+  onAssumDaumau = (e) => this.setAssum('daumau', e.target.value);
+  onAssumTargetTokS = (e) => this.setAssum('targetTokS', e.target.value);
+  onAssumModelParamsB = (e) => this.setAssum('modelParamsB', e.target.value);
+  onAssumCapture = (e) => this.setAssum('capture', e.target.value);
+  onAssumAddressableCap = (e) => this.setAssum('addressableCap', e.target.value);
+  onAssumTokensPerResponse = (e) => this.setAssum('tokensPerResponse', e.target.value);
+  onAssumSecondsBetweenRequests = (e) => this.setAssum('secondsBetweenRequests', e.target.value);
+  onAssumRewardsPayoutPct = (e) => this.setAssum('rewardsPayoutPct', e.target.value);
+
+  updateArpu(id, field, value) {
+    this.setState(s => ({ arpu: s.arpu.map(r => r.id === id ? { ...r, [field]: value } : r) }));
+  }
+  updateNode(id, field, value) {
+    this.setState(s => ({ nodes: s.nodes.map(n => n.id === id ? { ...n, [field]: value } : n) }));
+  }
+
+  onTab = (tab) => () => this.setState({ activeTab: tab });
+
+  // Node Economics is really a scenario builder for Flow — a full state snapshot (assumptions,
+  // ARPU stack, node library, staff, cash-flow params) is what Flow ingests 1:M against its own
+  // NodeType schema. Persist to localStorage (this scenario library is local to this DC/user);
+  // Export gives a plain-JSON artifact for actual Flow upload.
+  persistScenarios(scenarios) {
+    try { localStorage.setItem('node-economics-scenarios', JSON.stringify(scenarios)); } catch (e) {}
+  }
+  snapshotState() {
+    const s = this.state;
+    return { a: s.a, arpu: s.arpu, nodes: s.nodes, staff: s.staff, cf: s.cf, nextArpuId: s.nextArpuId, nextNodeId: s.nextNodeId, nextStaffId: s.nextStaffId };
+  }
+  onScenarioNameInput = (e) => this.setState({ scenarioName: e.target.value });
+  onSaveScenario = () => {
+    const name = (this.state.scenarioName || '').trim() || 'Untitled Scenario';
+    const entry = { id: Date.now(), name, savedAt: new Date().toISOString(), data: this.snapshotState() };
+    this.setState(s => {
+      const scenarios = [...s.scenarios, entry];
+      this.persistScenarios(scenarios);
+      return { scenarios, scenarioName: '' };
+    });
+  };
+  onLoadScenario(entry) {
+    return () => this.setState(() => ({ ...entry.data }));
+  }
+  onDeleteScenario(id) {
+    return () => this.setState(s => {
+      const scenarios = s.scenarios.filter(x => x.id !== id);
+      this.persistScenarios(scenarios);
+      return { scenarios };
+    });
+  }
+  downloadJson(filename, obj) {
+    try {
+      const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename; a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {}
+  }
+  onExportScenario = () => {
+    const name = (this.state.scenarioName || 'node-economics-scenario').trim().replace(/\s+/g, '-');
+    this.downloadJson(name + '.json', { name: this.state.scenarioName || 'Untitled Scenario', data: this.snapshotState() });
+  };
+  onExportSavedScenario(entry) {
+    return () => this.downloadJson(entry.name.replace(/\s+/g, '-') + '.json', { name: entry.name, data: entry.data });
+  }
+  onOpenFinderLoad = () => this.setState({ finderLoadOpen: true });
+  onCloseFinderLoad = () => this.setState({ finderLoadOpen: false });
+  onOpenFinderSave = () => this.setState({ finderSaveOpen: true });
+  onCloseFinderSave = () => this.setState({ finderSaveOpen: false });
+  // FinderDialog's save flow has no real FileFsX write path yet — it hands back the chosen
+  // filename/location. Bridge: persist the scenario into this session's saved-scenario library
+  // under that name (same store Load reads from), so Save-to-File-System round-trips with Load
+  // until FinderDialog is wired to a real backing store.
+  onFinderSaveFile = (fileInfo) => {
+    const name = (this.state.scenarioName || (fileInfo && fileInfo.name) || 'Untitled Scenario').replace(/\.json$/, '');
+    const entry = { id: Date.now(), name, savedAt: new Date().toISOString(), data: this.snapshotState() };
+    this.setState(s => {
+      const scenarios = [...s.scenarios, entry];
+      this.persistScenarios(scenarios);
+      return { scenarios, finderSaveOpen: false };
+    });
+  };
+  onStopPropagation = (e) => e.stopPropagation();
+  // FinderDialog's own mock filesystem has no real file content — it hands back a selected
+  // filename. Bridge: match that filename against this session's saved scenario library (the
+  // scenario's exported .json name convention) and load the match. A real FileFsX-backed
+  // FinderDialog would instead return real file bytes to parse directly.
+  onFinderOpenFile = (fileInfo) => {
+    const match = this.state.scenarios.find(sc => (sc.name.replace(/\s+/g, '-') + '.json') === fileInfo.name || sc.name === fileInfo.name);
+    if (match) this.setState({ ...match.data, finderLoadOpen: false });
+    else this.setState({ finderLoadOpen: false });
+  };
+  onToggleCfTable = () => this.setState(s => ({ cfTableOpen: !s.cfTableOpen }));
+  setCfRaw(key, raw) {
+    this.setState(s => ({ cf: { ...s.cf, [key]: raw } }));
+  }
+  onCfInvestment = (e) => this.setCfRaw('investment', e.target.value);
+  onCfStartUsers = (e) => this.setCfRaw('startUsers', e.target.value);
+  onCfGrowthPct = (e) => this.setCfRaw('monthlyGrowthPct', e.target.value);
+  onCfMonthsDisplay = (e) => this.setCfRaw('monthsDisplay', e.target.value);
+  onCfInvestorPrefRate = (e) => this.setCfRaw('investorPrefRate', e.target.value);
+  updateStaff(id, field, value) {
+    this.setState(s => ({ staff: s.staff.map(st => st.id === id ? { ...st, [field]: value } : st) }));
+  }
+  onAddStaff = () => {
+    this.setState(s => ({ staff: [...s.staff, { id: s.nextStaffId, role: 'New Role', salary: 100000, benefitsRate: 1.32 }], nextStaffId: s.nextStaffId + 1 }));
+  };
+
+  onAddArpuRow = () => {
+    this.setState(s => ({ arpu: [...s.arpu, { id: s.nextArpuId, name: 'New tier', attach: 0.1, price: 5 }], nextArpuId: s.nextArpuId + 1 }));
+  };
+  onAddNode = () => {
+    this.setState(s => ({ nodes: [...s.nodes, { id: s.nextNodeId, name: 'New Node', type: 'BNode', gpuTFlops: 10, cpuGFlops: 100, costPerMonth: 50, idleHours: 0 }], nextNodeId: s.nextNodeId + 1 }));
+  };
+
+  numOr(v, fallback) { const n = parseFloat(v); return isNaN(n) ? fallback : n; }
+
+  computeNode(n, aRaw, arpuStack) {
+    const a = {
+      derate: this.numOr(aRaw.derate, 0.85), peakConcurrency: this.numOr(aRaw.peakConcurrency, 0.15),
+      daumau: this.numOr(aRaw.daumau, 0.15), targetTokS: this.numOr(aRaw.targetTokS, 20),
+      modelParamsB: this.numOr(aRaw.modelParamsB, 1), capture: this.numOr(aRaw.capture, 0.01),
+      tokensPerResponse: this.numOr(aRaw.tokensPerResponse, 300), secondsBetweenRequests: this.numOr(aRaw.secondsBetweenRequests, 45)
+    };
+    const nGpuTFlops = this.numOr(n.gpuTFlops, 0), nCpuGFlops = this.numOr(n.cpuGFlops, 0), nCostPerMonth = this.numOr(n.costPerMonth, 0);
+    // Real cost driver: total tokens generated per response (can be thousands for a markdown doc),
+    // burst-then-idle between requests — NOT a continuous per-second streaming rate. Average
+    // sustained GFlops/user = compute cost of one full response, amortized over the idle gap until
+    // the next request. targetTokS still governs perceived per-token latency, not total demand.
+    const gflopsPerResponse = 2 * a.modelParamsB * a.tokensPerResponse;
+    const requiredGFlopsPerUser = a.secondsBetweenRequests > 0 ? gflopsPerResponse / a.secondsBetweenRequests : gflopsPerResponse;
+    const floorGFlops = (nGpuTFlops * 1000 * a.derate) + nCpuGFlops;
+    const concurrent = requiredGFlopsPerUser > 0 ? floorGFlops / requiredGFlopsPerUser : 0;
+    const dau = a.peakConcurrency > 0 ? concurrent / a.peakConcurrency : 0;
+    const mau = a.daumau > 0 ? dau / a.daumau : 0;
+    // Concurrent users are actively-paying subscribers by definition, so they're a floor on
+    // subscriber count — MAU-capture math shouldn't be able to imply fewer subscribers than
+    // concurrent usage already proves exist.
+    const capturedUsers = Math.max(mau * a.capture, concurrent);
+    let revenue = 0;
+    arpuStack.forEach(tier => { revenue += capturedUsers * this.numOr(tier.attach, 0) * this.numOr(tier.price, 0); });
+    const isCNode = n.type === 'CNode';
+    const rewardsPayoutRate = this.numOr(aRaw.rewardsPayoutPct, 25) / 100;
+    const cost = isCNode ? revenue * rewardsPayoutRate : nCostPerMonth;
+    const margin = revenue - cost;
+    const marginPct = revenue > 0 ? (margin / revenue) * 100 : 0;
+    const revPerDollar = (!isCNode && cost > 0) ? revenue / cost : null;
+    return { concurrent, dau, mau, capturedUsers, revenue, cost, margin, marginPct, revPerDollar, isCNode };
+  }
+
+  fmt(n) { return Math.round(n).toLocaleString(); }
+  fmtMoney(n) { return '$' + Math.round(n).toLocaleString(); }
+
+  renderVals() {
+    const s = this.state;
+    const arpuRows = s.arpu.map(row => ({
+      name: row.name, attach: row.attach, price: row.price,
+      onName: (e) => this.updateArpu(row.id, 'name', e.target.value),
+      onAttach: (e) => this.updateArpu(row.id, 'attach', e.target.value),
+      onPrice: (e) => this.updateArpu(row.id, 'price', e.target.value),
+      onRemove: () => this.setState(st => ({ arpu: st.arpu.filter(r => r.id !== row.id) }))
+    }));
+
+    const nodeRows = s.nodes.map(n => ({
+      name: n.name, type: n.type, gpuTFlops: n.gpuTFlops, cpuGFlops: n.cpuGFlops, costPerMonth: n.costPerMonth, idleHours: n.idleHours,
+      onName: (e) => this.updateNode(n.id, 'name', e.target.value),
+      onType: (e) => this.updateNode(n.id, 'type', e.target.value),
+      onGpu: (e) => this.updateNode(n.id, 'gpuTFlops', e.target.value),
+      onCpu: (e) => this.updateNode(n.id, 'cpuGFlops', e.target.value),
+      onCost: (e) => this.updateNode(n.id, 'costPerMonth', e.target.value),
+      onIdle: (e) => this.updateNode(n.id, 'idleHours', e.target.value),
+      onRemove: () => this.setState(st => ({ nodes: st.nodes.filter(x => x.id !== n.id) })),
+      capexPerUnit: n.capexPerUnit || 0,
+      unitCount: n.unitCount || 0,
+      typeColorDp: ({ PNode: '#e0a866', BNode: '#66b2e0', CNode: '#a5e066' })[n.type] || '#fff',
+      onCapex: (e) => this.updateNode(n.id, 'capexPerUnit', e.target.value),
+      onUnits: (e) => this.updateNode(n.id, 'unitCount', e.target.value)
+    }));
+
+    const typeColors = { PNode: '#e0a866', BNode: '#66b2e0', CNode: '#a5e066' };
+    const computed = s.nodes.map(n => ({ n, c: this.computeNode(n, s.a, s.arpu) }));
+    computed.sort((x, y) => {
+      const xv = x.c.revPerDollar === null ? -1 : x.c.revPerDollar;
+      const yv = y.c.revPerDollar === null ? -1 : y.c.revPerDollar;
+      return yv - xv;
+    });
+
+    const resultRows = computed.map(({ n, c }) => ({
+      name: n.name, type: n.type, typeColor: typeColors[n.type] || '#fff',
+      concurrentFmt: this.fmt(c.concurrent),
+      dauFmt: this.fmt(c.dau),
+      mauFmt: this.fmt(c.mau),
+      revenueFmt: this.fmtMoney(c.revenue),
+      costFmt: c.isCNode ? this.fmtMoney(c.cost) + ' (points)' : this.fmtMoney(c.cost),
+      marginPctFmt: c.marginPct.toFixed(1) + '%',
+      revPerDollarFmt: c.revPerDollar === null ? 'N/A' : c.revPerDollar.toFixed(1) + 'x'
+    }));
+
+    const isOverview = s.activeTab === 'overview';
+    const isStabilized = s.activeTab === 'stabilized';
+    const isCashflow = s.activeTab === 'cashflow';
+    const tabColors = {
+      overview: isOverview ? '#fff' : '#8e99a8', overviewBorder: isOverview ? '#4a9eff' : 'transparent',
+      stabilized: isStabilized ? '#fff' : '#8e99a8', stabilizedBorder: isStabilized ? '#4a9eff' : 'transparent',
+      cashflow: isCashflow ? '#fff' : '#8e99a8', cashflowBorder: isCashflow ? '#4a9eff' : 'transparent'
+    };
+
+    // Cash Flow: aggregate stabilized totals across unit counts, then ramp 0->1 linearly.
+    let totalCapex = 0, stabRevenue = 0, stabRecurringCost = 0, stabMau = 0;
+    computed.forEach(({ n, c }) => {
+      const units = this.numOr(n.unitCount, 0);
+      totalCapex += this.numOr(n.capexPerUnit, 0) * units;
+      stabRevenue += c.revenue * units;
+      stabRecurringCost += c.cost * units;
+      stabMau += c.mau * units;
+    });
+
+    const monthsDisplay = Math.max(1, Math.round(this.numOr(s.cf.monthsDisplay, 24)));
+    const startUsers = Math.max(0, this.numOr(s.cf.startUsers, 0));
+    const investmentNum = this.numOr(s.cf.investment, 0);
+    let totalStaffCostPerMonth = 0;
+    s.staff.forEach(st => {
+      totalStaffCostPerMonth += (this.numOr(st.salary, 0) * this.numOr(st.benefitsRate, 1)) / 12;
+    });
+    stabRecurringCost += totalStaffCostPerMonth;
+    const growthPctNum = parseFloat(s.cf.monthlyGrowthPct);
+    const growthRate = (isNaN(growthPctNum) ? 0 : growthPctNum) / 100;
+    // Hard ceiling: the LOWER of (a) compute-derived MAU capacity and (b) a directly-set realistic
+    // addressable-market cap. Compute-headroom math (concurrent÷peak%÷stickiness%) compounds two
+    // small percentages and can imply unrealistic tens-of-millions of MAU from a small fleet —
+    // session/DB/support overhead isn't modeled by GFlops, so a real-world ceiling must be set
+    // explicitly rather than assumed away.
+    const addressableCapNum = this.numOr(s.a.addressableCap, 50000);
+    const addressableCap = addressableCapNum > 0 ? addressableCapNum : Infinity;
+    const capacityMau = Math.min(stabMau, addressableCap);
+    // Blended ARPU per active user (sum of attach% * price across tiers) — revenue must scale
+    // directly off actual user count at this rate, NOT off stabRevenue (which already bakes in
+    // the 1% capture assumption from the Stabilized Model tab, so ratio-ing against it against
+    // full mau capacity silently under-scaled revenue by ~100x).
+    let blendedArpu = 0;
+    s.arpu.forEach(tier => { blendedArpu += this.numOr(tier.attach, 0) * this.numOr(tier.price, 0); });
+    // Organic compounding growth (100 -> 150 -> ...), hard-capped at stabilized MAU capacity —
+    // revenue/cost/net all scale off actual users reached that month, not a fixed ramp fraction.
+    // Pass 1: compute raw values + find payback month before formatting, so earlier rows can be
+    // visually deemphasized relative to the payoff month.
+    // Investor Preferred Return: a fixed 18-22% annualized rate paid to the investor OUT OF
+    // house cash monthly, not the venture's own computed IRR. This is a real preferred-return/
+    // waterfall structure — the investor's return is a contractual draw against operating cash,
+    // separate from (and prior to) whatever residual upside the house model produces.
+    const investorPrefRate = this.numOr(s.cf.investorPrefRate, 20) / 100;
+    const investorMonthlyDistribution = (investmentNum * investorPrefRate) / 12;
+    const irrAnnual = investorPrefRate; // the investor's realized annualized return IS the preferred rate, by construction
+
+    let cumCash = investmentNum - totalCapex;
+    let opBreakevenMonth = null, paybackMonth = null;
+    const rawRows = [];
+    for (let m = 0; m <= monthsDisplay; m++) {
+      const usersUncapped = startUsers * Math.pow(1 + growthRate, m);
+      const users = Math.min(usersUncapped, capacityMau);
+      const revenue = users * blendedArpu;
+      const cost = stabRecurringCost; // recurring cost live from month 1, doesn't ramp down
+      const grossNet = revenue - cost;
+      const investorDistribution = m > 0 ? investorMonthlyDistribution : 0; // paid from house cash starting month 1
+      const net = grossNet - investorDistribution;
+      if (m > 0) cumCash += net;
+      if (opBreakevenMonth === null && net >= 0) opBreakevenMonth = m;
+      if (paybackMonth === null && cumCash >= investmentNum) paybackMonth = m;
+      rawRows.push({ month: m, users, revenue, cost, grossNet, investorDistribution, net, cumCash });
+    }
+
+    // Trough analysis: lowest cumulative-cash month, and the runway from there if user growth
+    // stopped entirely (net burn rate frozen at that month's level) — tells whether a stall is
+    // survivable, not just where breakeven/payback land.
+    let troughRow = rawRows[0];
+    rawRows.forEach(r => { if (r.cumCash < troughRow.cumCash) troughRow = r; });
+    const troughNet = troughRow.net;
+    let runwayMonths = null;
+    if (troughNet >= 0) runwayMonths = Infinity;
+    else if (troughRow.cumCash < 0) runwayMonths = 0;
+    else runwayMonths = troughRow.cumCash / -troughNet;
+    const runwayYears = runwayMonths === Infinity ? Infinity : runwayMonths / 12;
+    let survivalRecommendation = 'GOOD', survivalColor = '#4caf50';
+    if (runwayYears < 0.5) { survivalRecommendation = 'RISK'; survivalColor = '#ff5252'; }
+    else if (runwayYears < 1) { survivalRecommendation = 'CAUTION'; survivalColor = 'rgb(224, 168, 102)'; }
+
+    const totalsRow = rawRows.reduce((acc, r) => ({
+      revenue: acc.revenue + r.revenue, cost: acc.cost + r.cost,
+      investorDistribution: acc.investorDistribution + r.investorDistribution, net: acc.net + r.net
+    }), { revenue: 0, cost: 0, investorDistribution: 0, net: 0 });
+    const cfTotals = {
+      revenueFmt: this.fmtMoney(totalsRow.revenue), costFmt: this.fmtMoney(totalsRow.cost),
+      investorDistFmt: this.fmtMoney(totalsRow.investorDistribution),
+      netFmt: (totalsRow.net >= 0 ? '+' : '') + this.fmtMoney(totalsRow.net),
+      netColor: totalsRow.net >= 0 ? '#7ee787' : '#ff8080'
+    };
+
+    const cfRows = rawRows.map(row => {
+      const isPayback = paybackMonth !== null && row.month === paybackMonth;
+      const isOpBreakeven = opBreakevenMonth !== null && row.month === opBreakevenMonth;
+      const isCapped = capacityMau > 0 && row.users >= capacityMau * 0.999; // hit node-fleet's real capacity ceiling
+      const beforePayback = paybackMonth === null || row.month < paybackMonth;
+      const greenOpacity = beforePayback ? 0.5 : 1;
+      const revenueOpacity = beforePayback ? 0.5 : 1;
+      let rowBg = 'transparent', rowBorder = '1px solid #1c232c';
+      if (isPayback) { rowBg = 'rgba(126,231,135,0.12)'; rowBorder = '1px solid #4a9eff'; }
+      if (isOpBreakeven) { rowBorder = '1px solid #ff5252'; if (!isPayback) rowBg = 'rgba(255,82,82,0.08)'; }
+      return {
+        month: row.month, rampFmt: this.fmt(row.users) + ' users',
+        mauFmt: this.fmt(row.users) + (isCapped ? ' (cap)' : ''),
+        revenueFmt: this.fmtMoney(row.revenue), revenueColor: `rgba(126,231,135,${revenueOpacity})`,
+        costFmt: this.fmtMoney(row.cost),
+        investorDistFmt: this.fmtMoney(row.investorDistribution),
+        netFmt: (row.net >= 0 ? '+' : '') + this.fmtMoney(row.net),
+        netColor: row.net >= 0 ? `rgba(126,231,135,${greenOpacity})` : '#ff8080',
+        cumFmt: this.fmtMoney(row.cumCash),
+        cumColor: row.cumCash >= 0 ? `rgba(126,231,135,${greenOpacity})` : '#ff8080',
+        rowBg, rowBorder
+      };
+    });
+
+    const requiredMinInvestment = totalCapex + totalStaffCostPerMonth * 12;
+    const investmentShortfall = requiredMinInvestment - investmentNum;
+    const cfSummary = {
+      capacityMauFmt: this.fmt(capacityMau) + ' MAU (fleet capacity ceiling)',
+      totalCapexFmt: this.fmtMoney(totalCapex),
+      stabRevenueFmt: this.fmtMoney(stabRevenue) + '/mo',
+      opBreakevenFmt: opBreakevenMonth === null ? 'Not reached' : 'Month ' + opBreakevenMonth,
+      paybackFmt: paybackMonth === null ? 'Not within window' : 'Month ' + paybackMonth,
+      requiredMinInvestmentFmt: this.fmtMoney(requiredMinInvestment),
+      investmentWarning: investmentShortfall > 0,
+      investmentWarningFmt: investmentShortfall > 0 ? `Investment Allocation is ${this.fmtMoney(investmentShortfall)} short of Node CapEx + 1yr Staff (${this.fmtMoney(requiredMinInvestment)} required)` : '',
+      troughMonth: troughRow.month, troughCashFmt: this.fmtMoney(troughRow.cumCash),
+      runwayYearsFmt: runwayYears === Infinity ? 'indefinite (already cash-flow positive)' : runwayYears.toFixed(1) + ' years',
+      survivalRecommendation, survivalColor,
+      irrAnnualFmt: (irrAnnual * 100).toFixed(1) + '%',
+      investorMonthlyDistributionFmt: this.fmtMoney(investorMonthlyDistribution) + '/mo'
+    };
+
+    // Best/worst node by Rev/$ leased, for the dynamic narrative (excludes CNode, which has no $ denominator)
+    const leasedComputed = computed.filter(x => !x.c.isCNode && x.c.revPerDollar !== null);
+    const bestNode = leasedComputed.length ? leasedComputed.reduce((a2, b2) => (b2.c.revPerDollar > a2.c.revPerDollar ? b2 : a2)) : null;
+    const worstNode = leasedComputed.length ? leasedComputed.reduce((a2, b2) => (b2.c.revPerDollar < a2.c.revPerDollar ? b2 : a2)) : null;
+    const ovTargetTokS = this.numOr(s.a.targetTokS, 20), ovModelParamsB = this.numOr(s.a.modelParamsB, 1);
+    const ovDerate = this.numOr(s.a.derate, 0.85), ovPeakConcurrency = this.numOr(s.a.peakConcurrency, 0.15);
+    const ovDaumau = this.numOr(s.a.daumau, 0.15), ovCapture = this.numOr(s.a.capture, 0.01);
+    const ovTokensPerResponse = this.numOr(s.a.tokensPerResponse, 300), ovSecondsBetween = this.numOr(s.a.secondsBetweenRequests, 45);
+    const ovGflopsPerResponse = 2 * ovModelParamsB * ovTokensPerResponse;
+    const requiredGFlopsPerUser = ovSecondsBetween > 0 ? ovGflopsPerResponse / ovSecondsBetween : ovGflopsPerResponse;
+
+    const overviewParas = [
+`This model runs a ${ovModelParamsB}B-parameter model averaging ${ovTokensPerResponse} tokens/response (a markdown doc can run several thousand) every ${ovSecondsBetween}s per active user — the real compute cost, not the ${ovTargetTokS} tok/s streaming rate users perceive. That's ${ovGflopsPerResponse.toFixed(0)} GFlops/response, amortized to ${requiredGFlopsPerUser.toFixed(1)} sustained GFlops/user. Each node's compute floor is derated by ${(ovDerate * 100).toFixed(0)}% for sustained (non-burst) throughput.`,
+`Concurrent capacity converts to Daily Active Users via a ${(ovPeakConcurrency * 100).toFixed(0)}% peak-concurrency assumption (only this fraction of DAU is inferencing at the same instant), then to Monthly Active Users via a ${(ovDaumau * 100).toFixed(0)}% DAU/MAU stickiness ratio. At a real-world market capture of ${(ovCapture * 100).toFixed(2)}%, that MAU pool converts to paying subscribers.`,
+bestNode ? `Alpha finding: ${bestNode.n.name} (${bestNode.n.type}) currently shows the best Rev/$-leased ratio in the library at ${bestNode.c.revPerDollar.toFixed(1)}x — meaning ${bestNode.n.name}'s memory/compute-per-dollar is priced most favorably relative to what this inference-demand model can extract from it.` +
+  ((bestNode && worstNode && worstNode.n.id !== bestNode.n.id) ? ` By contrast, ${worstNode.n.name} shows the weakest ratio at ${worstNode.c.revPerDollar.toFixed(1)}x — the gap between the two is the mispricing this model surfaces, not a distribution or vendor artifact (same source, different tier).` : '') : null,
+`PNode capex in the Cash Flow tab is the only line that touches a real deal's balance sheet (ONOMO-style) — BNode lease and CNode rewards-points cost are house money, strengthening the network without diluting the deal's own capital structure.`,
+{ pre: `Cash Flow trough: the model hits its lowest cumulative-cash point in Month ${cfSummary.troughMonth} (${cfSummary.troughCashFmt}). From that point forward, even with zero further user growth, the model burns cash slowly enough to have ${cfSummary.runwayYearsFmt} to course-correct before running out. Recommendation: `, rec: cfSummary.survivalRecommendation, recColor: cfSummary.survivalColor, post: '.' },
+`Investor structure: the ${cfSummary.irrAnnualFmt} annualized preferred return is a fixed contractual rate paid to the investor out of house cash (${cfSummary.investorMonthlyDistributionFmt}), not a computed IRR from the venture's own net cash flows \u2014 the house absorbs all upside/downside variance above and below that fixed draw.`
+].filter(p => p !== null && p !== undefined);
+
+    const definitions = [
+      { term: 'PNode', desc: 'Owned, solar-tethered edge compute node. Lowest margin, seasonal/regional/latency-exposed — but the only node type financeable on a real deal balance sheet.' },
+      { term: 'BNode', desc: 'Rented backbone server (no ownership, no capex). Most stable — the hedge that smooths mesh variance between CNode volatility and PNode regional exposure.' },
+      { term: 'CNode', desc: 'Ephemeral volunteer/idle compute (SETI@home-style) from students, companies, schools. Zero cash cost — compensated in Rewards points redeemable against App subscriptions. Highest margin, least reliable.' },
+      { term: 'Sustained derate', desc: 'Fraction of a GPU\u2019s nameplate TFLOPS realistically sustained under continuous load (thermal/OS overhead) rather than burst peak.' },
+      { term: 'Peak concurrency %', desc: 'Fraction of Daily Active Users actually inferencing at the same peak instant \u2014 not 100%, since most usage is bursty, not continuous.' },
+      { term: 'DAU/MAU (stickiness)', desc: 'Ratio of daily habitual use to monthly reach. Converts a node\u2019s concurrent-capacity ceiling into a realistic subscriber pool.' },
+      { term: 'Market capture %', desc: 'Real-world fraction of theoretical MAU capacity actually converted to paying subscribers \u2014 the honesty check against pure compute-ceiling math.' },
+      { term: 'ARPU stack', desc: 'Base OS/inference subscription plus attach-rate-weighted add-ons (Translate, GMAT, etc.), each with its own cost curve \u2014 some (like Translate) trend toward near-zero marginal compute cost over time.' },
+      { term: 'Rev/$ leased', desc: 'Monthly revenue generated per dollar of monthly lease cost \u2014 the alpha-discovery metric across a vendor\u2019s own GPU tier table.' },
+      { term: 'Duty-cycle multiplier', desc: 'For think-time-heavy apps (GMAT, test-prep), the ratio of session length to actual inference time \u2014 can multiply effective concurrent capacity 20x+ versus continuous chat.' }
+    ];
+
+    const staffRows = s.staff.map(st => ({
+      role: st.role, salary: st.salary, benefitsRate: st.benefitsRate,
+      onRole: (e) => this.updateStaff(st.id, 'role', e.target.value),
+      onSalary: (e) => this.updateStaff(st.id, 'salary', e.target.value),
+      onBenefitsRate: (e) => this.updateStaff(st.id, 'benefitsRate', e.target.value),
+      onRemove: () => this.setState(s2 => ({ staff: s2.staff.filter(x => x.id !== st.id) }))
+    }));
+    const totalStaffCostFmt = this.fmtMoney(totalStaffCostPerMonth);
+
+    const investmentBorderColor = investmentShortfall > 0 ? '#ff5252' : '#2c3644';
+
+    const overviewParaObjs = overviewParas.map(p => typeof p === 'string' ? { text: p } : { text: '', ...p });
+
+    const scenarioRows = s.scenarios.map(sc => ({
+      name: sc.name,
+      savedAtFmt: new Date(sc.savedAt).toLocaleDateString(),
+      onLoad: this.onLoadScenario(sc),
+      onDelete: this.onDeleteScenario(sc.id),
+      onExport: this.onExportSavedScenario(sc)
+    }));
+
+    return { a: s.a, investmentBorderColor, overviewParaObjs,
+      scenarioName: s.scenarioName, onScenarioNameInput: this.onScenarioNameInput, onSaveScenario: this.onSaveScenario, onExportScenario: this.onExportScenario, scenarioRows,
+      finderLoadOpen: s.finderLoadOpen, onOpenFinderLoad: this.onOpenFinderLoad, onCloseFinderLoad: this.onCloseFinderLoad, onStopPropagation: this.onStopPropagation, onFinderOpenFile: this.onFinderOpenFile,
+      finderSaveOpen: s.finderSaveOpen, onOpenFinderSave: this.onOpenFinderSave, onCloseFinderSave: this.onCloseFinderSave, onFinderSaveFile: this.onFinderSaveFile,
+      pendingSaveFilename: (s.scenarioName || 'Untitled Scenario') + '.json',
+      onAssumDerate: this.onAssumDerate, onAssumPeakConcurrency: this.onAssumPeakConcurrency, onAssumDaumau: this.onAssumDaumau,
+      onAssumTargetTokS: this.onAssumTargetTokS, onAssumModelParamsB: this.onAssumModelParamsB, onAssumCapture: this.onAssumCapture,
+      onAssumAddressableCap: this.onAssumAddressableCap,
+      onAssumTokensPerResponse: this.onAssumTokensPerResponse, onAssumSecondsBetweenRequests: this.onAssumSecondsBetweenRequests,
+      onAssumRewardsPayoutPct: this.onAssumRewardsPayoutPct,
+      arpuRows, onAddArpuRow: this.onAddArpuRow, nodeRows, onAddNode: this.onAddNode, resultRows,
+      staffRows, onAddStaff: this.onAddStaff, totalStaffCostFmt,
+      isOverview, definitions,
+      isStabilized, isCashflow, onTabOverview: this.onTab('overview'), onTabStabilized: this.onTab('stabilized'), onTabCashflow: this.onTab('cashflow'), tabColors, cf: s.cf,
+      onCfInvestment: this.onCfInvestment, onCfStartUsers: this.onCfStartUsers, onCfGrowthPct: this.onCfGrowthPct, onCfMonthsDisplay: this.onCfMonthsDisplay,
+      onCfInvestorPrefRate: this.onCfInvestorPrefRate,
+      cfSummary, cfRows,
+      onToggleCfTable: this.onToggleCfTable, cfTableOpen: s.cfTableOpen, cfTableToggleGlyph: s.cfTableOpen ? '▾' : '▸', cfTableHeaderMargin: s.cfTableOpen ? 'margin-bottom:12px;' : '',
+      cfTotals };
+  }
+}
+</script>
+</body>
+</html>

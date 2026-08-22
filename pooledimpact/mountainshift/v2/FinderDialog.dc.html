@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <script>document.addEventListener('contextmenu', (e) => { e.preventDefault(); }, true);</script>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" />
+  <style>
+    select { appearance:none; }
+  </style>
+</helmet>
+<div ref="{{ rootRef }}" style="height:100vh;background:#030f17;color:#fff;font-family:'Noto Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;flex-direction:column;overflow:hidden;position:relative;">
+
+  <div style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0d1620;border-bottom:1px solid #1c2733;flex-shrink:0;">
+    <span onClick="{{ onHistoryBack }}" style="cursor:pointer;font-size:18px;color:{{ historyBackColor }};font-family:'Material Symbols Outlined';">chevron_left</span>
+    <span onClick="{{ onHistoryForward }}" style="cursor:pointer;font-size:18px;color:{{ historyForwardColor }};font-family:'Material Symbols Outlined';">chevron_right</span>
+    <div style="flex:1;"></div>
+    <div style="font-size:11.5px;color:#6b7686;">One file dialog — reused by every app for browsing, Open, and Save.</div>
+  </div>
+
+  <div style="flex:1;min-height:0;position:relative;">
+    <div style="display:flex;height:100%;">
+      <div style="width:210px;flex-shrink:0;background:#272e3680;border-right:1px solid #1c2733;padding:14px 10px;overflow-y:auto;">
+        <div onClick="{{ onOpenRecents }}" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;font-size:13px;cursor:pointer;background:{{ recentsBg }};color:#fff;margin-bottom:8px;">
+          <span style="width:16px;text-align:center;">🕐</span><span>Recents</span>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:6px 8px;">Favorites</div>
+        <sc-for list="{{ favorites }}" as="f" hint-placeholder-count="4">
+          <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;font-size:13px;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};margin-bottom:1px;">
+            <span style="width:16px;text-align:center;">{{ f.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+          </div>
+        </sc-for>
+        <div onClick="{{ onOpenApplications }}" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;font-size:13px;cursor:pointer;background:{{ applicationsBg }};color:#fff;margin-bottom:1px;">
+          <span style="width:16px;text-align:center;">🚀</span><span>Applications</span>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:14px 8px 6px;">Locations</div>
+        <sc-for list="{{ locations }}" as="l" hint-placeholder-count="2">
+          <div onClick="{{ l.onClick }}" style="display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:7px;font-size:13px;cursor:pointer;background:{{ l.bg }};color:{{ l.color }};margin-bottom:1px;">
+            <span style="width:16px;text-align:center;">{{ l.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ l.name }}</span>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;gap:14px;padding:10px 20px;border-bottom:1px solid #1c2733;flex-shrink:0;">
+          <span onClick="{{ onUp }}" style="cursor:pointer;color:{{ upColor }};font-size:16px;">‹</span>
+          <div style="display:flex;align-items:center;gap:6px;font-size:13px;flex:1;min-width:0;overflow:hidden;">
+            <sc-for list="{{ breadcrumb }}" as="b" hint-placeholder-count="3">
+              <span onClick="{{ b.onClick }}" style="cursor:pointer;color:{{ b.color }};white-space:nowrap;">{{ b.label }}</span>
+              <sc-if value="{{ b.hasSep }}" hint-placeholder-val="{{ false }}"><span style="color:#4a5568;">›</span></sc-if>
+            </sc-for>
+          </div>
+          <div style="display:flex;gap:2px;background:#1c2733;border-radius:8px;padding:2px;flex-shrink:0;">
+            <div onClick="{{ onSetList }}" style="padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;background:{{ listBg }};">☰</div>
+            <div onClick="{{ onSetGrid }}" style="padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;background:{{ gridBg }};">▦</div>
+            <div onClick="{{ onSetColumn }}" style="padding:4px 9px;border-radius:6px;cursor:pointer;font-size:12px;background:{{ columnBg }};">▤</div>
+          </div>
+          <input value="{{ finderQuery }}" onInput="{{ onFinderQueryChange }}" placeholder="Search" style="background:#1c2733;border:none;border-radius:8px;padding:6px 10px;color:#fff;font-size:12.5px;width:150px;outline:none;flex-shrink:0;" />
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;padding:6px 20px;border-bottom:1px solid #1c2733;flex-shrink:0;font-size:11.5px;color:#8e99a8;">
+          <span>Sort:</span>
+          <select value="{{ sortField }}" onChange="{{ onSortFieldChange }}" style="background:#1c2733;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11.5px;outline:none;">
+            <option value="name">Name</option><option value="modified">Modified</option><option value="size">Size</option><option value="kind">Kind</option>
+          </select>
+          <span style="margin-left:10px;">Group By:</span>
+          <select value="{{ groupBy }}" onChange="{{ onGroupByChange }}" style="background:#1c2733;color:#fff;border:none;border-radius:6px;padding:4px 8px;font-size:11.5px;outline:none;">
+            <option value="none">None</option><option value="kind">Kind</option><option value="modified">Modified</option>
+          </select>
+        </div>
+
+        <sc-if value="{{ isListView }}" hint-placeholder-val="{{ true }}">
+          <div style="display:grid;grid-template-columns:1fr 140px 90px 130px;padding:8px 20px;border-bottom:1px solid #1c2733;font-size:11px;color:#6b7686;font-weight:600;flex-shrink:0;">
+            <div onClick="{{ onSortHeadingName }}" style="cursor:pointer;">Name{{ sortArrowName }}</div>
+            <div onClick="{{ onSortHeadingModified }}" style="cursor:pointer;">Modified{{ sortArrowModified }}</div>
+            <div onClick="{{ onSortHeadingSize }}" style="cursor:pointer;">Size{{ sortArrowSize }}</div>
+            <div onClick="{{ onSortHeadingKind }}" style="cursor:pointer;">Kind{{ sortArrowKind }}</div>
+          </div>
+          <div style="flex:1;overflow-y:auto;padding:6px 20px;">
+            <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="1">
+              <sc-if value="{{ grp.isGroup }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ grp.onToggle }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 6px;color:#c9d3de;font-size:12.5px;font-weight:600;">
+                  <span>{{ grp.caret }}</span><span>{{ grp.label }}</span><span style="color:#6b7686;font-weight:400;">{{ grp.summary }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ grp.expanded }}" hint-placeholder-val="{{ true }}">
+                <sc-for list="{{ grp.items }}" as="it" hint-placeholder-count="6">
+                  <div onClick="{{ it.onClick }}" onDoubleClick="{{ it.onOpen }}" onContextMenu="{{ it.onContextMenu }}" onMouseDown="{{ it.onMouseDown }}" style="display:grid;grid-template-columns:1fr 140px 90px 130px;padding:7px 6px;border-radius:6px;align-items:center;background:{{ it.bg }};">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:{{ it.nameColor }};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><div style="{{ it.iconBgStyle }}"></div><sc-if value="{{ it.icon }}" hint-placeholder-val="{{ true }}"><span>{{ it.icon }}</span></sc-if><span>{{ it.name }}</span></div>
+                    <div style="font-size:12px;color:#8e99a8;">{{ it.modified }}</div>
+                    <div style="font-size:12px;color:#8e99a8;">{{ it.size }}</div>
+                    <div style="font-size:12px;color:#8e99a8;">{{ it.kind }}</div>
+                  </div>
+                </sc-for>
+              </sc-if>
+            </sc-for>
+            <sc-if value="{{ itemsEmpty }}" hint-placeholder-val="{{ false }}"><div style="color:#6b7686;font-size:13px;padding:20px 6px;">{{ emptyOrErrorLabel }}</div></sc-if>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isGridView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;overflow-y:auto;padding:20px;">
+            <sc-for list="{{ groups }}" as="grp" hint-placeholder-count="1">
+              <sc-if value="{{ grp.isGroup }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ grp.onToggle }}" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 6px;color:#c9d3de;font-size:12.5px;font-weight:600;">
+                  <span>{{ grp.caret }}</span><span>{{ grp.label }}</span><span style="color:#6b7686;font-weight:400;">{{ grp.summary }}</span>
+                </div>
+              </sc-if>
+              <sc-if value="{{ grp.expanded }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:18px;align-content:start;margin-bottom:10px;">
+                  <sc-for list="{{ grp.items }}" as="it" hint-placeholder-count="6">
+                    <div onClick="{{ it.onClick }}" onDoubleClick="{{ it.onOpen }}" onContextMenu="{{ it.onContextMenu }}" onMouseDown="{{ it.onMouseDown }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:8px 4px;border-radius:8px;background:{{ it.bg }};">
+                      <div style="{{ it.iconBgStyleLg }}"></div><sc-if value="{{ it.icon }}" hint-placeholder-val="{{ true }}"><div style="font-size:64px;">{{ it.icon }}</div></sc-if>
+                      <div style="font-size:11.5px;color:{{ it.nameColor }};text-align:center;word-break:break-word;line-height:1.3;">{{ it.name }}</div>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </sc-for>
+          </div>
+        </sc-if>
+        <sc-if value="{{ isColumnView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;overflow-x:auto;overflow-y:hidden;display:flex;">
+            <sc-for list="{{ columnList }}" as="col" hint-placeholder-count="2">
+              <div style="width:220px;flex-shrink:0;border-right:1px solid #1c2733;overflow-y:auto;">
+                <sc-for list="{{ col.items }}" as="it" hint-placeholder-count="4">
+                  <div onClick="{{ it.onClick }}" onDoubleClick="{{ it.onOpen }}" onContextMenu="{{ it.onContextMenu }}" onMouseDown="{{ it.onMouseDown }}" style="display:flex;align-items:center;gap:6px;padding:5px 10px;font-size:12.5px;color:{{ it.nameColor }};background:{{ it.bg }};cursor:pointer;">
+                    <span>{{ it.icon }}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ it.name }}</span>
+                    <sc-if value="{{ it.isFolder }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7686;">›</span></sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+            <div style="flex:1;overflow-y:auto;padding:20px;">
+              <sc-if value="{{ previewItem }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:6px;">{{ previewItem.name }}</div>
+                <div style="font-size:12.5px;color:#8e99a8;margin-bottom:14px;">{{ previewItem.kind }} \u2014 {{ previewItem.size }}</div>
+                <div style="font-size:11.5px;color:#6b7686;">Modified: {{ previewItem.modified }}</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <div style="padding:8px 20px;border-top:1px solid #1c2733;font-size:11.5px;color:#6b7686;flex-shrink:0;display:flex;align-items:center;gap:15px;">
+          <span>{{ itemCountLabel }}</span>
+          <span onClick="{{ onOpenCurrentFolder }}" style="cursor:pointer;color:#4a9eff;">{{ currentFolderLabel }}</span>
+        </div>
+      </div>
+    </div>
+
+    <sc-if value="{{ isSaveMode }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;">
+        <div style="background:#111a24;border:1px solid #1c2733;border-radius:14px;width:{{ saveModalWidth }};max-height:88%;box-sizing:border-box;transition:width 0.32s cubic-bezier(0.4,0,0.2,1);display:flex;flex-direction:column;overflow:hidden;">
+        <div style="padding:22px 24px 0;overflow-y:auto;flex:1;min-height:0;">
+          <div style="font-size:12.5px;color:#8e99a8;margin-bottom:5px;">Save As:</div>
+          <input value="{{ saveFilename }}" onInput="{{ onSaveFilenameChange }}" style="width:100%;background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:8px 10px;color:#fff;font-size:13.5px;outline:none;margin-bottom:14px;box-sizing:border-box;" />
+          <div style="font-size:12.5px;color:#8e99a8;margin-bottom:5px;">Tags:</div>
+          <input value="{{ saveTags }}" onInput="{{ onSaveTagsChange }}" style="width:100%;background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:8px 10px;color:#fff;font-size:13.5px;outline:none;margin-bottom:14px;box-sizing:border-box;" />
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+            <div style="font-size:12.5px;color:#8e99a8;width:52px;flex-shrink:0;">Where:</div>
+            <select value="{{ saveWhere }}" onChange="{{ onSaveWhereChange }}" style="flex:1;background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:7px 10px;color:#fff;font-size:12.5px;">
+              <sc-for list="{{ favoritePaths }}" as="fp" hint-placeholder-count="3">
+                <option value="{{ fp.path }}">{{ fp.name }}</option>
+              </sc-for>
+            </select>
+            <button onClick="{{ onToggleSaveExpanded }}" title="Expand into Finder browser" style="background:#1c2733;border:1px solid #2c3947;border-radius:8px;width:32px;height:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#fff;font-size:13px;">{{ saveExpandIcon }}</button>
+          </div>
+
+          <sc-if value="{{ saveExpanded }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;height:240px;margin-bottom:16px;border:1px solid #1c2733;border-radius:10px;overflow:hidden;">
+              <div style="width:150px;flex-shrink:0;background:#151f2a;border-right:1px solid #1c2733;padding:10px 8px;overflow-y:auto;">
+                <div style="font-size:10px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:4px 6px;">Favorites</div>
+                <sc-for list="{{ favorites }}" as="f" hint-placeholder-count="3">
+                  <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;font-size:12px;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};">
+                    <span style="width:14px;text-align:center;">{{ f.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+                  </div>
+                </sc-for>
+                <div style="font-size:10px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:10px 6px 4px;">Locations</div>
+                <sc-for list="{{ locations }}" as="l" hint-placeholder-count="2">
+                  <div onClick="{{ l.onClick }}" style="display:flex;align-items:center;gap:7px;padding:5px 6px;border-radius:6px;font-size:12px;cursor:pointer;background:{{ l.bg }};color:{{ l.color }};">
+                    <span style="width:14px;text-align:center;">{{ l.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ l.name }}</span>
+                  </div>
+                </sc-for>
+              </div>
+              <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+                <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid #1c2733;font-size:12px;flex-shrink:0;">
+                  <span onClick="{{ onUp }}" style="cursor:pointer;color:{{ upColor }};">‹</span>
+                  <sc-for list="{{ breadcrumb }}" as="b" hint-placeholder-count="2">
+                    <span onClick="{{ b.onClick }}" style="cursor:pointer;color:{{ b.color }};white-space:nowrap;">{{ b.label }}</span>
+                    <sc-if value="{{ b.hasSep }}" hint-placeholder-val="{{ false }}"><span style="color:#4a5568;">›</span></sc-if>
+                  </sc-for>
+                </div>
+                <div style="flex:1;overflow-y:auto;padding:6px 10px;">
+                  <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+                    <div onClick="{{ it.onOpen }}" style="display:flex;align-items:center;gap:8px;padding:6px 6px;border-radius:6px;cursor:pointer;background:{{ it.bg }};">
+                      <span style="font-size:14px;">{{ it.icon }}</span>
+                      <span style="font-size:12.5px;color:{{ it.nameColor }};flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ it.name }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#6b7686;margin-bottom:10px;">Browse to a folder above to set where this saves \u2014 it updates Where: as you navigate.</div>
+          </sc-if>
+
+          <div style="border-top:1px solid #1c2733;margin:4px 0 16px;"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="font-size:12.5px;color:#8e99a8;width:52px;flex-shrink:0;">Format:</div>
+            <select value="{{ saveFormat }}" onChange="{{ onFormatChange }}" style="flex:1;background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:7px 10px;color:#fff;font-size:13px;">
+              <sc-for list="{{ formatNames }}" as="nm" hint-placeholder-count="4">
+                <option value="{{ nm }}">{{ nm }}</option>
+              </sc-for>
+            </select>
+          </div>
+
+          <sc-for list="{{ activeFormatControls }}" as="ctrl" hint-placeholder-count="3">
+            <sc-if value="{{ ctrl.isSelect }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <div style="font-size:12.5px;color:#8e99a8;flex:1;">{{ ctrl.label }}</div>
+                <select value="{{ ctrl.value }}" onChange="{{ ctrl.onChange }}" style="background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:6px 10px;color:#fff;font-size:12.5px;">
+                  <sc-for list="{{ ctrl.options }}" as="op" hint-placeholder-count="2">
+                    <option value="{{ op }}">{{ op }}</option>
+                  </sc-for>
+                </select>
+              </div>
+            </sc-if>
+            <sc-if value="{{ ctrl.isCheckbox }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ ctrl.onToggle }}" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer;">
+                <div style="width:18px;height:18px;border-radius:5px;background:{{ ctrl.boxBg }};display:flex;align-items:center;justify-content:center;font-size:11px;color:#fff;flex-shrink:0;">{{ ctrl.checkMark }}</div>
+                <div style="font-size:13px;">{{ ctrl.label }}</div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ ctrl.isButton }}" hint-placeholder-val="{{ false }}">
+              <button style="background:#1c2733;color:#5a6472;border:none;border-radius:8px;padding:7px 16px;font-size:12.5px;font-weight:600;cursor:default;margin-bottom:4px;">{{ ctrl.label }}</button>
+            </sc-if>
+          </sc-for>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 24px;border-top:1px solid #1c2733;flex-shrink:0;background:#111a24;">
+            <button onClick="{{ onNewFolder }}" style="background:#1c2733;color:#fff;border:none;border-radius:10px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;">New Folder</button>
+            <div style="display:flex;gap:10px;">
+              <button onClick="{{ onCancelDialog }}" style="background:#1c2733;color:#fff;border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+              <button onClick="{{ onConfirmSave }}" style="background:#0a84ff;color:#fff;border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:700;cursor:pointer;">Save</button>
+            </div>
+          </div>
+          <sc-if value="{{ saveMessage }}" hint-placeholder-val="{{ false }}"><div style="padding:0 24px 14px;color:#34c759;font-size:12.5px;">{{ saveMessage }}</div></sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isOpenMode }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;">
+        <div style="background:#111a24;border:1px solid #1c2733;border-radius:14px;width:690px;height:460px;display:flex;flex-direction:column;overflow:hidden;">
+          <div style="padding:14px 20px;font-size:1.05em;font-weight:700;border-bottom:1px solid #1c2733;flex-shrink:0;">Open</div>
+          <div style="flex:1;min-height:0;display:flex;">
+            <div style="width:190px;flex-shrink:0;background:#151f2a;border-right:1px solid #1c2733;padding:10px 8px;overflow-y:auto;">
+              <div onClick="{{ onOpenRecents }}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;background:{{ recentsBg }};color:#fff;margin-bottom:6px;">
+                <span style="width:14px;text-align:center;">🕐</span><span>Recents</span>
+              </div>
+              <div style="font-size:10px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:4px 8px;">Favorites</div>
+              <sc-for list="{{ favorites }}" as="f" hint-placeholder-count="3">
+                <div onClick="{{ f.onClick }}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;background:{{ f.bg }};color:{{ f.color }};">
+                  <span style="width:14px;text-align:center;">{{ f.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ f.name }}</span>
+                </div>
+              </sc-for>
+              <div style="font-size:10px;font-weight:700;color:#6b7686;text-transform:uppercase;letter-spacing:0.05em;padding:10px 8px 4px;">Locations</div>
+              <sc-for list="{{ locations }}" as="l" hint-placeholder-count="2">
+                <div onClick="{{ l.onClick }}" style="display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:6px;font-size:12.5px;cursor:pointer;background:{{ l.bg }};color:{{ l.color }};">
+                  <span style="width:14px;text-align:center;">{{ l.icon }}</span><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ l.name }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column;">
+              <div style="display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid #1c2733;font-size:13px;flex-shrink:0;">
+                <span onClick="{{ onUp }}" style="cursor:pointer;color:{{ upColor }};font-size:15px;">‹</span>
+                <sc-for list="{{ breadcrumb }}" as="b" hint-placeholder-count="2">
+                  <span onClick="{{ b.onClick }}" style="cursor:pointer;color:{{ b.color }};white-space:nowrap;">{{ b.label }}</span>
+                  <sc-if value="{{ b.hasSep }}" hint-placeholder-val="{{ false }}"><span style="color:#4a5568;">›</span></sc-if>
+                </sc-for>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 120px 80px;padding:6px 16px;border-bottom:1px solid #1c2733;font-size:10.5px;color:#6b7686;font-weight:600;flex-shrink:0;">
+                <div>Name</div><div>Modified</div><div>Size</div>
+              </div>
+              <div style="flex:1;overflow-y:auto;padding:4px 16px;">
+                <sc-for list="{{ items }}" as="it" hint-placeholder-count="6">
+                  <div onClick="{{ it.onClick }}" onDoubleClick="{{ it.onOpen }}" onContextMenu="{{ it.onContextMenu }}" onMouseDown="{{ it.onMouseDown }}" style="display:grid;grid-template-columns:1fr 120px 80px;padding:6px 4px;border-radius:6px;align-items:center;background:{{ it.bg }};cursor:pointer;">
+                    <div style="display:flex;align-items:center;gap:8px;font-size:13px;color:{{ it.nameColor }};min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><div style="{{ it.iconBgStyle }}"></div><sc-if value="{{ it.icon }}" hint-placeholder-val="{{ true }}"><span>{{ it.icon }}</span></sc-if><span>{{ it.name }}</span></div>
+                    <div style="font-size:11.5px;color:#8e99a8;">{{ it.modified }}</div>
+                    <div style="font-size:11.5px;color:#8e99a8;">{{ it.size }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-top:1px solid #1c2733;flex-shrink:0;">
+            <div style="font-size:12px;color:#6b7686;">{{ openSelectedLabel }}</div>
+            <div style="display:flex;gap:10px;">
+              <button onClick="{{ onCancelDialog }}" style="background:#1c2733;color:#fff;border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;">Cancel</button>
+              <button onClick="{{ onConfirmOpen }}" disabled="{{ openDisabled }}" style="background:{{ openBtnBg }};color:{{ openBtnColor }};border:none;border-radius:10px;padding:8px 20px;font-size:13px;font-weight:700;cursor:{{ openBtnCursor }};">Open</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+
+  <!-- CONTEXT MENU -->
+  <sc-if value="{{ showContextMenu }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeContextMenu }}" style="position:absolute;inset:0;z-index:150;"></div>
+    <div style="position:absolute;top:{{ contextMenuY }}px;left:{{ contextMenuX }}px;z-index:151;background:#1c2733;border:1px solid #2c3947;border-radius:8px;padding:5px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-size:13px;">
+      <sc-for list="{{ contextMenuItems }}" as="ci" hint-placeholder-count="4">
+        <div onClick="{{ ci.onClick }}" style="padding:6px 12px;border-radius:5px;cursor:{{ ci.cursor }};color:{{ ci.color }};display:flex;align-items:center;justify-content:space-between;">
+          <span>{{ ci.label }}</span><sc-if value="{{ ci.hasArrow }}" hint-placeholder-val="{{ false }}"><span style="color:#6b7686;">›</span></sc-if>
+        </div>
+        <sc-if value="{{ ci.isOpenWith }}" hint-placeholder-val="{{ false }}">
+          <sc-for list="{{ ci.handlers }}" as="h" hint-placeholder-count="2">
+            <div onClick="{{ h.onClick }}" style="padding:6px 12px 6px 24px;border-radius:5px;cursor:pointer;color:#fff;display:flex;align-items:center;justify-content:space-between;">
+              <span>{{ h.name }}</span><sc-if value="{{ h.isDefault }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:#6b7686;">Default</span></sc-if>
+            </div>
+          </sc-for>
+        </sc-if>
+      </sc-for>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const FS = {
+  '/Home': [
+    { name:'Documents', kind:'Folder', type:'folder' },
+    { name:'Downloads', kind:'Folder', type:'folder' },
+    { name:'Desktop', kind:'Folder', type:'folder' }
+  ],
+  '/Home/Downloads': [
+    { name:'MountainShiftOS_Deploy.zip', kind:'ZIP Archive', size:'30.3 MB', modified:'Today, 6:24 PM' },
+    { name:'BaseClassX_2.2.06.js', kind:'JavaScript', size:'62 KB', modified:'Today, 5:12 PM' },
+    { name:'Org-Reports-UI.html', kind:'Web Page', size:'88 KB', modified:'Today, 4:47 PM' },
+    { name:'HopeShelters-Tier2-Manifest.xml', kind:'XML', size:'4 KB', modified:'Today, 3:30 PM' },
+    { name:'SurfaceManifest.xsd', kind:'XML Schema', size:'2 KB', modified:'Today, 3:28 PM' },
+    { name:'Payroll-Report.html', kind:'Web Page', size:'54 KB', modified:'Yesterday, 7:32 PM' },
+    { name:'Staffing-Coverage-Report.pdf', kind:'PDF Document', size:'1.1 MB', modified:'Yesterday, 6:10 PM' },
+    { name:'Debug-Harness-Demo.html', kind:'Web Page', size:'31 KB', modified:'Yesterday, 2:39 PM' },
+    { name:'LoadingIcon-Demo.html', kind:'Web Page', size:'19 KB', modified:'Yesterday, 2:02 PM' },
+    { name:'AppClasses.js', kind:'JavaScript', size:'44 KB', modified:'2 days ago' },
+    { name:'Kernel.js', kind:'JavaScript', size:'18 KB', modified:'2 days ago' },
+    { name:'BIOS.js', kind:'JavaScript', size:'9 KB', modified:'2 days ago' },
+    { name:'CPU.js', kind:'JavaScript', size:'27 KB', modified:'3 days ago' }
+  ],
+  '/Home/Documents': [
+    { name:'Payroll-and-Budget-Report.md', kind:'Markdown', size:'21 KB', modified:'Today, 1:10 PM' },
+    { name:'Staffing-Coverage-Report.md', kind:'Markdown', size:'14 KB', modified:'Today, 12:44 PM' },
+    { name:'Manifest-Driven-Release-Gating.md', kind:'Markdown', size:'9 KB', modified:'Yesterday' }
+  ],
+  '/Home/Desktop': [
+    { name:'Screenshot 2026-07-24.png', kind:'PNG Image', size:'812 KB', modified:'Yesterday, 9:14 AM' }
+  ],
+  '/IDB': [
+    { name:'meshui-root', kind:'Folder', type:'folder' },
+    { name:'session-cache.json', kind:'JSON', size:'112 KB', modified:'Today, 5:40 PM' },
+    { name:'terminal-history.log', kind:'Log', size:'8 KB', modified:'Today, 2:15 PM' }
+  ],
+  '/IDB/meshui-root': [
+    { name:'etc', kind:'Folder', type:'folder' },
+    { name:'home', kind:'Folder', type:'folder' },
+    { name:'bin', kind:'Folder', type:'folder' }
+  ],
+  '/OPFS': [
+    { name:'vb6ide-projects', kind:'Folder', type:'folder' },
+    { name:'compiled-output.wasm', kind:'WASM Module', size:'1.4 MB', modified:'Yesterday, 8:02 PM' }
+  ],
+  '/LocalStorage': [
+    { name:'user-prefs.json', kind:'JSON', size:'2 KB', modified:'Today, 9:03 AM' },
+    { name:'theme-settings.json', kind:'JSON', size:'1 KB', modified:'Today, 9:02 AM' }
+  ]
+};
+
+const ROOT_LABELS = { Home:'This Device (C:)', IDB:'IndexedDB (D:)', OPFS:'OPFS (E:)', LocalStorage:'LocalStorage (F:)' };
+
+// Mirrors DesktopShell's APPS dock list (name + id) so Finder can show every
+// installed application without importing DesktopShell's file directly \u2014
+// launching goes through window.parent.__meshLaunchApp (set by DesktopShell),
+// falling back to a no-op if Finder is ever opened standalone.
+const APPLICATIONS = [
+  { name:'Finder', appId:'finder', glyph:'📂', color:'#3f8ae0' },
+  { name:'VB6 IDE', appId:'ide', glyph:'V', color:'#5b7fe0', icon:'./assets/icon-ide.png' },
+  { name:'Org Reports', appId:'reports', glyph:'R', color:'#b3cc66' },
+  { name:'Terminal', appId:'terminal', glyph:'>_', color:'#2b2d33' },
+  { name:'LLM Engine', appId:'smatrix', glyph:'S\u00b7M', color:'#7c3aed', icon:'./assets/icon-llm-engine.png' },
+  { name:'Network', appId:'network', glyph:'N', color:'#2b8a6b' },
+  { name:'Finance Portal Pro', appId:'finance', glyph:'$', color:'#1f6f4a', icon:'./assets/icon-finance-portal-pro.png' },
+  { name:'Slides', appId:'slides', glyph:'▤', color:'#e0666e' },
+  { name:'MergeX', appId:'mergex', glyph:'⑂', color:'#4a68c4' },
+  { name:'AppStation', appId:'appstore', glyph:'⌘', color:'#0a84ff' },
+  { name:'AST Translator', appId:'asttranslator', glyph:'文', color:'#2f9e6e' },
+  { name:'Pipeline Browser', appId:'pipelinebrowser', glyph:'⇄', color:'#5dade2' },
+  { name:'Pipeline Browser II', appId:'pipelinebrowser2', glyph:'⇄', color:'#8e6ee0' },
+  { name:'WebLLM Chat', appId:'chatwebllm', glyph:'💬', color:'#4a4af0' },
+  { name:'Relay', appId:'chatsignal', glyph:'💬', color:'#2b7de9' },
+  { name:'Settings', appId:'settings', glyph:'S', color:'#8b8f98', icon:'./assets/icon-settings.png' }
+];
+
+const RECENTS = [
+  { name:'Staffing-Coverage-Report.pdf', kind:'PDF Document', size:'1.1 MB', modified:'Yesterday, 6:10 PM', parent:'/Home/Downloads' },
+  { name:'Org-Reports-UI.html', kind:'Web Page', size:'88 KB', modified:'Today, 4:47 PM', parent:'/Home/Downloads' },
+  { name:'theme-settings.json', kind:'JSON', size:'1 KB', modified:'Today, 9:02 AM', parent:'/LocalStorage' },
+  { name:'session-cache.json', kind:'JSON', size:'112 KB', modified:'Today, 5:40 PM', parent:'/IDB' },
+  { name:'Payroll-and-Budget-Report.md', kind:'Markdown', size:'21 KB', modified:'Today, 1:10 PM', parent:'/Home/Documents' },
+  { name:'compiled-output.wasm', kind:'WASM Module', size:'1.4 MB', modified:'Yesterday, 8:02 PM', parent:'/OPFS' }
+];
+
+const ICONS = { 'Folder':'📁', 'ZIP Archive':'🗄', 'JavaScript':'📄', 'Web Page':'🌐', 'XML':'📋', 'XML Schema':'📋', 'PDF Document':'📕', 'Markdown':'📝', 'PNG Image':'🖼', 'JSON':'🧾', 'Log':'📜', 'WASM Module':'⚙', 'File':'📄' };
+
+// File-type \u2192 registered-app map, one entry marked default \u2014 same shape the eventual
+// Extension Registry (vDebugger, etc.) will read from. Double-click launches the default;
+// "Open With\u2026" in the context menu lists every registered handler for that kind.
+const APP_REGISTRY = {
+  'Markdown': [{ appId:'composex', name:'ComposeX', isDefault:true }, { appId:'milkdown', name:'Milkdown', isDefault:false }],
+  'PDF Document': [{ appId:'pdfx', name:'PDFX', isDefault:true }, { appId:'pdfviewer', name:'Quick Look', isDefault:false }, { appId:'slides', name:'Slides', isDefault:false }],
+  'Web Page': [{ appId:'browser', name:'Browser', isDefault:true }],
+  'JavaScript': [{ appId:'ide', name:'VB6 IDE', isDefault:true }],
+  'JSON': [{ appId:'dbx', name:'DBX', isDefault:true }],
+  'PNG Image': [{ appId:'pdfviewer', name:'Quick Look', isDefault:true }]
+};
+function handlersFor(kind) { return APP_REGISTRY[kind] || []; }
+function defaultHandlerFor(kind) { return handlersFor(kind).find(h => h.isDefault) || null; }
+function extToKind(name) {
+  const ext = (name.split('.').pop() || '').toLowerCase();
+  const map = { js:'JavaScript', html:'Web Page', xml:'XML', xsd:'XML Schema', pdf:'PDF Document', md:'Markdown', png:'PNG Image', json:'JSON', log:'Log', wasm:'WASM Module', zip:'ZIP Archive' };
+  return map[ext] || 'File';
+}
+function formatSize(bytes) {
+  if (!bytes && bytes !== 0) return '--';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+function formatModified(ms) {
+  if (!ms) return '--';
+  const d = new Date(ms);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  return sameDay ? `Today, ${time}` : d.toLocaleDateString();
+}
+
+const FORMAT_NAMES = ['PDF', 'PNG', 'Web Page (HTML)', 'ZIP Archive', 'Markdown'];
+const FORMAT_OPTIONS = {
+  'PDF': { controls: [
+    { type:'select', key:'preset', label:'Optimization Preset', options:['None','Smaller File Size'], default:'None' },
+    { type:'checkbox', key:'pdfa', label:'Create PDF/A', default:true },
+    { type:'checkbox', key:'linearized', label:'Create Linearized PDF', default:true },
+    { type:'checkbox', key:'embedText', label:'Embed Text', default:true },
+    { type:'checkbox', key:'optimizeImages', label:'Optimize images for screen', default:true },
+    { type:'checkbox', key:'imagesAsJpeg', label:'Save images as JPEG', default:false },
+    { type:'button', key:'permissions', label:'Permissions…' }
+  ]},
+  'PNG': { controls: [
+    { type:'select', key:'resolution', label:'Resolution', options:['1x','2x','3x'], default:'2x' },
+    { type:'checkbox', key:'transparent', label:'Transparent Background', default:true },
+    { type:'select', key:'colorProfile', label:'Color Profile', options:['sRGB','Display P3'], default:'sRGB' }
+  ]},
+  'Web Page (HTML)': { controls: [
+    { type:'checkbox', key:'inlineImages', label:'Include images inline', default:true },
+    { type:'checkbox', key:'minify', label:'Minify output', default:false }
+  ]},
+  'ZIP Archive': { controls: [
+    { type:'select', key:'compression', label:'Compression', options:['Store','Normal','Maximum'], default:'Normal' },
+    { type:'checkbox', key:'encrypt', label:'Encrypt with password', default:false }
+  ]},
+  'Markdown': { controls: [
+    { type:'checkbox', key:'frontmatter', label:'Include front-matter', default:true },
+    { type:'select', key:'lineWidth', label:'Line Width', options:['80 cols','100 cols','No wrap'], default:'No wrap' }
+  ]}
+};
+function defaultsFor(format) {
+  const o = {};
+  (FORMAT_OPTIONS[format].controls || []).forEach(c => { if (c.type !== 'button') o[c.key] = c.default; });
+  return o;
+}
+
+// name/mode/uid/gid are now real Mount fields (FileFsX) \u2014 declared once here, read back via
+// fs.mnt() rather than re-derived/hardcoded in the UI.
+const ROOT_BACKENDS = {
+  Home: { backend:'idb', key:'meshui-root', name:'Home', mode:0o755, uid:0, gid:0 },
+  IDB: { backend:'idb', key:'finder-idb-explicit', name:'IDB', mode:0o755, uid:0, gid:0 },
+  OPFS: { backend:'opfs', key:'finder-opfs', name:'OPFS', mode:0o755, uid:0, gid:0 },
+  LocalStorage: { backend:'localstorage', key:'finder-localstorage', name:'LocalStorage', mode:0o755, uid:0, gid:0 }
+};
+
+class Component extends DCLogic {
+  // initialMode/onOpenFile are optional props so a host app (e.g. Node-Economics) can embed
+  // this dialog pre-set to the Open flow and receive the selected file back — standalone usage
+  // (no props passed) keeps the original defaults untouched.
+  state = { mode: (this && this.props && this.props.initialMode) || 'finder', currentPath:'/Home/Downloads', selectedName:null, viewMode:'list', finderQuery:'',
+    saveFilename: (this && this.props && this.props.saveFilename) || 'Quarterly Report - Draft.pdf', saveTags:'', saveWhere:'/Home/Downloads', saveFormat:'PDF', formatValues:{}, saveMessage:null, saveExpanded:false, extraFolders:{},
+    dirEntries: {}, fsError: null, contextMenu: null, openWithSubmenuOpen: false,
+    // Real navigation history \u2014 a stack of visited paths + an index, so back/forward walk
+    // real prior locations instead of a synthetic breadcrumb-only "up" affordance.
+    navHistory: ['/Home/Downloads'], navHistoryIdx: 0,
+    sortField: 'name', sortAsc: true, groupBy: 'none', collapsedGroups: {} };
+
+  // Real FileFsX instances, one per root mount — kept as plain instance fields (runtime handles,
+  // outside any schema Proxy), same convention as BaseClassX subclasses elsewhere in this project.
+  _fsInstances = {};
+  _seeded = {};
+
+  rootSeg(path) { const m = /^\/([^\/]+)/.exec(path); return m ? m[1] : null; }
+  realPath(path) { const seg = this.rootSeg(path); if (!seg) return '/'; const rest = path.slice(seg.length + 1); return rest || '/'; }
+
+  async getFs(rootSeg) {
+    if (this._fsInstances[rootSeg]) return this._fsInstances[rootSeg];
+    const cfg = ROOT_BACKENDS[rootSeg];
+    if (!cfg) return null;
+    const fs = await FileFsX.create({ backend: cfg.backend, key: cfg.key, name: cfg.name, mode: cfg.mode, uid: cfg.uid, gid: cfg.gid });
+    this._fsInstances[rootSeg] = fs;
+    // First-run seeding: a brand-new real mount is genuinely empty. Home gets the same
+    // baseline folders a fresh real OS would create, written via real mkdir (persisted to the
+    // real backend) — not fake display data, an actual one-time directory-structure init.
+    if (rootSeg === 'Home' && !this._seeded[rootSeg]) {
+      this._seeded[rootSeg] = true;
+      try {
+        const existing = await fs.readdir('/', { withFileTypes: true });
+        const names = existing.map(e => e.name);
+        for (const name of ['Documents', 'Downloads', 'Desktop']) {
+          if (!names.includes(name)) { try { await fs.mkdir('/' + name); } catch (e) {} }
+        }
+      } catch (e) {}
+    }
+    return fs;
+  }
+
+  async loadDir(path) {
+    const seg = this.rootSeg(path);
+    if (!seg || !ROOT_BACKENDS[seg]) { this.setState(s => ({ dirEntries: { ...s.dirEntries, [path]: [] } })); return; }
+    try {
+      const fs = await this.getFs(seg);
+      const real = this.realPath(path);
+      const rawEntries = await fs.readdir(real, { withFileTypes: true });
+      const entries = await Promise.all(rawEntries.map(async e => {
+        let st = null;
+        try { st = await fs.stat(real === '/' ? '/' + e.name : real + '/' + e.name); } catch (err) {}
+        const isDir = e.isDirectory();
+        return {
+          name: e.name, type: isDir ? 'folder' : 'file',
+          kind: isDir ? 'Folder' : (ICONS[extToKind(e.name)] ? extToKind(e.name) : 'File'),
+          size: isDir ? '--' : (st ? formatSize(st.size) : '--'),
+          modified: st ? formatModified(st.mtimeMs) : '--'
+        };
+      }));
+      this.setState(s => ({ dirEntries: { ...s.dirEntries, [path]: entries }, fsError: null }));
+    } catch (e) {
+      this.setState(s => ({ dirEntries: { ...s.dirEntries, [path]: [] }, fsError: e.message }));
+    }
+  }
+
+  componentDidMount() {
+    this.loadDir(this.state.currentPath);
+  }
+
+  setMode = (mode) => this.setState({ mode, saveMessage:null });
+  onSetColumn = () => { this.setState({ viewMode: 'column' }); this.ensureColumnAncestorsLoaded(this.state.currentPath); };
+  ensureColumnLoaded(path) {
+    if (!this.state.dirEntries[path] && this.rootSeg(path) && ROOT_BACKENDS[this.rootSeg(path)]) this.loadDir(path);
+  }
+  // Column view renders one column per ancestor path segment (/Home, /Home/Downloads, ...) \u2014
+  // every one of those needs its own dirEntries loaded, not just the deepest/current path.
+  ensureColumnAncestorsLoaded(path) {
+    const seg = this.rootSeg(path);
+    if (!seg || !ROOT_BACKENDS[seg]) return;
+    const parts = path.split('/').filter(Boolean);
+    let acc = '/' + parts[0];
+    this.ensureColumnLoaded(acc);
+    for (let i = 1; i < parts.length; i++) { acc = acc + '/' + parts[i]; this.ensureColumnLoaded(acc); }
+  }
+  onColumnItemClick = (path, it) => {
+    if (it.type === 'folder') {
+      const next = (path === '/' ? '' : path) + '/' + it.name;
+      this.ensureColumnLoaded(next);
+      this.setState(s => ({ currentPath: next, selectedName: null }));
+    } else {
+      this.setState({ selectedName: it.name });
+    }
+  };
+  navigateTo = (path, skipHistory) => {
+    this.setState(s => {
+      let navHistory = s.navHistory, navHistoryIdx = s.navHistoryIdx;
+      if (!skipHistory && path !== s.currentPath) {
+        navHistory = [...s.navHistory.slice(0, s.navHistoryIdx + 1), path];
+        navHistoryIdx = navHistory.length - 1;
+      }
+      return { currentPath: path, selectedName:null, finderQuery:'', saveWhere: s.mode === 'save' ? path : s.saveWhere, navHistory, navHistoryIdx };
+    });
+    if (this.rootSeg(path) && ROOT_BACKENDS[this.rootSeg(path)]) this.loadDir(path);
+  };
+  goToHistoryIdx(idx) {
+    const path = this.state.navHistory[idx];
+    this.setState(s => ({ navHistoryIdx: idx, currentPath: path, selectedName: null, finderQuery: '', saveWhere: s.mode === 'save' ? path : s.saveWhere }));
+    if (this.rootSeg(path) && ROOT_BACKENDS[this.rootSeg(path)]) this.loadDir(path);
+  }
+  onHistoryBack = () => { const idx = this.state.navHistoryIdx - 1; if (idx < 0) return; this.goToHistoryIdx(idx); };
+  onHistoryForward = () => { const idx = this.state.navHistoryIdx + 1; if (idx > this.state.navHistory.length - 1) return; this.goToHistoryIdx(idx); };
+  toggleSaveExpanded = () => this.setState(s => ({ saveExpanded: !s.saveExpanded, currentPath: s.saveExpanded ? s.currentPath : s.saveWhere }));
+  onOpenRecents = () => this.setState({ currentPath:'__recents__', selectedName:null, finderQuery:'' });
+  onOpenApplications = () => this.setState({ currentPath:'__applications__', selectedName:null, finderQuery:'' });
+  launchApplication = (app) => { try { if (window.parent && window.parent.__meshLaunchApp) window.parent.__meshLaunchApp(app.appId); } catch (e) {} };
+  jumpToRecent = (rec) => this.setState({ currentPath: rec.parent, selectedName: rec.name, finderQuery:'' });
+  goUp = () => {
+    if (this.state.currentPath === '__recents__' || this.state.currentPath === '__applications__') return;
+    const segs = this.state.currentPath.split('/').filter(Boolean);
+    if (segs.length <= 1) return;
+    this.navigateTo('/' + segs.slice(0, -1).join('/'));
+  };
+  setView = (v) => this.setState({ viewMode: v });
+  selectItem = (it, e) => {
+    // Belt-and-suspenders: mousedown is the primary trigger (fires even when a host swallows
+    // 'click' or 'contextmenu'), but if mousedown's ctrlKey somehow isn't read correctly in some
+    // browser/embedding, the click event's own ctrlKey independently opens the menu too.
+    if (e && e.ctrlKey) { this.onContextMenu(it, e); return; }
+    this.setState({ selectedName: it.name, contextMenu: null });
+  };
+  openItem = (it) => {
+    if (it.type === 'folder') { this.navigateTo(this.state.currentPath + '/' + it.name); return; }
+    const handler = defaultHandlerFor(it.kind);
+    if (handler) this.launchApplication({ appId: handler.appId });
+    else this.selectItem(it);
+  };
+  onContextMenu = (it, e) => {
+    // Ctrl+Click on Mac fires a real native 'contextmenu' event, and the synthetic wrapper's
+    // preventDefault() alone has sometimes not been enough to stop the browser's own menu (host
+    // preview layering) \u2014 also stop propagation and prevent on the underlying native event object.
+    if (e) {
+      if (e.preventDefault) e.preventDefault();
+      if (e.stopPropagation) e.stopPropagation();
+      if (e.nativeEvent) { if (e.nativeEvent.preventDefault) e.nativeEvent.preventDefault(); if (e.nativeEvent.stopPropagation) e.nativeEvent.stopPropagation(); }
+    }
+    // position:fixed breaks when the host preview applies a CSS scale transform to this whole
+    // page (fixed becomes relative to the transformed ancestor, not the real viewport) \u2014
+    // compute coordinates relative to our own root container instead, and render the menu
+    // position:absolute inside it, so it lands correctly regardless of host-level scaling.
+    const rootEl = this._rootEl;
+    const rect = rootEl ? rootEl.getBoundingClientRect() : { left: 0, top: 0 };
+    this.setState({ selectedName: it.name, contextMenu: { item: it, x: e.clientX - rect.left, y: e.clientY - rect.top } });
+  };
+  rootRef = (el) => { this._rootEl = el; };
+  // The embedding host/preview iframe swallows the native 'contextmenu' event before it ever
+  // reaches this component (own right-click UI takes priority) \u2014 so right-click AND Mac
+  // Ctrl+click are both detected here on mousedown instead, which isn't intercepted the same way.
+  onItemMouseDown = (it, e) => {
+    const ne = e && e.nativeEvent ? e.nativeEvent : e; // read modifier off the raw DOM event too, in case the wrapper doesn't forward it
+    if ((e && (e.button === 2 || e.ctrlKey)) || (ne && (ne.button === 2 || ne.ctrlKey))) { if (e.preventDefault) e.preventDefault(); this.onContextMenu(it, e); }
+  };
+  closeContextMenu = () => this.setState({ contextMenu: null });
+  openWithHandler = (it, handler) => { this.closeContextMenu(); this.launchApplication({ appId: handler.appId }); };
+
+  onSortFieldChange = (e) => this.setState({ sortField: e.target.value, sortAsc: true });
+  onGroupByChange = (e) => this.setState({ groupBy: e.target.value, collapsedGroups: {} });
+  sortByHeading(field) {
+    this.setState(s => ({ sortField: field, sortAsc: s.sortField === field ? !s.sortAsc : true }));
+  }
+  toggleGroup(key) {
+    // Groups default to collapsed (true) when a key has no explicit entry yet \u2014 toggling
+    // must flip that EFFECTIVE value, not just !undefined (which is true, i.e. "stays collapsed"
+    // on the very first click, requiring two clicks to visibly expand).
+    this.setState(s => {
+      const current = s.collapsedGroups[key] !== undefined ? s.collapsedGroups[key] : true;
+      return { collapsedGroups: { ...s.collapsedGroups, [key]: !current } };
+    });
+  }
+  sizeToBytes(sizeStr) {
+    if (!sizeStr || sizeStr === '--') return 0;
+    const m = /^([\d.]+)\s*(B|KB|MB)$/.exec(sizeStr);
+    if (!m) return 0;
+    const n = parseFloat(m[1]);
+    return m[2] === 'MB' ? n * 1024 * 1024 : m[2] === 'KB' ? n * 1024 : n;
+  }
+
+  onFormatChange = (e) => this.setState({ saveFormat: e.target.value });
+  onSaveWhereChange = (e) => this.setState(s => ({ saveWhere: e.target.value, currentPath: s.saveExpanded ? e.target.value : s.currentPath }));
+  onSaveFilenameChange = (e) => this.setState({ saveFilename: e.target.value });
+  onSaveTagsChange = (e) => this.setState({ saveTags: e.target.value });
+  toggleCheck = (key) => this.setState(s => {
+    const cur = { ...defaultsFor(s.saveFormat), ...(s.formatValues[s.saveFormat] || {}) };
+    cur[key] = !cur[key];
+    return { formatValues: { ...s.formatValues, [s.saveFormat]: cur } };
+  });
+  setSelectVal = (key, val) => this.setState(s => {
+    const cur = { ...defaultsFor(s.saveFormat), ...(s.formatValues[s.saveFormat] || {}) };
+    cur[key] = val;
+    return { formatValues: { ...s.formatValues, [s.saveFormat]: cur } };
+  });
+  onConfirmSave = async () => {
+    const path = this.state.saveWhere;
+    const seg = this.rootSeg(path);
+    let saved = true, errMsg = null;
+    if (seg && ROOT_BACKENDS[seg]) {
+      try {
+        const fs = await this.getFs(seg);
+        const real = this.realPath(path);
+        const filePath = (real === '/' ? '' : real) + '/' + this.state.saveFilename;
+        await fs.writeFile(filePath, '');
+        await this.loadDir(path);
+      } catch (e) { saved = false; errMsg = e.message; }
+    }
+    this.setState({ saveMessage: saved ? `Saved "${this.state.saveFilename}" to ${this.state.saveWhere.split('/').pop()}.` : `Save failed: ${errMsg}` });
+    if (saved && this.props && this.props.onSaveFile) {
+      this.props.onSaveFile({ name: this.state.saveFilename, path: this.state.saveWhere, format: this.state.saveFormat });
+    }
+  };
+  onNewFolder = async () => {
+    const path = this.state.saveExpanded ? this.state.currentPath : this.state.saveWhere;
+    const seg = this.rootSeg(path);
+    if (!seg || !ROOT_BACKENDS[seg]) return;
+    const fs = await this.getFs(seg);
+    const real = this.realPath(path);
+    const existing = (this.state.dirEntries[path] || []).map(f => f.name);
+    let name = 'untitled folder', n = 2;
+    while (existing.includes(name)) { name = `untitled folder ${n}`; n++; }
+    try { await fs.mkdir((real === '/' ? '' : real) + '/' + name); await this.loadDir(path); } catch (e) {}
+  };
+  onConfirmOpen = () => {
+    if (!this.state.selectedName) return;
+    if (this.props && this.props.onOpenFile) {
+      this.props.onOpenFile({ name: this.state.selectedName, path: this.state.currentPath });
+      return;
+    }
+    this.setState({ saveMessage:null, mode:'finder' });
+  };
+  onCancelDialog = () => this.setState({ mode:'finder', saveMessage:null });
+
+  renderVals() {
+    const s = this.state;
+    const isRecents = s.currentPath === '__recents__';
+    const isApplications = s.currentPath === '__applications__';
+    const q = s.finderQuery.trim().toLowerCase();
+    const rawItems = isRecents ? RECENTS.filter(it => !q || it.name.toLowerCase().includes(q))
+      : isApplications ? APPLICATIONS.map(a => ({ name:a.name, kind:'Application', appId:a.appId, appGlyph:a.glyph, appColor:a.color, appIcon:a.icon })).filter(it => !q || it.name.toLowerCase().includes(q))
+      : (s.dirEntries[s.currentPath] || []).filter(it => !q || it.name.toLowerCase().includes(q));
+    const sortField = s.sortField, sortAsc = s.sortAsc;
+    const sortedRawItems = [...rawItems].sort((a, b) => {
+      let av, bv;
+      if (sortField === 'name') { av = (a.name||'').toLowerCase(); bv = (b.name||'').toLowerCase(); }
+      else if (sortField === 'modified') { av = a.modified||''; bv = b.modified||''; }
+      else if (sortField === 'size') { av = this.sizeToBytes(a.size); bv = this.sizeToBytes(b.size); }
+      else { av = (a.kind||'').toLowerCase(); bv = (b.kind||'').toLowerCase(); }
+      const cmp = av < bv ? -1 : av > bv ? 1 : 0;
+      return sortAsc ? cmp : -cmp;
+    });
+    const items = sortedRawItems.map(it => ({
+      ...it, type: it.type || 'file', icon: it.kind === 'Application' ? (it.appIcon ? '' : it.appGlyph) : (ICONS[it.kind] || '📄'), size: it.size || '--', modified: it.modified || '--',
+      iconBgStyle: (it.kind === 'Application' && it.appIcon) ? `width:16px;height:16px;border-radius:4px;background:center/cover no-repeat url('${it.appIcon}');flex-shrink:0;` : 'display:none;',
+      iconBgStyleLg: (it.kind === 'Application' && it.appIcon) ? `width:64px;height:64px;border-radius:14px;background:center/cover no-repeat url('${it.appIcon}');flex-shrink:0;` : 'display:none;',
+      bg: s.selectedName === it.name ? '#0a84ff' : 'transparent',
+      nameColor: '#fff',
+      onClick: (e) => this.selectItem(it, e), onOpen: () => isRecents ? this.jumpToRecent(it) : isApplications ? this.launchApplication(it) : this.openItem(it),
+      onContextMenu: (e) => this.onContextMenu(it, e), onMouseDown: (e) => this.onItemMouseDown(it, e)
+    }));
+
+    const cm = s.contextMenu;
+    const cmItem = cm ? cm.item : null;
+    const cmHandlers = cmItem ? handlersFor(cmItem.kind) : [];
+    const disabledItems = ['Get Info', 'Duplicate', 'Rename', 'Compress', 'Move to Trash', 'Copy', 'Make Alias'];
+    const contextMenuItems = cm ? [
+      { label:'Open', color:'#fff', cursor:'pointer', onClick: () => { this.closeContextMenu(); this.openItem(cmItem); } },
+      { label:'Open With', color: cmHandlers.length ? '#fff' : '#4a5568', cursor: cmHandlers.length ? 'pointer' : 'default', hasArrow: cmHandlers.length > 0, isOpenWith: cmHandlers.length > 0,
+        handlers: cmHandlers.map(h => ({ name: h.name, isDefault: h.isDefault, onClick: () => this.openWithHandler(cmItem, h) })), onClick: () => {} },
+      ...disabledItems.map(label => ({ label, color:'#4a5568', cursor:'default', onClick: () => {} }))
+    ] : [];
+
+    const segs = (isRecents || isApplications) ? [] : s.currentPath.split('/').filter(Boolean);
+    const rootLabel = segs.length ? (ROOT_LABELS[segs[0]] || segs[0]) : '';
+    const breadcrumb = isRecents ? [{ label:'Recents', hasSep:false, color:'#fff', onClick:()=>{} }] : isApplications ? [{ label:'Applications', hasSep:false, color:'#fff', onClick:()=>{} }] : [rootLabel, ...segs.slice(1)].map((label, i) => ({
+      label, hasSep: i < segs.length - 1, color: i === segs.length - 1 ? '#fff' : '#8e99a8',
+      onClick: () => this.navigateTo(i === 0 ? '/' + segs[0] : '/' + segs.slice(0, i + 1).join('/'))
+    }));
+
+    const favoritesDef = [
+      { icon:'📄', name:'Documents', path:'/Home/Documents' },
+      { icon:'⬇', name:'Downloads', path:'/Home/Downloads' },
+      { icon:'🖥', name:'Desktop', path:'/Home/Desktop' }
+    ];
+    const favorites = favoritesDef.map(f => ({ ...f, bg: s.currentPath === f.path ? '#1f3554' : 'transparent', color:'#fff', onClick: () => this.navigateTo(f.path) }));
+    const mountsDef = [
+      { icon:'💻', name:'This Device (C:)', path:'/Home' },
+      { icon:'🗄', name:'IndexedDB (D:)', path:'/IDB' },
+      { icon:'📦', name:'OPFS (E:)', path:'/OPFS' },
+      { icon:'🧊', name:'LocalStorage (F:)', path:'/LocalStorage' }
+    ];
+    const locations = [
+      ...mountsDef.map(m => ({ ...m, bg: !isRecents && segs[0] === m.path.slice(1) ? '#1f3554' : 'transparent', color:'#fff', onClick: () => this.navigateTo(m.path) })),
+      { icon:'🗑', name:'Trash', bg:'transparent', color:'#fff', onClick: () => {} }
+    ];
+
+    const activeControls = FORMAT_OPTIONS[s.saveFormat].controls;
+    const curVals = { ...defaultsFor(s.saveFormat), ...(s.formatValues[s.saveFormat] || {}) };
+    const activeFormatControls = activeControls.map(c => {
+      if (c.type === 'select') return { isSelect:true, label:c.label, value: curVals[c.key], options:c.options, onChange:(e)=>this.setSelectVal(c.key, e.target.value) };
+      if (c.type === 'checkbox') return { isCheckbox:true, label:c.label, boxBg: curVals[c.key] ? '#0a84ff' : '#2c3947', checkMark: curVals[c.key] ? '✓' : '', onToggle:()=>this.toggleCheck(c.key) };
+      return { isButton:true, label:c.label };
+    });
+
+    const selectedItem = items.find(it => it.name === s.selectedName);
+    const canOpen = !!selectedItem && selectedItem.type !== 'folder';
+
+    return {
+      rootRef: this.rootRef,
+      showContextMenu: !!cm, contextMenuX: cm ? cm.x : 0, contextMenuY: cm ? cm.y : 0, contextMenuItems, closeContextMenu: this.closeContextMenu,
+      onHistoryBack: this.onHistoryBack, onHistoryForward: this.onHistoryForward,
+      historyBackColor: s.navHistoryIdx > 0 ? '#fff' : '#3a4452',
+      historyForwardColor: s.navHistoryIdx < s.navHistory.length - 1 ? '#fff' : '#3a4452',
+      favorites, locations,
+      recentsBg: isRecents ? '#1f3554' : 'transparent', onOpenRecents: this.onOpenRecents,
+      applicationsBg: isApplications ? '#1f3554' : 'transparent', onOpenApplications: this.onOpenApplications,
+      upColor: !isRecents && !isApplications && segs.length > 1 ? '#0a84ff' : '#3a4452', onUp: this.goUp,
+      breadcrumb,
+      listBg: s.viewMode === 'list' ? '#2c3947' : 'transparent', gridBg: s.viewMode === 'grid' ? '#2c3947' : 'transparent',
+      columnBg: s.viewMode === 'column' ? '#2c3947' : 'transparent',
+      onSetList: () => this.setView('list'), onSetGrid: () => this.setView('grid'), onSetColumn: this.onSetColumn,
+      isListView: s.viewMode === 'list', isGridView: s.viewMode === 'grid', isColumnView: s.viewMode === 'column',
+      finderQuery: s.finderQuery, onFinderQueryChange: (e) => this.setState({ finderQuery: e.target.value }),
+      items, itemsEmpty: items.length === 0,
+      emptyOrErrorLabel: s.fsError ? `Error reading folder: ${s.fsError}` : 'No items.',
+      groups: (() => {
+        if (s.groupBy === 'none') return [{ isGroup: false, expanded: true, items }];
+        const buckets = {};
+        items.forEach(it => {
+          const key = s.groupBy === 'kind' ? (it.kind || 'Other') : (it.modified || 'Unknown');
+          (buckets[key] = buckets[key] || []).push(it);
+        });
+        return Object.keys(buckets).sort().map(key => {
+          const groupItems = buckets[key];
+          const totalBytes = groupItems.reduce((sum, it) => sum + this.sizeToBytes(it.size), 0);
+          const collapsed = s.collapsedGroups[key] !== undefined ? s.collapsedGroups[key] : true; // collapsed by default \u2014 the whole point of grouping is hiding volume until asked
+          return {
+            isGroup: true, key, label: key, expanded: !collapsed,
+            caret: collapsed ? '\u25b8' : '\u25be',
+            summary: `(${groupItems.length} file${groupItems.length === 1 ? '' : 's'}, ${formatSize(totalBytes)})`,
+            onToggle: () => this.toggleGroup(key),
+            items: groupItems
+          };
+        });
+      })(),
+      itemCountLabel: `${items.length} item${items.length === 1 ? '' : 's'}`,
+      columnList: (() => {
+        if (s.viewMode !== 'column') return [];
+        const seg = this.rootSeg(s.currentPath);
+        if (!seg || !ROOT_BACKENDS[seg]) return [];
+        this.ensureColumnAncestorsLoaded(s.currentPath); // covers navigation within column view too, not just the initial switch
+        const parts = s.currentPath.split('/').filter(Boolean); // e.g. ['Home','Documents','Sub']
+        const cols = [];
+        let acc = '/' + parts[0];
+        for (let i = 0; i < parts.length; i++) {
+          const colPath = acc;
+          const entries = (s.dirEntries[colPath] || []).map(it => ({
+            name: it.name, type: it.type, isFolder: it.type === 'folder',
+            icon: it.type === 'folder' ? '📁' : (ICONS[it.kind] || '📄'),
+            bg: (i < parts.length - 1 && parts[i+1] === it.name) ? '#2c3947' : (s.selectedName === it.name && i === parts.length - 1 ? '#2c3947' : 'transparent'),
+            nameColor: '#e8eaf0',
+            onClick: () => this.onColumnItemClick(colPath, it),
+            onOpen: () => this.openItem(it),
+            onContextMenu: (e) => this.onContextMenu(it, e),
+            onMouseDown: (e) => this.onItemMouseDown(it, e)
+          }));
+          cols.push({ path: colPath, items: entries });
+          if (i + 1 < parts.length) acc = acc + '/' + parts[i + 1];
+        }
+        return cols;
+      })(),
+      previewItem: (() => {
+        if (s.viewMode !== 'column' || !s.selectedName) return null;
+        const it = (s.dirEntries[s.currentPath] || []).find(x => x.name === s.selectedName);
+        return it ? { name: it.name, kind: it.kind, size: it.size || '--', modified: it.modified || '--' } : null;
+      })(),
+      sortField: s.sortField, onSortFieldChange: this.onSortFieldChange,
+      groupBy: s.groupBy, onGroupByChange: this.onGroupByChange,
+      onSortHeadingName: () => this.sortByHeading('name'), onSortHeadingModified: () => this.sortByHeading('modified'),
+      onSortHeadingSize: () => this.sortByHeading('size'), onSortHeadingKind: () => this.sortByHeading('kind'),
+      sortArrowName: s.sortField === 'name' ? (s.sortAsc ? ' \u25b2' : ' \u25bc') : '',
+      sortArrowModified: s.sortField === 'modified' ? (s.sortAsc ? ' \u25b2' : ' \u25bc') : '',
+      sortArrowSize: s.sortField === 'size' ? (s.sortAsc ? ' \u25b2' : ' \u25bc') : '',
+      sortArrowKind: s.sortField === 'kind' ? (s.sortAsc ? ' \u25b2' : ' \u25bc') : '',
+      // Deep nested paths don't scale in a status bar \u2014 show just the current folder's own
+      // name (last path segment), not the full breadcrumb chain.
+      currentFolderLabel: (s.currentPath || '/').split('/').filter(Boolean).pop() || 'Home',
+      onOpenCurrentFolder: () => this.navigateTo(s.currentPath),
+      isSaveMode: s.mode === 'save', isOpenMode: s.mode === 'open',
+      saveExpanded: s.saveExpanded, onToggleSaveExpanded: this.toggleSaveExpanded,
+      saveExpandIcon: s.saveExpanded ? '⌃' : '⌄', saveModalWidth: s.saveExpanded ? '820px' : '460px',
+      saveFilename: s.saveFilename, onSaveFilenameChange: this.onSaveFilenameChange,
+      saveTags: s.saveTags, onSaveTagsChange: this.onSaveTagsChange,
+      saveWhere: s.saveWhere, onSaveWhereChange: this.onSaveWhereChange,
+      favoritePaths: favoritesDef,
+      saveFormat: s.saveFormat, onFormatChange: this.onFormatChange, formatNames: FORMAT_NAMES,
+      activeFormatControls,
+      onCancelDialog: this.onCancelDialog, onConfirmSave: this.onConfirmSave, onNewFolder: this.onNewFolder,
+      saveMessage: s.saveMessage,
+      openSelectedLabel: selectedItem ? `Selected: ${selectedItem.name}` : 'No file selected',
+      openDisabled: !canOpen, openBtnBg: canOpen ? '#0a84ff' : '#1c2733', openBtnColor: canOpen ? '#fff' : '#5a6472', openBtnCursor: canOpen ? 'pointer' : 'default',
+      onConfirmOpen: this.onConfirmOpen
+    };
+  }
+}
+
+</script>
+</body>
+</html>

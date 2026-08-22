@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Org Reports — Surface Explorer</title>
+<script src="./BaseClassX.js"></script>
+<script src="./FieldACL.js"></script>
+<script src="./SetType.js"></script>
+<script src="./LoadingIcon.js"></script>
+<script src="./RealOrgData.js"></script>
+<script src="./RealShiftData.js"></script>
+<script src="./Staff.js"></script>
+<script src="./Shift.js"></script>
+<script src="./PayrollRecord.js"></script>
+<script src="./Expense.js"></script>
+<script src="./Grant.js"></script>
+<script src="./BudgetCategory.js"></script>
+<script src="./Organization.js"></script>
+<script src="./OrgPosition.js"></script>
+<script src="./mermaid.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin:0; font:13px system-ui,sans-serif; background:#eef1f5; color:#2b3140; }
+  #titlebar { padding:6px 12px; background:#2b3140; color:#fff; font-size:12px; }
+  #toolbar { display:flex; gap:6px; align-items:center; padding:6px 10px; background:#f7f8fa; border-bottom:1px solid #bcc7d0; }
+  #toolbar button { background:#fff; border:1px solid #bcc7d0; border-radius:3px; padding:4px 10px; font:12px system-ui; cursor:pointer; color:#2b3140; }
+  #toolbar button.active { background:#3b6fd1; color:#fff; border-color:#3b6fd1; }
+  #toolbar select { padding:3px 6px; border:1px solid #bcc7d0; border-radius:3px; font:12px system-ui; }
+  #toolbar-loading-icon { width:24px; height:24px; flex-shrink:0; }
+  #toolbar-loading-icon svg { width:100%; height:100%; display:block; }
+  #body { display:flex; height:calc(100vh - 70px); }
+  #nav { width:220px; background:#fff; border-right:1px solid #bcc7d0; overflow-y:auto; flex-shrink:0; }
+  #nav .group-label { padding:8px 12px 4px; font-size:11px; text-transform:uppercase; color:#8892a0; font-weight:600; cursor:pointer; display:flex; justify-content:space-between; align-items:center; user-select:none; }
+  #nav .group-label:hover { color:#3b6fd1; }
+  #nav .group-caret { font-size:9px; transition:transform .15s; }
+  #nav .group-caret.collapsed { transform:rotate(-90deg); }
+  #nav .item { padding:6px 14px; cursor:pointer; font-size:12px; color:#2b3140; border-left:3px solid transparent; }
+  #nav .item:hover { background:#f0f2f5; }
+  #nav .item.selected { background:#e8f0fe; border-left-color:#3b6fd1; color:#3b6fd1; font-weight:600; }
+  #main { flex:1; overflow:auto; padding:16px; background:#eef1f5; }
+  #report-footer { position:fixed; left:220px; right:0; bottom:0; background:#2b3140; color:#fff; padding:12px 16px; display:none; align-items:center; justify-content:space-between; z-index:500; box-shadow:0 -2px 8px rgba(0,0,0,0.15); }
+  #report-footer.visible { display:flex; }
+  #report-footer .grand-total-inline { font-size:14px; font-weight:600; }
+  #report-footer button { background:#3b6fd1; color:#fff; border:1px solid #3b6fd1; border-radius:3px; padding:7px 14px; font:12px system-ui; cursor:pointer; }
+  .pl-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .pl-table td { padding:5px 8px; border:1px solid #d3d9e0; }
+  .pl-table td.pl-num { text-align:right; }
+  .pl-section-head { font-weight:700; padding:10px 0 2px 0 !important; border:none !important; background:transparent !important; }
+  .pl-subsection-head { font-weight:700; color:#1c5a8a; padding:8px 0 2px 0 !important; border:none !important; background:transparent !important; }
+  .pl-total-row td { font-weight:700; background:#eef1f5; }
+  .pl-grand-row td { font-weight:700; background:#dde5ee; }
+  .pl-na { color:#8a92a0; }
+  .pl-headers td { font-weight:600; text-align:center; color:#444; background:#f7f8fa; }
+  .designer-sticky-head { position:sticky; top:-16px; z-index:50; background:#eef1f5; margin:-16px -16px 0 -16px; padding:16px 16px 10px 16px; }
+  #main h2 { margin:0 0 4px; font-size:15px; color:#2b3140; }
+  #main .subtitle { color:#666; font-size:12px; margin-bottom:12px; }
+  table { border-collapse:collapse; width:100%; background:#fff; border:1px solid #bcc7d0; border-radius:4px; overflow:hidden; }
+  th, td { padding:6px 10px; text-align:left; border-bottom:1px solid #e2e6ec; font-size:12px; }
+  th { background:#f7f8fa; color:#555; font-weight:600; border-bottom:1px solid #bcc7d0; }
+  tr:last-child td { border-bottom:none; }
+  .kpi-row { display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .kpi { background:#fff; border:1px solid #bcc7d0; border-radius:4px; padding:10px 16px; min-width:140px; }
+  .kpi .label { font-size:11px; color:#8892a0; text-transform:uppercase; }
+  .kpi .value { font-size:18px; font-weight:600; color:#2b3140; margin-top:2px; }
+  .gap-flag { color:#c0392b; font-weight:600; }
+  .vacant-flag { color:#c0392b; font-weight:600; }
+  .tree-line { padding:3px 0 3px 0; font-size:12px; }
+  .grp-header { font-weight:600; color:#2b3140; background:#eef1f5; padding:5px 8px; border:1px solid #d3d9e0; border-bottom:none; margin-top:8px; font-size:12px; }
+  .grp-footer { font-weight:600; color:#2b3140; background:#f7f8fa; padding:5px 8px; border:1px solid #d3d9e0; border-top:none; font-size:12px; text-align:right; }
+  .grand-total { margin-top:12px; padding:10px 14px; background:#2b3140; color:#fff; border-radius:4px; font-size:13px; font-weight:600; display:flex; justify-content:space-between; }
+  .crud-toolbar { display:flex; justify-content:flex-end; margin-bottom:8px; }
+  .crud-form { background:#fff; border:1px solid #bcc7d0; border-radius:4px; padding:12px; margin-bottom:12px; display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+  .crud-form label { display:flex; flex-direction:column; gap:3px; font-size:11px; color:#666; }
+  .crud-form input[type=text], .crud-form input[type=number] { padding:5px 7px; border:1px solid #bcc7d0; border-radius:3px; font:12px system-ui; }
+  .crud-form .form-actions { grid-column:1/-1; display:flex; gap:8px; margin-top:4px; }
+  td.actions-cell { display:flex; gap:6px; }
+  td.actions-cell button { background:#fff; border:1px solid #bcc7d0; border-radius:3px; padding:3px 8px; font:11px system-ui; cursor:pointer; }
+  td.actions-cell button.danger { color:#c0392b; border-color:#e0b0aa; }
+  .crud-shell { display:flex; gap:14px; flex-wrap:wrap; }
+  .crud-list { flex:1 1 280px; max-width:360px; }
+  .crud-list-item { background:#fff; border:1px solid #bcc7d0; border-radius:4px; padding:8px 10px; margin-bottom:6px; cursor:pointer; font-size:12px; }
+  .crud-list-item div { padding:1px 0; }
+  .crud-list-item.selected { border-color:#3b6fd1; background:#e8f0fe; }
+  .crud-detail { flex:2 1 380px; background:#fff; border:1px solid #bcc7d0; border-radius:4px; padding:14px; align-self:flex-start; }
+  .crud-modal-overlay { position:fixed; inset:0; background:rgba(20,24,32,0.45); display:flex; align-items:center; justify-content:center; z-index:1000; }
+  .crud-modal { background:#fff; border-radius:6px; width:min(520px,92vw); max-height:86vh; display:flex; flex-direction:column; box-shadow:0 12px 32px rgba(0,0,0,0.28); position:relative; }
+  .crud-modal-close { position:absolute; top:8px; left:8px; width:16px; height:16px; padding:8px; background:#7a1f2b; color:#fff; border:none; border-radius:3px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:0; box-sizing:content-box; }
+  .crud-modal-close:hover { background:#5e1721; }
+  .crud-modal-body { padding:16px 16px 12px 16px; padding-top:34px; overflow-y:auto; }
+  .crud-modal-footer { display:flex; justify-content:flex-end; gap:8px; padding:12px 16px; border-top:1px solid #e2e6ea; }
+  .crud-modal-footer button { padding:7px 16px; border-radius:3px; font:12px system-ui; cursor:pointer; }
+  .crud-modal-footer .btn-save { background:#3b6fd1; color:#fff; border:1px solid #3b6fd1; }
+  .crud-modal-footer .btn-cancel { background:#fff; color:#333; border:1px solid #bcc7d0; }
+  .rband-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap; }
+  .rband-toolbar select, .rband-toolbar button { padding:5px 9px; font:12px system-ui; border:1px solid #bcc7d0; border-radius:3px; background:#fff; cursor:pointer; }
+  .rband { border:1px solid #bcc7d0; border-radius:4px; margin-bottom:10px; background:#fff; }
+  .rband-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:#6b7382; background:#eef1f5; padding:4px 8px; border-bottom:1px solid #d3d9e0; display:flex; justify-content:space-between; }
+  .rband-canvas { position:relative; background-image:radial-gradient(circle,#dde2e8 1px,transparent 1px); background-size:10px 10px; }
+  .rband-el { position:absolute; background:#fff; border:1px solid #9fb3d1; border-radius:2px; font-size:11px; color:#20242c; display:flex; align-items:center; padding:0 6px; cursor:move; overflow:hidden; white-space:nowrap; user-select:none; }
+  .rband-el.selected { border:2px solid #3b6fd1; box-shadow:0 0 0 1px #3b6fd1 inset; }
+  .rband-el.type-runningTotal { background:#fff7e6; border-color:#d1a53b; font-weight:600; }
+  .rband-el.type-groupValue { background:#eef1fb; font-weight:600; }
+  .rband-resize-handle { position:absolute; right:-4px; bottom:-4px; width:9px; height:9px; background:#3b6fd1; border-radius:1px; cursor:nwse-resize; }
+  .rband-props { background:#f7f8fa; border:1px solid #d3d9e0; border-radius:4px; padding:10px 12px; margin-bottom:12px; font-size:12px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .crud-field-row { display:flex; flex-direction:column; gap:3px; margin-bottom:10px; font-size:12px; }
+  .crud-field-row label { color:#666; font-size:11px; }
+  .crud-field-row input[type=text], .crud-field-row input[type=number] { padding:6px 8px; border:1px solid #bcc7d0; border-radius:3px; font:12px system-ui; }
+  .crud-field-readonly { padding:6px 8px; background:#f4f6f8; border-radius:3px; color:#555; }
+  .required-mark { color:#c0392b; }
+  @media (max-width:900px) { .crud-shell { flex-direction:column; } .crud-detail, .crud-list { max-width:none; } }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#eef1f5"/><rect x="10" y="10" width="60" height="36" fill="#fff" stroke="#3b6fd1"/><text x="40" y="32" font-size="12" fill="#3b6fd1" text-anchor="middle" font-family="system-ui">Rpt</text></svg></template>
+</head>
+<body>
+
+<div id="titlebar">Org Reports</div>
+<div id="toolbar">
+  <div id="toolbar-loading-icon"></div>
+  <select id="fy-select" onchange="setFY(this.value)" style="font-size:12px;padding:4px 8px;border-radius:3px;border:1px solid #bcc7d0;">
+    <option value="2025">FY 2025</option>
+    <option value="2026">FY 2026</option>
+  </select>
+  <span style="width:1px;height:18px;background:#c3c8d0;margin:0 4px"></span>
+  <label style="font-size:12px;color:#555">Viewpoint:</label>
+  <select id="role-select" onchange="renderNav();renderCurrent()">
+    <option value="admin">Admin</option>
+    <option value="payroll-finance" selected>Payroll / Finance</option>
+    <option value="case-worker">Case Worker</option>
+  </select>
+  <span style="width:1px;height:18px;background:#c3c8d0;margin:0 4px"></span>
+  <label style="font-size:12px;color:#555">Dataset:</label>
+  <select id="dataset-select" onchange="switchDataset(this.value)">
+    <option value="real">Hope Shelters</option>
+    <option value="sample">Sample Data</option>
+  </select>
+</div>
+
+<div id="body">
+  <div id="nav"></div>
+  <div id="main" style="padding-bottom:64px"></div>
+</div>
+<div id="report-footer">
+  <span class="grand-total-inline" id="report-footer-total"></span>
+  <button onclick="exportPayrollPDF()">Export PDF</button>
+</div>
+
+<script>
+// ─── Two datasets: real HOPE Shelters payroll/staff (parsed from PayrollDetail.csv
+// + the org chart) and the original synthetic sample ─── both build a fresh
+// Organization so reports/CRUD/designer can be tested against either. ───────
+function buildSyntheticOrg() {
+const org = new Organization({ name: 'Riverside Shelter (sample data)' });
+const fy = '2026';
+const payrollCat = org.addBudgetCategory(new BudgetCategory({ name: 'Payroll', fiscalYear: fy, allocatedAmount: 420000 }));
+const opsCat = org.addBudgetCategory(new BudgetCategory({ name: 'Operations', fiscalYear: fy, allocatedAmount: 90000 }));
+
+const alice = org.addStaff(new Staff({ name: 'Sample Staff A', employmentType: 'full-time', roleTitle: 'Case Manager', shiftPreference: 'day', payType: 'hourly', payRate: 24, hireDate: '2023-02-01', email: 'a@example.org', createdBy: 'system-admin' }));
+const ben = org.addStaff(new Staff({ name: 'Sample Staff B', employmentType: 'part-time', roleTitle: 'Shelter Monitor', shiftPreference: 'night', payType: 'hourly', payRate: 19, hireDate: '2024-06-15', email: 'b@example.org', createdBy: 'system-admin' }));
+
+org.addShift(new Shift({ staffId: alice.id, date: '2026-07-20', shiftType: 'Day', shiftLabel: '8a-4p', postAssignment: 'Front Desk', createdBy: alice.id }));
+org.addShift(new Shift({ staffId: ben.id, date: '2026-07-20', shiftType: 'Night', shiftLabel: '4p-12a', postAssignment: 'Floor Monitor', createdBy: alice.id }));
+org.addShift(new Shift({ staffId: '', date: '2026-07-21', shiftType: 'Night', status: 'open', createdBy: alice.id }));
+
+org.addPayrollRecord(new PayrollRecord({
+  staffId: alice.id, department: '10 - AS -- SCoordination', periodStart: '2026-07-01', periodEnd: '2026-07-15',
+  earnings: [{ type: 'Regular', hours: 80, rate: 24, amount: 1920 }, { type: 'Overtime', hours: 2, rate: 36, amount: 72 }],
+  totalHours: 82, totalEarnings: 1992,
+  taxes: { fedSocSec: 123.50, fedMedcare: 28.88, stateSIT: 82.67, total: 235.05 },
+  deductions: { medicalPreTax: 180, total: 180 }, netPay: 1576.95,
+  employerLiability: { fedSocSecER: 123.50, fedMedcareER: 28.88, total: 152.38 },
+  payments: [{ method: 'Direct Deposit', checkDate: '2026-07-18', transactionId: 'XXXX0001', amount: 1576.95 }],
+  budgetCategoryId: payrollCat.id
+}));
+org.addPayrollRecord(new PayrollRecord({
+  staffId: ben.id, department: '10 - AS -- SCoordination', periodStart: '2026-07-01', periodEnd: '2026-07-15',
+  earnings: [{ type: 'Regular', hours: 60, rate: 19, amount: 1140 }],
+  totalHours: 60, totalEarnings: 1140,
+  taxes: { fedSocSec: 70.68, fedMedcare: 16.53, stateSIT: 47.31, total: 134.52 },
+  deductions: { total: 0 }, netPay: 1005.48,
+  employerLiability: { fedSocSecER: 70.68, fedMedcareER: 16.53, total: 87.21 },
+  payments: [{ method: 'Direct Deposit', checkDate: '2026-07-18', transactionId: 'XXXX0002', amount: 1005.48 }],
+  budgetCategoryId: payrollCat.id
+}));
+
+org.addExpense(new Expense({ date: '2026-07-05', category: 'Utilities', amount: 3200, vendor: 'City Power', budgetCategoryId: opsCat.id, approvedBy: alice.id, createdBy: alice.id }));
+org.addGrant(new Grant({ source: 'County Housing Fund', amount: 50000, receivedDate: '2026-01-15', restricted: true, budgetCategoryId: payrollCat.id, createdBy: alice.id }));
+
+// ─── Additional periods/seasons of synthetic data, for the month/season reports ──
+function seedPayroll(staff, start, end, hours, otHours) {
+  const rate = staff.payRate, otRate = rate * 1.5;
+  const reg = hours * rate, ot = otHours * otRate, gross = reg + ot;
+  const fedSocSec = gross * 0.062, fedMedcare = gross * 0.0145, stateSIT = gross * 0.0415;
+  const taxTotal = fedSocSec + fedMedcare + stateSIT;
+  org.addPayrollRecord(new PayrollRecord({
+    staffId: staff.id, department: '10 - AS -- SCoordination', periodStart: start, periodEnd: end,
+    earnings: otHours ? [{ type: 'Regular', hours, rate, amount: reg }, { type: 'Overtime', hours: otHours, rate: otRate, amount: ot }] : [{ type: 'Regular', hours, rate, amount: reg }],
+    totalHours: hours + otHours, totalEarnings: gross,
+    taxes: { fedSocSec, fedMedcare, stateSIT, total: taxTotal },
+    deductions: { total: 0 }, netPay: gross - taxTotal,
+    employerLiability: { fedSocSecER: fedSocSec, fedMedcareER: fedMedcare, total: fedSocSec + fedMedcare },
+    payments: [{ method: 'Direct Deposit', checkDate: end, transactionId: 'XXXX' + Math.floor(Math.random()*9000+1000), amount: gross - taxTotal }],
+    budgetCategoryId: payrollCat.id
+  }));
+}
+seedPayroll(alice, '2026-01-01', '2026-01-15', 80, 0);
+seedPayroll(ben, '2026-01-01', '2026-01-15', 55, 0);
+seedPayroll(alice, '2026-04-01', '2026-04-15', 80, 4);
+seedPayroll(ben, '2026-04-01', '2026-04-15', 62, 0);
+seedPayroll(alice, '2026-10-01', '2026-10-15', 80, 1);
+seedPayroll(ben, '2026-10-01', '2026-10-15', 58, 3);
+
+org.addExpense(new Expense({ date: '2026-01-10', category: 'Utilities', amount: 2800, vendor: 'City Power', budgetCategoryId: opsCat.id, approvedBy: alice.id, createdBy: alice.id }));
+org.addExpense(new Expense({ date: '2026-02-14', category: 'Supplies', amount: 450, vendor: 'Shelter Supply Co', budgetCategoryId: opsCat.id, approvedBy: ben.id, createdBy: ben.id }));
+org.addExpense(new Expense({ date: '2026-04-08', category: 'Food Services', amount: 1900, vendor: 'Metro Food Bank', budgetCategoryId: opsCat.id, approvedBy: alice.id, createdBy: alice.id }));
+org.addExpense(new Expense({ date: '2026-05-20', category: 'Maintenance', amount: 1200, vendor: 'Facilities Inc', budgetCategoryId: opsCat.id, approvedBy: ben.id, createdBy: ben.id }));
+org.addExpense(new Expense({ date: '2026-08-12', category: 'Food Services', amount: 2100, vendor: 'Metro Food Bank', budgetCategoryId: opsCat.id, approvedBy: alice.id, createdBy: alice.id }));
+org.addExpense(new Expense({ date: '2026-10-03', category: 'Utilities', amount: 3400, vendor: 'City Power', budgetCategoryId: opsCat.id, approvedBy: ben.id, createdBy: ben.id }));
+org.addExpense(new Expense({ date: '2026-11-18', category: 'Supplies', amount: 620, vendor: 'Shelter Supply Co', budgetCategoryId: opsCat.id, approvedBy: alice.id, createdBy: alice.id }));
+
+const orgChart = OrgPosition.buildHopeSheltersChart();
+return { org, orgChart };
+}
+
+function buildRealOrg() {
+  const org = new Organization({ name: 'HOPE Hospitality and Warming Center (real 2025 payroll)' });
+  // Real per-employee annualized payroll estimate: sum each real payrollRecord's actual
+  // totalEarnings, then annualize by that record's own real period span (not an assumed
+  // full-year for everyone) — this is real data with real partial employment spans, not a
+  // synthetic demo where a flat 2080hr/year assumption would be acceptable.
+  // No real annual budget document exists for Payroll. Every attempt to annualize/estimate
+  // from partial, sporadic real employment spans (some staff worked a single day) produces a
+  // fabricated number, not a real one. Until a real budget figure is provided, Allocated is set
+  // equal to real Actual spend (REAL_ORG_DATA.payrollRecords' true totalEarnings sum) — the
+  // honest state is "no variance data available," not an invented projection.
+  const validStaffIds = new Set(REAL_ORG_DATA.staff.map(s => s.id));
+  const estimatedPayrollBudget = REAL_ORG_DATA.payrollRecords.filter(p => validStaffIds.has(p.staffId)).reduce((sum, p) => sum + (p.totalEarnings || 0), 0);
+  const payrollCat = org.addBudgetCategory(new BudgetCategory({ name: 'Payroll (no budget doc \u2014 shown as actual)', fiscalYear: '2025', allocatedAmount: Math.round(estimatedPayrollBudget) }));
+  // Real 2026 non-payroll expenses and donations, extracted line-by-line from the org's actual
+  // finance workbook (one BudgetCategory per workbook category, matching its summary sheet's
+  // columns). Note: this workbook's real dates are 2026, while the separate payroll CSV's real
+  // dates are 2025 \u2014 two different real source documents covering different fiscal periods,
+  // not one unified fiscal year. Tagged '2026' here so budgetProjection(fy) reflects that honestly.
+  const expenseCatNames = ['Food', 'Supplies', 'Building and Membership Expenses', 'Loan Payment', 'Pro License & Fee', 'Utilities', 'Insurance', 'S2S', 'Payroll (ADP)'];
+  const expenseCatMap = {};
+  const expenseTotalsByCat = {};
+  (REAL_ORG_DATA.expenses || []).forEach(e => { expenseTotalsByCat[e.category] = (expenseTotalsByCat[e.category] || 0) + e.amount; });
+  expenseCatNames.forEach(name => {
+    expenseCatMap[name] = org.addBudgetCategory(new BudgetCategory({ name, fiscalYear: '2026', allocatedAmount: Math.round((expenseTotalsByCat[name] || 0) * 100) / 100 }));
+  });
+  (REAL_ORG_DATA.expenses || []).forEach(e => {
+    const cat = expenseCatMap[e.category];
+    org.addExpense(new Expense({
+      date: e.date, category: e.category, amount: e.amount, vendor: e.vendor,
+      budgetCategoryId: cat ? cat.id : '', createdBy: 'system-import'
+    }));
+  });
+  // Real deposits/donations/GoFundMe income, tagged to a dedicated income category so
+  // budgetProjection's income filter (matched by budgetCategoryId) actually picks it up —
+  // previously left untagged, so real donation income showed as $0 against every category.
+  const donationCat = org.addBudgetCategory(new BudgetCategory({ name: 'Donations & Grants', fiscalYear: '2026', allocatedAmount: 0 }));
+  (REAL_ORG_DATA.grants || []).forEach(g => {
+    org.addGrant(new Grant({
+      source: g.source, amount: g.amount, receivedDate: g.receivedDate, restricted: g.restricted,
+      budgetCategoryId: donationCat.id, createdBy: 'system-import'
+    }));
+  });
+  const staffIdMap = {};
+  REAL_ORG_DATA.staff.forEach(s => {
+    const created = org.addStaff(new Staff({
+      name: s.name, roleTitle: s.roleTitle, employmentType: s.employmentType,
+      payType: s.payType, payRate: s.payRate, status: s.status, hireDate: '', createdBy: 'system-import'
+    }));
+    staffIdMap[s.id] = created.id;
+  });
+  const shiftStaffIdMap = {};
+  REAL_SHIFT_DATA.staff.forEach(s => {
+    const created = org.addStaff(new Staff({
+      name: s.name, roleTitle: s.roleTitle, employmentType: s.employmentType,
+      payType: s.payType, payRate: s.payRate, status: s.status, hireDate: '', createdBy: 'system-import'
+    }));
+    shiftStaffIdMap[s.id] = created.id;
+  });
+  REAL_SHIFT_DATA.shifts.forEach(sh => {
+    const staffId = shiftStaffIdMap[sh.staffId];
+    if (!staffId) return;
+    org.addShift(new Shift({
+      staffId, date: sh.date, shiftType: sh.shiftType, shiftLabel: sh.shiftLabel,
+      startEpoch: sh.startEpoch, endEpoch: sh.endEpoch, status: sh.status,
+      hoursScheduled: sh.hoursScheduled, hoursActual: sh.hoursActual, payRateUsed: sh.payRateUsed,
+      postAssignment: sh.postAssignment, createdBy: 'system-import'
+    }));
+  });
+  REAL_ORG_DATA.payrollRecords.forEach(p => {
+    const staffId = staffIdMap[p.staffId];
+    if (!staffId) return;
+    org.addPayrollRecord(new PayrollRecord({
+      staffId, department: p.department, periodStart: p.periodStart, periodEnd: p.periodEnd,
+      earnings: [{ type: 'Regular', hours: p.totalHours, rate: 0, amount: p.totalEarnings }],
+      totalHours: p.totalHours, totalEarnings: p.totalEarnings,
+      taxes: p.taxes, deductions: p.deductions, netPay: p.netPay,
+      employerLiability: p.employerLiability,
+      payments: [{ method: 'Direct Deposit', checkDate: p.periodEnd, transactionId: '', amount: p.netPay }],
+      budgetCategoryId: payrollCat.id
+    }));
+  });
+  const orgChart = OrgPosition.buildHopeSheltersChart();
+  return { org, orgChart };
+}
+
+let currentDataset = 'real';
+let fy = '2025';
+let { org, orgChart } = buildRealOrg();
+function switchDataset(mode) {
+  currentDataset = mode;
+  fy = mode === 'real' ? '2025' : '2026';
+  const built = mode === 'real' ? buildRealOrg() : buildSyntheticOrg();
+  org = built.org; orgChart = built.orgChart;
+  crudEditingId = null;
+  initSessionSelector();
+  renderCurrent();
+}
+
+// ─── Navigator ────────────────────────────────────────────────────────────
+const NAV = [
+  { group: 'Data Surfaces', items: [
+    { id: 'staff', label: 'Staff Roster' },
+    { id: 'scheduling', label: 'Scheduling' },
+    { id: 'payroll', label: 'Payroll' },
+    { id: 'budget', label: 'Budget' },
+    { id: 'orgchart', label: 'Org Chart' }
+  ]},
+  { group: 'Data Entry', items: [
+    { id: 'crud-staff', label: 'Staff (CRUD)' },
+    { id: 'crud-shifts', label: 'Shifts (CRUD)' },
+    { id: 'crud-expenses', label: 'Expenses (CRUD)' },
+    { id: 'crud-grants', label: 'Grants (CRUD)' }
+  ]},
+  { group: 'Designer', items: [
+    { id: 'report-designer', label: 'Report Band Designer' }
+  ]},
+  { group: 'Reports', items: [
+    { id: 'report-staff-expense-month', label: '#1 Comprehensive Staff Expense by Month' },
+    { id: 'report-expense-season', label: '#2 Expenses by Season' },
+    { id: 'report-payroll', label: '#3 Payroll Report' },
+    { id: 'report-payroll-budget', label: '#4 Payroll & Budget Report' },
+    { id: 'report-pl', label: '#5 Profit & Loss Statement' },
+    { id: 'report-coverage', label: '#6 Staffing Coverage Report' }
+  ]}
+];
+
+let current = 'staff';
+let STAFF_ACTIVE_ONLY = true;
+let SESSION = { staffId: '', name: '', department: '' };
+function setSession(staffId) {
+  const s = org.staff.find(x => x.id === staffId);
+  SESSION = s ? { staffId: s.id, name: s.name, department: s.roleTitle } : { staffId: '', name: '', department: '' };
+  renderCurrent();
+}
+function initSessionSelector() {
+  const sel = document.getElementById('session-select');
+  if (!sel) { if (org.staff.length) setSession(org.staff[0].id); return; }
+  sel.innerHTML = org.staff.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  if (org.staff.length) setSession(org.staff[0].id);
+}
+let collapsedGroups = new Set(['Data Entry', 'Designer']);
+function toggleNavGroup(g) {
+  if (collapsedGroups.has(g)) collapsedGroups.delete(g); else collapsedGroups.add(g);
+  renderNav();
+}
+function renderNav() {
+  const role = document.getElementById('role-select') ? document.getElementById('role-select').value : 'admin';
+  const osAdminParam = new URLSearchParams(location.search).get('osAdmin');
+  const insideOS = osAdminParam !== null;
+  const effectiveAdmin = insideOS ? (osAdminParam === '1' && role === 'admin') : (role === 'admin');
+  const PAYROLL_GATED = new Set(['payroll', 'budget', 'report-payroll', 'report-payroll-budget', 'report-pl', 'report-staff-expense-month']);
+  const ADMIN_ONLY_GROUPS = new Set(['Data Entry', 'Designer']);
+  const nav = document.getElementById('nav');
+  nav.innerHTML = NAV.map(g => {
+    if (ADMIN_ONLY_GROUPS.has(g.group) && !effectiveAdmin) return '';
+    const items = g.items.filter(it => effectiveAdmin || !PAYROLL_GATED.has(it.id));
+    if (!items.length) return '';
+    const isCollapsed = collapsedGroups.has(g.group);
+    return `
+    <div class="group-label" onclick="toggleNavGroup('${g.group}')"><span>${g.group}</span><span class="group-caret ${isCollapsed ? 'collapsed' : ''}">\u25be</span></div>
+    ${isCollapsed ? '' : items.map(it => `<div class="item ${it.id===current?'selected':''}" onclick="selectNav('${it.id}')">${it.label}</div>`).join('')}
+  `;
+  }).join('');
+  // If the currently-selected surface just became hidden by a role switch, land on
+  // the first surface still visible instead of leaving the main panel on a dead selection.
+  const stillVisible = NAV.some(g => (!ADMIN_ONLY_GROUPS.has(g.group) || effectiveAdmin) && g.items.some(it => it.id === current && (effectiveAdmin || !PAYROLL_GATED.has(it.id))));
+  if (!stillVisible) {
+    const fallback = NAV.flatMap(g => (!ADMIN_ONLY_GROUPS.has(g.group) || effectiveAdmin) ? g.items.filter(it => effectiveAdmin || !PAYROLL_GATED.has(it.id)) : [])[0];
+    if (fallback) current = fallback.id;
+  }
+}
+function selectNav(id) { current = id; crudEditingId = null; crudSearchTerm = ''; crudPage = 0; renderNav(); renderCurrent(); }
+function exportPayrollPDF() { window.open('./Payroll-Report.html', '_blank'); }
+function setFY(v) { fy = v; renderCurrent(); }
+
+function money(n) {
+  let v = n || 0;
+  if (Math.abs(v) < 0.005) v = 0;
+  const sign = v < 0 ? '-' : '';
+  return sign + '$' + Math.abs(v).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ─── Profit & Loss Statement ────────────────────────────────────────────
+// Follows the standard P&L template (Sales Revenue / Cost of Sales / Gross
+// Profit / Operating Expenses (S&M, R&D, G&A) / Other Income / Taxes / Net
+// Profit). We do not have every line item this template calls for (Rent,
+// Telephone, Insurance, Depreciation, income/real-estate taxes \u2014 a
+// nonprofit shelter tracks none of these); those render as N/A ("\u2014"),
+// distinct from a tracked line that's genuinely $0. N/A lines contribute 0
+// to their subtotal (same as a blank cell in a spreadsheet SUM), but the
+// subtotal itself only reads "\u2014" when EVERY line feeding it is N/A.
+// Prior Period is N/A throughout \u2014 only one fiscal year of data exists.
+function plRow(label, actual, budget) {
+  return { label, actual, budget, na: actual === null };
+}
+function plSubtotal(label, code, rows) {
+  const allNA = rows.every(r => r.na);
+  return { label, code, actual: allNA ? null : rows.reduce((s, r) => s + (r.actual || 0), 0), budget: rows.every(r => r.budget == null) ? null : rows.reduce((s, r) => s + (r.budget || 0), 0), na: allNA };
+}
+function plFormatPct(actual, base) {
+  if (actual === null || base === null || !base) return '\u2014';
+  return ((actual / base) * 100).toFixed(1) + '%';
+}
+function plFormatChangePct(actual, compare) {
+  if (actual === null || compare === null || !compare) return '\u2014';
+  return (((actual - compare) / Math.abs(compare)) * 100).toFixed(1) + '%';
+}
+function renderPLReport() {
+  const payrollProj = org.payrollProjection();
+  const totalWages = payrollProj.records.length ? payrollProj.totalGross : null;
+  const employerPayrollTax = payrollProj.records.length ? payrollProj.records.reduce((s, r) => s + (r.totalEmployerLiability ? r.totalEmployerLiability() : 0), 0) : null;
+  const expenseByCategory = {};
+  org.expenses.forEach(e => { expenseByCategory[e.category] = (expenseByCategory[e.category] || 0) + e.amount; });
+  const mappedCategories = { Utilities: 'Utilities', Supplies: 'Supplies', 'Building and Membership Expenses': 'Repairs and maintenance', Insurance: 'Insurance' };
+  const otherExpenseCategories = Object.keys(expenseByCategory).filter(c => !mappedCategories[c]);
+  const otherExpenseTotal = otherExpenseCategories.reduce((s, c) => s + expenseByCategory[c], 0);
+  const totalGrantIncome = org.grants.reduce((s, g) => s + g.amount, 0);
+  // P&L intentionally combines Payroll (real FY2025 data) with Expenses/Donations (real FY2026
+  // data) \u2014 two different real source documents, not one fiscal year. budgetProjection(fy)
+  // filters by a single FY, so pull both real years here rather than let the FY selector
+  // silently blank out categories that don't happen to match its current value.
+  const budgetProj2025 = org.budgetProjection('2025');
+  const budgetProj2026 = org.budgetProjection('2026');
+  const payrollBudget = budgetProj2025.find(b => /payroll/i.test(b.category));
+  const budgetFor = (catName) => { const b = budgetProj2026.find(x => x.category === catName); return b ? b.allocated : null; };
+
+  const salesRevenue = [plRow('Product/Service (not applicable \u2014 nonprofit shelter)', 0, 0)];
+  const costOfSales = [plRow('Product/Service (not applicable \u2014 nonprofit shelter)', 0, 0)];
+  const salesMarketing = [plRow('Advertising', null, null), plRow('Direct marketing', null, null)];
+  const rd = [plRow('Technology licenses', null, null), plRow('Patents', null, null)];
+  const ga = [
+    plRow('Wages and salaries', totalWages, payrollBudget ? payrollBudget.allocated : null),
+    plRow('Outside services', null, null),
+    plRow('Supplies', expenseByCategory['Supplies'] || (expenseByCategory['Supplies'] === 0 ? 0 : null), budgetFor('Supplies')),
+    plRow('Meals and entertainment', null, null),
+    plRow('Rent', null, null),
+    plRow('Telephone', null, null),
+    plRow('Utilities', expenseByCategory['Utilities'] ?? (org.expenses.length ? 0 : null), budgetFor('Utilities')),
+    plRow('Depreciation', null, null),
+    plRow('Insurance', expenseByCategory['Insurance'] ?? (org.expenses.length ? 0 : null), budgetFor('Insurance')),
+    plRow('Repairs and maintenance', expenseByCategory['Building and Membership Expenses'] ?? (org.expenses.length ? 0 : null), budgetFor('Building and Membership Expenses')),
+    plRow(otherExpenseCategories.length ? 'Other expenses (' + otherExpenseCategories.join(', ') + ')' : 'Other expenses (specify)', otherExpenseCategories.length ? otherExpenseTotal : (org.expenses.length ? 0 : null), null)
+  ];
+  const salesMarketingTotal = plSubtotal('Total Sales and Marketing Expenses', 'M', salesMarketing);
+  const rdTotal = plSubtotal('Total Research and Development Expenses', 'N', rd);
+  const gaTotal = plSubtotal('Total General and Administrative Expenses', 'O', ga);
+  const totalSalesRevenue = plSubtotal('Total Sales Revenue', 'J', salesRevenue);
+  const totalCostOfSales = plSubtotal('Total Cost of Sales', 'K', costOfSales);
+  const grossProfit = { label: 'Gross Profit', code: 'L=J-K', actual: (totalSalesRevenue.actual || 0) - (totalCostOfSales.actual || 0), budget: (totalSalesRevenue.budget || 0) - (totalCostOfSales.budget || 0), na: false };
+  const totalOpEx = { label: 'Total Operating Expenses', code: 'P=M+N+O', actual: (salesMarketingTotal.actual || 0) + (rdTotal.actual || 0) + (gaTotal.actual || 0), budget: (salesMarketingTotal.budget || 0) + (rdTotal.budget || 0) + (gaTotal.budget || 0), na: false };
+  const incomeFromOps = { label: 'Income from Operations', code: 'Q=L-P', actual: grossProfit.actual - totalOpEx.actual, budget: grossProfit.budget - totalOpEx.budget, na: false };
+  const otherIncome = plRow('Other Income (Grants)', org.grants.length ? totalGrantIncome : null, null);
+  const taxes = [
+    plRow('Income taxes (N/A \u2014 tax-exempt nonprofit)', null, null),
+    plRow('Payroll taxes (employer share)', employerPayrollTax, null),
+    plRow('Real estate taxes', null, null)
+  ];
+  const taxesTotal = plSubtotal('Total Taxes', 'S', taxes);
+  const netProfit = { label: 'Net Profit', code: 'T=Q+R-S', actual: incomeFromOps.actual + (otherIncome.actual || 0) - (taxesTotal.actual || 0), na: false };
+
+  function fmt(v) { return v === null ? '<span class="pl-na">\u2014</span>' : money(v); }
+  function dataRow(r, bold) {
+    return `<tr${bold ? ' class="pl-total-row"' : ''}><td>${r.label}${r.code ? ` [${r.code}]` : ''}</td>` +
+      `<td class="pl-num pl-na">\u2014</td><td class="pl-num">${fmt(r.budget)}</td><td class="pl-num">${fmt(r.actual)}</td>` +
+      `<td class="pl-num">${plFormatPct(r.actual, totalSalesRevenue.actual || (org.grants.length ? totalGrantIncome : null))}</td>` +
+      `<td class="pl-num pl-na">\u2014</td>` +
+      `<td class="pl-num">${plFormatChangePct(r.actual, r.budget)}</td></tr>`;
+  }
+  function sectionHead(label) { return `<tr><td class="pl-section-head" colspan="7">${label}</td></tr>`; }
+  function subsectionHead(label) { return `<tr><td class="pl-subsection-head" colspan="7">${label}</td></tr>`; }
+
+  return `<h2>Profit &amp; Loss Statement</h2><div class="subtitle">HOPE Hospitality and Warming Center \u2014 FY ${fy} \u2014 built from real payroll/expense/grant data where available; unavailable line items show \u2014 (N/A), not zero</div>` +
+    `<table class="pl-table"><tbody>` +
+    `<tr class="pl-headers"><td></td><td>Prior Period</td><td>Budget</td><td>Current Period</td><td>Current Period as % of Revenue</td><td>% Chg from Prior</td><td>% Chg from Budget</td></tr>` +
+    sectionHead('Sales Revenue') +
+    salesRevenue.map(r => dataRow(r)).join('') + dataRow(totalSalesRevenue, true) +
+    sectionHead('Cost of Sales') +
+    costOfSales.map(r => dataRow(r)).join('') + dataRow(totalCostOfSales, true) +
+    dataRow(grossProfit, true) +
+    sectionHead('Operating Expenses') +
+    subsectionHead('Sales and Marketing') + salesMarketing.map(r => dataRow(r)).join('') + dataRow(salesMarketingTotal, true) +
+    subsectionHead('Research and Development') + rd.map(r => dataRow(r)).join('') + dataRow(rdTotal, true) +
+    subsectionHead('General and Administrative') + ga.map(r => dataRow(r)).join('') + dataRow(gaTotal, true) +
+    dataRow(totalOpEx, true) +
+    dataRow(incomeFromOps, true) +
+    sectionHead('Other Income') + dataRow(otherIncome) +
+    sectionHead('Taxes') + taxes.map(r => dataRow(r)).join('') + dataRow(taxesTotal, true) +
+    `<tr class="pl-grand-row"><td>${netProfit.label} [${netProfit.code}]</td><td class="pl-num pl-na">\u2014</td><td class="pl-num pl-na">\u2014</td><td class="pl-num">${money(netProfit.actual)}</td><td class="pl-num pl-na">\u2014</td><td class="pl-num pl-na">\u2014</td><td class="pl-num pl-na">\u2014</td></tr>` +
+    `</tbody></table>`;
+}
+
+// ─── Generic report-band engine ────────────────────────────────────────────
+// Reports are declarative: a row list + an ordered list of {label, keyFn, sortFn}
+// group definitions. This is the same engine both priority reports use, and the
+// one any future report/schema-driven designer plugs into — grouping/subtotal/
+// grand-total logic never has to be rewritten per report.
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function monthOf(dateStr) { return (dateStr || '').slice(0, 7); }
+function monthLabel(key) { const [y, m] = key.split('-'); return MONTH_NAMES[parseInt(m, 10) - 1] + ' ' + y; }
+const SEASON_ORDER = ['Winter', 'Spring', 'Summer', 'Fall'];
+function seasonOf(dateStr) { const m = parseInt((dateStr || '').slice(5, 7), 10); if (m === 12 || m <= 2) return 'Winter'; if (m <= 5) return 'Spring'; if (m <= 8) return 'Summer'; return 'Fall'; }
+
+function buildGroups(rows, groupDefs, amountFn, level) {
+  level = level || 0;
+  if (level >= groupDefs.length) return null;
+  const def = groupDefs[level];
+  const map = new Map();
+  rows.forEach(r => { const k = def.keyFn(r); if (!map.has(k)) map.set(k, []); map.get(k).push(r); });
+  const keys = [...map.keys()].sort(def.sortFn || ((a, b) => a < b ? -1 : a > b ? 1 : 0));
+  return keys.map(k => {
+    const groupRows = map.get(k);
+    return { label: def.label, key: k, keyLabel: def.keyLabel ? def.keyLabel(k) : k, rows: groupRows,
+      children: buildGroups(groupRows, groupDefs, amountFn, level + 1), subtotal: groupRows.reduce((s, r) => s + amountFn(r), 0) };
+  });
+}
+function renderGroups(groups, depth, detailRenderer) {
+  return groups.map(g => `
+    <div class="grp-header" style="margin-left:${depth * 16}px">${g.label}: ${g.keyLabel}</div>
+    <div style="margin-left:${depth * 16}px">${g.children ? renderGroups(g.children, depth + 1, detailRenderer) : detailRenderer(g.rows)}</div>
+    <div class="grp-footer" style="margin-left:${depth * 16}px">Subtotal — ${g.keyLabel}: ${money(g.subtotal)}</div>
+  `).join('');
+}
+// ─── Schema-driven field resolution ─────────────────────────────────────
+// A report source names fields against its OWN class — either a raw
+// static _schema property or a computed method of the same name — and
+// this resolves either uniformly. No report hardcodes "payroll records
+// have a totalEarnings column"; it names the field, this reads it. Adding
+// a report against a new BaseClassX subclass needs a new source entry,
+// never a new bespoke row-builder function.
+function fieldLabel(Cls, field) {
+  const meta = Cls && Cls._schema && Cls._schema.properties && Cls._schema.properties[field];
+  if (meta && meta.label) return meta.label;
+  return field.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/^./, c => c.toUpperCase());
+}
+function resolveField(instance, field) {
+  const v = instance[field];
+  return typeof v === 'function' ? v.call(instance) : v;
+}
+function collectRows(sourceDefs) {
+  const rows = [];
+  sourceDefs.forEach(def => {
+    const items = def.collection(org).filter(def.filter || (() => true));
+    items.forEach(inst => {
+      const staff = def.staffField ? org.staff.find(s => s.id === inst[def.staffField]) : null;
+      const row = {
+        date: inst[def.dateField], month: monthOf(inst[def.dateField]), season: seasonOf(inst[def.dateField]),
+        year: (inst[def.dateField] || '').slice(0, 4) || null,
+        staffName: staff ? staff.name : (def.staffField ? inst[def.staffField] : ''),
+        sourceLabel: def.sourceLabel,
+        detail: def.labelFields ? def.labelFields.map(f => resolveField(inst, f)).join(' \u2014 ') : def.labelFn(inst),
+        category: def.categoryField ? inst[def.categoryField] : '',
+        vendor: def.vendorField ? inst[def.vendorField] : '',
+        amount: resolveField(inst, def.amountField), amountLabel: fieldLabel(def.class, def.amountField)
+      };
+      if (def.extraFields) Object.keys(def.extraFields).forEach(key => { row[key] = resolveField(inst, def.extraFields[key]); });
+      rows.push(row);
+    });
+  });
+  return rows;
+}
+
+// ─── Report catalog ─── each entry is data: source class(es) + field names
+// + groupBy — no per-report rendering code.
+const REPORT_DEFS = {
+  'report-staff-expense-month': {
+    title: '#1 \u2014 Comprehensive Staff Expense by Month',
+    subtitle: 'Payroll cost-to-org + staff-attributable expenses \u2014 fields resolved from PayrollRecord/Expense _schema, grouped by month then staff',
+    sources: [
+      { class: PayrollRecord, collection: o => o.payrollRecords, dateField: 'periodStart', staffField: 'staffId', amountField: 'totalCostToOrg', sourceLabel: 'Payroll', labelFn: r => 'Payroll ' + r.periodStart + ' \u2013 ' + r.periodEnd },
+      { class: Expense, collection: o => o.expenses, dateField: 'date', staffField: 'approvedBy', amountField: 'amount', sourceLabel: 'Expense', labelFields: ['category', 'vendor'] }
+    ],
+    groupBy: [
+      { label: 'Month', field: 'month', keyFn: r => r.month, keyLabel: monthLabel },
+      { label: 'Staff', field: 'staffName', keyFn: r => r.staffName }
+    ],
+    detailColumns: [{ label: 'Source', field: 'sourceLabel' }, { label: 'Detail', field: 'detail' }, { label: 'Amount', field: 'amount', money: true }]
+  },
+  'report-expense-season': {
+    title: '#2 \u2014 Expenses by Season',
+    subtitle: 'Non-payroll expenses \u2014 fields resolved from Expense _schema, grouped by season then category',
+    sources: [
+      { class: Expense, collection: o => o.expenses, dateField: 'date', amountField: 'amount', sourceLabel: 'Expense', categoryField: 'category', vendorField: 'vendor', labelFields: ['vendor'] }
+    ],
+    groupBy: [
+      { label: 'Season', field: 'season', keyFn: r => r.season, sortFn: (a, b) => SEASON_ORDER.indexOf(a) - SEASON_ORDER.indexOf(b) },
+      { label: 'Category', field: 'category', keyFn: r => r.category }
+    ],
+    detailColumns: [{ label: 'Date', field: 'date' }, { label: 'Vendor', field: 'vendor' }, { label: 'Amount', field: 'amount', money: true }]
+  },
+  'report-payroll': {
+    title: '#3 \u2014 Payroll Report',
+    subtitle: 'Payroll register \u2014 fields resolved from PayrollRecord._schema, grouped by staff then pay period',
+    sources: [
+      { class: PayrollRecord, collection: o => o.payrollRecords, dateField: 'periodStart', staffField: 'staffId', amountField: 'totalCostToOrg', sourceLabel: 'Payroll', labelFn: r => r.periodStart + ' \u2013 ' + r.periodEnd,
+        extraFields: { totalHours: 'totalHours', totalEarnings: 'totalEarnings', netPay: 'netPay', employerLiability: 'totalEmployerLiability' } }
+    ],
+    groupBy: [
+      { label: 'Staff', field: 'staffName', keyFn: r => r.staffName },
+      { label: 'Pay Period', field: 'detail', keyFn: r => r.detail }
+    ],
+    detailColumns: [
+      { label: 'Total Hours', field: 'totalHours' },
+      { label: 'Total Earnings', field: 'totalEarnings', money: true },
+      { label: 'Net Pay', field: 'netPay', money: true },
+      { label: 'Employer Liability', field: 'employerLiability', money: true },
+      { label: 'Total Cost to Org', field: 'amount', money: true }
+    ]
+  }
+};
+// ─── Report Band Designer ───────────────────────────────────────────────
+// Same Toolbox drag/resize canvas already used for VB6 form design,
+// applied to report layout: bands are Crystal-Reports-style (Report
+// Header, one Group Header/Footer pair per groupBy level, Detail, Report
+// Footer). Elements ({type,label,field,left,top,width,height}) bind
+// against the SAME REPORT_DEFS a report already runs on — the designer
+// edits layout only, never duplicates the query/grouping logic above.
+const REPORT_LAYOUTS = {};
+function bandNamesFor(def) {
+  const names = ['reportHeader'];
+  def.groupBy.forEach((g, i) => names.push('groupHeader_' + i));
+  names.push('detail');
+  for (let i = def.groupBy.length - 1; i >= 0; i--) names.push('groupFooter_' + i);
+  names.push('reportFooter');
+  return names;
+}
+function bandDisplayLabel(def, bandName) {
+  if (bandName === 'reportHeader') return 'Report Header';
+  if (bandName === 'reportFooter') return 'Report Footer (Running Totals)';
+  if (bandName === 'detail') return 'Detail (repeats per row)';
+  const m = bandName.match(/^group(Header|Footer)_(\d+)$/);
+  if (m) return def.groupBy[+m[2]].label + ' Group ' + m[1];
+  return bandName;
+}
+function ensureLayout(reportKey) {
+  if (REPORT_LAYOUTS[reportKey]) return REPORT_LAYOUTS[reportKey];
+  const def = REPORT_DEFS[reportKey];
+  const elements = {};
+  let elId = 1;
+  const mk = (type, extra, left, top, w, h) => ({ id: 'el' + (elId++), type, left, top, width: w, height: h, ...extra });
+  elements.reportHeader = [mk('label', { text: def.title }, 8, 8, 460, 24)];
+  def.groupBy.forEach((g, i) => {
+    elements['groupHeader_' + i] = [
+      mk('label', { text: g.label + ':' }, 8 + i * 16, 6, 90, 22),
+      mk('groupValue', { level: i }, 100 + i * 16, 6, 240, 22)
+    ];
+    elements['groupFooter_' + i] = [
+      mk('label', { text: 'Subtotal:' }, 8 + i * 16, 6, 90, 22),
+      mk('runningTotal', { scope: 'group', level: i }, 100 + i * 16, 6, 160, 22)
+    ];
+  });
+  elements.detail = def.detailColumns.map((c, i) => mk('field', { text: c.label, field: c.field, money: !!c.money }, 8 + i * 160, 6, 150, 24));
+  elements.reportFooter = [mk('label', { text: 'Grand Total:' }, 8, 8, 110, 24), mk('runningTotal', { scope: 'report' }, 124, 8, 160, 24)];
+  const bandHeights = {}; bandNamesFor(def).forEach(b => bandHeights[b] = 40);
+  bandHeights.reportHeader = 44; bandHeights.reportFooter = 44;
+  REPORT_LAYOUTS[reportKey] = { elements, bandHeights };
+  return REPORT_LAYOUTS[reportKey];
+}
+let designerReportKey = null;
+let designerSelected = null;
+let designerPreview = false;
+function selectDesignerReport(key) { designerReportKey = key; designerSelected = null; renderCurrent(); }
+function toggleDesignerPreview() { designerPreview = !designerPreview; renderCurrent(); }
+function addDesignerElement(reportKey, band, kind) {
+  const def = REPORT_DEFS[reportKey], layout = ensureLayout(reportKey);
+  const list = layout.elements[band];
+  const left = 8 + (list.length % 4) * 130, top = 6;
+  const lvl = (band.match(/_(\d+)$/) || [0, 0])[1] * 1;
+  let el;
+  if (kind === 'runningTotal') el = { id: 'el' + Date.now(), type: 'runningTotal', scope: band === 'reportFooter' ? 'report' : 'group', level: lvl, left, top, width: 150, height: 24 };
+  else if (kind === 'label') el = { id: 'el' + Date.now(), type: 'label', text: 'Label', left, top, width: 100, height: 24 };
+  else if (kind === 'groupValue') el = { id: 'el' + Date.now(), type: 'groupValue', level: lvl, left, top, width: 200, height: 24 };
+  else { const col = def.detailColumns.find(c => c.field === kind); el = { id: 'el' + Date.now(), type: 'field', text: col ? col.label : kind, field: kind, money: col ? !!col.money : false, left, top, width: 150, height: 24 }; }
+  list.push(el);
+  designerSelected = { band, id: el.id };
+  renderCurrent();
+}
+function deleteDesignerEl() {
+  if (!designerSelected) return;
+  const layout = ensureLayout(designerReportKey);
+  layout.elements[designerSelected.band] = layout.elements[designerSelected.band].filter(e => e.id !== designerSelected.id);
+  designerSelected = null;
+  renderCurrent();
+}
+function updateSelectedElField(value) {
+  if (!designerSelected) return;
+  const layout = ensureLayout(designerReportKey);
+  const el = layout.elements[designerSelected.band].find(e => e.id === designerSelected.id);
+  if (!el) return;
+  if (el.type === 'field') { const def = REPORT_DEFS[designerReportKey]; const col = def.detailColumns.find(c => c.field === value); el.field = value; el.text = col ? col.label : value; el.money = col ? !!col.money : false; }
+  if (el.type === 'label') el.text = value;
+  renderCurrent();
+}
+let designerDrag = null;
+function designerElMouseDown(e, reportKey, band, id, isResize) {
+  e.stopPropagation();
+  designerSelected = { band, id };
+  const layout = ensureLayout(reportKey);
+  const el = layout.elements[band].find(x => x.id === id);
+  designerDrag = { reportKey, band, id, isResize, startX: e.clientX, startY: e.clientY, orig: { ...el } };
+  document.addEventListener('mousemove', onDesignerDragMove);
+  document.addEventListener('mouseup', onDesignerDragEnd);
+  document.querySelectorAll('.rband-el.selected').forEach(n => n.classList.remove('selected'));
+  const domEl = document.getElementById('rband-' + id);
+  if (domEl) domEl.classList.add('selected');
+}
+function onDesignerDragMove(e) {
+  if (!designerDrag) return;
+  const dx = e.clientX - designerDrag.startX, dy = e.clientY - designerDrag.startY;
+  const layout = ensureLayout(designerDrag.reportKey);
+  const el = layout.elements[designerDrag.band].find(x => x.id === designerDrag.id);
+  if (!el) return;
+  const domEl = document.getElementById('rband-' + el.id);
+  if (designerDrag.isResize) {
+    el.width = Math.max(30, designerDrag.orig.width + dx);
+    el.height = Math.max(18, designerDrag.orig.height + dy);
+    if (domEl) { domEl.style.width = el.width + 'px'; domEl.style.height = el.height + 'px'; }
+  } else {
+    el.left = Math.max(0, designerDrag.orig.left + dx);
+    el.top = Math.max(0, designerDrag.orig.top + dy);
+    if (domEl) { domEl.style.left = el.left + 'px'; domEl.style.top = el.top + 'px'; }
+  }
+}
+function onDesignerDragEnd() {
+  document.removeEventListener('mousemove', onDesignerDragMove);
+  document.removeEventListener('mouseup', onDesignerDragEnd);
+  designerDrag = null;
+  renderCurrent();
+}
+function renderDesignerElement(reportKey, band, el) {
+  const cls = 'rband-el type-' + el.type + (designerSelected && designerSelected.band === band && designerSelected.id === el.id ? ' selected' : '');
+  const content = el.type === 'label' ? el.text : el.type === 'field' ? '{' + (el.text || el.field) + '}' : el.type === 'groupValue' ? '{Group Value}' : '{\u03a3 Running Total}';
+  return `<div id="rband-${el.id}" class="${cls}" style="left:${el.left}px;top:${el.top}px;width:${el.width}px;height:${el.height}px"
+    onmousedown="designerElMouseDown(event,'${reportKey}','${band}','${el.id}',false)">${content}<div class="rband-resize-handle" onmousedown="designerElMouseDown(event,'${reportKey}','${band}','${el.id}',true)"></div></div>`;
+}
+function renderDesignBand(reportKey, band) {
+  const def = REPORT_DEFS[reportKey], layout = ensureLayout(reportKey);
+  const els = layout.elements[band];
+  const fieldOptions = band === 'detail' ? def.detailColumns.map(c => `<option value="${c.field}">${c.label}</option>`).join('') : '';
+  return `<div class="rband">
+    <div class="rband-label"><span>${bandDisplayLabel(def, band)}</span>
+      <span>
+        ${band === 'detail' ? `<select onchange="addDesignerElement('${reportKey}','${band}', this.value); this.value=''"><option value="">+ Field\u2026</option>${fieldOptions}</select>` : `<button onclick="addDesignerElement('${reportKey}','${band}','label')" style="font-size:10px;padding:2px 6px">+ Label</button>`}
+        ${band.startsWith('group') || band === 'reportFooter' ? `<button onclick="addDesignerElement('${reportKey}','${band}','runningTotal')" style="font-size:10px;padding:2px 6px;margin-left:4px">+ \u03a3 Running Total</button>` : ''}
+        ${band.startsWith('groupHeader') ? `<button onclick="addDesignerElement('${reportKey}','${band}','groupValue')" style="font-size:10px;padding:2px 6px;margin-left:4px">+ Group Value</button>` : ''}
+      </span>
+    </div>
+    <div class="rband-canvas" style="height:${layout.bandHeights[band]}px" onmousedown="if(event.target===this){designerSelected=null; renderCurrent();}">
+      ${els.map(el => renderDesignerElement(reportKey, band, el)).join('')}
+    </div>
+  </div>`;
+}
+function renderDesignerPropsPanel(reportKey) {
+  if (!designerSelected) return `<div class="rband-props">Click an element to select it, drag to move, drag the blue handle to resize.</div>`;
+  const def = REPORT_DEFS[reportKey], layout = ensureLayout(reportKey);
+  const el = layout.elements[designerSelected.band].find(e => e.id === designerSelected.id);
+  if (!el) return '';
+  let editor = '';
+  if (el.type === 'label') editor = `<label style="font-size:11px;color:#666">Text: <input type="text" value="${el.text.replace(/"/g, '&quot;')}" oninput="updateSelectedElField(this.value)" style="padding:4px 6px;border:1px solid #bcc7d0;border-radius:3px;font:12px system-ui"></label>`;
+  if (el.type === 'field') editor = `<label style="font-size:11px;color:#666">Bound field: <select onchange="updateSelectedElField(this.value)">${def.detailColumns.map(c => `<option value="${c.field}" ${c.field === el.field ? 'selected' : ''}>${c.label}</option>`).join('')}</select></label>`;
+  if (el.type === 'groupValue') editor = `<span style="font-size:11px;color:#666">Shows the group key for level ${el.level} (${def.groupBy[el.level] ? def.groupBy[el.level].label : ''})</span>`;
+  if (el.type === 'runningTotal') editor = `<span style="font-size:11px;color:#666">Sums <b>${(def.detailColumns.find(c => c.money) || {}).label || 'Amount'}</b> \u2014 scope: <b>${el.scope === 'report' ? 'entire report' : 'current group'}</b></span>`;
+  return `<div class="rband-props">${editor}<button onclick="deleteDesignerEl()" style="margin-left:auto;background:#fff;color:#c0392b;border:1px solid #e0b0aa;border-radius:3px;padding:5px 10px;font:11px system-ui;cursor:pointer">Delete Element</button></div>`;
+}
+function renderBandPreviewRow(reportKey, band, ctx) {
+  const layout = ensureLayout(reportKey);
+  const els = layout.elements[band];
+  return `<div class="rband-canvas" style="height:${layout.bandHeights[band]}px">` +
+    els.map(el => {
+      let content;
+      if (el.type === 'label') content = el.text;
+      else if (el.type === 'field') { const v = ctx.row ? ctx.row[el.field] : ''; content = el.money ? money(v) : (v || '\u2014'); }
+      else if (el.type === 'groupValue') content = ctx.groupKeyLabel || '';
+      else content = money(el.scope === 'report' ? ctx.grandTotal : ctx.subtotal);
+      return `<div class="rband-el type-${el.type}" style="left:${el.left}px;top:${el.top}px;width:${el.width}px;height:${el.height}px;position:absolute;cursor:default">${content}</div>`;
+    }).join('') + `</div>`;
+}
+function renderDesignerPreview(reportKey) {
+  const def = REPORT_DEFS[reportKey];
+  const rows = collectRows(def.sources);
+  const grandTotal = rows.reduce((s, r) => s + (r.amount || 0), 0);
+  const groups = buildGroups(rows, def.groupBy, r => r.amount || 0);
+  function renderLevel(gs, level) {
+    return gs.map(g => {
+      const header = renderBandPreviewRow(reportKey, 'groupHeader_' + level, { groupKeyLabel: g.keyLabel });
+      const body = g.children ? renderLevel(g.children, level + 1) : g.rows.map(r => renderBandPreviewRow(reportKey, 'detail', { row: r })).join('');
+      const footer = renderBandPreviewRow(reportKey, 'groupFooter_' + level, { subtotal: g.subtotal });
+      return `<div class="rband"><div class="rband-label">${bandDisplayLabel(def, 'groupHeader_' + level)}</div>${header}</div>` +
+        `<div style="margin-left:${(level + 1) * 14}px">${body}</div>` +
+        `<div class="rband"><div class="rband-label">${bandDisplayLabel(def, 'groupFooter_' + level)}</div>${footer}</div>`;
+    }).join('');
+  }
+  return `<div class="rband"><div class="rband-label">${bandDisplayLabel(def, 'reportHeader')}</div>${renderBandPreviewRow(reportKey, 'reportHeader', {})}</div>` +
+    renderLevel(groups, 0) +
+    `<div class="rband"><div class="rband-label">${bandDisplayLabel(def, 'reportFooter')}</div>${renderBandPreviewRow(reportKey, 'reportFooter', { grandTotal })}</div>`;
+}
+function renderReportDesigner() {
+  if (!designerReportKey) designerReportKey = Object.keys(REPORT_DEFS)[0];
+  const def = REPORT_DEFS[designerReportKey];
+  ensureLayout(designerReportKey);
+  const bands = bandNamesFor(def);
+  return `<div class="designer-sticky-head"><h2>Report Band Designer</h2><div class="subtitle">Same Toolbox drag/resize canvas as Form Designer mode, applied to report bands (Crystal-Reports-style headers/detail/group footers/running totals) \u2014 layout is data bound against the report's existing REPORT_DEFS query.</div>` +
+    `<div class="rband-toolbar">
+      <label style="font-size:12px;color:#555">Report: <select onchange="selectDesignerReport(this.value)">${Object.keys(REPORT_DEFS).map(k => `<option value="${k}" ${k === designerReportKey ? 'selected' : ''}>${REPORT_DEFS[k].title}</option>`).join('')}</select></label>
+      <button onclick="toggleDesignerPreview()">${designerPreview ? 'Back to Design' : 'Preview with Live Data'}</button>
+    </div>` +
+    (designerPreview ? '' : renderDesignerPropsPanel(designerReportKey)) + `</div>` +
+    (designerPreview ? renderDesignerPreview(designerReportKey) : bands.map(b => renderDesignBand(designerReportKey, b)).join(''));
+}
+function renderSourceReport(reportKey, suppressInlineTotal) {
+  const def = REPORT_DEFS[reportKey];
+  const state = quickFilterState(reportKey);
+  let rows = collectRows(def.sources);
+  const yearOptions = [...new Set(rows.map(r => r.year).filter(Boolean))].sort();
+  if (yearOptions.length > 1) {
+    const yv = (state.filters.year || '').trim();
+    if (yv) rows = rows.filter(r => r.year === yv);
+  }
+  const filterableFields = quickFilterFields(rows, def);
+  filterableFields.forEach(f => {
+    const v = (state.filters[f.field] || '').trim();
+    if (!v) return;
+    rows = f.kind === 'select' ? rows.filter(r => String(r[f.field] ?? '') === v) : rows.filter(r => String(r[f.field] ?? '').toLowerCase().includes(v.toLowerCase()));
+  });
+  const activeGroupBy = [def.groupBy[state.groupByIndex] || def.groupBy[0]];
+  const grandTotal = rows.reduce((s, r) => s + (r.amount || 0), 0);
+  const groups = buildGroups(rows, activeGroupBy, r => r.amount || 0);
+  renderSourceReport.lastGrandTotal = grandTotal;
+  renderSourceReport.lastGroupLabel = activeGroupBy[0].label;
+  return `<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div><h2 style="margin:0">${def.title}</h2><div class="subtitle">${def.subtitle}</div></div>
+      ${yearOptions.length > 1 ? `<select onchange="setQuickFilter('${reportKey}','year', this.value)" style="font-size:12px;padding:4px 8px;border-radius:3px;border:1px solid #bcc7d0;flex-shrink:0">
+        <option value="">All Years</option>
+        ${yearOptions.map(y => `<option value="${y}" ${state.filters.year === y ? 'selected' : ''}>FY ${y}</option>`).join('')}
+      </select>` : ''}
+    </div>` +
+    renderQuickFilterBar(reportKey, def, filterableFields) +
+    (rows.length ? renderGroups(groups, 0, detailRows => table(def.detailColumns.map(c => c.label), detailRows.map(r => def.detailColumns.map(c => c.money ? money(r[c.field]) : r[c.field])))) : `<div class="subtitle">No rows match the current filter.</div>`) +
+    (suppressInlineTotal ? '' : `<div class="grand-total"><span>Grand Total \u2014 All ${activeGroupBy[0].label}s</span><span>${money(grandTotal)}</span></div>`);
+}
+// ─── Quick Filter + single Group By (the default filtering UX — satisfies most
+// users without needing the full query-builder/saved-Views layer planned next).
+// State is per report key so switching reports/tabs doesn't cross-contaminate.
+const QUICK_FILTER_STATE = {};
+function quickFilterState(reportKey) {
+  if (!QUICK_FILTER_STATE[reportKey]) QUICK_FILTER_STATE[reportKey] = { filters: {}, groupByIndex: 0 };
+  return QUICK_FILTER_STATE[reportKey];
+}
+function quickFilterFields(rows, def) {
+  // Filterable = the report's own groupBy dimensions, rendered as dropdowns of
+  // distinct values (a free-text box is the wrong control for a closed set like
+  // Staff or Pay Period) — plus any text-ish detail columns as free-text.
+  // Year is always offered here too: real source data can span multiple real
+  // fiscal years (e.g. 2025 payroll + 2026 expenses/donations) with no year
+  // groupBy dimension defined per-report, so without this a report silently
+  // mixes years together with no way to isolate one.
+  const groupFields = def.groupBy.filter(g => g.field).map(g => ({
+    field: g.field, label: g.label, kind: 'select',
+    options: [...new Set(rows.map(r => r[g.field]).filter(v => v !== undefined && v !== ''))].sort()
+  }));
+  const yearOptions = [...new Set(rows.map(r => r.year).filter(Boolean))].sort();
+  const textCols = def.detailColumns.filter(c => !c.money).map(c => ({ field: c.field, label: c.label, kind: 'text' }));
+  return [...groupFields, ...textCols];
+}
+function setQuickFilter(reportKey, field, value) {
+  quickFilterState(reportKey).filters[field] = value;
+  renderCurrent(true);
+}
+function setQuickGroupBy(reportKey, idx) {
+  quickFilterState(reportKey).groupByIndex = +idx;
+  renderCurrent();
+}
+function clearQuickFilters(reportKey) {
+  QUICK_FILTER_STATE[reportKey] = { filters: {}, groupByIndex: quickFilterState(reportKey).groupByIndex };
+  renderCurrent();
+}
+function renderQuickFilterBar(reportKey, def, filterableFields) {
+  const state = quickFilterState(reportKey);
+  const hasActiveFilter = Object.values(state.filters).some(v => v && v.trim());
+  return `<div class="crud-toolbar" style="flex-wrap:wrap;font:12px system-ui">
+    ${filterableFields.map(f => f.kind === 'select'
+      ? `<select id="qf-${reportKey}-${f.field}" onchange="setQuickFilter('${reportKey}','${f.field}', this.value)" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #bcc7d0;border-radius:3px;font:12px system-ui">
+          <option value="">All ${f.label}s</option>
+          ${f.options.map(opt => `<option value="${String(opt).replace(/"/g,'&quot;')}" ${state.filters[f.field] === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+        </select>`
+      : `<input type="text" id="qf-${reportKey}-${f.field}" placeholder="Filter ${f.label}\u2026" value="${(state.filters[f.field] || '').replace(/"/g,'&quot;')}" oninput="setQuickFilter('${reportKey}','${f.field}', this.value)" style="flex:1;min-width:120px;padding:6px 8px;border:1px solid #bcc7d0;border-radius:3px;font:12px system-ui">`
+    ).join('')}
+    <label style="font:12px system-ui;color:#2b3140;display:flex;align-items:center;gap:4px;margin-left:10px">Group by:
+      <select onchange="setQuickGroupBy('${reportKey}', this.value)" style="font:12px system-ui;color:#2b3140;padding:5px 7px;border:1px solid #bcc7d0;border-radius:3px">${def.groupBy.map((g,i) => `<option value="${i}" ${i===state.groupByIndex?'selected':''}>${g.label}</option>`).join('')}</select>
+    </label>
+    ${hasActiveFilter ? `<button onclick="clearQuickFilters('${reportKey}')" style="padding:5px 10px;border:1px solid #bcc7d0;border-radius:3px;background:#fff;font:12px system-ui;cursor:pointer">Clear Filters</button>` : ''}
+  </div>`;
+}
+const TABLE_SORT_STATE = {};
+let tableIdCounter = 0;
+function table(headers, rows) {
+  // Numbers and currency are always right-justified — detect per cell so
+  // every existing call site (money()-formatted strings, raw numbers, plain
+  // counts) gets this without having to pass column metadata everywhere.
+  function isNumericCell(c) {
+    if (typeof c === 'number') return true;
+    if (typeof c !== 'string') return false;
+    return /^\(?-?\$?[\d,]+(\.\d+)?%?\)?$/.test(c.trim());
+  }
+  function cellSortValue(c) {
+    if (typeof c === 'number') return c;
+    if (typeof c === 'string' && isNumericCell(c)) {
+      const neg = /^\(.*\)$/.test(c.trim()) || c.trim().startsWith('-');
+      const num = parseFloat(c.replace(/[^0-9.]/g, '')) || 0;
+      return neg ? -num : num;
+    }
+    return typeof c === 'string' ? c.toLowerCase() : String(c ?? '');
+  }
+  const tableId = 't' + (++tableIdCounter);
+  TABLE_SORT_STATE[tableId] = { headers, rows, col: null, dir: 1 };
+  return renderTableFromState(tableId);
+}
+function renderTableFromState(tableId) {
+  const st = TABLE_SORT_STATE[tableId];
+  let rows = st.rows;
+  if (st.col !== null) {
+    rows = [...rows].sort((a, b) => {
+      const av = cellSortValue(a[st.col]), bv = cellSortValue(b[st.col]);
+      if (av < bv) return -1 * st.dir; if (av > bv) return 1 * st.dir; return 0;
+    });
+  }
+  function isNumericCell(c) {
+    if (typeof c === 'number') return true;
+    if (typeof c !== 'string') return false;
+    return /^\(?-?\$?[\d,]+(\.\d+)?%?\)?$/.test(c.trim());
+  }
+  function cellSortValue(c) {
+    if (typeof c === 'number') return c;
+    if (typeof c === 'string' && isNumericCell(c)) {
+      const neg = /^\(.*\)$/.test(c.trim()) || c.trim().startsWith('-');
+      const num = parseFloat(c.replace(/[^0-9.]/g, '')) || 0;
+      return neg ? -num : num;
+    }
+    return typeof c === 'string' ? c.toLowerCase() : String(c ?? '');
+  }
+  return `<table id="${tableId}"><thead><tr>${st.headers.map((h,i)=>{
+    const active = st.col === i;
+    const arrow = active ? (st.dir === 1 ? ' \u25B2' : ' \u25BC') : '';
+    return `<th onclick="sortTable('${tableId}',${i})" style="cursor:pointer;user-select:none">${h}${arrow}</th>`;
+  }).join('')}</tr></thead><tbody>${
+    rows.map(r => `<tr>${r.map(c=>`<td${isNumericCell(c) ? ' style="text-align:right"' : ''}>${c}</td>`).join('')}</tr>`).join('')
+  }</tbody></table>`;
+}
+function sortTable(tableId, col) {
+  const st = TABLE_SORT_STATE[tableId];
+  if (!st) return;
+  st.dir = (st.col === col) ? -st.dir : 1;
+  st.col = col;
+  const el = document.getElementById(tableId);
+  if (el) el.outerHTML = renderTableFromState(tableId);
+}
+
+function renderCurrent(preserveSearchFocus) {
+  withLoading(() => renderCurrentSync(preserveSearchFocus));
+}
+function renderCurrentSync(preserveSearchFocus) {
+  const main = document.getElementById('main');
+  let caret = null, focusedId = null;
+  if (preserveSearchFocus) {
+    const active = document.activeElement;
+    if (active && active.tagName === 'INPUT' && active.id) { focusedId = active.id; caret = active.selectionStart; }
+  }
+  document.getElementById('report-footer').classList.remove('visible');
+  const role = document.getElementById('role-select').value;
+  // OS-level Admin check: when this surface is embedded inside MSOS (DesktopShell appends
+  // ?osAdmin=1 only for the 'root' user), pay-sensitive and admin-only surfaces require BOTH the
+  // OS session to be root AND this page's own Viewpoint dropdown to say Admin \u2014 neither one
+  // alone is enough. Standalone (no osAdmin param at all, e.g. this file opened directly) falls
+  // back to the dropdown alone, preserving existing behavior outside the OS shell.
+  const osAdminParam = new URLSearchParams(location.search).get('osAdmin');
+  const insideOS = osAdminParam !== null;
+  const effectiveAdmin = insideOS ? (osAdminParam === '1' && role === 'admin') : (role === 'admin');
+  // Site-wide: pay information (payroll figures, wages, payroll-derived budget/P&L lines) is
+  // admin-only, matching Staff Roster's existing per-field redaction pattern applied here at
+  // the whole-surface level instead \u2014 these surfaces are ABOUT pay, not just staff records
+  // that happen to include a pay field.
+  const PAYROLL_GATED_SURFACES = ['payroll', 'budget', 'report-payroll', 'report-payroll-budget', 'report-pl', 'report-staff-expense-month'];
+  if (PAYROLL_GATED_SURFACES.includes(current) && !effectiveAdmin) {
+    main.innerHTML = `<h2>Restricted</h2><div class="subtitle">Pay information is visible to the Admin viewpoint only.</div>`;
+    return;
+  }
+  const view = org.roleView(role);
+
+  if (current === 'staff') {
+    function normalizeName(n) {
+      // Staff records are "Last, First"; Personnel Log is "First Last" \u2014 split into words,
+      // sort them, then join, so word order never blocks a real match.
+      return (n || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean).sort().join('');
+    }
+    const activeNameSet = new Set((REAL_ORG_DATA.staffContacts || []).map(c => normalizeName(c.name)));
+    const activeOnly = STAFF_ACTIVE_ONLY;
+    let staffList = role === 'admin' ? org.staff : org.staff.map(s => s.redacted ? s.redacted() : s);
+    if (activeOnly) staffList = staffList.filter(s => activeNameSet.has(normalizeName(s.name)));
+    main.innerHTML = `<h2>Staff Roster</h2><div class="subtitle">${role} viewpoint — sensitive fields ${role==='admin'?'visible':'redacted'}</div>` +
+      `<label style="font-size:12px;display:flex;align-items:center;gap:6px;margin-bottom:10px;cursor:pointer"><input type="checkbox" ${activeOnly?'checked':''} onchange="STAFF_ACTIVE_ONLY=this.checked;renderCurrent()"/> Active only (present in Personnel Log) \u2014 ${activeNameSet.size} of ${org.staff.length} staff</label>` +
+      `<table><thead><tr><th>Name</th><th>Role</th><th>Type</th><th style="text-align:right">Pay Rate</th></tr></thead><tbody>${
+        staffList.map(s => {
+          const isUnknown = (s.roleTitle || '').startsWith('Unknown (Personnel Log only');
+          const roleCell = isUnknown ? `<span style="color:#b3323d;font-weight:600">${s.roleTitle}</span>` : s.roleTitle;
+          const payCell = typeof s.payRate === 'number' ? '$' + s.payRate.toFixed(2) : (s.payRate || '—');
+          return `<tr><td>${s.name}</td><td>${roleCell}</td><td>${s.employmentType || '—'}</td><td style="text-align:right">${payCell}</td></tr>`;
+        }).join('')
+      }</tbody></table>`;
+    return;
+  }
+  if (current === 'scheduling') {
+    const proj = org.schedulingProjection();
+    main.innerHTML = `<h2>Scheduling</h2><div class="subtitle">All shifts, current window</div>` +
+      `<div class="kpi-row">
+        <div class="kpi"><div class="label">Day Shifts</div><div class="value">${proj.dayShiftCount}</div></div>
+        <div class="kpi"><div class="label">Night Shifts</div><div class="value">${proj.nightShiftCount}</div></div>
+        <div class="kpi"><div class="label">Coverage Gaps</div><div class="value ${(proj.coverageGaps.length+proj.understaffedGaps.length)?'gap-flag':''}">${proj.coverageGaps.length + proj.understaffedGaps.length}</div></div>
+      </div>` +
+      (proj.understaffedGaps.length ? `<h3 style="margin-top:16px;color:#b3323d">Understaffed (below minimum: Night=2, Day=1)</h3>` +
+        `<table><thead><tr><th>Date</th><th style="text-align:right">Shift</th><th style="text-align:right">Required</th><th style="text-align:right">Filled</th></tr></thead><tbody>${
+          proj.understaffedGaps.map(g => `<tr><td>${g.date}</td><td style="text-align:right">${g.shiftType}</td><td style="text-align:right">${g.required}</td><td style="text-align:right">${g.filled}</td></tr>`).join('')
+        }</tbody></table>` : '') +
+      table(['Date','Type','Staff','Post','Status'], proj.shifts.map(s => [s.date, s.shiftType, s.staffId ? (org.staff.find(x=>x.id===s.staffId)?.name || s.staffId) : '—', s.postAssignment || '—', s.status==='open' ? '<span class="gap-flag">OPEN</span>' : s.status]));
+    return;
+  }
+  if (current === 'payroll') {
+    const proj = org.payrollProjection();
+    const filteredRecords = proj.records.filter(r => (r.periodStart || '').slice(0, 4) === fy);
+    const totalGross = filteredRecords.reduce((s, r) => s + (r.totalEarnings || 0), 0);
+    const totalNet = filteredRecords.reduce((s, r) => s + (r.netPay || 0), 0);
+    const totalOrgCost = filteredRecords.reduce((s, r) => s + (r.totalCostToOrg ? r.totalCostToOrg() : 0), 0);
+    main.innerHTML = `<h2>Payroll</h2><div class="subtitle">FY ${fy} records</div>` +
+      `<div class="kpi-row">
+        <div class="kpi"><div class="label">Total Earnings</div><div class="value">${money(totalGross)}</div></div>
+        <div class="kpi"><div class="label">Total Net Pay</div><div class="value">${money(totalNet)}</div></div>
+        <div class="kpi"><div class="label">Total Cost to Org</div><div class="value">${money(totalOrgCost)}</div></div>
+      </div>` +
+      table(['Staff','Period','Total Hrs','Earnings','Net Pay','Employer Liability'], filteredRecords.map(r => [
+        org.staff.find(x=>x.id===r.staffId)?.name || r.staffId, r.periodStart+' – '+r.periodEnd, (typeof r.totalHours === 'number' ? r.totalHours.toFixed(2) : r.totalHours),
+        money(r.totalEarnings), money(r.netPay), money(r.totalEmployerLiability())
+      ]));
+    return;
+  }
+  if (current === 'budget') {
+    const proj = org.budgetProjection(fy);
+    main.innerHTML = `<h2>Budget</h2><div class="subtitle">FY ${fy} allocated vs. actual, by category</div>` +
+      `<table><tr><th>Category</th><th style="text-align:right">Allocated</th><th style="text-align:right">Actual</th><th style="text-align:right">Remaining</th><th style="text-align:right">Grant Income</th></tr>` +
+      proj.map(b => {
+        return `<tr><td>${b.category}</td><td style="text-align:right">${money(b.allocated)}</td><td style="text-align:right">${money(b.actualSpent)}</td><td style="text-align:right;color:${b.remaining < 0 ? '#c0392b' : 'inherit'}">${money(b.remaining)}</td><td style="text-align:right">${money(b.income)}</td></tr>`;
+      }).join('') + `</table>`;
+    return;
+  }
+  if (current === 'orgchart') {
+    function normalizeName(n) { return (n || '').toLowerCase().replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean).sort().join(''); }
+    const contactByNormName = {};
+    (REAL_ORG_DATA.staffContacts || []).forEach(c => { contactByNormName[normalizeName(c.name)] = c; });
+    function findContact(staffName) {
+      // Staff records are "Last, First"; Personnel Log is "First Last" \u2014 normalize both to
+      // a bare lowercase letter sequence so word order/punctuation differences don't block the match.
+      return contactByNormName[normalizeName(staffName)];
+    }
+    const flat = orgChart.flatten();
+    function mermaidId(p, i) { return 'n' + i; }
+    function buildMermaidLines(node, idMap) {
+      const lines = [];
+      const nid = idMap.get(node);
+      const label = (node.title + (node.personName ? '<br/>' + node.personName : '') + (node.filled === false ? '<br/>(VACANT)' : '')).replace(/"/g, '#quot;');
+      lines.push(`${nid}["${label}"]`);
+      if (node.filled === false) lines.push(`style ${nid} fill:#fde8e8,stroke:#b3323d`);
+      (node.children || []).forEach(child => {
+        lines.push(...buildMermaidLines(child, idMap));
+        lines.push(`${nid} --> ${idMap.get(child)}`);
+      });
+      return lines;
+    }
+    const idMap = new Map();
+    let idCounter = 0;
+    (function assignIds(node) { idMap.set(node, 'n' + (idCounter++)); (node.children || []).forEach(assignIds); })(orgChart);
+    const mermaidDef = 'graph TD\n' + buildMermaidLines(orgChart, idMap).join('\n');
+    main.innerHTML = `<h2>Org Chart</h2><div class="subtitle">HOPE Shelters — Diagram + Contact Directory, from one BaseClassX tree</div>` +
+      `<div class="mermaid" style="background:#fff;border:1px solid #bcc7d0;border-radius:4px;padding:14px;margin-bottom:16px;overflow-x:auto">${mermaidDef}</div>` +
+      table(['Title','Person','Phone','Office','Address'], flat.map(p => {
+        const c = p.personName ? findContact(p.personName) : null;
+        return [
+          p.title + (p.estimatedStaffCount ? ' (est. staff: ' + p.estimatedStaffCount + ')' : ''),
+          p.personName ? p.personName : (p.filled === false ? '(VACANT)' : '—'),
+          c && c.phone ? c.phone : '—',
+          c && c.officeLocation ? c.officeLocation : '—',
+          c && c.address ? c.address : '—'
+        ];
+      }));
+    if (window.mermaid) { try { window.mermaid.initialize({ startOnLoad: false }); window.mermaid.run({ querySelector: '.mermaid' }); } catch (e) {} }
+    return;
+  }
+  if (current === 'report-designer') {
+    if (!effectiveAdmin) { main.innerHTML = `<h2>Restricted</h2><div class="subtitle">Report Designer is available to the Admin viewpoint only.</div>`; return; }
+    main.innerHTML = renderReportDesigner();
+    return;
+  }
+  if (CRUD_DEFS[current]) {
+    if (!effectiveAdmin) { main.innerHTML = `<h2>Restricted</h2><div class="subtitle">Data Entry (CRUD) is available to the Admin viewpoint only.</div>`; return; }
+    main.innerHTML = renderCrud(current);
+    if (focusedId !== null) {
+      const input = document.getElementById(focusedId);
+      if (input) { input.focus(); input.setSelectionRange(caret, caret); }
+    }
+    return;
+  }
+  if (current === 'report-staff-expense-month' || current === 'report-expense-season' || current === 'report-payroll') {
+    main.innerHTML = renderSourceReport(current, true);
+    const footer = document.getElementById('report-footer');
+    document.getElementById('report-footer-total').textContent = 'Grand Total \u2014 All ' + renderSourceReport.lastGroupLabel + 's: ' + money(renderSourceReport.lastGrandTotal);
+    footer.classList.add('visible');
+    if (focusedId !== null) {
+      const input = document.getElementById(focusedId);
+      if (input) { input.focus(); input.setSelectionRange(caret, caret); }
+    }
+    return;
+  }
+  if (current === 'report-payroll-budget') {
+    const payrollProj = org.payrollProjection();
+    const budgetProj = org.budgetProjection(fy);
+    main.innerHTML = `<h2>#4 \u2014 Payroll & Budget Report</h2><div class="subtitle">Generated from live projections — matches Payroll-and-Budget-Report.md</div>
+      <h3 style="font-size:13px">Payroll Summary</h3>` +
+      table(['Staff','Total Earnings','Net Pay','Employer Liability','Total Cost'], payrollProj.records.map(r => [
+        org.staff.find(x=>x.id===r.staffId)?.name || r.staffId, money(r.totalEarnings), money(r.netPay), money(r.totalEmployerLiability()), money(r.totalCostToOrg())
+      ])) +
+      `<h3 style="font-size:13px;margin-top:16px">Budget vs. Actual</h3>` +
+      table(['Category','Allocated','Actual','Remaining','Grant Income'], budgetProj.map(b => [b.category, money(b.allocated), money(b.actualSpent), money(b.remaining), money(b.income)]));
+    document.getElementById('report-footer-total').textContent = 'Grand Total \u2014 Payroll: ' + money(payrollProj.records.reduce((s,r)=>s+r.totalCostToOrg(),0));
+    document.getElementById('report-footer').classList.add('visible');
+    return;
+  }
+  if (current === 'report-pl') {
+    main.innerHTML = renderPLReport();
+    document.getElementById('report-footer-total').textContent = '';
+    document.getElementById('report-footer').classList.add('visible');
+    return;
+  }
+  if (current === 'report-coverage') {
+    const proj = org.schedulingProjection();
+    main.innerHTML = `<h2>#6 \u2014 Staffing Coverage Report</h2><div class="subtitle">Matches Staffing-Coverage-Report.md</div>` +
+      table(['Date','Shift','Staff','Post','Status'], proj.shifts.map(s => [s.date, s.shiftType, s.staffId ? (org.staff.find(x=>x.id===s.staffId)?.name || s.staffId) : '—', s.postAssignment || '—', s.status==='open' ? '<span class="gap-flag">OPEN — coverage gap</span>' : s.status])) +
+      (proj.coverageGaps.length
+        ? `<h3 style="margin-top:20px;color:#b3323d">Unfilled Slots (${proj.coverageGaps.length})</h3>` +
+          table(['Date','Shift','Post','Status'], proj.coverageGaps.map(g => [g.date, g.shiftType, g.postAssignment || '—', g.status]))
+        : `<p style="margin-top:10px;color:#555">No open shifts in this window.</p>`) +
+      (proj.understaffedGaps.length
+        ? `<h3 style="margin-top:20px;color:#b3323d">Understaffed Shifts (${proj.understaffedGaps.length}) \u2014 below minimum (Night=2, Day=1)</h3>` +
+          `<table><thead><tr><th>Date</th><th style="text-align:right">Shift</th><th style="text-align:right">Required</th><th style="text-align:right">Filled</th></tr></thead><tbody>${
+            proj.understaffedGaps.map(g => `<tr><td>${g.date}</td><td style="text-align:right">${g.shiftType}</td><td style="text-align:right">${g.required}</td><td style="text-align:right">${g.filled}</td></tr>`).join('')
+          }</tbody></table>`
+        : `<p style="margin-top:10px;color:#555">No understaffed shifts in this window.</p>`);
+    document.getElementById('report-footer-total').textContent = 'Coverage Gaps: ' + (proj.coverageGaps.length + proj.understaffedGaps.length);
+    document.getElementById('report-footer').classList.add('visible');
+    return;
+  }
+}
+
+// ─── Generic CRUD engine (schema + FieldACL binding, master-detail layout) ──
+// Every field's visibility, editability, required-ness, and column set is
+// read from Cls._fieldACL[field] (16-byte descriptor) resolved against the
+// acting SESSION as owner/group/other for the record in question — one
+// engine serves all four entities, and the touch-friendly master-detail
+// shell (list left/top, form right/below, stacks on narrow viewports)
+// works the same for iPad/iPhone without a separate mobile build.
+const CRUD_DEFS = {
+  'crud-staff': { class: Staff, collection: 'staff', title: 'Staff' },
+  'crud-shifts': { class: Shift, collection: 'shifts', title: 'Shifts' },
+  'crud-expenses': { class: Expense, collection: 'expenses', title: 'Expenses' },
+  'crud-grants': { class: Grant, collection: 'grants', title: 'Grants' }
+};
+let crudEditingId = null; // null = nothing selected; '' = new-record form; id = editing that record
+let crudSearchTerm = '';
+const CRUD_PAGE_SIZE = 15;
+let crudPage = 0;
+function schemaFields(Cls) { return Object.keys(Cls._schema.properties); }
+function fieldACLFor(Cls, field) { return Cls._fieldACL[field] || FieldACL.build({ owner: 'rw-', group: 'rw-', other: 'rw-' }); }
+function fieldInputHtml(Cls, field, value) {
+  const meta = Cls._schema.properties[field];
+  const id = 'crud_f_' + field;
+  if (meta.kind === 'set') {
+    const selected = new Set(SetType.toArray(meta.options, value || 0n));
+    if (meta.exclusive) {
+      const currentLabel = SetType.toArray(meta.options, value || 0n)[0] || '';
+      const activeOpts = SetType.activeOptions(meta.options);
+      return `<div style="display:flex;flex-direction:column;gap:4px">${
+        meta.allowBlank !== false ? `<label style="font:12px system-ui;display:flex;align-items:center;gap:6px"><input type="radio" name="${id}" id="${id}__blank" ${currentLabel === '' ? 'checked' : ''}>Blank</label>` : ''
+      }${activeOpts.map((opt, i) => `<label style="font:12px system-ui;display:flex;align-items:center;gap:6px"><input type="radio" name="${id}" id="${id}__opt_${meta.options.findIndex(o => (typeof o === 'string' ? o : o.label) === opt)}" ${currentLabel === opt ? 'checked' : ''}>${opt}</label>`).join('')}</div>`;
+    }
+    const activeOpts = SetType.activeOptions(meta.options);
+    return `<div style="display:flex;flex-direction:column;gap:4px">${meta.options.map((opt, i) => {
+      const label = typeof opt === 'string' ? opt : opt.label;
+      if (!activeOpts.includes(label) && !selected.has(label)) return ''; // retired + never set on this record — hide from entry entirely
+      const retired = activeOpts.indexOf(label) === -1;
+      return `<label style="font:12px system-ui;display:flex;align-items:center;gap:6px"><input type="checkbox" id="${id}__opt_${i}" ${selected.has(label) ? 'checked' : ''}>${label}${retired ? ' <span style="color:#999">(retired)</span>' : ''}</label>`;
+    }).join('')}</div>`;
+  }
+  if (meta.type === 'boolean') return `<input type="checkbox" id="${id}" ${value ? 'checked' : ''}>`;
+  if (meta.type === 'number') return `<input type="number" step="any" id="${id}" value="${value != null ? value : 0}">`;
+  return `<input type="text" id="${id}" value="${(value != null ? String(value) : '').replace(/"/g, '&quot;')}">`;
+}
+function formatCrudValue(Cls, field, v) {
+  const meta = Cls._schema.properties[field];
+  if (meta.kind === 'set') return SetType.label(meta.options, v);
+  if (meta.type === 'boolean') return v ? 'Yes' : 'No';
+  if (meta.type === 'number') return /rate|amount/i.test(field) ? money(v) : v;
+  return v || '\u2014';
+}
+function selectCrudRecord(id) { crudEditingId = id; renderCurrent(); }
+function changeCrudPage(defKey, delta) { crudPage += delta; renderCurrent(); }
+function saveCrudForm(defKey) {
+  const def = CRUD_DEFS[defKey];
+  const items = org.getCollection(def.collection);
+  const editing = crudEditingId ? items.find(x => x.id === crudEditingId) : null;
+  const patch = {};
+  schemaFields(def.class).forEach(field => {
+    const meta = def.class._schema.properties[field];
+    if (meta.kind === 'set') {
+      if (meta.exclusive) {
+        if (!document.getElementById('crud_f_' + field + '__blank') && !document.getElementById('crud_f_' + field + '__opt_0')) return;
+        let chosen = 0n;
+        meta.options.forEach((opt, i) => {
+          const radio = document.getElementById('crud_f_' + field + '__opt_' + i);
+          if (radio && radio.checked) chosen = SetType.fromArray(meta.options, [typeof opt === 'string' ? opt : opt.label]);
+        });
+        patch[field] = chosen; // stays 0n (Blank) if the blank radio (or nothing rendered) was selected
+        return;
+      }
+      const selected = meta.options.filter((opt, i) => {
+        const cb = document.getElementById('crud_f_' + field + '__opt_' + i);
+        return cb && cb.checked;
+      }).map(opt => typeof opt === 'string' ? opt : opt.label);
+      if (document.getElementById('crud_f_' + field + '__opt_0') || document.querySelector(`[id^="crud_f_${field}__opt_"]`)) patch[field] = SetType.fromArray(meta.options, selected);
+      return;
+    }
+    const el = document.getElementById('crud_f_' + field);
+    if (!el) return; // no writable input was rendered for this field — leave untouched
+    patch[field] = meta.type === 'boolean' ? el.checked : meta.type === 'number' ? (parseFloat(el.value) || 0) : el.value;
+  });
+  const requiredFields = schemaFields(def.class).filter(f => fieldACLFor(def.class, f).hasFlag('REQUIRED'));
+  for (const f of requiredFields) {
+    const v = f in patch ? patch[f] : (editing ? editing[f] : undefined);
+    if (v === '' || v === undefined || v === null) { alert(fieldLabel(def.class, f) + ' is required.'); return; }
+  }
+  if (editing) {
+    org.updateInCollection(def.collection, editing.id, patch);
+  } else {
+    patch.createdBy = SESSION.staffId;
+    const created = org.addToCollection(def.collection, new def.class(patch));
+    crudEditingId = created.id;
+  }
+  renderCurrent();
+}
+function deleteCrudItem(defKey, id) {
+  if (!confirm('Delete this record?')) return;
+  org.removeFromCollection(CRUD_DEFS[defKey].collection, id);
+  crudEditingId = null;
+  renderCurrent();
+}
+function renderCrudModalBody(defKey) {
+  const def = CRUD_DEFS[defKey];
+  const items = org.getCollection(def.collection);
+  const editing = crudEditingId ? items.find(x => x.id === crudEditingId) : null;
+  // Admin viewpoint gets full write access regardless of FieldACL owner/group
+  // match — the role-viewpoint is a deliberate override on top of per-record
+  // ownership, not a replacement for it (payroll-finance/case-worker still
+  // resolve by real ownership).
+  const role = document.getElementById('role-select').value;
+  const subject = role === 'admin' ? 'owner' : FieldACL.resolveSubject(editing, SESSION);
+  return schemaFields(def.class).filter(f => f !== 'createdBy').map(f => {
+    const acl = fieldACLFor(def.class, f);
+    if (!acl.can(subject, 'r')) return '';
+    const canWrite = acl.can(subject, 'w') && (!editing || !acl.hasFlag('IMMUTABLE_AFTER_CREATE'));
+    const value = editing ? editing[f] : def.class._schema.properties[f].default;
+    const required = acl.hasFlag('REQUIRED');
+    return `<div class="crud-field-row"><label>${fieldLabel(def.class, f)}${required ? ' <span class="required-mark">*</span>' : ''}</label>${
+      canWrite ? fieldInputHtml(def.class, f, value) : `<div class="crud-field-readonly">${formatCrudValue(def.class, f, value)}</div>`
+    }</div>`;
+  }).join('');
+}
+function renderCrudModal(defKey) {
+  const def = CRUD_DEFS[defKey];
+  const items = org.getCollection(def.collection);
+  const editing = crudEditingId ? items.find(x => x.id === crudEditingId) : null;
+  return `<div class="crud-modal-overlay" onclick="if(event.target===this) closeCrudModal()">
+    <div class="crud-modal">
+      <button class="crud-modal-close" title="Close" onclick="closeCrudModal()">
+        <svg width="16" height="16" viewBox="0 0 16 16"><line x1="3" y1="3" x2="13" y2="13" stroke="#fff" stroke-width="2"/><line x1="13" y1="3" x2="3" y2="13" stroke="#fff" stroke-width="2"/></svg>
+      </button>
+      <div class="crud-modal-body">
+        <h3 style="margin:0 0 10px 0">${editing ? 'Edit ' + def.title.replace(/s$/, '') : 'Add ' + def.title.replace(/s$/, '')}</h3>
+        ${renderCrudModalBody(defKey)}
+        ${editing ? `<div style="margin-top:10px"><button class="danger" onclick="deleteCrudItem('${defKey}','${editing.id}')" style="background:#fff;border:1px solid #e0b0aa;color:#c0392b;border-radius:3px;padding:5px 10px;font:11px system-ui;cursor:pointer">Delete Record</button></div>` : ''}
+      </div>
+      <div class="crud-modal-footer">
+        <button class="btn-cancel" onclick="closeCrudModal()">Cancel</button>
+        <button class="btn-save" onclick="saveCrudForm('${defKey}')">Save</button>
+      </div>
+    </div>
+  </div>`;
+}
+function closeCrudModal() { crudEditingId = null; renderCurrent(); }
+function renderCrud(defKey) {
+  const def = CRUD_DEFS[defKey];
+  const fields = schemaFields(def.class);
+  const compactFields = fields.filter(f => fieldACLFor(def.class, f).hasFlag('VISIBLE_COMPACT'));
+  const searchableFields = fields.filter(f => fieldACLFor(def.class, f).hasFlag('SEARCHABLE'));
+  const sortField = fields.find(f => fieldACLFor(def.class, f).hasFlag('SORTABLE'));
+  let items = org.getCollection(def.collection);
+  if (crudSearchTerm) {
+    const term = crudSearchTerm.toLowerCase();
+    items = items.filter(it => searchableFields.some(f => String(it[f] || '').toLowerCase().includes(term)));
+  }
+  if (sortField) items = [...items].sort((a, b) => (a[sortField] > b[sortField] ? 1 : a[sortField] < b[sortField] ? -1 : 0));
+  const totalCount = items.length;
+  const pageCount = Math.max(1, Math.ceil(totalCount / CRUD_PAGE_SIZE));
+  if (crudPage >= pageCount) crudPage = pageCount - 1;
+  if (crudPage < 0) crudPage = 0;
+  const pageItems = items.slice(crudPage * CRUD_PAGE_SIZE, crudPage * CRUD_PAGE_SIZE + CRUD_PAGE_SIZE);
+  const listHtml = pageItems.map(it => `
+    <div class="crud-list-item ${crudEditingId === it.id ? 'selected' : ''}" onclick="selectCrudRecord('${it.id}')">
+      ${compactFields.map(f => `<div>${fieldLabel(def.class, f)}: <b>${formatCrudValue(def.class, f, it[f])}</b></div>`).join('')}
+    </div>`).join('') || `<div class="subtitle">No records yet.</div>`;
+  const pagerHtml = totalCount > CRUD_PAGE_SIZE ? `<div style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:#555">
+    <button onclick="changeCrudPage('${defKey}',-1)" ${crudPage===0?'disabled':''} style="padding:4px 10px;border:1px solid #bcc7d0;border-radius:3px;background:#fff;cursor:pointer">\u2039 Prev</button>
+    <span>Page ${crudPage+1} of ${pageCount} (${totalCount} records)</span>
+    <button onclick="changeCrudPage('${defKey}',1)" ${crudPage>=pageCount-1?'disabled':''} style="padding:4px 10px;border:1px solid #bcc7d0;border-radius:3px;background:#fff;cursor:pointer">Next \u203a</button>
+  </div>` : '';
+  return `<h2>${def.title} \u2014 Data Entry</h2><div class="subtitle">Master list \u2014 field visibility/edit rights read from each field's FieldACL (16-byte POSIX-style descriptor); acting as <b>${SESSION.name || '\u2014'}</b></div>` +
+    `<div class="crud-toolbar"><input type="text" id="crud-search-input" placeholder="Search ${def.title.toLowerCase()}\u2026" value="${crudSearchTerm}" oninput="crudSearchTerm=this.value; crudPage=0; renderCurrent(true);" style="flex:1;padding:6px 8px;border:1px solid #bcc7d0;border-radius:3px;font:12px system-ui">` +
+    `<button onclick="selectCrudRecord('')" style="background:#3b6fd1;color:#fff;border:1px solid #3b6fd1;border-radius:3px;padding:6px 12px;font:12px system-ui;cursor:pointer;margin-left:8px">+ Add ${def.title.replace(/s$/, '')}</button></div>` +
+    `<div class="crud-shell"><div class="crud-list" style="max-width:none;flex:1 1 auto">${listHtml}${pagerHtml}</div></div>` +
+    (crudEditingId !== null ? renderCrudModal(defKey) : '');
+}
+
+const toolbarIcon = new LoadingIcon();
+toolbarIcon.mount(document.getElementById('toolbar-loading-icon'));
+// Wraps any render/data operation with the toolbar icon's start/stop \u2014 today
+// every renderCurrent() body is synchronous in-memory data, but reports will
+// soon fetch real data (async): call withLoading(async () => { ...await fetch...
+// }) around that future work and the toolbar icon will show/hide itself with
+// no other plumbing needed.
+async function withLoading(fn) {
+  toolbarIcon.start();
+  try { return await fn(); }
+  finally { toolbarIcon.stop(); }
+}
+renderNav();
+initSessionSelector();
+renderCurrent();
+</script>
+</body>
+</html>

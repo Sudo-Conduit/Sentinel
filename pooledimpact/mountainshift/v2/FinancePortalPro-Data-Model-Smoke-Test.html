@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Finance Portal Pro Data Model — Smoke Test</title>
+<script src="./BaseClassX.js"></script>
+<script src="./FieldACL.js"></script>
+<script src="./Investor.js"></script>
+<script src="./Lender.js"></script>
+<script src="./Instrument.js"></script>
+<script src="./Deal.js"></script>
+<script src="./Advisor.js"></script>
+<script src="./RevenueAttachment.js"></script>
+<script src="./Fund.js"></script>
+<style>
+  body { font:13px/1.5 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; padding:16px; }
+  h1 { color:#6b9; font-size:15px; }
+  h2 { color:#8ab4f8; font-size:13px; margin-top:20px; }
+  pre { background:#141414; border:1px solid #333; border-radius:4px; padding:10px; overflow-x:auto; white-space:pre-wrap; }
+  .ok { color:#1f9d55; } .err { color:#e05555; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="14" fill="#6b9" text-anchor="middle" font-family="monospace">$</text></svg></template>
+</head>
+<body>
+<h1>Finance Portal Pro Data Model — Smoke Test (synthetic data only)</h1>
+<div class="ok">Testing whether Investor/Lender/Instrument/Fund holds its shape across three real, different deal types: a Conduit-style multi-LP fund, an insurer equity buyout, and an asset-backed facility.</div>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+function section(title, fn) {
+  const h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+  const pre = document.createElement('pre'); out.appendChild(pre);
+  try { pre.textContent = JSON.stringify(fn(), null, 2); }
+  catch (e) { pre.innerHTML = '<span class="err">ERROR: ' + e.message + '</span>'; }
+}
+
+// ─── Deal 1: Conduit's own infrastructure fund — many LPs, classic Investor shape ──
+const conduitFund = new Fund({ name: 'Conduit Global Infrastructure Fund III', entityTypeName: 'Fund', vintageDate: '2024-01-15', fundSize: 150000000, reportingCurrency: 'USD' });
+conduitFund.addInvestor(new Investor({ name: 'Meridian Family Office', investorType: 'family-office', country: 'Switzerland', commitment: 15000000, contribution: 9000000, distribution: 1200000, ownershipPercent: 10, createdBy: 'system-seed' }));
+conduitFund.addInvestor(new Investor({ name: 'GP Co-Invest LLC', investorType: 'fund-lp', country: 'USA', commitment: 5000000, contribution: 5000000, distribution: 800000, ownershipPercent: 3.3, createdBy: 'system-seed' }));
+
+// ─── Deal 2: insurers DON'T buy the Solar Farm equity directly (too capital-
+// inefficient for them) — they buy a wrapped BOND instead, which is cheaper
+// for insurers to hold. Chain: Fund (vintage year) → Deal (5-yr hold) →
+// Insured/guarantor (round-robin: never an investor in THIS vintage) → Bond
+// → Insurer Pool (as bondholders, i.e. Lenders, not Investors). ──────────────
+const fund2026 = new Fund({ name: 'Conduit Vintage 2026', entityTypeName: 'Fund', vintageDate: '2026-01-01', fundSize: 240000000, reportingCurrency: 'USD' });
+const fund2027 = new Fund({ name: 'Conduit Vintage 2027', entityTypeName: 'Fund', vintageDate: '2027-01-01', fundSize: 200000000, reportingCurrency: 'USD' });
+// 2026 vintage's own equity investors (the GP/sponsor side actually holding the deal's equity):
+fund2026.addInvestor(new Investor({ name: 'Conduit GP Holdings', investorType: 'fund-lp', country: 'USA', commitment: 20000000, contribution: 20000000, ownershipPercent: 100, createdBy: 'system-seed' }));
+// 2027 vintage's own equity investors — Continental Assurance is an LP HERE, in a different vintage:
+fund2027.addInvestor(new Investor({ name: 'Continental Assurance Group', investorType: 'insurer', country: 'Germany', commitment: 30000000, contribution: 30000000, ownershipPercent: 15, createdBy: 'system-seed' }));
+
+const solarDeal = fund2026.addDeal(new Deal({
+  name: 'Existing US Solar Portfolio Acquisition', fundId: fund2026.id, dealType: 'solar-equity-buyout',
+  holdPeriodYears: 5, startDate: '2026-06-01', expectedExitDate: '2031-06-01',
+  description: 'Acquisition of equity in operating, existing solar generation assets — no development risk.', createdBy: 'system-seed'
+}));
+
+// Continental Assurance guarantees/wraps this 2026-vintage Bond — allowed,
+// because Continental is NOT an investor in the 2026 vintage (only in 2027).
+const guarantorCheck = Instrument.validateGuarantorIndependence(fund2027.investors[0], fund2026);
+
+const solarBond = fund2026.addInstrument(new Instrument({
+  name: 'Solar Portfolio Wrapped Bond — Vintage 2026', instrumentType: 'bond', dealId: solarDeal.id,
+  collateralDescription: 'Bond wrapped by Continental Assurance Group\u2019s guarantee, backed by equity interest in the underlying 5-year solar Deal',
+  faceValue: 240000000, currency: 'USD', originationDate: '2026-06-01', status: 'active',
+  guarantorInvestorId: fund2027.investors[0].id, guarantorName: fund2027.investors[0].name, createdBy: 'system-seed'
+}));
+// The Insurer Pool buys the wrapped BOND — bondholders (Lender/'bondholder'), not equity Investors.
+fund2026.addLender(new Lender({ name: 'Pacific Sun Life Insurers', lenderType: 'bondholder', instrumentId: solarBond.id, facilityAmount: 130000000, advanceRatePercent: 100, outstandingBalance: 130000000, createdBy: 'system-seed' }));
+fund2026.addLender(new Lender({ name: 'Nordic Mutual Assurance', lenderType: 'bondholder', instrumentId: solarBond.id, facilityAmount: 90000000, advanceRatePercent: 100, outstandingBalance: 90000000, createdBy: 'system-seed' }));
+
+// ─── Deal 3: Node fleet Asset-Backed Facility — small Lender pool, perpetual residual retained ──
+const nodeFacilityFund = new Fund({ name: 'Node Fleet ABF Facility I', entityTypeName: 'Facility', vintageDate: '2026-07-01', fundSize: 9000000, reportingCurrency: 'USD' });
+const nodeInstrument = nodeFacilityFund.addInstrument(new Instrument({
+  name: 'Solar-Attached Compute Node Fleet', instrumentType: 'asset_backed_facility',
+  collateralDescription: '10,000 Nodes ($900 ea.) installed on 20% of panels across existing solar farms; collateral = serialized units + metered $10/mo OS+inference subscription revenue',
+  faceValue: 9000000, currency: 'USD', originationDate: '2026-07-01', isPerpetual: true, status: 'active', createdBy: 'system-seed'
+}));
+nodeFacilityFund.addLender(new Lender({ name: 'Ridgeline Asset-Backed Capital', lenderType: 'asset-backed-financier', instrumentId: nodeInstrument.id, facilityAmount: 6000000, advanceRatePercent: 65, outstandingBalance: 4200000, createdBy: 'system-seed' }));
+nodeFacilityFund.addLender(new Lender({ name: 'Vantage Equipment Finance', lenderType: 'asset-backed-financier', instrumentId: nodeInstrument.id, facilityAmount: 3000000, advanceRatePercent: 65, outstandingBalance: 1500000, createdBy: 'system-seed' }));
+
+// ─── Deal 4: Jubilee real estate deal — Consulting arm's 3% fee, a refinance
+// option alongside the original note, and two attached secondary revenue
+// sources (solar rooftop + modular units) on the same host property. ──────
+const jubileeFund = new Fund({ name: 'Jubilee Church Land Transformation Fund', entityTypeName: 'Fund', vintageDate: '2026-01-01', fundSize: 8000000, reportingCurrency: 'USD' });
+const reDeal = jubileeFund.addDeal(new Deal({
+  name: 'Grace Fellowship Vacant Land Multi-Family Redevelopment', fundId: jubileeFund.id, dealType: 'church-land-transformation',
+  holdPeriodYears: 7, startDate: '2026-03-01', expectedExitDate: '2033-03-01',
+  description: 'Redevelopment of excess church-owned vacant land into multi-family housing, replacing a distressed balloon-payment mortgage.', createdBy: 'system-seed'
+}));
+reDeal.addAdvisor(new Advisor({
+  name: 'Jubilee Consulting', feeType: 'consulting', feePercent: 3, dealSizeBasis: 8000000,
+  servicesProvided: ['deal-setup', 'financial-modeling', 'bank-introduction', 'architect-introduction'], createdBy: 'system-seed'
+}));
+// The original distressed balloon note — refinanced away by this deal:
+const originalBalloonNote = jubileeFund.addInstrument(new Instrument({
+  name: 'Original Balloon Refinance Note', instrumentType: 'bond', dealId: reDeal.id,
+  collateralDescription: 'Legacy balloon-payment mortgage that triggered the church\u2019s refinance need', faceValue: 2200000,
+  currency: 'USD', originationDate: '2019-05-01', status: 'refinanced', createdBy: 'system-seed'
+}));
+const refinanceNote = jubileeFund.addInstrument(new Instrument({
+  name: 'Jubilee Refinance Note', instrumentType: 'bond', dealId: reDeal.id,
+  collateralDescription: 'Replacement note at fixed terms, no balloon, secured by the redeveloped property',
+  faceValue: 2600000, currency: 'USD', originationDate: '2026-03-01', status: 'active', createdBy: 'system-seed'
+}));
+reDeal.addRevenueAttachment(new RevenueAttachment({
+  name: 'Multi-Family Rooftop Solar', attachmentType: 'solar-rooftop', unitCost: 1200, unitCount: 40,
+  monthlyRevenuePerUnit: 65, isPerpetualResidual: true, createdBy: 'system-seed'
+}));
+reDeal.addRevenueAttachment(new RevenueAttachment({
+  name: 'Modular Accessory Units', attachmentType: 'modular-units', unitCost: 45000, unitCount: 8,
+  monthlyRevenuePerUnit: 1400, isPerpetualResidual: false, createdBy: 'system-seed'
+}));
+
+// ─── Deal 5: ONOMO Allure Bulawayo — a real Urban HQ deal (80-key modular
+// lifestyle hotel, Zimbabwe). 60:40 debt:equity, real IRR/NPV/multiple
+// figures from the investment memo, plus a rooftop solar+compute Node
+// retrofit layered on top (the same RevenueAttachment shape as Deal 4). ──
+const urbanHQFund = new Fund({ name: 'Urban HQ Africa Hospitality Vehicle', entityTypeName: 'SPV', vintageDate: '2026-01-01', fundSize: 13255000, reportingCurrency: 'USD' });
+const onomoDeal = urbanHQFund.addDeal(new Deal({
+  name: 'ONOMO Allure Bulawayo \u2014 80-Key Modular Lifestyle Hotel', fundId: urbanHQFund.id, dealType: 'hospitality-development',
+  holdPeriodYears: 10, startDate: '2026-09-01', expectedExitDate: '2036-09-01',
+  description: 'New-build volumetric modular hotel, Bulawayo, Zimbabwe (Scenario B). 14-month build programme, $115,000/key construction cost. First branded midscale lifestyle hotel in Zimbabwe\u2019s second city.',
+  keyMetrics: {
+    totalDevelopmentCostUSD: 13255000, developmentCostPerKeyUSD: 165688, unleveredProjectIRRPercent: 14.2,
+    leveredEquityIRRPercent: 14.0, equityMultiple: 3.59, npvAt12PercentUSD: 2028898, terminalValueYear10USD: 22100000,
+    stabilizedGOPMarginPercent: 45.95, minDSCRYear1: 0.70, year5DSCR: 1.32, stabilizedADRUSD: 127, taxRatePercent: 25.75
+  },
+  createdBy: 'system-seed'
+}));
+const onomoSeniorDebt = urbanHQFund.addInstrument(new Instrument({
+  name: 'ONOMO Allure Bulawayo \u2014 Senior Debt Facility', instrumentType: 'asset_backed_facility', dealId: onomoDeal.id,
+  collateralDescription: 'Senior secured debt against the completed hotel asset, fixed 8.00% interest, 10-year tenor/amortization',
+  faceValue: 7953000, currency: 'USD', originationDate: '2026-09-01', status: 'active', createdBy: 'system-seed'
+}));
+urbanHQFund.addLender(new Lender({ name: 'Senior Debt Facility Provider (TBD)', lenderType: 'bank', instrumentId: onomoSeniorDebt.id, facilityAmount: 7953000, advanceRatePercent: 60, outstandingBalance: 7953000, createdBy: 'system-seed' }));
+urbanHQFund.addInvestor(new Investor({ name: 'Urban HQ \u2014 Land Contribution', investorType: 'developer-land', country: 'Zimbabwe', commitment: 500000, contribution: 500000, ownershipPercent: 3.8, createdBy: 'system-seed' }));
+urbanHQFund.addInvestor(new Investor({ name: 'Urban HQ \u2014 Cash Equity', investorType: 'sponsor-cash-equity', country: 'Zimbabwe', commitment: 4802000, contribution: 4802000, ownershipPercent: 36.2, createdBy: 'system-seed' }));
+onomoDeal.addRevenueAttachment(new RevenueAttachment({
+  name: 'Rooftop Solar + Compute Node Retrofit', attachmentType: 'compute-node', unitCost: 900, unitCount: 40,
+  monthlyRevenuePerUnit: 10, isPerpetualResidual: true, createdBy: 'system-seed'
+}));
+
+section('BaseClassX loaded / instance sanity', () => ({
+  conduitFundIsBaseClassXInstance: conduitFund instanceof BaseClassX,
+  conduitFundInvestorCount: conduitFund.investors.length,
+  fund2026DealCount: fund2026.deals.length,
+  fund2026BondholderCount: fund2026.lenders.length,
+  nodeFacilityFundLenderCount: nodeFacilityFund.lenders.length
+}));
+
+section('Deal 1 — Conduit Fund: investorProjection() (multi-LP, classic fund shape)', () => conduitFund.investorProjection());
+
+section('Deal 2 — Guarantor round-robin check (Continental Assurance insures 2026 vintage, but only invests in 2027)', () => guarantorCheck);
+section('Deal 2 — The 5-year-hold Deal', () => solarDeal.toJSON());
+section('Deal 2 — The wrapped Bond (guarantor recorded, not an equity stake)', () => solarBond.toJSON());
+section('Deal 2 — Fund 2026: lenderProjection() (Insurer Pool as bondholders, not equity investors)', () => fund2026.lenderProjection());
+
+section('Deal 3 — Node ABF Facility: lenderProjection() (small pool, asset-backed)', () => nodeFacilityFund.lenderProjection());
+section('Deal 3 — Node ABF Facility: capitalStackProjection() (debt-only facility, no equity investors)', () => nodeFacilityFund.capitalStackProjection());
+section('Deal 3 — Node instrument is perpetual (Node residual survives any future sale of the underlying farm)', () => ({ isPerpetual: nodeInstrument.isPerpetual, maturityDate: nodeInstrument.maturityDate || '(none — perpetual)' }));
+
+section('Cross-deal check: does ONE generic Investor/Lender/Instrument/Fund/Deal shape hold across all three?', () => ({
+  deal1_multiLP_fund: { type: conduitFund.entityTypeName, investors: conduitFund.investors.length, lenders: conduitFund.lenders.length },
+  deal2_insurer_wrapped_bond: { type: fund2026.entityTypeName, deals: fund2026.deals.length, bondholders: fund2026.lenders.length, instrumentType: solarBond.instrumentType, guarantor: solarBond.guarantorName },
+  deal3_asset_backed_facility: { type: nodeFacilityFund.entityTypeName, investors: nodeFacilityFund.investors.length, lenders: nodeFacilityFund.lenders.length, instrumentType: nodeInstrument.instrumentType },
+  verdict: 'Same classes (Fund/Deal/Investor/Lender/Instrument) modeled all 3 deal types — including the insurer-wrap round-robin — with no bespoke fields added per deal.'
+}));
+
+section('Fund.toJSON() / Fund.fromJSON() round-trip (Fund 2026, incl. Deal)', () => {
+  const json = fund2026.toJSON();
+  const rehydrated = Fund.fromJSON(json, Investor, Lender, Instrument, Deal);
+  return { dealCountAfterRoundTrip: rehydrated.deals.length, lenderCountAfterRoundTrip: rehydrated.lenders.length, nameAfterRoundTrip: rehydrated.name };
+});
+
+section('Deal 4 \u2014 Jubilee real estate: Consulting arm\u2019s 3% fee', () => reDeal.advisors[0].toJSON());
+section('Deal 4 \u2014 Refinance: original balloon note (refinanced) vs. new Jubilee note (active), same Deal', () => ({
+  originalNote: { status: originalBalloonNote.status, faceValue: originalBalloonNote.faceValue },
+  refinanceNote: { status: refinanceNote.status, faceValue: refinanceNote.faceValue }
+}));
+section('Deal 4 \u2014 Attached secondary revenue sources on the same host property', () => reDeal.revenueAttachments.map(r => r.toJSON()));
+
+section('Deal 5 \u2014 ONOMO Allure Bulawayo (real Urban HQ deal): capital stack (60:40 debt:equity)', () => urbanHQFund.capitalStackProjection());
+section('Deal 5 \u2014 Real investment-memo metrics carried on the Deal (keyMetrics, generic across deal types)', () => onomoDeal.keyMetrics);
+section('Deal 5 \u2014 Rooftop solar+compute Node retrofit added to a real estate deal (perpetual residual, same shape as Deal 3/4)', () => onomoDeal.revenueAttachments.map(r => r.toJSON()));
+section('Deal 5 \u2014 Mechanical due diligence flags, computed straight off the real memo\u2019s keyMetrics (no subjective judgment)', () => onomoDeal.dueDiligenceFlags());
+
+// ─── Deal 6: Cedar Heights — real Pooled Impact / CleanEnerG deal (from the
+// actual March financial model). NOT a pure royalty as first described in
+// chat — the model shows $2.8M DEBT at 7% interest (principal + interest due
+// at term end) PLUS revenue participation in solar + compute streams. A real,
+// concrete proof of "combinatory": one Deal, Debt + Revenue-based stacked. ──
+const cedarFund = new Fund({ name: 'Pooled Impact Fund I \u2014 Cedar Heights Position', entityTypeName: 'Fund', vintageDate: '2026-05-01', fundSize: 2800000, reportingCurrency: 'USD' });
+const cedarDeal = cedarFund.addDeal(new Deal({
+  name: 'Cedar Heights \u2014 Affordable Housing + CleanEnerG Retrofit', fundId: cedarFund.id, dealType: 'multifamily-cleanenerg-retrofit',
+  holdPeriodYears: 5, startDate: '2026-05-01', expectedExitDate: '2031-05-01',
+  description: '134-unit, 13-building multifamily property, DC. Phase 1 (3 bldgs) gets solar+compute retrofit in 2026; Phase 2 (10 bldgs) solar-only in 2027. Parallel 134-unit affordable-homeownership renovation funded outside this $2.8M position.',
+  keyMetrics: {
+    totalInvestmentUSD: 2800000, interestRatePercent: 7.0, investmentTermYears: 5, returnMultiple: 1.45,
+    totalReturnUSD: 4071105, totalInterestIncomeUSD: 980000, totalSolarRevenue5yrUSD: 991, totalComputeRevenue5yrUSD: 290114,
+    buildingsTotal: 13, unitsTotal: 134
+  },
+  createdBy: 'system-seed'
+}));
+const cedarDebtInstrument = cedarFund.addInstrument(new Instrument({
+  name: 'Cedar Heights Fund I Revenue-Based Position', instrumentType: 'revenue_based', dealId: cedarDeal.id,
+  collateralDescription: '$2.8M revenue-based investment secured against the Cedar Heights property; 7% target return computed against project cash flow (modeled as an interest-equivalent rate), principal + accrued return due at end of 5-year term',
+  faceValue: 2800000, currency: 'USD', originationDate: '2026-05-01', maturityDate: '2031-05-01', status: 'active', createdBy: 'system-seed'
+}));
+cedarFund.addLender(new Lender({ name: 'Pooled Impact / Fund I', lenderType: 'revenue-based-financier', instrumentId: cedarDebtInstrument.id, facilityAmount: 2800000, advanceRatePercent: 100, outstandingBalance: 2800000, createdBy: 'system-seed' }));
+cedarDeal.addRevenueAttachment(new RevenueAttachment({
+  name: 'Rooftop Solar (13 buildings, phased)', attachmentType: 'solar-rooftop', unitCost: 8624, unitCount: 13,
+  monthlyRevenuePerUnit: 1.32, isPerpetualResidual: false, createdBy: 'system-seed'
+}));
+cedarDeal.addRevenueAttachment(new RevenueAttachment({
+  name: 'Edge Compute (13 buildings)', attachmentType: 'compute-node', unitCost: 18000, unitCount: 13,
+  monthlyRevenuePerUnit: 1200, isPerpetualResidual: false, createdBy: 'system-seed'
+}));
+
+section('Deal 6 \u2014 Cedar Heights (real, from your March model): the Deal + keyMetrics', () => cedarDeal.toJSON());
+section('Deal 6 \u2014 Revenue-Based Instrument (7% target return, not a bond) + Lender', () => ({ instrument: cedarDebtInstrument.toJSON(), lenderProjection: cedarFund.lenderProjection() }));
+section('Deal 6 \u2014 Combinatory proof: negotiated BOTH types \u2014 core position is Revenue-Based, PLUS separate solar/compute revenue-participation attachments on the same Deal', () => cedarDeal.revenueAttachments.map(r => r.toJSON()));
+
+// ─── Deal 7: Lee Court \u2014 91-unit affordable housing, an advising-only deal
+// (Advisor role, no Pooled Impact capital position) that ultimately did NOT
+// close (status: 'lapsed') \u2014 a good use case even though it fell through,
+// and the concrete proof case for Preferred Return / Lender seniority /
+// Role\u00d7Phase tracking. ──────────────────────────────────────────────────
+const leeCourtFund = new Fund({ name: 'Lee Court Advisory Engagement', entityTypeName: 'SPV', vintageDate: '2026-04-01', fundSize: 18259105, reportingCurrency: 'USD' });
+const leeCourtDeal = leeCourtFund.addDeal(new Deal({
+  name: 'Lee Court \u2014 91-Unit Affordable Housing', fundId: leeCourtFund.id, dealType: 'affordable-housing-advisory',
+  holdPeriodYears: 12, startDate: '2026-04-24', expectedExitDate: '2038-04-24', status: 'lapsed',
+  description: '91 units (86 three-bed, 5 two-bed). Advising-only engagement \u2014 Pooled Impact held no capital position. Deal did not ultimately close.',
+  keyMetrics: { totalProjectCostUSD: 18259105, occupancyRatePercent: 95, rentIncreaseRatePercent: 3, year1DSCR: 1.20, year10DSCR: 1.75 },
+  createdBy: 'system-seed'
+}));
+const leeCourtSeniorLoan = leeCourtFund.addInstrument(new Instrument({
+  name: 'Lee Court Senior Construction/Perm Loan', instrumentType: 'bond', dealId: leeCourtDeal.id,
+  collateralDescription: 'Senior lender loan, 6.50% rate, 30-year term', faceValue: 11509105, currency: 'USD',
+  originationDate: '2026-04-24', status: 'lapsed', createdBy: 'system-seed'
+}));
+leeCourtFund.addLender(new Lender({ name: 'Senior Lender (TBD)', lenderType: 'bank', instrumentId: leeCourtSeniorLoan.id, facilityAmount: 11509105, seniorityRank: 1, outstandingBalance: 11509105, createdBy: 'system-seed' }));
+leeCourtFund.addLender(new Lender({ name: 'Subordinated Debt Provider', lenderType: 'bank', instrumentId: leeCourtSeniorLoan.id, facilityAmount: 750000, seniorityRank: 2, outstandingBalance: 750000, createdBy: 'system-seed' }));
+leeCourtFund.addInvestor(new Investor({ name: 'Preferred Return Investor', investorType: 'preferred-equity', commitment: 750000, contribution: 750000, preferredReturnPercent: 4, preferredReturnTermYears: 6, createdBy: 'system-seed' }));
+leeCourtFund.addInvestor(new Investor({ name: 'Common Equity Investor', investorType: 'fund-lp', commitment: 6000000, contribution: 6000000, ownershipPercent: 89, createdBy: 'system-seed' }));
+leeCourtDeal.addAdvisor(new Advisor({ name: 'Greater Columbia CoC', feeType: 'consulting', role: 'guarantor', activePhases: ['ACQ', 'PRE', 'CON', 'OPS'], dealId: leeCourtDeal.id, createdBy: 'system-seed' }));
+leeCourtDeal.addAdvisor(new Advisor({ name: 'Greater Columbia CoC', feeType: 'consulting', role: 'sponsor', activePhases: ['ACQ', 'PRE', 'CON', 'OPS'], dealId: leeCourtDeal.id, createdBy: 'system-seed' }));
+leeCourtDeal.addAdvisor(new Advisor({ name: 'New Paths', feeType: 'consulting', role: 'developer', activePhases: ['ACQ', 'CON'], dealId: leeCourtDeal.id, createdBy: 'system-seed' }));
+
+section('Deal 7 \u2014 Lee Court (lapsed, advising-only): Deal status + keyMetrics', () => ({ status: leeCourtDeal.status, keyMetrics: leeCourtDeal.keyMetrics }));
+section('Deal 7 \u2014 Seniority: senior loan (rank 1) vs. subordinated debt (rank 2), sorted', () => [...leeCourtFund.lenders].sort((a, b) => a.seniorityRank - b.seniorityRank).map(l => ({ name: l.name, seniorityRank: l.seniorityRank, facilityAmount: l.facilityAmount })));
+section('Deal 7 \u2014 Preferred Return investor (4%, 6yr term) alongside common equity', () => leeCourtFund.investors.map(i => i.toJSON()));
+section('Deal 7 \u2014 Role \u00d7 Phase matrix (Guarantor/Sponsor/Developer, ACQ/PRE/CON/OPS) \u2014 advising only, no capital position from Pooled Impact', () => leeCourtDeal.advisors.map(a => ({ name: a.name, role: a.role, activePhases: a.activePhases })));
+
+// ─── Deal 8: Jubilee Impact Capital (JIC) + Neighborhood Development
+// Ministries (NDM) \u2014 the most complicated scenario. JIC (for-profit) works
+// with sister nonprofit NDM, which issues corporate bonds and acts as conduit
+// for Municipal Bonds. A multi-class Trust Indenture (Series 2025-1 X/A/B/C)
+// with a large Trustee + Placement Agent \u2014 both fee-based roles (Advisor),
+// paid a "spread" just for signing, no real capital at risk on their part. ──
+const ndmFund = new Fund({ name: 'NDM Conduit Bond Program \u2014 Series 2025-1', entityTypeName: 'Facility', vintageDate: '2025-09-19', fundSize: 40000000, reportingCurrency: 'USD' });
+const ndmDeal = ndmFund.addDeal(new Deal({
+  name: 'NDM Trust Indenture \u2014 Multi-Class Conduit Bonds (2025-1 X/A/B/C)', fundId: ndmFund.id, dealType: 'conduit-bond-program',
+  holdPeriodYears: 30, startDate: '2025-09-19', description: 'Jubilee Impact Capital (for-profit) structured with sister nonprofit NDM, which issues the corporate/municipal-conduit bonds. Multi-class Trust Indenture: Series 2025-1X/1A/1B/1C, each with its own Class Limit plus cross-class Combined Class Limits (e.g. Combined Class Limit X/A).', createdBy: 'system-seed'
+}));
+const seriesX = ndmFund.addInstrument(new Instrument({ name: 'Series 2025-1X Bonds', instrumentType: 'bond', dealId: ndmDeal.id, trancheClass: 'X', classLimitUSD: 8000000, faceValue: 6000000, currency: 'USD', originationDate: '2025-09-19', status: 'active', createdBy: 'system-seed' }));
+const seriesA = ndmFund.addInstrument(new Instrument({ name: 'Series 2025-1A Bonds', instrumentType: 'bond', dealId: ndmDeal.id, trancheClass: 'A', classLimitUSD: 20000000, faceValue: 18000000, currency: 'USD', originationDate: '2025-09-19', status: 'active', createdBy: 'system-seed' }));
+const seriesB = ndmFund.addInstrument(new Instrument({ name: 'Series 2025-1B Bonds', instrumentType: 'bond', dealId: ndmDeal.id, trancheClass: 'B', classLimitUSD: 10000000, faceValue: 9000000, currency: 'USD', originationDate: '2025-09-19', status: 'active', createdBy: 'system-seed' }));
+const seriesC = ndmFund.addInstrument(new Instrument({ name: 'Series 2025-1C Bonds', instrumentType: 'bond', dealId: ndmDeal.id, trancheClass: 'C', classLimitUSD: 5000000, faceValue: 4500000, currency: 'USD', originationDate: '2025-09-19', status: 'active', createdBy: 'system-seed' }));
+ndmDeal.addAdvisor(new Advisor({ name: 'Large Institutional Trustee', feeType: 'consulting', role: 'trustee', activePhases: ['ACQ', 'OPS'], dealId: ndmDeal.id, servicesProvided: ['bond-fund-administration', 'debt-service-covenant-monitoring'], createdBy: 'system-seed' }));
+ndmDeal.addAdvisor(new Advisor({ name: 'Placement Agent Bank', feeType: 'placement', role: 'placement-agent', activePhases: ['ACQ'], dealId: ndmDeal.id, servicesProvided: ['bond-placement', 'investor-distribution'], createdBy: 'system-seed' }));
+
+section('Deal 8 \u2014 JIC/NDM: multi-class tranches (Series X/A/B/C), each with its own Class Limit', () => ndmFund.instruments.map(i => ({ name: i.name, trancheClass: i.trancheClass, faceValue: i.faceValue, classLimitUSD: i.classLimitUSD, headroomUSD: i.classLimitUSD - i.faceValue })));
+section('Deal 8 \u2014 Combined Class Limit X/A check (cross-tranche aggregate cap, per the actual Trust Indenture definitions)', () => Instrument.combinedClassLimitCheck(ndmFund.instruments, ['X', 'A'], 25000000));
+section('Deal 8 \u2014 Trustee + Placement Agent: fee-based roles, no capital at risk \u2014 paid a spread just for signing', () => ndmDeal.advisors.map(a => ({ name: a.name, role: a.role, feeType: a.feeType, activePhases: a.activePhases, servicesProvided: a.servicesProvided })));
+</script>
+</body>
+</html>

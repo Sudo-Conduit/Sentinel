@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LoadingIcon Demo</title>
+<script src="./BaseClassX.js"></script>
+<script src="./LoadingIcon.js"></script>
+<style>
+  :root { --bg: #ffffff; --fg: #1c1f26; --panel: #f4f6f9; --panel-hover: #e9edf3; --border: #bcc7d0; --border-strong: #8b93a0; --muted: #666; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #1b1e24; --fg: #e7eaf0; --panel: #262b33; --panel-hover: #313742; --border: #3a4049; --border-strong: #565e6a; --muted: #a3aab5; }
+  }
+  html, body { background: var(--bg); }
+  body { font: 13px/1.4 system-ui, -apple-system, sans-serif; padding: 20px; color: var(--fg); }
+  #icon-mount { width: 64px; height: 64px; overflow: hidden; flex-shrink: 0; margin: 8px; }
+  #icon-mount svg { width: 64px; height: 64px; image-rendering: pixelated; display: block; }
+  .intro { display: flex; align-items: flex-start; }
+  .desc { color: var(--muted); margin: 0; text-wrap: pretty; }
+  .btn-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  button { padding: 6px 10px; cursor: pointer; font: inherit; color: var(--fg); background: var(--panel); border: 1px solid var(--border); border-radius: 4px; white-space: nowrap; }
+  button:hover { background: var(--panel-hover); }
+  .color-row { display: flex; align-items: center; gap: 8px; margin: 10px 0; padding: 6px 10px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); cursor: pointer; width: fit-content; }
+  .color-row:hover { background: var(--panel-hover); }
+  .color-row label { font: inherit; font-size: 13px; font-weight: 400; color: var(--fg); cursor: pointer; white-space: nowrap; }
+  .color-row input[type=color] { width: 28px; height: 28px; padding: 0; border: 1px solid var(--border-strong); border-radius: 3px; cursor: pointer; background: none; }
+  .color-row input[type=range] { accent-color: #3b6fd1; }
+  .swatch-wrap { position: relative; width: 28px; height: 28px; }
+  .swatch-chip { width: 28px; height: 28px; border-radius: 3px; border: 1px solid var(--border-strong); pointer-events: none; }
+  .swatch-wrap input[type=color] { position: absolute; inset: 0; width: 28px; height: 28px; opacity: 0; cursor: pointer; padding: 0; border: none; }
+  #state { margin-top: 10px; color: var(--muted); }
+  .clear { clear: both; }
+  details.controls-toggle { margin-top: 14px; border: 1px solid var(--border); border-radius: 4px; background: var(--panel); }
+  details.controls-toggle summary { padding: 7px 10px; cursor: pointer; font-weight: 600; list-style: none; }
+  details.controls-toggle summary::-webkit-details-marker { display: none; }
+  details.controls-toggle summary::before { content: '\25b8'; display: inline-block; margin-right: 6px; transition: transform .15s; }
+  details.controls-toggle[open] summary::before { transform: rotate(90deg); }
+  details.controls-toggle .btn-row { padding: 0 10px 10px 10px; }
+  .export-btn { display: inline-flex; align-items: center; gap: 6px; }
+</style>
+</head>
+<body>
+  <div class="intro">
+    <div id="icon-mount"></div>
+    <p class="desc">A 16×16 animated loading icon: one block cycles clockwise around an 8-block ring to signal activity. Colors, speed, and playback are fully configurable, and the component emits start/stop/pause/resume/tick events for other UI to react to.</p>
+  </div>
+  <div class="clear">
+    <div class="color-row"><label for="speed-input">Speed (ms)</label><input id="speed-input" type="range" min="100" max="1000" step="50" value="200" oninput="icon.setSpeed(+this.value); document.getElementById('speed-value').textContent=this.value+'ms'"><span id="speed-value" style="min-width:52px;text-align:right">200ms</span></div>
+    <div class="color-row"><label for="active-color-input">Active Color</label><div class="swatch-wrap"><div class="swatch-chip" id="active-color-chip" style="background:#b3cc66"></div><input id="active-color-input" type="color" value="#b3cc66" oninput="icon.setColors({active:this.value}); document.getElementById('active-color-chip').style.background=this.value" onchange="icon.setColors({active:this.value}); document.getElementById('active-color-chip').style.background=this.value"></div></div>
+    <div class="color-row"><label for="base-color-input">Base Color</label><div class="swatch-wrap"><div class="swatch-chip" id="base-color-chip" style="background:#5b7fe0"></div><input id="base-color-input" type="color" value="#5b7fe0" oninput="icon.setColors({base:this.value}); document.getElementById('base-color-chip').style.background=this.value" onchange="icon.setColors({base:this.value}); document.getElementById('base-color-chip').style.background=this.value"></div></div>
+    <div class="btn-row" style="margin-top:10px">
+      <button class="export-btn" onclick="exportSVG()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v10"/><path d="M7 9l5 5 5-5"/><path d="M5 15v2a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-2"/></svg>
+        Export
+      </button>
+    </div>
+    <details class="controls-toggle">
+      <summary>Playback Controls</summary>
+      <div class="btn-row">
+        <button onclick="icon.start()">Start</button>
+        <button onclick="icon.pause()">Pause</button>
+        <button onclick="icon.resume()">Continue</button>
+        <button onclick="icon.stop()">Stop</button>
+      </div>
+    </details>
+    <div id="state"></div>
+  </div>
+<script>
+const icon = new LoadingIcon();
+icon.mount(document.getElementById('icon-mount'));
+function exportSVG() {
+  const blob = new Blob([icon.exportSVG()], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'loading-icon.svg';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+setInterval(() => { document.getElementById('state').textContent = 'playState: ' + icon.playState + ', activeIndex: ' + icon.activeIndex; }, 200);
+</script>
+</body>
+</html>

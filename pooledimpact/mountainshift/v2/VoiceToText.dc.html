@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<template id="__bundler_thumbnail" data-bg-color="#0b0f14">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="100" cy="100" r="60" fill="#2d5bff"/>
+    <circle cx="100" cy="100" r="20" fill="#fff"/>
+  </svg>
+</template>
+<helmet>
+  <style>
+    @keyframes vtt-pulse { 0%,100%{ transform:scale(1); opacity:0.7; } 50%{ transform:scale(1.15); opacity:1; } }
+    body { margin:0; }
+  </style>
+</helmet>
+<div style="min-height:100vh;background:#0b0f14;color:#e8ecf1;font-family:'Segoe UI',-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;">
+  <div style="width:100%;max-width:560px;background:#131922;border:1px solid #232b38;border-radius:16px;padding:28px;">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:{{ statusColor }};"></div>
+      <h1 style="margin:0;font-size:19px;font-weight:700;">Voice to Text</h1>
+    </div>
+    <div style="font-size:12.5px;color:#8b95a5;margin-bottom:20px;">{{ statusLabel }}</div>
+
+    <sc-if value="{{ unsupported }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="background:#3a1f22;border:1px solid #6b2c31;color:#f3b4b9;border-radius:10px;padding:14px;font-size:13px;line-height:1.5;">
+        This browser doesn't support the Web Speech API. Try Chrome or Edge on desktop.
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:18px;padding:8px 0 20px;">
+        <button
+          aria-label="{{ micButtonLabel }}"
+          aria-pressed="{{ isRecording }}"
+          onClick="{{ onToggleRecord }}"
+          style="width:84px;height:84px;border-radius:50%;border:none;cursor:pointer;background:{{ micBg }};color:#fff;font-size:30px;display:flex;align-items:center;justify-content:center;position:relative;transition:background 0.2s;">
+          <span style="{{ pulseStyle }}"></span>
+          <span style="position:relative;z-index:1;">{{ micGlyph }}</span>
+        </button>
+        <div style="font-size:13px;color:#8b95a5;">{{ micHint }}</div>
+      </div>
+
+      <label for="vtt-lang" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Recognition language</label>
+      <select id="vtt-lang" onChange="{{ onLangChange }}" value="{{ lang }}" style="width:100%;box-sizing:border-box;background:#0e131a;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:9px 10px;font-size:13.5px;margin-bottom:18px;">
+        <sc-for list="{{ langOptions }}" as="opt" hint-placeholder-count="6">
+          <option value="{{ opt.code }}">{{ opt.label }}</option>
+        </sc-for>
+      </select>
+
+      <div style="font-size:12px;color:#8b95a5;margin-bottom:6px;display:flex;justify-content:space-between;">
+        <span>Transcript</span>
+        <sc-if value="{{ hasTranscript }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onClear }}" style="background:none;border:none;color:#6c8cff;font-size:12px;cursor:pointer;padding:0;">Clear</button>
+        </sc-if>
+      </div>
+      <div role="log" aria-live="polite" style="min-height:120px;background:#0e131a;border:1px solid #2a3242;border-radius:10px;padding:14px;font-size:14.5px;line-height:1.6;white-space:pre-wrap;word-break:break-word;">
+        <sc-if value="{{ hasTranscript }}" hint-placeholder-val="{{ false }}">
+          <span>{{ transcript }}</span>
+        </sc-if>
+        <sc-if value="{{ showPlaceholder }}" hint-placeholder-val="{{ true }}">
+          <span style="color:#4d5666;">Transcript will appear here as you speak…</span>
+        </sc-if>
+        <sc-if value="{{ isRecording }}" hint-placeholder-val="{{ false }}">
+          <span style="color:#6c8cff;">{{ interim }}</span>
+        </sc-if>
+      </div>
+
+      <sc-if value="{{ errorMsg }}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="margin-top:12px;background:#3a1f22;border:1px solid #6b2c31;color:#f3b4b9;border-radius:8px;padding:10px 12px;font-size:12.5px;">{{ errorMsg }}</div>
+      </sc-if>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const LANGS = [
+  { code:'en-US', label:'English (US)' },
+  { code:'en-GB', label:'English (UK)' },
+  { code:'es-ES', label:'Spanish' },
+  { code:'fr-FR', label:'French' },
+  { code:'de-DE', label:'German' },
+  { code:'bg-BG', label:'Bulgarian' },
+  { code:'zh-CN', label:'Chinese (Mandarin)' },
+];
+
+class Component extends DCLogic {
+  state = {
+    lang: 'en-US',
+    isRecording: false,
+    transcript: '',
+    interim: '',
+    errorMsg: '',
+    unsupported: false,
+  };
+
+  componentDidMount() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      this.setState({ unsupported: true });
+      console.error('[VoiceToText] SpeechRecognition API unavailable in this browser');
+      return;
+    }
+    this._SR = SR;
+  }
+
+  componentWillUnmount() {
+    if (this._rec) { try { this._rec.stop(); } catch (e) {} }
+  }
+
+  buildRecognizer() {
+    const rec = new this._SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = this.state.lang;
+
+    rec.onresult = (e) => {
+      let finalText = '';
+      let interimText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript + ' ';
+        else interimText += r[0].transcript;
+      }
+      this.setState(s => ({
+        transcript: finalText ? (s.transcript + finalText) : s.transcript,
+        interim: interimText,
+      }));
+    };
+
+    rec.onerror = (e) => {
+      console.error('[VoiceToText] recognition error:', e.error, e);
+      const msg = e.error === 'not-allowed'
+        ? 'Microphone permission denied. Allow mic access and try again.'
+        : e.error === 'no-speech'
+          ? 'No speech detected — try speaking louder or closer to the mic.'
+          : e.error === 'audio-capture'
+            ? 'No microphone found/available.'
+            : `Recognition error: ${e.error}`;
+      this.setState({ errorMsg: msg, isRecording: false });
+    };
+
+    rec.onaudiostart = () => console.log('[VoiceToText] audio capture started — mic is live');
+    rec.onspeechstart = () => console.log('[VoiceToText] speech detected');
+    rec.onnomatch = () => console.warn('[VoiceToText] no matching recognition result');
+
+    rec.onend = () => {
+      console.log('[VoiceToText] recognition ended, isRecording=', this.state.isRecording);
+      if (this.state.isRecording) {
+        // Web Speech API auto-stops periodically; restart while user still wants recording.
+        try { rec.start(); } catch (e) { console.error('[VoiceToText] restart failed', e); this.setState({ isRecording: false }); }
+      }
+    };
+
+    return rec;
+  }
+
+  onToggleRecord = async () => {
+    if (this.state.unsupported) return;
+    if (this.state.isRecording) {
+      this.setState({ isRecording: false, interim: '' });
+      if (this._rec) { try { this._rec.stop(); } catch (e) {} }
+      console.log('[VoiceToText] stopped recording');
+      return;
+    }
+    this.setState({ errorMsg: '' });
+
+    // Diagnose mic permission explicitly before starting, so failures are logged, not guessed.
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const p = await navigator.permissions.query({ name: 'microphone' });
+        console.log('[VoiceToText] microphone permission state:', p.state);
+        if (p.state === 'denied') {
+          const msg = 'Microphone permission is denied for this site. Enable it in the browser\'s site settings, then reload.';
+          console.error('[VoiceToText]', msg);
+          this.setState({ errorMsg: msg });
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn('[VoiceToText] permissions.query unsupported/failed:', e.message);
+    }
+
+    this._rec = this.buildRecognizer();
+    try {
+      this._rec.start();
+      this.setState({ isRecording: true });
+      console.log('[VoiceToText] started recording, lang=', this.state.lang);
+    } catch (e) {
+      console.error('[VoiceToText] failed to start', e);
+      this.setState({ errorMsg: 'Could not start recognition: ' + e.message });
+    }
+  };
+
+  onLangChange = (e) => {
+    const lang = e.target.value;
+    this.setState({ lang });
+    if (this.state.isRecording && this._rec) {
+      try { this._rec.stop(); } catch (err) {}
+      this.setState({ isRecording: false }, () => this.onToggleRecord());
+    }
+  };
+
+  onClear = () => this.setState({ transcript: '', interim: '', errorMsg: '' });
+
+  renderVals() {
+    const s = this.state;
+    const hasTranscript = !!s.transcript.trim();
+    return {
+      unsupported: s.unsupported,
+      showMain: !s.unsupported,
+      lang: s.lang,
+      langOptions: LANGS,
+      isRecording: s.isRecording,
+      transcript: s.transcript,
+      interim: s.interim,
+      hasTranscript,
+      showPlaceholder: !hasTranscript && !s.isRecording,
+      errorMsg: s.errorMsg,
+      onToggleRecord: this.onToggleRecord,
+      onLangChange: this.onLangChange,
+      onClear: this.onClear,
+      micGlyph: s.isRecording ? '■' : '●',
+      micBg: s.isRecording ? '#c0392b' : '#2d5bff',
+      micButtonLabel: s.isRecording ? 'Stop recording' : 'Start recording',
+      micHint: s.isRecording ? 'Listening… click to stop' : 'Click to start speaking',
+      pulseStyle: s.isRecording
+        ? 'position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.25);animation:vtt-pulse 1.1s ease-in-out infinite;'
+        : 'display:none;',
+      statusColor: s.unsupported ? '#c0392b' : (s.isRecording ? '#2ecc71' : '#8b95a5'),
+      statusLabel: s.unsupported ? 'Unsupported' : (s.isRecording ? 'Recording…' : 'Ready — local, on-device speech recognition'),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

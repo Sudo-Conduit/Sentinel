@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Debug Harness Demo</title>
+<script src="./BaseClassX.js"></script>
+<style>
+  body { margin:0; font:13px/1.4 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; }
+  header { padding:10px 16px; background:#252526; border-bottom:1px solid #333; }
+  header h1 { font-size:14px; margin:0; color:#6b9; }
+  header p { margin:4px 0 0; color:#888; font-size:12px; }
+  #ps { display:flex; gap:0; border-bottom:1px solid #333; background:#181818; }
+  #ps table { border-collapse:collapse; width:100%; }
+  #ps th, #ps td { text-align:left; padding:6px 10px; border-bottom:1px solid #2a2a2a; font-size:12px; }
+  #ps th { color:#888; font-weight:normal; }
+  .state-foreground { color:#6b9; }
+  .state-background { color:#c9a; }
+  .state-suspended { color:#e05555; }
+  #ps button { background:#2d2d2d; color:#d4d4d4; border:1px solid #444; border-radius:3px; padding:2px 8px; margin-right:4px; cursor:pointer; font:11px 'Courier New',monospace; }
+  #ps button:hover { background:#3a3a3a; }
+  main { padding:16px; }
+  .panel { display:none; }
+  .panel.active { display:block; }
+  .card { background:#252526; border:1px solid #333; border-radius:6px; padding:14px; margin-bottom:12px; }
+  .card h2 { margin:0 0 8px; font-size:13px; color:#6b9; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  button.act { background:#3b6fd1; color:#fff; border:none; border-radius:3px; padding:5px 12px; cursor:pointer; font:12px 'Courier New',monospace; }
+  button.act:hover { background:#4a7fe0; }
+  button.act.danger { background:#a53f3f; }
+  input[type=text] { background:#1e1e1e; color:#d4d4d4; border:1px solid #444; border-radius:3px; padding:4px 8px; font:12px 'Courier New',monospace; }
+  .log { background:#141414; border:1px solid #2a2a2a; border-radius:4px; padding:8px; max-height:220px; overflow-y:auto; white-space:pre-wrap; font-size:11px; }
+  .node { padding:4px 8px; border-radius:3px; margin-bottom:2px; border:1px solid #333; }
+  .node.current { background:#2d4a6b; border-color:#3b6fd1; }
+  .node.break { border-color:#e05555; }
+  .badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:10px; margin-left:6px; }
+  .badge.on { background:#1f9d55; color:#fff; }
+  .badge.off { background:#444; color:#aaa; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="16" fill="#6b9" text-anchor="middle" font-family="monospace">$_</text></svg></template>
+</head>
+<body>
+
+<header>
+  <h1>Debug Harness — State / AST / Native-Hook</h1>
+  <p>Three debugging surfaces, each covered by primitives already in the stack (BaseClassX $debug, DomainNode-style AST, targeted native hooks) — no external debugger dependency. Use the job table below like a real shell: ps / fg &lt;id&gt; / bg &lt;id&gt; / kill &lt;id&gt;.</p>
+</header>
+
+<div id="ps">
+  <table>
+    <thead><tr><th>ID</th><th>NAME</th><th>TYPE</th><th>STATE</th><th></th></tr></thead>
+    <tbody id="ps-body"></tbody>
+  </table>
+</div>
+
+<main>
+  <!-- Job 1: State-layer debugging -->
+  <div class="panel" id="panel-1">
+    <div class="card">
+      <h2>Job 1 — State-Layer Debugging (BaseClassX native)</h2>
+      <p style="color:#999">A live BaseClassX instance. Every property write is traced automatically by the Proxy set trap. $break registers a conditional breakpoint — the condition must be a function called as bp.condition(this), not a string expression. Calling $pause() runs _checkBreakpoints() and flips isPaused. $trace/$dump read state without any external tooling.</p>
+      <div class="row">
+        <span>count = <b id="count-val">0</b></span>
+        <span class="badge" id="count-paused-badge">not paused</span>
+      </div>
+      <div class="row">
+        <button class="act" onclick="incrementCounter()">increment</button>
+        <button class="act" onclick="setCounterBreak()">$break((i)=&gt;i.count&gt;=5)</button>
+        <button class="act" onclick="resumeCounter()">$continue</button>
+        <button class="act" onclick="dumpCounter()">$dump</button>
+        <button class="act" onclick="traceCounter()">$trace</button>
+      </div>
+      <div class="log" id="counter-log">(no output yet)</div>
+    </div>
+  </div>
+
+  <!-- Job 2: AST-layer debugging -->
+  <div class="panel" id="panel-2">
+    <div class="card">
+      <h2>Job 2 — AST-Layer Debugging (DomainNode-style)</h2>
+      <p style="color:#999">Source below is tokenized into DomainNode-style AST nodes — each node is itself a BaseClassX instance. The Executor visits nodes in order; a breakpoint on a node type halts the walk exactly like a line breakpoint would, using only $break/$trace.</p>
+      <div class="log" style="margin-bottom:8px">for (let i = 0; i &lt; 3; i++) { sum += i; }</div>
+      <div id="ast-nodes"></div>
+      <div class="row">
+        <button class="act" onclick="astStep()">Executor.step()</button>
+        <button class="act" onclick="astSetBreak()">$break on AssignmentExpression</button>
+        <button class="act" onclick="astReset()">reset walk</button>
+      </div>
+      <div class="log" id="ast-log">(not started)</div>
+    </div>
+  </div>
+
+  <!-- Job 3: Native-execution hook -->
+  <div class="panel" id="panel-3">
+    <div class="card">
+      <h2>Job 3 — Native-Execution Hook (the one real edge case)</h2>
+      <p style="color:#999">A plain loop running directly on the host engine (not interpreted through an Executor). A single explicit hook — not a general sandbox — lets it pause and expose its live local variable when armed.</p>
+      <div class="row">
+        <label><input type="checkbox" id="hook-armed"> arm hook (pause at i === 2)</label>
+      </div>
+      <div class="row">
+        <button class="act" onclick="runNativeLoop()">run native loop</button>
+        <button class="act" id="hook-resume-btn" onclick="resumeNativeLoop()" disabled>resume from hook</button>
+      </div>
+      <div class="log" id="native-log">(not run yet)</div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ───────────────────────── Job table (procd-shaped: ps / fg / bg / kill) ─────────────────────────
+const jobs = [
+  { id: 1, name: 'state-debug',  type: 'console', state: 'foreground' },
+  { id: 2, name: 'ast-debug',    type: 'console', state: 'background' },
+  { id: 3, name: 'native-hook',  type: 'console', state: 'background' }
+];
+function renderPs() {
+  const body = document.getElementById('ps-body');
+  body.innerHTML = jobs.map(j => `
+    <tr>
+      <td>${j.id}</td><td>${j.name}</td><td>${j.type}</td>
+      <td class="state-${j.state}">${j.state}</td>
+      <td>
+        <button onclick="fg(${j.id})">fg</button>
+        <button onclick="bg(${j.id})">bg</button>
+        <button onclick="kill(${j.id})">kill</button>
+      </td>
+    </tr>`).join('');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const fgJob = jobs.find(j => j.state === 'foreground');
+  if (fgJob) {
+    const el = document.getElementById('panel-' + fgJob.id);
+    if (el) el.classList.add('active');
+  }
+}
+function fg(id) {
+  const job = jobs.find(j => j.id === id);
+  if (!job || job.state === 'killed') return;
+  jobs.forEach(j => { if (j.state === 'foreground') j.state = 'background'; });
+  job.state = 'foreground';
+  renderPs();
+}
+function bg(id) {
+  const job = jobs.find(j => j.id === id);
+  if (job && job.state === 'foreground') job.state = 'background';
+  renderPs();
+}
+function kill(id) {
+  const job = jobs.find(j => j.id === id);
+  if (!job) return;
+  job.state = 'killed';
+  const idx = jobs.indexOf(job);
+  jobs.splice(idx, 1);
+  renderPs();
+}
+renderPs();
+
+// ───────────────────────── Job 1: State-layer debugging (real BaseClassX) ─────────────────────────
+let counter, counterBreakSet = false;
+try {
+  class Counter extends BaseClassX {
+    static _schema = { properties: { count: { type: 'number', default: 0 } } };
+    constructor() {
+      super({ type: 'counter', name: 'Counter', schema: { count: 'number' } });
+      this.count = 0;
+    }
+  }
+  counter = new Counter();
+} catch (e) {
+  document.getElementById('counter-log').textContent = 'BaseClassX load error: ' + e.message;
+}
+function logTo(id, text) { document.getElementById(id).textContent = text; }
+function incrementCounter() {
+  if (!counter) return;
+  try {
+    counter.count = counter.count + 1;
+    document.getElementById('count-val').textContent = counter.count;
+    // BaseClassX doesn't auto-evaluate breakpoints on a bare property write —
+    // $pause() is the real mechanism that runs _checkBreakpoints() and flips isPaused.
+    counter.$pause();
+    const paused = counter.$debug && counter.$debug.state.isPaused;
+    document.getElementById('count-paused-badge').className = 'badge ' + (paused ? 'on' : 'off');
+    document.getElementById('count-paused-badge').textContent = paused ? 'PAUSED (breakpoint hit)' : 'not paused';
+  } catch (e) { logTo('counter-log', 'increment error: ' + e.message); }
+}
+function setCounterBreak() {
+  if (!counter) return;
+  try {
+    // _checkBreakpoints only evaluates function conditions, called as
+    // bp.condition(this) — the instance arrives as the parameter, not as `this`.
+    // Plain condition strings like 'count >= 5' are never evaluated at all.
+    counter.$break(function(instance) { return instance.count >= 5; });
+    counterBreakSet = true;
+    logTo('counter-log', "Breakpoint armed: (instance) => instance.count >= 5. Keep incrementing — each increment calls $pause(), which runs _checkBreakpoints() and pauses when count reaches 5.");
+  } catch (e) { logTo('counter-log', '$break error: ' + e.message); }
+}
+function resumeCounter() {
+  if (!counter) return;
+  try {
+    counter.$continue();
+    const paused = counter.$debug && counter.$debug.state.isPaused;
+    document.getElementById('count-paused-badge').className = 'badge ' + (paused ? 'on' : 'off');
+    document.getElementById('count-paused-badge').textContent = paused ? 'PAUSED (breakpoint hit)' : 'not paused';
+    logTo('counter-log', 'Resumed via $continue.');
+  } catch (e) { logTo('counter-log', '$continue error: ' + e.message); }
+}
+function dumpCounter() {
+  if (!counter) return;
+  try { logTo('counter-log', JSON.stringify(counter.$dump(), null, 2)); }
+  catch (e) { logTo('counter-log', '$dump error: ' + e.message); }
+}
+function traceCounter() {
+  if (!counter) return;
+  try { logTo('counter-log', JSON.stringify(counter.$trace(), null, 2)); }
+  catch (e) { logTo('counter-log', '$trace error: ' + e.message); }
+}
+
+// ───────────────────────── Job 2: AST-layer debugging (DomainNode-style) ─────────────────────────
+let astNodes = [], astIndex = -1, astBreakType = null;
+try {
+  class ASTNode extends BaseClassX {
+    static _schema = { properties: { nodeType: { type: 'string' }, code: { type: 'string' }, scope: { type: 'object', default: {} } } };
+    constructor(nodeType, code, scope) {
+      super({ type: 'ast', name: 'ASTNode', schema: { nodeType: 'string', code: 'string', scope: 'object' } });
+      this.nodeType = nodeType; this.code = code; this.scope = scope || {};
+    }
+  }
+  // Hand-tokenized AST for: for (let i = 0; i < 3; i++) { sum += i; }
+  const spec = [
+    ['VariableDeclaration', 'let i = 0', { i: 0 }],
+    ['BinaryExpression', 'i < 3', { i: 0 }],
+    ['AssignmentExpression', 'sum += i', { i: 0, sum: 0 }],
+    ['UpdateExpression', 'i++', { i: 1 }],
+    ['AssignmentExpression', 'sum += i', { i: 1, sum: 1 }],
+    ['UpdateExpression', 'i++', { i: 2 }],
+    ['AssignmentExpression', 'sum += i', { i: 2, sum: 3 }],
+    ['UpdateExpression', 'i++', { i: 3 }]
+  ];
+  astNodes = spec.map(([t, c, s]) => new ASTNode(t, c, s));
+} catch (e) {
+  document.getElementById('ast-log').textContent = 'AST build error: ' + e.message;
+}
+function renderAstNodes() {
+  const el = document.getElementById('ast-nodes');
+  el.innerHTML = astNodes.map((n, i) => {
+    const cls = ['node'];
+    if (i === astIndex) cls.push('current');
+    if (n.nodeType === astBreakType) cls.push('break');
+    return `<div class="${cls.join(' ')}">[${n.nodeType}] ${n.code}  scope=${JSON.stringify(n.scope)}</div>`;
+  }).join('');
+}
+renderAstNodes();
+function astSetBreak() {
+  astBreakType = 'AssignmentExpression';
+  try { astNodes.forEach(n => { if (n.nodeType === astBreakType) n.$break('true'); }); } catch (e) {}
+  renderAstNodes();
+  logTo('ast-log', "Breakpoint armed on nodeType === 'AssignmentExpression'. Step the Executor — it halts each time it visits one.");
+}
+function astStep() {
+  if (astIndex >= astNodes.length - 1) { logTo('ast-log', 'Walk complete.'); return; }
+  astIndex++;
+  const node = astNodes[astIndex];
+  renderAstNodes();
+  if (node.nodeType === astBreakType) {
+    logTo('ast-log', `Executor paused at node ${astIndex}: [${node.nodeType}] ${node.code}\nlive scope: ${JSON.stringify(node.scope)}`);
+  } else {
+    logTo('ast-log', `Executor visited node ${astIndex}: [${node.nodeType}] ${node.code}`);
+  }
+}
+function astReset() { astIndex = -1; renderAstNodes(); logTo('ast-log', '(not started)'); }
+
+// ───────────────────────── Job 3: native-execution hook (the real edge case) ─────────────────────────
+let nativePauseResolver = null;
+function debuggerHook(i, sum) {
+  if (!document.getElementById('hook-armed').checked || i !== 2) return Promise.resolve();
+  logTo('native-log', `Native loop paused at hook: i=${i}, sum=${sum} (live local variables, read directly from the closure — no sandbox, one explicit hook).`);
+  document.getElementById('hook-resume-btn').disabled = false;
+  return new Promise(resolve => { nativePauseResolver = resolve; });
+}
+async function runNativeLoop() {
+  logTo('native-log', 'running...');
+  let sum = 0;
+  for (let i = 0; i < 4; i++) {
+    sum += i;
+    await debuggerHook(i, sum);
+  }
+  logTo('native-log', 'Native loop finished. Final sum = ' + sum);
+}
+function resumeNativeLoop() {
+  if (nativePauseResolver) { nativePauseResolver(); nativePauseResolver = null; }
+  document.getElementById('hook-resume-btn').disabled = true;
+}
+</script>
+</body>
+</html>

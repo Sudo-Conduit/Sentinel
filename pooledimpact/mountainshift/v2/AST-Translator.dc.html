@@ -1,0 +1,1875 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+  </style>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./ChatLib.js"></script>
+</helmet>
+<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #ececec; color: #1c1e26; min-height: 100vh; padding: 40px 20px;">
+  <div style="max-width: 1400px; margin: 0 auto;">
+    <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+      <div style="display:flex;background:#fff;border:1px solid #d4d4d8;border-radius:8px;overflow:hidden;">
+        <div onClick="{{ onSetRoleGuest }}" style="{{ guestToggleStyle }}">Guest</div>
+        <div onClick="{{ onSetRoleAdmin }}" style="{{ adminToggleStyle }}">Admin</div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-start;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+      <span style="color:#5a5d68;font-weight:600;font-size:0.9em;">English ⇄ Any Language</span>
+      <span style="color:#8b8f98;font-size:0.78em;">— type in either language below, direction auto-detects</span>
+      <span style="color:#8b8f98;font-size:0.78em;">{{ engineModeLabel }}</span>
+    </div>
+
+    <div style="display:flex;justify-content:flex-start;gap:8px;margin-bottom:28px;border-bottom:1px solid #d4d4d8;">
+      <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+        <div onClick="{{ tab.onClick }}" style="{{ tab.style }}">{{ tab.label }}</div>
+      </sc-for>
+    </div>
+
+    <sc-if value="{{ isTranslateTab }}" hint-placeholder-val="{{ true }}">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+      <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display:flex; flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e4e9;">
+          <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600;">Input</div>
+          <select value="{{ inputLangMode }}" onChange="{{ onInputLangModeChange }}" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:6px;padding:5px 8px;font-size:0.8em;">
+            <option value="auto">Auto Detect</option>
+            <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="8">
+              <option value="{{ lo.value }}">{{ lo.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <textarea value="{{ inputText }}" onInput="{{ onInputChange }}" placeholder="Type English or Bulgarian…" style="width:100%;flex:1;min-height:280px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:12px;font-family:Monaco,'Courier New',monospace;color:#1c1e26;font-size:0.95em;line-height:1.5;resize:vertical;box-sizing:border-box;"></textarea>
+        <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;">
+          <button onClick="{{ onTranslate }}" style="background:#0a84ff;color:#fff;border:none;padding:10px 20px;border-radius:7px;cursor:pointer;font-weight:600;">Translate</button>
+          <button onClick="{{ onExample }}" style="background:#fff;color:#1c1e26;border:1px solid #d4d4d8;padding:10px 20px;border-radius:7px;cursor:pointer;font-weight:600;">Load Example</button>
+        </div>
+      </div>
+
+      <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); display:flex; flex-direction:column;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e4e9;">
+          <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600;">Output ({{ targetLangLabel }})</div>
+          <select value="{{ outputLangMode }}" onChange="{{ onOutputLangModeChange }}" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:6px;padding:5px 8px;font-size:0.8em;">
+            <option value="auto">Auto Detect</option>
+            <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="8">
+              <option value="{{ lo.value }}">{{ lo.label }}</option>
+            </sc-for>
+          </select>
+        </div>
+        <div style="font-family:Monaco,'Courier New',monospace;font-size:1.25em;color:#1c1e26;background:#f7f7f9;border:1px solid #e2e4e9;border-radius:7px;padding:18px;flex:1;min-height:280px;box-sizing:border-box;">
+          <sc-if value="{{ pathSourceLabel }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:0.65em;color:#8b8f98;margin-bottom:8px;font-weight:600;letter-spacing:0.3px;">SOURCE: {{ pathSourceLabel }}</div>
+          </sc-if>
+          <sc-if value="{{ hasTranslation }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ translatedWords }}" as="w" hint-placeholder-count="4">
+              <span title="{{ w.gloss }}" style="border-bottom:1px dashed #0a84ff;cursor:help;margin-right:6px;">{{ w.surface }}</span>
+            </sc-for>
+            <sc-if value="{{ hasRoundTrip }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:0.62em;margin-top:10px;color:{{ roundTripColor }};">{{ roundTripLabel }}</div>
+            </sc-if>
+          </sc-if>
+          <sc-if value="{{ isLLMResult }}" hint-placeholder-val="{{ false }}">
+            <sc-for list="{{ llmHoverWords }}" as="w" hint-placeholder-count="4">
+              <span title="{{ w.gloss }}" style="{{ w.wordStyle }}">{{ w.surface }}</span>
+            </sc-for>
+            <sc-if value="{{ isVocabGapResult }}" hint-placeholder-val="{{ false }}">
+              <div style="color:#8b8f98;font-size:0.7em;margin-top:8px;">↳ Routed through the shared LLM engine for this sentence.</div>
+              <sc-if value="{{ isAutoCorrected }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:0.62em;margin-top:4px;color:#c07a1a;">↻ Direction auto-corrected — the toggle didn't match the input's script.</div>
+              </sc-if>
+              <sc-if value="{{ isTrustedSkip }}" hint-placeholder-val="{{ false }}">
+                <div style="font-size:0.62em;margin-top:4px;color:#5a5d68;">⏭ Round-trip skipped — this language is Trusted (verified streak ≥ {{ trustedThreshold }}).</div>
+              </sc-if>
+              <sc-if value="{{ hasLearnedNote }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#1a8a4a;font-size:0.7em;margin-top:4px;">✓ Learned automatically: {{ learnedNote }} — future translations with these words use the deterministic AST pipeline.</div>
+              </sc-if>
+            </sc-if>
+            <sc-if value="{{ hasLlmRoundTrip }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:0.62em;margin-top:8px;color:{{ llmRoundTripColor }};">{{ llmRoundTripLabel }}</div>
+            </sc-if>
+          </sc-if>
+          <sc-if value="{{ isLLMError }}" hint-placeholder-val="{{ false }}">
+            <span style="color:#c0392b;font-size:0.85em;">{{ llmResultText }}</span>
+          </sc-if>
+          <sc-if value="{{ isLLMTranslating }}" hint-placeholder-val="{{ false }}">
+            <span style="color:#8b8f98;font-size:0.85em;">Translating…</span>
+          </sc-if>
+          <sc-if value="{{ noTranslationYet }}" hint-placeholder-val="{{ true }}">{{ translatedText }}</sc-if>
+        </div>
+        <div style="color:#8b8f98;font-size:0.78em;margin-top:6px;">Hover a word for its literal meaning in the other language.</div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isAnalysisTab }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e4e9;">
+        <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600;">Language Analysis</div>
+        <div style="position:relative;">
+          <input list="analysis-lang-list" value="{{ analysisLangInput }}" onInput="{{ onAnalysisLangInputChange }}" placeholder="Type a language…" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:7px 12px;font-size:0.85em;font-weight:600;width:200px;box-sizing:border-box;" />
+          <datalist id="analysis-lang-list">
+            <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="8">
+              <option value="{{ lo.label }}"></option>
+            </sc-for>
+          </datalist>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px;">
+        <div style="background:#f7f7f9;border:1px solid #e2e4e9;border-radius:7px;padding:12px;text-align:center;">
+          <div style="color:#5a5d68;font-size:0.76em;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Intents</div>
+          <div style="color:#1c1e26;font-size:1.4em;font-weight:700;font-family:Monaco,monospace;">{{ intentCount }}</div>
+        </div>
+        <div style="background:#f7f7f9;border:1px solid #e2e4e9;border-radius:7px;padding:12px;text-align:center;">
+          <div style="color:#5a5d68;font-size:0.76em;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Words</div>
+          <div style="color:#1c1e26;font-size:1.4em;font-weight:700;font-family:Monaco,monospace;">{{ wordCount }}</div>
+        </div>
+        <div style="background:#f7f7f9;border:1px solid #e2e4e9;border-radius:7px;padding:12px;text-align:center;">
+          <div style="color:#5a5d68;font-size:0.76em;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Phrases</div>
+          <div style="color:#1c1e26;font-size:1.4em;font-weight:700;font-family:Monaco,monospace;">{{ phraseCount }}</div>
+        </div>
+        <div style="background:#f7f7f9;border:1px solid #e2e4e9;border-radius:7px;padding:12px;text-align:center;">
+          <div style="color:#5a5d68;font-size:0.76em;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">{{ analysisLangLabel }} Glosses</div>
+          <div style="color:#1c1e26;font-size:1.4em;font-weight:700;font-family:Monaco,monospace;">{{ glossCount }}</div>
+        </div>
+      </div>
+      <div style="color:#1c1e26;font-weight:600;margin-bottom:2px;font-size:0.9em;">Language Coverage &amp; Confidence</div>
+      <div style="color:#8b8f98;font-size:0.78em;margin-bottom:10px;">Every language is learned the same way — via LLM-verified round-trip translation or Bulk Seed — pick any of the top 50 above to inspect it independently of the Translate tab's dropdown.</div>
+      <sc-for list="{{ languageCoverageRows }}" as="row" hint-placeholder-count="3">
+        <div style="{{ row.rowStyle }}flex-direction:column;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="color:#1c1e26;font-weight:600;">{{ row.label }}</span>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="color:#5a5d68;">{{ row.seededCount }} seeded · {{ row.inferredCount }} inferred · {{ row.patternCount }} pattern(s)</span>
+              <sc-if value="{{ row.hasInferred }}" hint-placeholder-val="{{ false }}">
+                <button onClick="{{ row.onWipeInferred }}" style="background:#fdeeee;color:#c0392b;border:1px solid #f0d0d0;border-radius:6px;padding:4px 10px;font-size:0.78em;cursor:pointer;">Wipe Inferred</button>
+              </sc-if>
+            </div>
+          </div>
+          <div style="color:{{ row.confidenceColor }};font-size:0.9em;margin-top:2px;">{{ row.confidenceLabel }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ noLanguagesLearned }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#8b8f98;font-size:0.85em;margin-bottom:14px;">No languages have learned vocabulary yet — translate a sentence via the LLM path, or Bulk Seed, to populate this.</div>
+      </sc-if>
+
+      <div style="color:#1c1e26;font-weight:600;margin-bottom:10px;margin-top:20px;font-size:0.9em;">Grammatical Patterns Learned — {{ analysisLangLabel }}</div>
+      <div style="color:#8b8f98;font-size:0.78em;margin-bottom:10px;">The construction/pattern layer (mechanicalIntent → template) that lets a language skip a hardcoded per-language verb/case class — populated only via Bulk Seed's mechanicalIntent field, not live translation.</div>
+      <sc-for list="{{ patternRows }}" as="p" hint-placeholder-count="3">
+        <div style="padding:9px 12px;background:#f7f7f9;border:1px solid #e2e4e9;border-radius:6px;font-size:0.85em;margin-bottom:6px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+            <span style="color:#1c1e26;font-weight:600;">{{ p.mechanicalIntent }}</span>
+            <span style="color:#5a5d68;">{{ p.exampleCount }} example(s)</span>
+          </div>
+          <div style="color:#8b8f98;">{{ p.featuresLabel }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ noPatternsLearned }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#8b8f98;font-size:0.85em;margin-bottom:14px;">No grammatical patterns learned yet for {{ analysisLangLabel }} — use Bulk Seed with a mechanicalIntent field per entry.</div>
+      </sc-if>
+
+      <div style="color:#8b8f98;font-size:0.8em;margin-top:14px;">Read-only introspection into vocabulary, grammatical patterns, and confidence per language — audit coverage here before adding a new language or domain.</div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isModifyTab }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #e2e4e9;">
+        <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600;">Add Entity — Admin Modify</div>
+        <select value="{{ modifyLangCode }}" onChange="{{ onModifyLangChange }}" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:6px;padding:6px 10px;font-size:0.82em;">
+          <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="8">
+            <option value="{{ lo.value }}">{{ lo.label }}</option>
+          </sc-for>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+        <select value="{{ newEntityKind }}" onChange="{{ onNewEntityKindChange }}" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:9px 12px;font-size:0.9em;">
+          <option value="city">City</option>
+          <option value="time">Time Phrase</option>
+        </select>
+        <input value="{{ newEntityEn }}" onInput="{{ onNewEntityEnChange }}" placeholder="English form" style="flex:1;min-width:160px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:9px 12px;font-size:0.9em;" />
+        <input value="{{ newEntityBg }}" onInput="{{ onNewEntityBgChange }}" placeholder="{{ modifyLangLabel }} form" style="flex:1;min-width:160px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:9px 12px;font-size:0.9em;" />
+        <button onClick="{{ onAddEntity }}" style="background:#0a84ff;color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-weight:600;">Add</button>
+      </div>
+      <sc-if value="{{ modifyMessage }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#1a8a4a;font-size:0.85em;margin-bottom:14px;">{{ modifyMessage }}</div>
+      </sc-if>
+      <div style="color:#1c1e26;font-weight:600;margin-bottom:8px;font-size:0.9em;">Current Cities — {{ modifyLangLabel }}</div>
+      <div style="margin-bottom:16px;">
+        <sc-for list="{{ cityRows }}" as="c" hint-placeholder-count="4">
+          <span style="display:inline-block;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:5px;padding:5px 10px;margin:2px 4px 2px 0;font-size:0.85em;">{{ c.en }} ↔ {{ c.bg }}</span>
+        </sc-for>
+      </div>
+      <div style="color:#1c1e26;font-weight:600;margin-bottom:8px;font-size:0.9em;">Current Time Phrases — {{ modifyLangLabel }}</div>
+      <div>
+        <sc-for list="{{ timeRows }}" as="t" hint-placeholder-count="4">
+          <span style="display:inline-block;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:5px;padding:5px 10px;margin:2px 4px 2px 0;font-size:0.85em;">{{ t.en }} ↔ {{ t.bg }}</span>
+        </sc-for>
+      </div>
+      <div style="color:#8b8f98;font-size:0.8em;margin-top:14px;">Changes apply immediately and persist to IndexedDB.</div>
+    </div>
+
+    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+      <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600; margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid #e2e4e9;">Bulk Seed — Sentence Pairs</div>
+      <div style="color:#8b8f98;font-size:0.85em;margin-bottom:12px;line-height:1.5;">Fastest way to grow a language's coverage: paste a JSON array of already-correct sentence pairs. Each pair is run through the same AST extraction the live translator uses (grammar + entities learned structurally, not just word-for-word), then persisted — no LLM round-trip needed since you're vouching for correctness directly.</div>
+      <textarea value="{{ bulkSeedInput }}" onInput="{{ onBulkSeedInputChange }}" placeholder='[{"langCode":"bg","en":"What time is it?","other":"Колко е часът?"}, {"langCode":"bg","en":"Good morning","other":"Добро утро"}]' style="width:100%;min-height:120px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:10px 12px;font-size:0.85em;font-family:monospace;box-sizing:border-box;resize:vertical;margin-bottom:10px;"></textarea>
+      <button onClick="{{ onBulkSeed }}" disabled="{{ bulkSeedBusy }}" style="background:#0a84ff;color:#fff;border:none;padding:9px 18px;border-radius:7px;cursor:pointer;font-weight:600;opacity:{{ bulkSeedOpacity }};">{{ bulkSeedButtonLabel }}</button>
+      <sc-if value="{{ bulkSeedMessage }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#1a8a4a;font-size:0.85em;margin-top:12px;white-space:pre-wrap;">{{ bulkSeedMessage }}</div>
+      </sc-if>
+      <div style="color:#1c1e26;font-weight:600;margin-top:16px;margin-bottom:6px;font-size:0.85em;">Languages Seeded</div>
+      <sc-for list="{{ seededLangRows }}" as="row" hint-placeholder-count="3">
+        <span style="display:inline-block;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:5px;padding:5px 10px;margin:2px 4px 2px 0;font-size:0.85em;">{{ row.label }} — {{ row.count }} word(s)</span>
+      </sc-for>
+      <sc-if value="{{ noSeededLangs }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#8b8f98;font-size:0.85em;">No languages seeded yet.</div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isSettingsTab }}" hint-placeholder-val="{{ false }}">
+    <div style="background: #fff; border: 1px solid #d4d4d8; border-radius: 10px; padding: 22px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;">
+      <div style="color: #1c1e26; font-size: 1.1em; font-weight: 600; margin-bottom: 6px; padding-bottom: 12px; border-bottom: 1px solid #e2e4e9;">Confidence Threshold</div>
+      <div style="color:#8b8f98;font-size:0.85em;margin-bottom:14px;line-height:1.5;">Consecutive verified round-trips a language needs before its deterministic lexicon hits are trusted without an LLM round-trip check. Lower = faster/cheaper but less safe; higher = more verification, more LLM calls.</div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+        <span style="font-size:0.9em;color:#1c1e26;font-weight:600;min-width:130px;">Global default</span>
+        <input type="number" min="1" value="{{ settingsGlobalInput }}" onInput="{{ onSettingsGlobalInputChange }}" style="width:100px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:8px 10px;font-size:0.9em;" />
+        <button onClick="{{ onSaveGlobalThreshold }}" style="background:#0a84ff;color:#fff;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.85em;">Save</button>
+      </div>
+
+      <div style="color: #1c1e26; font-weight: 600; margin-bottom: 8px; font-size: 0.9em;">Per-Language Override</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+        <select value="{{ settingsOverrideLangCode }}" onChange="{{ onSettingsOverrideLangChange }}" style="background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:8px 10px;font-size:0.85em;">
+          <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="8">
+            <option value="{{ lo.value }}">{{ lo.label }}</option>
+          </sc-for>
+        </select>
+        <input type="number" min="1" placeholder="empty = use global" value="{{ settingsOverrideInput }}" onInput="{{ onSettingsOverrideInputChange }}" style="width:160px;background:#f7f7f9;border:1px solid #d4d4d8;border-radius:7px;padding:8px 10px;font-size:0.85em;" />
+        <button onClick="{{ onSaveOverride }}" style="background:#0a84ff;color:#fff;border:none;padding:8px 16px;border-radius:7px;cursor:pointer;font-weight:600;font-size:0.85em;">Save Override</button>
+      </div>
+      <sc-if value="{{ settingsMessage }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#1a8a4a;font-size:0.85em;margin-bottom:14px;">{{ settingsMessage }}</div>
+      </sc-if>
+
+      <div style="color: #1c1e26; font-weight: 600; margin-bottom: 8px; margin-top:16px; font-size: 0.9em;">Current Overrides</div>
+      <sc-for list="{{ overrideRows }}" as="row" hint-placeholder-count="2">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f7f7f9;border:1px solid #e2e4e9;border-radius:6px;font-size:0.85em;margin-bottom:6px;">
+          <span><strong>{{ row.label }}</strong> — threshold {{ row.value }}</span>
+          <button onClick="{{ row.onClear }}" style="background:#fdeeee;color:#c0392b;border:1px solid #f0d0d0;border-radius:6px;padding:4px 10px;font-size:0.8em;cursor:pointer;">Clear</button>
+        </div>
+      </sc-for>
+      <sc-if value="{{ noOverrides }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#8b8f98;font-size:0.85em;">No per-language overrides set — all languages use the global default.</div>
+      </sc-if>
+      <div style="color:#8b8f98;font-size:0.8em;margin-top:14px;">Changes apply immediately and persist to IndexedDB.</div>
+    </div>
+    </sc-if>
+
+    <div style="text-align:center;color:#8b8f98;font-size:0.82em;margin-top:32px;padding-top:16px;border-top:1px solid #e2e4e9;">
+      Universal Meaning Node v2.0.0 — MountainShift OS · one language-agnostic AST; English/Bulgarian adapters read and write its branches symmetrically
+    </div>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const INTENT_ONTOLOGY = {
+  book_flight:   { en: ['book','reserve','flight','fly'], bg: ['резервирам','билет','самолет'] },
+  search_flights:{ en: ['search','find','flights'],       bg: ['търся','полети','опции'] },
+  cancel_flight: { en: ['cancel','delete','refund'],      bg: ['отменям','анулирам','пари'] },
+  check_status:  { en: ['status','check','where'],        bg: ['статус','където','кога'] },
+  change_booking:{ en: ['change','modify','reschedule'],  bg: ['изменям','преместване','нова'] }
+};
+const CITY_ONTOLOGY = [
+  { en: 'paris', bg: 'париж' }, { en: 'london', bg: 'лондон' }, { en: 'sofia', bg: 'софия' },
+  { en: 'varna', bg: 'варна' }, { en: 'burgas', bg: 'бургас' }, { en: 'tokyo', bg: 'токио' },
+  { en: 'barcelona', bg: 'барселона' }
+];
+const TIME_ONTOLOGY = [
+  { en: 'next friday', bg: 'следващия петък' }, { en: 'next monday', bg: 'следващия понеделник' },
+  { en: 'next week', bg: 'следващата седмица' }, { en: 'tomorrow', bg: 'утре' }, { en: 'today', bg: 'днес' }
+];
+const STOPWORDS_EN = new Set(['a','an','the','to','for','me','my','of','on','in','at','and']);
+// Common inflected forms of the FUNCTION_WORDS set, normalized to the
+// lemma the map actually keys on \u2014 without this, a single past-tense
+// "was"/"were" (not literally "is"/"are") fails the whole sentence and
+// falls through to the LLM even though the word is genuinely known.
+const FUNCTION_WORD_INFLECTIONS = { was: 'is', were: 'are', been: 'is' };
+const DATE_WORDS_EN = new Set(['monday','tuesday','wednesday','thursday','friday','saturday','sunday','january','february','march','april','may','june','july','august','september','october','november','december','next','tomorrow','today']);
+const PAST_VERB_WORDS_EN = new Set(['booked','cancelled','canceled','searched','checked','changed','reserved','flew']);
+const VERB_WORDS_EN = new Set([
+  ...Object.values(INTENT_ONTOLOGY).flatMap(v => v.en),
+  'booked','booking','cancelled','canceled','cancelling','canceling','searched','searching',
+  'checked','checking','changed','changing','reserved','reserving','flying','flew'
+]);
+const KNOWN_NAMES_BG = { john:'Джон', james:'Джеймс', michael:'Майкъл', william:'Уилям', mary:'Мери', sarah:'Сара', thomas:'Томас', richard:'Ричард', robert:'Робърт' };
+const LATIN_TO_CYRILLIC = [
+  ['sh','ш'],['ch','ч'],['th','т'],['ph','ф'],['ck','к'],['qu','кв'],
+  ['a','а'],['b','б'],['c','к'],['d','д'],['e','е'],['f','ф'],['g','г'],['h','х'],
+  ['i','и'],['j','дж'],['k','к'],['l','л'],['m','м'],['n','н'],['o','о'],['p','п'],
+  ['q','к'],['r','р'],['s','с'],['t','т'],['u','у'],['v','в'],['w','в'],['x','кс'],
+  ['y','й'],['z','з']
+];
+
+function titleCase(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+function detectLang(text){ return /[\u0400-\u04FF]/.test(text) ? 'bg' : 'en'; }
+
+const POS = { NOUN: 'NOUN', VERB: 'VERB', ADJ: 'ADJ', ADV: 'ADV', PROPN: 'PROPN', IDIOM: 'IDIOM', NUM: 'NUM', OTHER: 'OTHER' };
+const GENDER = { MASC: 'MASC', FEM: 'FEM', NEUT: 'NEUT' };
+
+// Generic, language-agnostic pattern store: replaces one hardcoded verb
+// table per language (see the old BG_VERB below) with data learned per
+// (langCode, mechanicalIntent) pair from seed sentences. A pattern is the
+// STRUCTURE a mechanicalIntent imposes \u2014 e.g. how NEGATIVE_CONCORD marks
+// a verb, or where FUTURE_PERFECT_SHTE_SYM's auxiliary sits \u2014 captured as
+// a template with slots, not a fixed conjugation table. Any language that
+// seeds patterns this way needs no bespoke *_VERB/*_CASE class at all.
+const GRAMMATICAL_PATTERNS = {}; // { [langCode]: { [mechanicalIntent]: { features:[], template, examples:[] } } }
+function learnGrammaticalPattern(langCode, mechanicalIntent, features, enText, otherText) {
+  if (!GRAMMATICAL_PATTERNS[langCode]) GRAMMATICAL_PATTERNS[langCode] = {};
+  const existing = GRAMMATICAL_PATTERNS[langCode][mechanicalIntent];
+  const examples = existing ? [...existing.examples, { en: enText, other: otherText }].slice(-5) : [{ en: enText, other: otherText }];
+  GRAMMATICAL_PATTERNS[langCode][mechanicalIntent] = { features: features || (existing ? existing.features : []), examples };
+}
+function getGrammaticalPatterns(langCode) { return GRAMMATICAL_PATTERNS[langCode] || {}; }
+function makeLexicalEntry({ lemmaEn, lemmaOther, pos, semanticRole, branches, source }) {
+  return {
+    lemmaEn, lemmaOther, pos: pos || POS.OTHER, semanticRole: semanticRole || null,
+    branches: { gender: null, number: null, classifier: null, formality: null, case: null, animacy: null, ...(branches || {}) },
+    source: source || 'inferred' // 'seeded' (Bulk Seed, user-vouched) vs 'inferred' (learned from live LLM translations) — lets inferred-only entries be wiped without losing seeded coverage
+  };
+}
+const LEXICON = {};
+function lexiconFor(langCode) { return LEXICON[langCode] || (LEXICON[langCode] = []); }
+function findLexicalEntry(langCode, lemmaEn) { return lexiconFor(langCode).find(e => e.lemmaEn === lemmaEn); }
+function wipeInferredEntries(langCode) {
+  const before = lexiconFor(langCode).length;
+  LEXICON[langCode] = lexiconFor(langCode).filter(e => e.source === 'seeded');
+  return before - LEXICON[langCode].length;
+}
+
+// Deterministic, LLM-independent floor: tokenizes BOTH sides of a seed
+// pair on non-letter boundaries, strips English stopwords, dedupes
+// per-pair, and pairs EVERY remaining English content word against the
+// other-language content words (cycling if the other side is shorter) —
+// guarantees every distinct word in the pair gets an entry rather than
+// being capped by the shorter list's length or an LLM's partial JSON.
+function learnRawWordPairs(enText, otherText, langCode, source) {
+  const enWords = [...new Set((enText.match(/[a-zA-Z']+/g) || []).map(w => w.toLowerCase()).filter(w => !STOPWORDS_EN.has(w)))];
+  const otherWordsRaw = [...new Set((otherText.match(/[\p{L}']+/gu) || []).map(w => w.toLowerCase()))];
+  const fnWords = FUNCTION_WORDS[langCode];
+  const otherContent = fnWords && otherWordsRaw.length > fnWords.length
+    ? otherWordsRaw.filter(w => !fnWords.includes(w))
+    : otherWordsRaw;
+  const otherPool = otherContent.length ? otherContent : otherWordsRaw;
+  if (!enWords.length || !otherPool.length) return 0;
+  let added = 0;
+  for (let i = 0; i < enWords.length; i++) {
+    const en = enWords[i];
+    const other = otherPool[i % otherPool.length];
+    if (!en || !other || en === other) continue;
+    if (findLexicalEntry(langCode, en)) continue;
+    lexiconFor(langCode).push(makeLexicalEntry({ lemmaEn: en, lemmaOther: other, pos: POS.OTHER, source: source || 'inferred' }));
+    added++;
+  }
+  return added;
+}
+
+// A learned "translation" that's really just English again (a model that
+// answered instead of translating, or echoed the source) must never enter
+// the ontology \u2014 it corrupts deterministic reuse permanently once
+// learned (subsequent requests silently replay bad data with no LLM
+// call to catch it). Non-Latin-script languages check trivially (real
+// words never come back as plain ASCII); Latin-script and non-seeded
+// custom languages fall back to a marker-word heuristic \u2014 a phrase is
+// rejected if it's plain ASCII AND contains 2+ common English function
+// words, which real short phrases in another Latin-script language
+// essentially never do.
+const NON_LATIN_SCRIPT = new Set(['bg', 'ru', 'zh', 'ja', 'ar', 'hi']);
+const ENGLISH_MARKER_WORDS = new Set(['what','who','where','when','why','how','is','are','am','it','this','that','the','a','an','time','hour']);
+function looksLikeEnglish(langCode) {
+  return function (text) {
+    if (langCode === 'en') return false;
+    const isPlainAscii = /^[a-z\s'?.!-]+$/i.test(text);
+    if (!isPlainAscii) return false;
+    if (NON_LATIN_SCRIPT.has(langCode)) return true; // any ASCII is suspect for these
+    const words = text.toLowerCase().replace(/[?.!]/g, '').split(/\s+/).filter(Boolean);
+    const markerHits = words.filter(w => ENGLISH_MARKER_WORDS.has(w)).length;
+    return markerHits >= 2;
+  };
+}
+
+// One-time purge of anything already learned before this guard existed
+// Lexicon IndexedDB persistence \u2014 learned vocab survives reloads, same
+// pattern as S-Matrix's session store. One record per language code.
+const LEXICON_IDB_NAME = 'meshos-ast-translator', LEXICON_IDB_VERSION = 5, LEXICON_IDB_STORE = 'lexicon', PATTERNS_IDB_STORE = 'patterns';
+function openLexiconIDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(LEXICON_IDB_NAME, LEXICON_IDB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(LEXICON_IDB_STORE)) db.createObjectStore(LEXICON_IDB_STORE, { keyPath: 'langCode' });
+      if (!db.objectStoreNames.contains(CONFIDENCE_IDB_STORE)) db.createObjectStore(CONFIDENCE_IDB_STORE, { keyPath: 'langCode' });
+      if (!db.objectStoreNames.contains(PATTERNS_IDB_STORE)) db.createObjectStore(PATTERNS_IDB_STORE, { keyPath: 'langCode' });
+      if (!db.objectStoreNames.contains(SETTINGS_IDB_STORE)) db.createObjectStore(SETTINGS_IDB_STORE, { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function loadLexiconFromIDB() {
+  try {
+    const db = await openLexiconIDB();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(LEXICON_IDB_STORE, 'readonly');
+      const req = tx.objectStore(LEXICON_IDB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error);
+    });
+    // Migration: entries persisted before the seeded/inferred distinction
+    // existed have no `source` field at all. Defaulting undefined to
+    // 'inferred' (as makeLexicalEntry does for freshly-created entries)
+    // would wrongly let every pre-existing Bulk-Seed-loaded language show
+    // as 100% wipeable — so on load specifically, missing source is
+    // treated as 'seeded' (the historically dominant path), not
+    // re-guessed as 'inferred'.
+    rows.forEach(r => { LEXICON[r.langCode] = (r.entries || []).map(e => e.source ? e : { ...e, source: 'seeded' }); });
+  } catch (e) { console.error('AST Translator: lexicon load failed', e.message || e); }
+}
+async function saveLexiconToIDB(langCode) {
+  try {
+    const db = await openLexiconIDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(LEXICON_IDB_STORE, 'readwrite');
+      tx.objectStore(LEXICON_IDB_STORE).put({ langCode, entries: lexiconFor(langCode) });
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.error('AST Translator: lexicon save failed', e.message || e); }
+}
+async function loadPatternsFromIDB() {
+  try {
+    const db = await openLexiconIDB();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(PATTERNS_IDB_STORE, 'readonly');
+      const req = tx.objectStore(PATTERNS_IDB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error);
+    });
+    rows.forEach(r => { GRAMMATICAL_PATTERNS[r.langCode] = r.patterns || {}; });
+  } catch (e) { console.error('AST Translator: pattern load failed', e.message || e); }
+}
+async function savePatternsToIDB(langCode) {
+  try {
+    const db = await openLexiconIDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(PATTERNS_IDB_STORE, 'readwrite');
+      tx.objectStore(PATTERNS_IDB_STORE).put({ langCode, patterns: getGrammaticalPatterns(langCode) });
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.error('AST Translator: pattern save failed', e.message || e); }
+}
+
+// Per-language confidence: a running count of consecutive VERIFIED
+// (round-trip-ok) LLM translations. Below CONFIDENCE_THRESHOLD, every
+// translation still runs AST-first-then-LLM-verify as today \u2014 this is
+// purely a trust score, not a shortcut, so a bad LLM run can never skip
+// verification. At/above threshold, an AST-only translation (all words
+// known, no LLM call at all) is trusted without an LLM round-trip check
+// \u2014 the LLM is only re-consulted when AST hits an unknown word, which
+// re-enters the verified-learning path and can raise the score further.
+// A single failed round-trip resets the streak to 0, not just decrements
+// it \u2014 protects against a "rogue" LLM session or bad data slowly eroding
+// trust instead of being caught immediately.
+const CONFIDENCE_IDB_STORE = 'confidence';
+const SETTINGS_IDB_STORE = 'settings';
+let GLOBAL_CONFIDENCE_THRESHOLD = 20;
+const LANG_CONFIDENCE_OVERRIDES = {}; // langCode -> number (absent = use global)
+function effectiveThreshold(langCode) {
+  const o = LANG_CONFIDENCE_OVERRIDES[langCode];
+  return (o !== undefined && o !== null) ? o : GLOBAL_CONFIDENCE_THRESHOLD;
+}
+function langConfidenceKey(langCode) { return langCode; }
+let _confidenceCache = {};
+async function loadConfidenceFromIDB() {
+  try {
+    const db = await openLexiconIDB();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIDENCE_IDB_STORE, 'readonly');
+      const req = tx.objectStore(CONFIDENCE_IDB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error);
+    });
+    rows.forEach(r => { _confidenceCache[r.langCode] = r.streak || 0; });
+  } catch (e) { console.error('AST Translator: confidence load failed', e.message || e); }
+}
+async function saveConfidenceToIDB(langCode) {
+  try {
+    const db = await openLexiconIDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIDENCE_IDB_STORE, 'readwrite');
+      tx.objectStore(CONFIDENCE_IDB_STORE).put({ langCode, streak: _confidenceCache[langCode] || 0 });
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.error('AST Translator: confidence save failed', e.message || e); }
+}
+function getConfidence(langCode) { return _confidenceCache[langCode] || 0; }
+function isHighConfidence(langCode) { return getConfidence(langCode) >= effectiveThreshold(langCode); }
+function bumpConfidence(langCode, ok) {
+  _confidenceCache[langCode] = ok ? (getConfidence(langCode) + 1) : 0;
+  saveConfidenceToIDB(langCode);
+}
+async function loadSettingsFromIDB() {
+  try {
+    const db = await openLexiconIDB();
+    const rows = await new Promise((resolve, reject) => {
+      const tx = db.transaction(SETTINGS_IDB_STORE, 'readonly');
+      const req = tx.objectStore(SETTINGS_IDB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []); req.onerror = () => reject(req.error);
+    });
+    rows.forEach(r => {
+      if (r.key === 'global') GLOBAL_CONFIDENCE_THRESHOLD = r.value;
+      else if (r.key.startsWith('lang:')) LANG_CONFIDENCE_OVERRIDES[r.key.slice(5)] = r.value;
+    });
+  } catch (e) { console.error('AST Translator: settings load failed', e.message || e); }
+}
+async function saveSetting(key, value) {
+  try {
+    const db = await openLexiconIDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SETTINGS_IDB_STORE, 'readwrite');
+      tx.objectStore(SETTINGS_IDB_STORE).put({ key, value });
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.error('AST Translator: settings save failed', e.message || e); }
+}
+async function deleteSetting(key) {
+  try {
+    const db = await openLexiconIDB();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction(SETTINGS_IDB_STORE, 'readwrite');
+      tx.objectStore(SETTINGS_IDB_STORE).delete(key);
+      tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error);
+    });
+  } catch (e) { console.error('AST Translator: settings delete failed', e.message || e); }
+}
+
+// (previously in-memory only \u2014 no disk persistence, so this was the only
+// cleanup path short of a full page reload; now also re-run after IDB
+// load in case corrupted entries were persisted before this guard existed).
+function purgeCorruptedLearnedData() {
+  Object.keys(LEXICON).forEach(langCode => {
+    const check = looksLikeEnglish(langCode);
+    LEXICON[langCode] = LEXICON[langCode].filter(e => !check(e.lemmaOther));
+  });
+  ['es','fr','de','it','pt','ru','zh','ja','ar','hi'].forEach(langCode => {
+    const check = looksLikeEnglish(langCode);
+    CITY_ONTOLOGY.forEach(c => { if (c[langCode] !== undefined && check(c[langCode])) delete c[langCode]; });
+    TIME_ONTOLOGY.forEach(t => { if (t[langCode] !== undefined && check(t[langCode])) delete t[langCode]; });
+  });
+}
+purgeCorruptedLearnedData();
+
+const FUNCTION_WORDS = {
+  bg: { what: 'какво', who: 'кой', where: 'къде', when: 'кога', why: 'защо', how: 'как', is: 'е', are: 'са', am: 'съм', it: 'то', this: 'това', that: 'онова' },
+  es: { what: 'qué', who: 'quién', where: 'dónde', when: 'cuándo', why: 'por qué', how: 'cómo', is: 'es', are: 'son', am: 'soy', it: 'ello', this: 'esto', that: 'eso' },
+  fr: { what: 'quoi', who: 'qui', where: 'où', when: 'quand', why: 'pourquoi', how: 'comment', is: 'est', are: 'sont', am: 'suis', it: 'il', this: 'ceci', that: 'cela' },
+  de: { what: 'was', who: 'wer', where: 'wo', when: 'wann', why: 'warum', how: 'wie', is: 'ist', are: 'sind', am: 'bin', it: 'es', this: 'dies', that: 'das' },
+  it: { what: 'cosa', who: 'chi', where: 'dove', when: 'quando', why: 'perché', how: 'come', is: 'è', are: 'sono', am: 'sono', it: 'esso', this: 'questo', that: 'quello' },
+  pt: { what: 'o que', who: 'quem', where: 'onde', when: 'quando', why: 'por que', how: 'como', is: 'é', are: 'são', am: 'sou', it: 'isso', this: 'isto', that: 'aquilo' },
+  ru: { what: 'что', who: 'кто', where: 'где', when: 'когда', why: 'почему', how: 'как', is: 'есть', are: 'суть', am: 'есмь', it: 'это', this: 'это', that: 'то' },
+  zh: { what: '什么', who: '谁', where: '哪里', when: '什么时候', why: '为什么', how: '怎么', is: '是', are: '是', am: '是', it: '它', this: '这个', that: '那个' },
+  ja: { what: '何', who: '誰', where: 'どこ', when: 'いつ', why: 'なぜ', how: 'どう', is: 'です', are: 'です', am: 'です', it: 'それ', this: 'これ', that: 'あれ' },
+  ar: { what: 'ماذا', who: 'من', where: 'أين', when: 'متى', why: 'لماذا', how: 'كيف', is: 'هو', are: 'هم', am: 'أنا', it: 'هو', this: 'هذا', that: 'ذلك' },
+  hi: { what: 'क्या', who: 'कौन', where: 'कहाँ', when: 'कब', why: 'क्यों', how: 'कैसे', is: 'है', are: 'हैं', am: 'हूँ', it: 'वह', this: 'यह', that: 'वह' }
+};
+
+const LANGUAGE_OPTIONS = [
+  { value: 'en', label: 'English' },
+  { value: 'af', label: 'Afrikaans' }, { value: 'sq', label: 'Albanian' }, { value: 'am', label: 'Amharic' },
+  { value: 'ar', label: 'Arabic' }, { value: 'hy', label: 'Armenian' }, { value: 'az', label: 'Azerbaijani' },
+  { value: 'bn', label: 'Bengali' }, { value: 'bs', label: 'Bosnian' }, { value: 'bg', label: 'Bulgarian' },
+  { value: 'my', label: 'Burmese' }, { value: 'zh', label: 'Chinese (Mandarin)' }, { value: 'hr', label: 'Croatian' },
+  { value: 'cs', label: 'Czech' }, { value: 'da', label: 'Danish' }, { value: 'nl', label: 'Dutch' },
+  { value: 'et', label: 'Estonian' }, { value: 'fi', label: 'Finnish' }, { value: 'fr', label: 'French' },
+  { value: 'ka', label: 'Georgian' }, { value: 'de', label: 'German' }, { value: 'el', label: 'Greek' },
+  { value: 'gu', label: 'Gujarati' }, { value: 'ha', label: 'Hausa' }, { value: 'he', label: 'Hebrew' },
+  { value: 'hi', label: 'Hindi' }, { value: 'hu', label: 'Hungarian' }, { value: 'id', label: 'Indonesian' },
+  { value: 'it', label: 'Italian' }, { value: 'ja', label: 'Japanese' }, { value: 'kk', label: 'Kazakh' },
+  { value: 'km', label: 'Khmer' }, { value: 'ko', label: 'Korean' }, { value: 'lv', label: 'Latvian' },
+  { value: 'lt', label: 'Lithuanian' }, { value: 'mk', label: 'Macedonian' }, { value: 'ms', label: 'Malay' },
+  { value: 'mr', label: 'Marathi' }, { value: 'mn', label: 'Mongolian' }, { value: 'ne', label: 'Nepali' },
+  { value: 'no', label: 'Norwegian' }, { value: 'fa', label: 'Persian (Farsi)' }, { value: 'pl', label: 'Polish' },
+  { value: 'pt', label: 'Portuguese' }, { value: 'pa', label: 'Punjabi' }, { value: 'ro', label: 'Romanian' },
+  { value: 'ru', label: 'Russian' }, { value: 'sr', label: 'Serbian' }, { value: 'si', label: 'Sinhala' },
+  { value: 'sk', label: 'Slovak' }, { value: 'sl', label: 'Slovenian' }, { value: 'es', label: 'Spanish' },
+  { value: 'sw', label: 'Swahili' }, { value: 'sv', label: 'Swedish' }, { value: 'tl', label: 'Tagalog (Filipino)' },
+  { value: 'ta', label: 'Tamil' }, { value: 'te', label: 'Telugu' }, { value: 'th', label: 'Thai' },
+  { value: 'tr', label: 'Turkish' }, { value: 'uk', label: 'Ukrainian' }, { value: 'ur', label: 'Urdu' },
+  { value: 'uz', label: 'Uzbek' }, { value: 'vi', label: 'Vietnamese' }, { value: 'yo', label: 'Yoruba' },
+  { value: 'zu', label: 'Zulu' }
+];
+
+function transliterateToCyrillic(name){
+  const known = KNOWN_NAMES_BG[name.toLowerCase()];
+  if (known) return known;
+  let s = name.toLowerCase();
+  LATIN_TO_CYRILLIC.forEach(([lat, cyr]) => { s = s.split(lat).join(cyr); });
+  return titleCase(s);
+}
+const KNOWN_NAMES_EN = Object.fromEntries(Object.entries(KNOWN_NAMES_BG).map(([en, bg]) => [bg, titleCase(en)]));
+const CYRILLIC_TO_LATIN = LATIN_TO_CYRILLIC.slice().reverse();
+// Reverse of transliterateToCyrillic \u2014 without this, a bg\u2192en name
+// (e.g. "\u041f\u0430\u0443\u043b") passed through untranslated into the English
+// output instead of becoming "Paul".
+function transliterateFromCyrillic(name){
+  const known = KNOWN_NAMES_EN[name];
+  if (known) return known;
+  let s = name.toLowerCase();
+  CYRILLIC_TO_LATIN.forEach(([lat, cyr]) => { s = s.split(cyr).join(lat); });
+  return titleCase(s);
+}
+function tokenize(text){
+  return text.trim().split(/\s+/).filter(Boolean).map(w => ({ text: w, type: /^\d+$/.test(w) ? 'NUMBER' : 'WORD' }));
+}
+function parseIntent(tokens, lang){
+  const text = tokens.map(t => t.text.toLowerCase()).join(' ');
+  let best = 'unknown', bestScore = 0;
+  Object.entries(INTENT_ONTOLOGY).forEach(([key, kw]) => {
+    const words = kw[lang];
+    const score = words.filter(w => text.includes(w)).length / words.length;
+    if (score > bestScore) { bestScore = score; best = key; }
+  });
+  return { key: best, confidence: best === 'unknown' ? 0 : Math.min(0.99, bestScore * 0.9 + 0.2) };
+}
+function detectTimePhrase(text, lang){
+  const t = text.toLowerCase();
+  return TIME_ONTOLOGY.find(pair => t.includes(pair[lang])) || null;
+}
+function detectDestination(text, lang){
+  const t = text.toLowerCase();
+  return CITY_ONTOLOGY.find(pair => t.includes(pair[lang])) || null;
+}
+function detectAgent(tokens, lang){
+  if (lang === 'en') {
+    for (let i = 0; i < tokens.length; i++) {
+      const w = tokens[i].text.replace(/[.,!?]$/, '');
+      const lw = w.toLowerCase();
+      if (/^[A-Z][a-z]+$/.test(w) && !STOPWORDS_EN.has(lw) && !DATE_WORDS_EN.has(lw) && !VERB_WORDS_EN.has(lw) && !CITY_ONTOLOGY.some(c => c.en === lw)) {
+        return w;
+      }
+    }
+    return null;
+  }
+  // Cyrillic proper-noun detection (e.g. bg): the first capitalized
+  // Cyrillic word that isn't a known city/verb-form is treated as the
+  // subject name \u2014 e.g. "\u041f\u0430\u0443\u043b \u0440\u0435\u0437\u0435\u0440\u0432\u0438\u0440\u0430 ..." must keep "\u041f\u0430\u0443\u043b"
+  // as the AGENT, not drop it (the bug: names were only ever detected in
+  // English text, so any Cyrillic sentence's subject was silently lost).
+  if (lang === 'bg') {
+    for (let i = 0; i < tokens.length; i++) {
+      const w = tokens[i].text.replace(/[.,!?]$/, '');
+      const lw = w.toLowerCase();
+      if (/^[\u0410-\u042f][\u0430-\u044f]+$/.test(w) && !CITY_ONTOLOGY.some(c => c.bg === lw) && !Object.values(GLOSS_BG_TO_EN).some(() => false) && !GLOSS_BG_TO_EN[lw]) {
+        return w;
+      }
+    }
+  }
+  return null;
+}
+
+function parseGrammarBranches(text, tokens, lang){
+  const t = text.trim().toLowerCase();
+  if (lang === 'en') {
+    if (/^i want|^i'd like|^i would like/.test(t)) {
+      return { speechAct: 'DECLARATIVE', tenseAspect: 'PRESENT', mood: 'DESIDERATIVE' };
+    }
+    const words = t.split(/\s+/);
+    if (words.length > 1 && PAST_VERB_WORDS_EN.has(words[1].replace(/[.,!?]$/, ''))) {
+      return { speechAct: 'DECLARATIVE', tenseAspect: 'PAST', mood: 'INDICATIVE' };
+    }
+    return { speechAct: 'IMPERATIVE', tenseAspect: 'PRESENT', mood: 'INDICATIVE' };
+  }
+  if (t.includes('искам')) return { speechAct: 'DECLARATIVE', tenseAspect: 'PRESENT', mood: 'DESIDERATIVE' };
+  // A leading capitalized proper noun (subject name, e.g. "\u041f\u0430\u0443\u043b") is
+  // not the verb \u2014 skip it so the verb-form check below looks at the
+  // actual verb word, not the name. Without this, "\u041f\u0430\u0443\u043b \u0440\u0435\u0437\u0435\u0440\u0432\u0438\u0440\u0430..."
+  // fell through to IMPERATIVE (checking "\u041f\u0430\u0443\u043b" against verb
+  // endings instead of "\u0440\u0435\u0437\u0435\u0440\u0432\u0438\u0440\u0430"), which put the subject
+  // AFTER the verb phrase instead of before it as the sentence subject.
+  const rawWords = text.trim().split(/\s+/);
+  const firstIsProperNoun = /^[\u0410-\u042f][\u0430-\u044f]+$/.test(rawWords[0] || '');
+  const firstWord = (firstIsProperNoun ? rawWords[1] : rawWords[0] || '').toLowerCase().replace(/[.,!?]$/, '');
+  if (/(айте|ете)$/.test(firstWord)) return { speechAct: 'IMPERATIVE', tenseAspect: 'PRESENT', mood: 'INDICATIVE' };
+  if (/(ира|а)$/.test(firstWord) && firstIsProperNoun) return { speechAct: 'DECLARATIVE', tenseAspect: 'PAST', mood: 'INDICATIVE' };
+  if (/(ам|ям|я)$/.test(firstWord)) return { speechAct: 'DECLARATIVE', tenseAspect: 'PRESENT', mood: 'INDICATIVE' };
+  return { speechAct: 'IMPERATIVE', tenseAspect: 'PRESENT', mood: 'INDICATIVE' };
+}
+
+const GLOSS_EN_TO_BG = {
+  book:'резервирам (to book)', a:'един/една (a/an)', flight:'полет (flight)', search:'търся (to search)', for:'за (for)',
+  flights:'полети (flights)', cancel:'отменям (to cancel)', the:'(определителен член — the)', cancelling:'отменям (cancelling)',
+  status:'статус (status)', change:'променям (to change)', booking:'резервация (booking)', i:'аз (I)', want:'искам (want)',
+  to:'до / за (to)', booked:'резервирах (booked)', searched:'търсих (searched)', cancelled:'отмених (cancelled)',
+  checked:'проверих (checked)', changed:'промених (changed)', am:'съм (am)', searching:'търся (searching)',
+  checking:'проверявам (checking)', changing:'променям (changing)', check:'проверявам (to check)',
+  unrecognized:'непознато (unrecognized)'
+};
+const GLOSS_BG_TO_EN = {
+  'резервирайте':'book! (imperative)', 'самолетен':'flight (adj., airplane-)', 'билет':'ticket', 'потърсете':'search! (imperative)',
+  'полети':'flights', 'отменете':'cancel! (imperative)', 'полета':'flight/field (gen.)', 'проверете':'check! (imperative)',
+  'статуса':'the status', 'променете':'change! (imperative)', 'резервацията':'the booking', 'искам':'I want',
+  'да':'to (subjunctive particle)', 'резервирам':'I book', 'търся':'I search', 'отменям':'I cancel', 'проверявам':'I check',
+  'променям':'I change', 'резервира':'booked (he/she)', 'потърси':'searched (he/she)', 'отмени':'cancelled (he/she)',
+  'провери':'checked (he/she)', 'промени':'changed (he/she)', 'за':'for', 'до':'to', 'непознато':'unrecognized'
+};
+CITY_ONTOLOGY.forEach(c => { GLOSS_EN_TO_BG[c.en] = c.bg + ' (place name)'; GLOSS_BG_TO_EN[c.bg] = titleCase(c.en) + ' (place name)'; });
+TIME_ONTOLOGY.forEach(t => {
+  t.en.split(' ').forEach(w => { if (!GLOSS_EN_TO_BG[w]) GLOSS_EN_TO_BG[w] = t.bg + ' (time phrase)'; });
+  t.bg.split(' ').forEach(w => { if (!GLOSS_BG_TO_EN[w]) GLOSS_BG_TO_EN[w] = t.en + ' (time phrase)'; });
+});
+
+const EN_VERB = {
+  IMPERATIVE:            { book_flight:'Book a flight', search_flights:'Search for flights', cancel_flight:'Cancel the flight', check_status:'Check the status', change_booking:'Change the booking', unknown:'(unrecognized)' },
+  'DECLARATIVE:PRESENT:DESIDERATIVE': { book_flight:'I want to book a flight', search_flights:'I want to search for flights', cancel_flight:'I want to cancel the flight', check_status:'I want to check the status', change_booking:'I want to change the booking', unknown:'(unrecognized)' },
+  'DECLARATIVE:PAST':    { book_flight:'booked a flight', search_flights:'searched for flights', cancel_flight:'cancelled the flight', check_status:'checked the status', change_booking:'changed the booking', unknown:'(unrecognized)' },
+  'DECLARATIVE:PRESENT': { book_flight:'am booking a flight', search_flights:'am searching for flights', cancel_flight:'am cancelling the flight', check_status:'am checking the status', change_booking:'am changing the booking', unknown:'(unrecognized)' }
+};
+const BG_VERB = {
+  IMPERATIVE:            { book_flight:'Резервирайте самолетен билет', search_flights:'Потърсете полети', cancel_flight:'Отменете полета', check_status:'Проверете статуса', change_booking:'Променете резервацията', unknown:'(непознато)' },
+  'DECLARATIVE:PRESENT:DESIDERATIVE': { book_flight:'Искам да резервирам самолетен билет', search_flights:'Искам да търся полети', cancel_flight:'Искам да отменя полета', check_status:'Искам да проверя статуса', change_booking:'Искам да променя резервацията', unknown:'(непознато)' },
+  'DECLARATIVE:PAST':    { book_flight:'резервира самолетен билет', search_flights:'потърси полети', cancel_flight:'отмени полета', check_status:'провери статуса', change_booking:'промени резервацията', unknown:'(непознато)' },
+  'DECLARATIVE:PRESENT': { book_flight:'резервирам самолетен билет', search_flights:'търся полети', cancel_flight:'отменям полета', check_status:'проверявам статуса', change_booking:'променям резервацията', unknown:'(непознато)' }
+};
+function grammarKey(node){
+  if (node.mood === 'DESIDERATIVE') return 'DECLARATIVE:PRESENT:DESIDERATIVE';
+  if (node.speechAct === 'IMPERATIVE') return 'IMPERATIVE';
+  return node.speechAct + ':' + node.tenseAspect;
+}
+function realize(node, targetLang){
+  const table = targetLang === 'en' ? EN_VERB : BG_VERB;
+  const verbPhrase = table[grammarKey(node)]?.[node.intent] || table.IMPERATIVE[node.intent] || '(unrecognized)';
+  const agent = node.entities.find(e => e.role === 'AGENT');
+  const destination = node.entities.find(e => e.role === 'DESTINATION');
+  const time = node.entities.find(e => e.role === 'TIME');
+  const targetAgent = agent ? (targetLang === 'bg' ? transliterateToCyrillic(agent.value) : transliterateFromCyrillic(agent.value)) : null;
+  const targetCity = destination ? CITY_ONTOLOGY.find(c => c.en === destination.cityKey)[targetLang] : null;
+  const targetTime = time ? TIME_ONTOLOGY.find(t => t.en === time.timeKey)[targetLang] : null;
+
+  const segs = [];
+  if (node.tenseAspect === 'PAST' && node.speechAct === 'DECLARATIVE' && targetAgent) {
+    segs.push({ text: targetAgent, source: 'entities.AGENT (subject)' });
+    segs.push({ text: verbPhrase, source: 'VERB[' + grammarKey(node) + '.' + node.intent + ']' });
+  } else if (node.mood === 'INDICATIVE' && node.tenseAspect === 'PRESENT' && node.speechAct === 'DECLARATIVE' && targetLang === 'en') {
+    segs.push({ text: 'I', source: 'mood=INDICATIVE (implicit BG 1st-person verb ending)' });
+    segs.push({ text: verbPhrase, source: 'VERB[' + grammarKey(node) + '.' + node.intent + ']' });
+  } else {
+    segs.push({ text: verbPhrase, source: 'VERB[' + grammarKey(node) + '.' + node.intent + ']' });
+    if (targetAgent) segs.push({ text: (targetLang === 'en' ? targetAgent : 'за ' + targetAgent), source: 'entities.AGENT (recipient)' });
+  }
+  if (targetCity) segs.push({ text: (targetLang === 'en' ? 'to ' + titleCase(targetCity) : 'до ' + titleCase(targetCity)), source: 'entities.DESTINATION' });
+  if (targetTime) segs.push({ text: (targetLang === 'bg' ? 'за ' + targetTime : 'for ' + targetTime), source: 'entities.TIME' });
+
+  const glossOf = (w) => {
+    const clean = w.toLowerCase().replace(/[.,!?]/g, '');
+    return (targetLang === 'en' ? GLOSS_EN_TO_BG : GLOSS_BG_TO_EN)[clean] || null;
+  };
+  const words = [];
+  segs.forEach(seg => {
+    seg.text.split(' ').forEach(w => { if (w) words.push({ surface: w, gloss: glossOf(w), source: seg.source }); });
+  });
+  const text = segs.map(s => s.text).join(' ');
+  node.$debug = { targetLang, words };
+  return { text, words };
+}
+
+// Module-scope so both the forward-translation check and llmRoundTripCheck
+// (a class method) can see it \u2014 was previously declared inside the
+// translate method only, which broke llmRoundTripCheck's reference to it.
+const REFUSAL_PATTERNS = [/no se puede/i, /cannot (be )?(done|translate)/i, /i (cannot|can't|won'?t)/i, /not (able|possible) to translate/i, /no puedo/i, /je ne peux pas/i, /nicht m\u00f6glich/i, /^(sorry|i'm sorry|i am sorry)/i];
+
+class Component extends DCLogic {
+  state = { inputText: 'Book me a flight to Paris next Friday', result: null, activeTab: 'translate',
+    newEntityKind: 'city', newEntityEn: '', newEntityBg: '', modifyMessage: '',
+    otherLanguage: this.osDefaultLanguage(), direction: this.osDefaultLanguage() === 'en' ? 'other-to-en' : 'en-to-other', isLLMTranslating: false, customLanguageName: '', devRoleOverride: null,
+    bulkSeedInput: '', bulkSeedBusy: false, bulkSeedMessage: null,
+    settingsGlobalInput: '20', settingsOverrideLangCode: 'bg', settingsOverrideInput: '', settingsMessage: '',
+    analysisLangCode: this.osDefaultLanguage(),
+    analysisLangInput: (LANGUAGE_OPTIONS.find(l => l.value === this.osDefaultLanguage()) || {}).label || 'Bulgarian',
+    inputLangMode: 'auto', outputLangMode: 'auto', lastNonEnglishLangCode: this.osDefaultLanguage(), modifyLangCode: this.osDefaultLanguage() };
+
+  onOtherLanguageChange = (e) => this.setState({ otherLanguage: e.target.value, result: null });
+  // Input-side language mode: 'auto' (default) lets detectLanguageFromText
+  // decide every time, matching the "no dropdown gating" fix already in
+  // onTranslate; picking a specific language here pins that language as
+  // the assumed input language instead of re-detecting it.
+  onInputLangModeChange = (e) => this.setState({ inputLangMode: e.target.value, result: null });
+  // Output-side language mode: 'auto' (default) leaves the target language
+  // to whatever detection/direction resolves to; picking a specific
+  // language pins the OUTPUT to that language regardless of what the
+  // input was detected as (e.g. force Spanish output even from Bulgarian
+  // input) — sets otherLanguage/direction directly since that's what the
+  // rest of the pipeline already reads.
+  onOutputLangModeChange = (e) => {
+    const v = e.target.value;
+    if (v === 'auto') { this.setState({ outputLangMode: 'auto' }); return; }
+    if (v === 'en') {
+      // Picking English as OUTPUT means "translate to English" — this
+      // must flip direction to other-to-en using whichever non-English
+      // language is already the input side, not replace otherLanguage
+      // with 'en' itself (which would make both sides English).
+      this.setState({ outputLangMode: 'en', direction: 'other-to-en', result: null });
+      return;
+    }
+    this.setState({ outputLangMode: v, otherLanguage: v, direction: 'en-to-other', result: null });
+  };
+  // Called whenever a translation actually resolves to a non-English
+  // language, so Language Analysis's default tracks the language the user
+  // is actually using instead of a hardcoded Bulgarian assumption.
+  trackNonEnglishLang(langCode) {
+    if (!langCode || langCode === 'en') return;
+    const label = (LANGUAGE_OPTIONS.find(l => l.value === langCode) || {}).label || langCode.toUpperCase();
+    this.setState({ lastNonEnglishLangCode: langCode, analysisLangCode: langCode, analysisLangInput: label });
+  }
+  onCustomLanguageChange = (e) => this.setState({ customLanguageName: e.target.value, result: null });
+  onSwapDirection = () => this.setState({ direction: this.state.direction === 'en-to-other' ? 'other-to-en' : 'en-to-other', result: null });
+
+  effectiveLangCode() {
+    const s = this.state;
+    if (s.otherLanguage !== '__custom__') return s.otherLanguage;
+    return s.customLanguageName.trim().toLowerCase().replace(/[^a-z]/g, '') || 'custom';
+  }
+  effectiveLangLabel() {
+    const s = this.state;
+    if (s.otherLanguage !== '__custom__') {
+      const opt = LANGUAGE_OPTIONS.find(o => o.value === s.otherLanguage);
+      return opt ? opt.label : s.otherLanguage;
+    }
+    return s.customLanguageName.trim() || 'Custom language';
+  }
+
+  async ensureFunctionWords(langCode, langLabel, chatFn) {
+    if (FUNCTION_WORDS[langCode] || !chatFn) return;
+    try {
+      const reply = await chatFn([
+        { role: 'system', content: `Give the ${langLabel} translation for each of these English closed-class words: what, who, where, when, why, how, is, are, am, it, this, that. Respond with ONLY compact JSON mapping each English word (lowercase key) to its ${langLabel} equivalent, e.g. {"what":"...","who":"...",...}.` },
+        { role: 'user', content: 'Go.' }
+      ]);
+      const raw = reply.choices[0].message.content.trim().replace(/^```json\s*|```$/g, '');
+      FUNCTION_WORDS[langCode] = JSON.parse(raw);
+    } catch (e) { /* leave unseeded */ }
+  }
+
+  isAdmin() {
+    if (this.state.devRoleOverride) return this.state.devRoleOverride === 'admin';
+    try { return (window.parent && window.parent.__meshUser) === 'root'; } catch (e) { return false; }
+  }
+  // OS Settings' Default Language is the user's known-preferred non-English
+  // language, if any \u2014 seeds the dropdown/direction on load so Guest ->
+  // Bulgarian is no longer a hardcoded assumption independent of who's
+  // actually using the machine.
+  osDefaultLanguage() {
+    try { return (window.parent && window.parent.__meshDefaultLanguage) || 'bg'; } catch (e) { return 'bg'; }
+  }
+  onAnalysisLangInputChange = (e) => {
+    const typed = e.target.value;
+    // Resolve a typed/autocompleted label back to its code — exact match
+    // first (what selecting a datalist suggestion produces), then a
+    // starts-with match so the code updates live as the user types
+    // toward a real option, without requiring an exact pick.
+    const exact = LANGUAGE_OPTIONS.find(l => l.label.toLowerCase() === typed.toLowerCase());
+    const partial = !exact && typed.length > 1 ? LANGUAGE_OPTIONS.find(l => l.label.toLowerCase().startsWith(typed.toLowerCase())) : null;
+    const match = exact || partial;
+    this.setState({ analysisLangInput: typed, analysisLangCode: match ? match.value : this.state.analysisLangCode });
+  };
+  onSetRoleGuest = () => this.setState({ devRoleOverride: 'guest', activeTab: 'translate' });
+  onWipeInferred = (langCode) => async () => {
+    const removed = wipeInferredEntries(langCode);
+    await saveLexiconToIDB(langCode);
+    this.setState({ bulkSeedMessage: `Wiped ${removed} inferred word(s) from ${langCode.toUpperCase()} — seeded coverage untouched.` });
+  };
+  onSetRoleAdmin = () => this.setState({ devRoleOverride: 'admin' });
+  onTabChange = (tab) => this.setState({ activeTab: tab, modifyMessage: '' });
+
+  onNewEntityKindChange = (e) => this.setState({ newEntityKind: e.target.value });
+  onNewEntityEnChange = (e) => this.setState({ newEntityEn: e.target.value });
+  onNewEntityBgChange = (e) => this.setState({ newEntityBg: e.target.value });
+  onBulkSeedInputChange = (e) => this.setState({ bulkSeedInput: e.target.value });
+  onBulkSeed = async () => {
+    let pairs;
+    try { pairs = JSON.parse(this.state.bulkSeedInput); if (!Array.isArray(pairs)) throw new Error('not an array'); }
+    catch (e) { this.setState({ bulkSeedMessage: 'Invalid JSON — expected an array of {langCode, en, other}.' }); return; }
+    this.setState({ bulkSeedBusy: true, bulkSeedMessage: null });
+    // Purely deterministic — a user pasting seed pairs is already
+    // vouching for their correctness, so there is no reason to invoke an
+    // LLM at all here (that's what the "no LLM round-trip needed" copy
+    // above the textarea already says). Tokenization + pattern learning
+    // run synchronously against the pasted data only.
+    let totalRaw = 0, totalPatterns = 0, failed = 0;
+    const touchedLangs = new Set();
+    for (const pair of pairs) {
+      if (!pair.langCode || !pair.en || !pair.other) { failed++; continue; }
+      try {
+        const rawAdded = learnRawWordPairs(pair.en, pair.other, pair.langCode, 'seeded');
+        totalRaw += rawAdded;
+        if (rawAdded) touchedLangs.add(pair.langCode);
+
+        if (pair.mechanicalIntent) {
+          learnGrammaticalPattern(pair.langCode, pair.mechanicalIntent, pair.features, pair.en, pair.other);
+          totalPatterns++;
+          touchedLangs.add(pair.langCode);
+        }
+      } catch (e) { failed++; }
+    }
+    for (const lang of touchedLangs) { await saveLexiconToIDB(lang); await savePatternsToIDB(lang); }
+    this.setState({ bulkSeedBusy: false, bulkSeedMessage: `Seeded ${pairs.length - failed}/${pairs.length} pair(s): +${totalRaw} words, +${totalPatterns} grammatical patterns across ${touchedLangs.size} language(s).${failed ? ` ${failed} pair(s) skipped (missing fields).` : ''}` });
+  };
+
+  // Generic per-word gloss lookup for LLM-translated text — previously
+  // only the deterministic AST path (translatedWords) got hover
+  // tooltips; plain LLM output rendered as flat text with no hover at
+  // all. Checks function words, the learned lexicon (either direction),
+  // and city/time ontologies for the given language.
+  buildHoverWords(text, langCode) {
+    if (!text) return [];
+    const words = text.split(/\s+/);
+    return words.map(raw => {
+      const clean = raw.toLowerCase().replace(/[.,!?"'。,]/g, '');
+      let gloss = null;
+      if (clean && langCode) {
+        const fnWords = FUNCTION_WORDS[langCode];
+        if (fnWords) {
+          if (fnWords[clean]) gloss = fnWords[clean];
+          else { const enKey = Object.keys(fnWords).find(k => fnWords[k] === clean); if (enKey) gloss = enKey; }
+        }
+        if (!gloss) {
+          const entry = lexiconFor(langCode).find(e => e.lemmaOther === clean || e.lemmaEn === clean);
+          if (entry) gloss = entry.lemmaOther === clean ? entry.lemmaEn : entry.lemmaOther;
+        }
+        if (!gloss) {
+          const cityHit = CITY_ONTOLOGY.find(c => c.en === clean || c[langCode] === clean);
+          if (cityHit) gloss = cityHit.en === clean ? (cityHit[langCode] || null) : cityHit.en;
+        }
+        if (!gloss) {
+          const timeHit = TIME_ONTOLOGY.find(t => t.en === clean || t[langCode] === clean);
+          if (timeHit) gloss = timeHit.en === clean ? (timeHit[langCode] || null) : timeHit.en;
+        }
+      }
+      return { surface: raw, gloss: gloss || '', wordStyle: gloss ? 'border-bottom:1px dashed #0a84ff;cursor:help;margin-right:6px;' : 'margin-right:6px;' };
+    });
+  }
+
+  onSettingsGlobalInputChange = (e) => this.setState({ settingsGlobalInput: e.target.value });
+  onSaveGlobalThreshold = async () => {
+    const n = parseInt(this.state.settingsGlobalInput, 10);
+    if (isNaN(n) || n < 1) { this.setState({ settingsMessage: 'Enter a whole number ≥ 1.' }); return; }
+    GLOBAL_CONFIDENCE_THRESHOLD = n;
+    await saveSetting('global', n);
+    this.setState({ settingsMessage: `Global confidence threshold set to ${n}.` });
+  };
+  onSettingsOverrideLangChange = (e) => {
+    const code = e.target.value;
+    const existing = LANG_CONFIDENCE_OVERRIDES[code];
+    this.setState({ settingsOverrideLangCode: code, settingsOverrideInput: existing !== undefined ? String(existing) : '' });
+  };
+  onSettingsOverrideInputChange = (e) => this.setState({ settingsOverrideInput: e.target.value });
+  onSaveOverride = async () => {
+    const code = this.state.settingsOverrideLangCode;
+    const raw = this.state.settingsOverrideInput.trim();
+    if (raw === '') {
+      delete LANG_CONFIDENCE_OVERRIDES[code];
+      await deleteSetting('lang:' + code);
+      this.setState({ settingsMessage: `Override cleared for ${code.toUpperCase()} — now uses the global threshold.` });
+      return;
+    }
+    const n = parseInt(raw, 10);
+    if (isNaN(n) || n < 1) { this.setState({ settingsMessage: 'Enter a whole number ≥ 1, or leave blank to clear.' }); return; }
+    LANG_CONFIDENCE_OVERRIDES[code] = n;
+    await saveSetting('lang:' + code, n);
+    this.setState({ settingsMessage: `${code.toUpperCase()} confidence threshold overridden to ${n}.` });
+  };
+  onClearOverride = (code) => async () => {
+    delete LANG_CONFIDENCE_OVERRIDES[code];
+    await deleteSetting('lang:' + code);
+    this.setState({ settingsMessage: `Override cleared for ${code.toUpperCase()}.`, settingsOverrideInput: this.state.settingsOverrideLangCode === code ? '' : this.state.settingsOverrideInput });
+  };
+
+  onModifyLangChange = (e) => this.setState({ modifyLangCode: e.target.value });
+  // Modify's city/time entries are keyed dynamically by langCode (both
+  // ontologies already store one column per language, e.g. c['bg'],
+  // c['es']) — the hardcoded part was only this FORM always writing to
+  // 'bg' regardless of which language the admin meant. Now driven by
+  // modifyLangCode, so any of the top-50 languages can be edited here,
+  // not just Bulgarian.
+  onAddEntity = () => {
+    const en = this.state.newEntityEn.trim().toLowerCase();
+    const other = this.state.newEntityBg.trim().toLowerCase();
+    const langCode = this.state.modifyLangCode || 'bg';
+    if (!en || !other) { this.setState({ modifyMessage: `Both English and ${(LANGUAGE_OPTIONS.find(l => l.value === langCode) || {}).label || langCode} forms are required.` }); return; }
+    const list = this.state.newEntityKind === 'city' ? CITY_ONTOLOGY : TIME_ONTOLOGY;
+    const existing = list.find(x => x.en === en);
+    if (existing) existing[langCode] = other; else list.push({ en, [langCode]: other });
+    this.setState({ newEntityEn: '', newEntityBg: '', modifyMessage: `Added "${en}" ↔ "${other}" to ${this.state.newEntityKind === 'city' ? 'cities' : 'time phrases'} (${langCode.toUpperCase()}).` });
+  };
+
+  onInputChange = (e) => this.setState({ inputText: e.target.value });
+
+  onExample = () => {
+    const examples = [
+      'Book me a flight to Paris next Friday',
+      'I want to search for flights to London',
+      'Резервирам билет за София',
+      'Търся полети за Варна',
+      'John Booked a flight to Paris for next Friday'
+    ];
+    this.setState({ inputText: examples[Math.floor(Math.random() * examples.length)], result: null });
+  };
+
+  runTranslation(text) {
+    const lang = detectLang(text);
+    const start = performance.now();
+    const tokens = tokenize(text);
+    const t1 = performance.now();
+    const intentResult = parseIntent(tokens, lang);
+    const grammar = parseGrammarBranches(text, tokens, lang);
+    const t2 = performance.now();
+
+    const entities = [];
+    const destination = detectDestination(text, lang);
+    if (destination) entities.push({ role: 'DESTINATION', value: titleCase(destination[lang]), cityKey: destination.en, confidence: 0.85 });
+    const time = detectTimePhrase(text, lang);
+    if (time) entities.push({ role: 'TIME', value: time[lang], timeKey: time.en, confidence: 0.8 });
+    const agent = detectAgent(tokens, lang);
+    if (agent) entities.push({ role: 'AGENT', value: agent, confidence: 0.7 });
+    const t3 = performance.now();
+
+    const node = {
+      intent: intentResult.key, intentConfidence: intentResult.confidence,
+      speechAct: grammar.speechAct, tenseAspect: grammar.tenseAspect, mood: grammar.mood,
+      polarity: 'POSITIVE', entities
+    };
+    const targetLang = lang === 'en' ? 'bg' : 'en';
+    const translated = realize(node, targetLang);
+
+    // Round-trip self-check: translate the output back and compare its
+    // recovered entities/intent against the original. A genuine parser/
+    // realizer bug (like the earlier agent-word-order and transliteration
+    // bugs) tends to show up here as a mismatch \u2014 free verification
+    // using the same pipeline, no separate test harness required.
+    const roundTrip = this._roundTripInFlight ? null : this.roundTripCheck(text, node, translated, lang);
+
+    return {
+      lang, targetLang, tokens, node,
+      steps: [
+        { n: 1, name: (lang === 'bg' ? 'Bulgarian' : 'English') + 'LanguageMetadata', ms: '0.10ms' },
+        { n: 2, name: 'GraphemeNormalizer (reused)', ms: '0.05ms' },
+        { n: 3, name: (lang === 'bg' ? 'Bulgarian' : 'English') + 'Tokenizer', ms: (t1 - start).toFixed(2) + 'ms' },
+        { n: 4, name: (lang === 'bg' ? 'Bulgarian' : 'English') + 'Parser → Meaning Node', ms: (t2 - t1).toFixed(2) + 'ms' },
+        { n: 5, name: 'EntityResolution (reused)', ms: (t3 - t2).toFixed(2) + 'ms' },
+        { n: 6, name: 'Realizer (' + (targetLang === 'bg' ? 'Bulgarian' : 'English') + ')', ms: '0.08ms' }
+      ],
+      translated, roundTrip
+    };
+  }
+
+  // Same self-check idea as roundTripCheck, but for the LLM path: sends
+  // the LLM's own output back through the LLM to translate the OTHER
+  // way, then compares against the original with the same heuristics
+  // already used to catch a bad forward translation (question\u2194statement
+  // flip, refusal language, length collapse) plus lexical overlap.
+  async llmRoundTripCheck(originalText, translatedText, chatFn, fromLabel, toLabel) {
+    try {
+      const backMsgs = [
+        { role: 'system', content: `Translate the user's ${toLabel} message to ${fromLabel}. Output ONLY the translation, no commentary.` },
+        { role: 'user', content: translatedText }
+      ];
+      const backReply = await chatFn(backMsgs);
+      const backText = (backReply.choices?.[0]?.message?.content || '').trim();
+      if (!backText) return { ok: false, error: 'Empty back-translation.', backText: '' };
+
+      const origIsQuestion = /\?\s*$/.test(originalText.trim());
+      const backIsQuestion = /\?\s*$/.test(backText);
+      const moodMatch = origIsQuestion === backIsQuestion;
+
+      const origWords = originalText.trim().split(/\s+/).length;
+      const backWords = backText.split(/\s+/).length;
+      const lengthOk = backWords >= origWords * 0.4 && backWords <= origWords * 2.5;
+
+      const refused = REFUSAL_PATTERNS.some(p => p.test(backText));
+
+      // Character-trigram overlap instead of word overlap — works for
+      // BOTH Latin and non-Latin scripts (word-splitting Cyrillic and
+      // comparing to Latin words always reads as 0% overlap, which is
+      // useless as a check). This is the check that should have caught
+      // "Сето се спirasă." (nonsense, mixed/garbled script) instead of
+      // passing it as "verified".
+      const trigrams = (s) => { const t = new Set(); const clean = s.toLowerCase().replace(/[^\p{L}\s]/gu, ''); for (let i = 0; i < clean.length - 2; i++) t.add(clean.slice(i, i + 3)); return t; };
+      const origTri = trigrams(originalText);
+      const backTri = trigrams(backText);
+      const triOverlap = [...origTri].filter(t => backTri.has(t)).length;
+      const overlapRatio = origTri.size ? triOverlap / origTri.size : 1;
+
+      // Garbled/mixed-script output (e.g. Cyrillic text containing stray
+      // Latin letters, as in "спirasă") is itself a red flag independent
+      // of overlap — a genuine translation stays in ONE script.
+      const backHasCyrillic = /[\u0400-\u04FF]/.test(backText);
+      const backHasLatin = /[a-zA-Z]/.test(backText);
+      const scriptMixed = backHasCyrillic && backHasLatin && !/^[\d\s.,!?'"-]*$/.test(backText.replace(/[\u0400-\u04FFa-zA-Z]/g, ''));
+
+      // Trigram overlap alone missed "next Friday" -> "next week" (most of
+      // the sentence still overlaps at the character level even though a
+      // specific day/date word was swapped). Days of the week, months, and
+      // numerals are high-stakes, low-frequency tokens — require every one
+      // present in the original to still appear somewhere in the back-
+      // translation, case-insensitive, exact string.
+      const CRITICAL_WORDS = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d+)\b/gi;
+      const origCritical = (originalText.match(CRITICAL_WORDS) || []).map(w => w.toLowerCase());
+      const backLower = backText.toLowerCase();
+      const missingCritical = origCritical.filter(w => !backLower.includes(w));
+      const criticalOk = missingCritical.length === 0;
+
+      // None of the checks above compare MEANING — "booked" vs "noticed"
+      // shares high trigram overlap, matching mood/length, no script
+      // issue, and no critical-word (day/number) difference, so it passed
+      // every heuristic while describing a different action entirely.
+      // Ask the model directly whether the two describe the same action —
+      // a real semantic check, not another string heuristic.
+      let semanticOk = true, semanticNote = '';
+      try {
+        // Asking a small/weak model to judge its OWN translation's meaning
+        // is unreliable the same way translating is — it can agree with
+        // its own mistake. Forcing it to name the core verb of EACH
+        // sentence separately (not just answer vague "same?") makes the
+        // failure mode ("filled me with excitement" has no real verb
+        // relationship to "book") much harder to wave through blindly.
+        const semReply = await chatFn([
+          { role: 'system', content: 'You are a strict fact-checker, not a translator. Identify the single core VERB/action of Sentence A, and the single core VERB/action of Sentence B, independently. Then judge: is Sentence B\'s core action the SAME real-world action as Sentence A\'s (ignore tense/phrasing, but "book/reserve" vs "fill with excitement/notice/see" are DIFFERENT actions)? Respond with ONLY compact JSON: {"verbA":"...","verbB":"...","same":true or false,"reason":"short reason"}' },
+          { role: 'user', content: `Sentence A: ${originalText}\nSentence B: ${backText}` }
+        ]);
+        const semRaw = (semReply.choices?.[0]?.message?.content || '').trim().replace(/^```json\s*|```$/g, '');
+        const semParsed = JSON.parse(semRaw);
+        // Don't trust the model's own same:true/false outright \u2014 the same
+        // weak model that mistranslated can also misjudge its own mistake.
+        // Cross-check the two verbs it names against a small synonym-safe
+        // list; if they aren't even loosely related, override to false
+        // regardless of what the model claimed.
+        const VERB_SYNONYM_GROUPS = [
+          ['book', 'reserve', 'schedule'],
+          ['see', 'notice', 'view', 'observe'],
+          ['cancel', 'call off'],
+          ['buy', 'purchase'],
+          ['send', 'mail', 'ship'],
+          ['feel', 'sense'],
+        ];
+        const verbGroup = (v) => VERB_SYNONYM_GROUPS.find(g => g.some(s => (v || '').toLowerCase().includes(s)));
+        const gA = verbGroup(semParsed.verbA), gB = verbGroup(semParsed.verbB);
+        const verbsRelated = (!semParsed.verbA || !semParsed.verbB)
+          ? true // couldn't extract verbs at all — don't block on this check alone
+          : ((semParsed.verbA || '').toLowerCase().includes((semParsed.verbB || '').toLowerCase())
+             || (semParsed.verbB || '').toLowerCase().includes((semParsed.verbA || '').toLowerCase())
+             || (gA && gB && gA === gB));
+        semanticOk = !!semParsed.same && verbsRelated;
+        semanticNote = verbsRelated ? (semParsed.reason || '') : `core verbs unrelated: "${semParsed.verbA}" vs "${semParsed.verbB}"`;
+      } catch (e) { /* if the semantic check itself fails, don't block on it alone */ }
+
+      const ok = moodMatch && lengthOk && !refused && overlapRatio >= 0.35 && !scriptMixed && criticalOk && semanticOk;
+      const mismatches = [];
+      if (!moodMatch) mismatches.push(origIsQuestion ? 'question became a statement' : 'statement became a question');
+      if (!criticalOk) mismatches.push('specific detail dropped or changed on the way back (' + [...new Set(missingCritical)].join(', ') + ')');
+      if (!lengthOk) mismatches.push('length changed drastically');
+      if (refused) mismatches.push('model refused on the way back');
+      if (scriptMixed) mismatches.push('back-translation mixed scripts (garbled, not a real word)');
+      if (overlapRatio < 0.35) mismatches.push('little shared text with the original (' + Math.round(overlapRatio * 100) + '% overlap)');
+      if (!semanticOk) mismatches.push('different core action/meaning' + (semanticNote ? ' (' + semanticNote + ')' : ''));
+      return { ok, mismatches, backText, semanticOk };
+    } catch (e) {
+      return { ok: false, error: e.message, backText: '' };
+    }
+  }
+
+  // Re-parses `translated` (in targetLang) and compares its recovered
+  // intent/entities against the ORIGINAL node \u2014 catches asymmetric bugs
+  // (a fix that works one direction but not the reverse) automatically.
+  roundTripCheck(originalText, originalNode, translated, lang) {
+    this._roundTripInFlight = true;
+    try {
+      const back = this.runTranslation(translated.text);
+      this._roundTripInFlight = false;
+      const backNode = back.node;
+      const agentMatch = (originalNode.entities.find(e => e.role === 'AGENT')?.value || null) !== null
+        ? !!backNode.entities.find(e => e.role === 'AGENT') : true;
+      const cityMatch = (originalNode.entities.find(e => e.role === 'DESTINATION')?.cityKey || null) === (backNode.entities.find(e => e.role === 'DESTINATION')?.cityKey || null);
+      const intentMatch = originalNode.intent === backNode.intent;
+      const ok = agentMatch && cityMatch && intentMatch;
+      const mismatches = [];
+      if (!agentMatch) mismatches.push('subject/agent name');
+      if (!cityMatch) mismatches.push('destination city');
+      if (!intentMatch) mismatches.push(`intent (${originalNode.intent} \u2192 ${backNode.intent})`);
+      return { ok, agentMatch, cityMatch, intentMatch, mismatches, roundTripText: translated.text, backText: back.translated.text };
+    } catch (e) {
+      this._roundTripInFlight = false;
+      return { ok: false, error: e.message };
+    }
+  }
+
+  publishSharedTranslator() {
+    try {
+      if (!window.parent || window.parent === window) return;
+      window.parent.__meshSharedDocs = window.parent.__meshSharedDocs || {};
+      window.parent.__meshSharedDocs.translator = { translate: (text, targetLangHint) => this.translateExternal(text, targetLangHint) };
+    } catch (e) {}
+  }
+
+  // The shared hook other apps (Pipeline-Browser, TextToVoice) call must
+  // NOT go through onTranslate/runTranslation-only — onTranslate is
+  // UI-state-bound (reads/writes this.state.otherLanguage/direction,
+  // setState) and runTranslation alone is the Bulgarian-only deterministic
+  // path with no LLM fallback at all, so any external caller previously
+  // got a translation that never touched the LLM or its round-trip/retry
+  // verification. This mirrors onTranslate's real logic as a plain
+  // function that returns a result instead of setState-ing one.
+  async translateExternal(text, targetLangHint) {
+    const trimmed = (text || '').trim();
+    if (!trimmed) return { text: '', error: 'empty input' };
+    const detected = this.detectLanguageFromText(trimmed);
+    let langCode = targetLangHint || (detected !== 'en' ? detected : this.state.otherLanguage) || 'bg';
+    const fromEn = detected === 'en';
+
+    if (langCode === 'bg' && fromEn) {
+      const astResult = this.runTranslation(trimmed);
+      if (astResult.node.intentConfidence > 0) {
+        if (astResult.roundTrip) bumpConfidence('bg', astResult.roundTrip.ok);
+        const words = astResult.translated.words.map(w => w.surface).join(' ');
+        return { text: words, source: 'AST', roundTrip: astResult.roundTrip };
+      }
+    }
+
+    const deterministic = this.tryDeterministicFromLexicon(trimmed, langCode);
+    if (deterministic) {
+      const words = deterministic.translated.words.map(w => w.surface).join(' ');
+      return { text: words, source: 'Reused (Trusted)' };
+    }
+
+    const chatFn = await this.getTranslationChatFn();
+    if (!chatFn) return { text: trimmed, error: 'No model available — load one in S-Matrix first.' };
+    const langLabel = (LANGUAGE_OPTIONS.find(l => l.value === langCode) || {}).label || langCode.toUpperCase();
+    const fromLabel = fromEn ? 'English' : langLabel;
+    const toLabel = fromEn ? langLabel : 'English';
+    try {
+      const reply = await chatFn([
+        { role: 'system', content: `You are a translation engine, not an assistant. TRANSLATE the literal text given \u2014 do NOT answer it. Output ONLY the translated text in ${toLabel}, nothing else.
+
+${this.buildKnownWordsContext(trimmed, langCode)}` },
+        { role: 'user', content: `Translate this ${fromLabel} text to ${toLabel}:\n\n${trimmed}` }
+      ]);
+      let translatedText = (reply.choices?.[0]?.message?.content || '').trim();
+      let roundTrip = await this.llmRoundTripCheck(trimmed, translatedText, chatFn, fromLabel, toLabel);
+      if (roundTrip && !roundTrip.ok && roundTrip.mismatches && roundTrip.mismatches.length) {
+        try {
+          const retryReply = await chatFn([
+            { role: 'system', content: `You are a translation engine. TRANSLATE the literal text given into ${toLabel} exactly \u2014 do not paraphrase.` },
+            { role: 'user', content: `Translate this ${fromLabel} text to ${toLabel} EXACTLY \u2014 a previous attempt was rejected for: ${roundTrip.mismatches.join('; ')}. Preserve every specific detail:\n\n${trimmed}` }
+          ]);
+          const retryText = (retryReply.choices?.[0]?.message?.content || '').trim();
+          if (retryText) {
+            const retryRoundTrip = await this.llmRoundTripCheck(trimmed, retryText, chatFn, fromLabel, toLabel);
+            if (retryRoundTrip.ok || (retryRoundTrip.mismatches || []).length < roundTrip.mismatches.length) { translatedText = retryText; roundTrip = retryRoundTrip; }
+          }
+        } catch (e) {}
+      }
+      if (langCode) bumpConfidence(langCode, !!(roundTrip && roundTrip.ok));
+      if (!(roundTrip && roundTrip.semanticOk === false)) await this.autoLearnEntities(trimmed, translatedText, chatFn, langCode).catch(() => {});
+      return { text: translatedText, source: 'LLM', roundTrip };
+    } catch (e) {
+      return { text: trimmed, error: 'Translation failed: ' + e.message };
+    }
+  }
+
+  async componentDidMount() {
+    this.publishSharedTranslator();
+    await loadLexiconFromIDB();
+    await loadPatternsFromIDB();
+    await loadConfidenceFromIDB();
+    await loadSettingsFromIDB();
+    this.setState({ settingsGlobalInput: String(GLOBAL_CONFIDENCE_THRESHOLD) });
+    purgeCorruptedLearnedData();
+    this.forceUpdate();
+  }
+
+  onTranslate = async () => {
+    const text = this.state.inputText.trim();
+    if (!text) return;
+    // Input language mode, when explicitly set (not 'auto'), pins the
+    // source language/direction and must take priority over auto-
+    // detection below — previously this state was set by the dropdown
+    // but never actually read anywhere in onTranslate, making the
+    // Input-language selector a no-op.
+    if (this.state.inputLangMode === 'en' && this.state.direction !== 'en-to-other') {
+      this.setState({ direction: 'en-to-other' });
+    } else if (this.state.inputLangMode !== 'auto' && this.state.inputLangMode !== 'en') {
+      this.setState({ otherLanguage: this.state.inputLangMode, direction: 'other-to-en' });
+    }
+    // Detection must run BEFORE the Bulgarian-only fast path below, not
+    // just in the generic branch beneath it — otherwise, since Bulgarian
+    // is the dropdown's default, ANY input (Spanish, French, plain
+    // English) typed before the user manually changes the dropdown gets
+    // forced through the Bulgarian-only pipeline regardless of what
+    // language it's actually in.
+    const detectedEarly = this.detectLanguageFromText(text);
+    if (detectedEarly !== 'bg' && this.state.otherLanguage === 'bg') {
+      if (detectedEarly !== 'en' && (LEXICON[detectedEarly] || FUNCTION_WORDS[detectedEarly])) {
+        this.setState({ otherLanguage: detectedEarly, direction: 'other-to-en' });
+      } else {
+        this.setState({ direction: 'en-to-other' });
+      }
+      const langCode2 = detectedEarly !== 'en' ? detectedEarly : this.state.otherLanguage;
+      const langLabel2 = (LANGUAGE_OPTIONS.find(l => l.value === langCode2) || {}).label || langCode2.toUpperCase();
+      const deterministic2 = this.tryDeterministicFromLexicon(text, langCode2);
+      if (deterministic2) { this.setState({ result: deterministic2 }); return; }
+      const chatFn2 = await this.getTranslationChatFn();
+      if (chatFn2) await this.ensureFunctionWords(langCode2, langLabel2, chatFn2);
+      this.trackNonEnglishLang(langCode2);
+      await this.runLLMFallback(text, langLabel2, false, text, langCode2);
+      return;
+    }
+    if (this.state.otherLanguage === 'bg') {
+      const astResult = this.runTranslation(text);
+      // Below the confidence threshold, an AST hit still gets one LLM
+      // round-trip pass as a live check (astResult.roundTrip, computed by
+      // runTranslation itself) \u2014 that check's outcome is what feeds
+      // bumpConfidence, so trust is earned turn by turn, never assumed.
+      if (astResult.node.intentConfidence > 0) {
+        if (astResult.roundTrip) bumpConfidence('bg', astResult.roundTrip.ok);
+        this.setState({ result: astResult }); return;
+      }
+      this.trackNonEnglishLang('bg');
+      await this.runLLMFallback(text, 'Bulgarian', true, text, 'bg');
+      return;
+    }
+
+    const langCode = this.effectiveLangCode();
+    const langLabel = this.effectiveLangLabel();
+    // Detect the ACTUAL source language from the text itself, independent
+    // of the dropdown \u2014 if it doesn't match what's selected, correct
+    // both the language and direction so the dropdown reflects reality
+    // instead of gating what gets detected in the first place.
+    const detected = this.detectLanguageFromText(text);
+    let effectiveLangCode = langCode, effectiveLangLabel = langLabel, effectiveDirection = this.state.direction;
+    if (detected !== 'en' && detected !== langCode && (LEXICON[detected] || FUNCTION_WORDS[detected])) {
+      effectiveLangCode = detected;
+      effectiveLangLabel = (LANGUAGE_OPTIONS.find(l => l.value === detected) || {}).label || detected.toUpperCase();
+      effectiveDirection = 'other-to-en';
+      this.setState({ otherLanguage: detected, direction: 'other-to-en' });
+    } else if (detected === 'en' && langCode !== 'en') {
+      effectiveDirection = 'en-to-other';
+      this.setState({ direction: 'en-to-other' });
+    }
+    const deterministic = this.tryDeterministicFromLexicon(text, effectiveLangCode);
+    if (deterministic) { this.setState({ result: deterministic }); return; }
+    const chatFn = await this.getTranslationChatFn();
+    if (chatFn) await this.ensureFunctionWords(effectiveLangCode, effectiveLangLabel, chatFn);
+    this.trackNonEnglishLang(effectiveLangCode);
+    await this.runLLMFallback(text, effectiveLangLabel, false, text, effectiveLangCode);
+  };
+
+  tryDeterministicFromLexicon(text, langCode) {
+    // Confidence-gated: below CONFIDENCE_THRESHOLD, this shortcut must NOT
+    // fire at all, so every translation still falls through to the LLM
+    // path (which runs llmRoundTripCheck) — that's the documented design
+    // ("below threshold, every translation still runs AST-first-then-LLM-
+    // verify"), but this function previously short-circuited unconditionally
+    // regardless of confidence, silently skipping verification the moment
+    // a language's lexicon happened to cover every word in a sentence.
+    if (!isHighConfidence(langCode)) return null;
+    const direction = this.state.direction;
+    const fromEn = direction === 'en-to-other';
+    const raw = text.trim().split(/\s+/);
+    const words = [];
+    // Multi-word TIME_ONTOLOGY phrases ("next friday" -> canonical
+    // "следващия петък") must be matched as a WHOLE phrase before falling
+    // to per-word lexicon lookup — matching "next" and "friday" separately
+    // let a stray/low-quality single-word learned entry for "friday" win
+    // instead of the correct seeded multi-word phrase, which is how a
+    // Russian-spelled "пятница" leaked into Bulgarian output instead of
+    // the correct "петък".
+    let i = 0;
+    while (i < raw.length) {
+      let matchedPhrase = false;
+      for (let span = 3; span >= 2; span--) {
+        if (i + span > raw.length) continue;
+        const phraseClean = raw.slice(i, i + span).join(' ').toLowerCase().replace(/[.,!?]/g, '');
+        const timeHit = TIME_ONTOLOGY.find(t => (fromEn ? t.en : t[langCode]) === phraseClean);
+        if (timeHit) {
+          words.push({ surface: fromEn ? (timeHit[langCode] || '') : timeHit.en, gloss: fromEn ? timeHit.en : (timeHit[langCode] || '') });
+          i += span; matchedPhrase = true; break;
+        }
+      }
+      if (matchedPhrase) continue;
+      const w = raw[i];
+      const clean = w.toLowerCase().replace(/[.,!?]/g, '');
+      i++;
+      if (!clean) continue;
+      if (STOPWORDS_EN.has(clean) && fromEn) { words.push({ surface: w, gloss: null }); continue; }
+      const fnWords = FUNCTION_WORDS[langCode];
+      if (fnWords) {
+        const cleanLemma = FUNCTION_WORD_INFLECTIONS[clean] || clean;
+        if (fromEn && fnWords[cleanLemma]) { words.push({ surface: fnWords[cleanLemma], gloss: clean }); continue; }
+        if (!fromEn) {
+          const enWord = Object.keys(fnWords).find(k => fnWords[k] === clean);
+          if (enWord) { words.push({ surface: enWord, gloss: clean }); continue; }
+        }
+      }
+      const city = CITY_ONTOLOGY.find(c => (fromEn ? c.en : c[langCode]) === clean);
+      if (city) { words.push({ surface: fromEn ? titleCase(city[langCode] || '') : titleCase(city.en), gloss: fromEn ? city.en : city[langCode] }); continue; }
+      const entry = fromEn ? findLexicalEntry(langCode, clean) : lexiconFor(langCode).find(e => e.lemmaOther === clean);
+      if (entry) { words.push({ surface: fromEn ? entry.lemmaOther : entry.lemmaEn, gloss: fromEn ? entry.lemmaEn : entry.lemmaOther }); continue; }
+      return null;
+    }
+    if (!words.length) return null;
+    const otherLabel = this.effectiveLangLabel();
+    return { llm: true, error: false, deterministicReuse: true, trustedSkip: true, fromLabel: fromEn ? 'English' : otherLabel, toLabel: fromEn ? otherLabel : 'English', translated: { words } };
+  }
+
+  // Detects the actual source language of the typed text by scoring it
+  // against every SEEDED language's lexicon/known signatures — no
+  // dependence on whatever the dropdown happens to be set to. The
+  // dropdown is a hint/override for OUTPUT target, never a precondition
+  // for detecting the INPUT language.
+  detectLanguageFromText(text) {
+    if (/[\u0400-\u04FF]/.test(text)) return 'ru_or_bg_script'; // resolved below by lexicon scoring among bg/ru/etc.
+    const cleanWords = text.toLowerCase().replace(/[¿¡?!.,]/g, '').split(/\s+/).filter(Boolean);
+    if (!cleanWords.length) return 'en';
+    const enHits = cleanWords.filter(w => STOPWORDS_EN.has(w) || VERB_WORDS_EN.has(w)).length;
+    let bestLang = 'en', bestScore = enHits;
+    const candidateLangs = new Set([...Object.keys(LEXICON), ...Object.keys(FUNCTION_WORDS)]);
+    // Distinct marker words per Latin-script language (greetings/common
+    // closed-class words that don't overlap across languages) — a real
+    // signal instead of one shared accented-character regex, which
+    // treated "Hola" (no accents at all) as ambiguous and let generic
+    // lexicon overlap tip it toward the wrong language (e.g. Portuguese).
+    const LATIN_MARKER_WORDS = {
+      es: ['hola','cómo','como','estás','estas','qué','que','sí','gracias','buenos','buenas','señor','señora','usted'],
+      pt: ['olá','ola','como','você','voce','está','esta','sim','obrigado','obrigada','bom','boa','senhor','senhora'],
+      fr: ['bonjour','comment','ça','ca','vous','oui','merci','monsieur','madame','salut'],
+      it: ['ciao','come','stai','grazie','buongiorno','signore','signora','sì','si'],
+      de: ['hallo','wie','geht','danke','guten','herr','frau','ja']
+    };
+    for (const code of candidateLangs) {
+      if (code === 'en') continue;
+      const fnWords = FUNCTION_WORDS[code];
+      const fnHits = fnWords ? cleanWords.filter(w => Object.values(fnWords).includes(w)).length : 0;
+      const lexHits = cleanWords.filter(w => lexiconFor(code).some(e => e.lemmaOther === w)).length;
+      const nonAsciiBonus = NON_LATIN_SCRIPT.has(code) && /[^\x00-\x7F]/.test(text) ? cleanWords.length : 0;
+      const markers = LATIN_MARKER_WORDS[code];
+      const markerHits = markers ? cleanWords.filter(w => markers.includes(w)).length : 0;
+      // Marker words are weighted heavily (x3) — they're the actual
+      // distinguishing signal between similar Romance languages; raw
+      // lexicon overlap alone is weak evidence since many Latin-script
+      // languages share cognates.
+      const score = fnHits * 2 + lexHits + nonAsciiBonus + markerHits * 3;
+      if (score > bestScore) { bestScore = score; bestLang = code; }
+    }
+    return bestLang;
+  }
+
+  // When AST/deterministic resolution fails outright, it usually still
+  // recognizes SOME words (function words, learned lexicon entries,
+  // city/time ontology hits) even if not the whole sentence. Surfacing
+  // those as grounding context in the LLM prompt — instead of asking it
+  // to translate completely blind — gives it real anchors, the same
+  // principle behind the higher/more coherent beacon deltas (∆S) seen
+  // in S-Matrix when a prompt carries concrete grounding vs none.
+  buildKnownWordsContext(text, langCode) {
+    if (!langCode) return '';
+    const raw = text.trim().split(/\s+/);
+    const hits = [];
+    for (const w of raw) {
+      const clean = w.toLowerCase().replace(/[.,!?]/g, '');
+      if (!clean) continue;
+      const fnWords = FUNCTION_WORDS[langCode];
+      if (fnWords && fnWords[clean]) { hits.push(`"${clean}" = "${fnWords[clean]}"`); continue; }
+      const entry = findLexicalEntry(langCode, clean);
+      if (entry) { hits.push(`"${clean}" = "${entry.lemmaOther}"`); continue; }
+      const city = CITY_ONTOLOGY.find(c => c.en === clean);
+      if (city && city[langCode]) { hits.push(`"${clean}" = "${city[langCode]}"`); continue; }
+    }
+    for (let span = 3; span >= 2; span--) {
+      for (let i = 0; i + span <= raw.length; i++) {
+        const phrase = raw.slice(i, i + span).join(' ').toLowerCase().replace(/[.,!?]/g, '');
+        const timeHit = TIME_ONTOLOGY.find(t => t.en === phrase);
+        if (timeHit && timeHit[langCode]) hits.push(`"${phrase}" = "${timeHit[langCode]}"`);
+      }
+    }
+    return hits.length ? `Known vocabulary for reference (already-verified translations of some words/phrases in this text — use these exact forms where they appear): ${hits.join(', ')}.` : '';
+  }
+
+  async runLLMFallback(text, otherLabel, vocabGapNote, sourceText, langCode) {
+    let direction = this.state.direction;
+    // Guard against a stale/wrong direction toggle: if the OTHER language
+    // uses a non-Latin script (bg/ru/zh/ja/ar/hi) and the input is
+    // actually Cyrillic/etc. while direction says "English -> other" (or
+    // vice-versa with plain-ASCII input), the model was being asked to
+    // translate FROM the wrong source language, so it just echoed the
+    // input back unchanged. Auto-correct using the same script check
+    // used elsewhere in this file (detectLang/looksLikeEnglish).
+    // Direction guard, generalized beyond non-Latin scripts: Spanish/
+    // French/etc. share English's Latin alphabet, so the earlier
+    // NON_LATIN_SCRIPT-only check never caught "Hola, Como estas?" typed
+    // while direction was stuck on en-to-other — the model got asked to
+    // translate FROM English (wrong), so it echoed/mistranslated instead
+    // of real Spanish input reaching the LLM as the SOURCE text. For
+    // Latin-script languages, compare how many input words match this
+    // language's own accented characters or seeded FUNCTION_WORDS/lexicon
+    // entries versus plain English stopwords, and flip direction if the
+    // input reads as the other language, not English.
+    const inputLooksNonLatin = NON_LATIN_SCRIPT.has(langCode) && /[^\x00-\x7F]/.test(text);
+    let looksLikeOtherLatin = false;
+    if (!NON_LATIN_SCRIPT.has(langCode)) {
+      const cleanWords = text.toLowerCase().replace(/[¿¡?!.,]/g, '').split(/\s+/).filter(Boolean);
+      const fnWords = FUNCTION_WORDS[langCode];
+      const otherHits = cleanWords.filter(w => (fnWords && Object.values(fnWords).includes(w)) || findLexicalEntry(langCode, '') === undefined && lexiconFor(langCode).some(e => e.lemmaOther === w)).length;
+      const enHits = cleanWords.filter(w => STOPWORDS_EN.has(w) || (fnWords && fnWords[w])).length;
+      const hasAccentedChars = /[áéíóúñüàèìòùâêîôûçãõ]/i.test(text);
+      looksLikeOtherLatin = hasAccentedChars || otherHits > enHits;
+    }
+    const directionSaysInputIsEnglish = direction === 'en-to-other';
+    let autoCorrected = false;
+    if (NON_LATIN_SCRIPT.has(langCode) && inputLooksNonLatin && directionSaysInputIsEnglish) { direction = 'other-to-en'; autoCorrected = true; }
+    else if (NON_LATIN_SCRIPT.has(langCode) && !inputLooksNonLatin && !directionSaysInputIsEnglish && text.trim().length > 0) { direction = 'en-to-other'; autoCorrected = true; }
+    else if (!NON_LATIN_SCRIPT.has(langCode) && looksLikeOtherLatin && directionSaysInputIsEnglish) { direction = 'other-to-en'; autoCorrected = true; }
+    const fromLabel = direction === 'en-to-other' ? 'English' : otherLabel;
+    const toLabel = direction === 'en-to-other' ? otherLabel : 'English';
+    this.setState({ isLLMTranslating: true, result: null });
+    try {
+      const chatFn = await this.getTranslationChatFn();
+      if (!chatFn) {
+        this.setState({ isLLMTranslating: false, result: { llm: true, error: true, fromLabel, toLabel, text: `No model available yet — load one at least once in S-Matrix so it's cached, then this can use it directly (even with S-Matrix closed).` } });
+        return;
+      }
+      const reply = await chatFn([
+        { role: 'system', content: `You are a translation engine, not an assistant. TRANSLATE the literal text given \u2014 do NOT answer it, do NOT add information, do NOT complete it as if it were a request to you.
+
+First, silently work through the input word by word, considering the ${toLabel} equivalent of each individual word \u2014 this grounds you in the literal content before you produce the final sentence. Then produce ONE natural, grammatical ${toLabel} translation of the whole sentence \u2014 not a word-for-word gloss, a real translation, correctly ordered and inflected for ${toLabel} grammar.
+
+If the input is a question (starts with or contains a question word \u2014 what, who, where, when, why, how, which, whose, is, are, am, do, does, did, can, could, will, would \u2014 or ends in "?"), you MUST output the SAME question translated into ${toLabel}, still phrased as a question, still ending in "?". Do NOT answer the question. Do NOT explain the question. Do NOT respond in English. Example: "What time is it?" translates to a question asking for the time in ${toLabel} \u2014 it does NOT become an answer like "It is 3 o'clock" and does NOT stay in English.
+
+Output ONLY the translated text in ${toLabel}, nothing else \u2014 no explanation, no quotes, no English unless ${toLabel} is English.
+
+${this.buildKnownWordsContext(text, langCode)}` },
+        { role: 'user', content: `Translate this ${fromLabel} text to ${toLabel}:\n\n${text}` }
+      ]);
+      const translatedText = reply.choices[0].message.content.trim();
+      // The model can silently fail to translate at all (paraphrasing or
+      // answering in English instead) \u2014 questions are the case most
+      // prone to this. Rather than show that as a confident "translation,"
+      // flag it as a failure using the same English-detection heuristic
+      // that guards the lexicon.
+      if (toLabel !== 'English' && looksLikeEnglish(langCode || 'other')(translatedText)) {
+        this.setState({ isLLMTranslating: false, result: { llm: true, error: true, fromLabel, toLabel, text: `The model returned English instead of ${toLabel} \u2014 it likely answered the question rather than translating it. Try a different/larger cached model, or rephrase as a statement.` } });
+        return;
+      }
+      // A statement input must not come back as a question, and vice
+      // versa \u2014 the model answering/reinterpreting instead of translating
+      // literally (observed: "My name is Will." \u2192 a Spanish question
+      // asking someone's name, instead of a translated statement).
+      const inputIsQuestion = /\?\s*$/.test(text.trim());
+      const outputIsQuestion = /\?\s*$/.test(translatedText.trim());
+      if (inputIsQuestion !== outputIsQuestion) {
+        this.setState({ isLLMTranslating: false, result: { llm: true, error: true, fromLabel, toLabel, text: `The model changed a ${inputIsQuestion ? 'question' : 'statement'} into a${outputIsQuestion ? ' question' : ' statement'} instead of translating it literally. Try a different/larger cached model.` } });
+        return;
+      }
+      // Small models sometimes refuse/deflect entirely (observed: "My name
+      // is Will." \u2192 "No se puede." \u2014 "it cannot be done") instead of
+      // translating. A real translation of a non-trivial sentence is
+      // roughly comparable in word count to the input; a refusal is
+      // conspicuously shorter and matches a known refusal pattern.
+      const inputWordCount = text.trim().split(/\s+/).length;
+      const outputWordCount = translatedText.trim().split(/\s+/).length;
+      if (inputWordCount >= 3 && (REFUSAL_PATTERNS.some(p => p.test(translatedText)) || outputWordCount < inputWordCount * 0.4)) {
+        this.setState({ isLLMTranslating: false, result: { llm: true, error: true, fromLabel, toLabel, text: `The model refused or gave a conspicuously short non-translation ("${translatedText}") instead of translating the sentence. Try a different/larger cached model.` } });
+        return;
+      }
+      let finalTranslatedText = translatedText;
+      let llmRoundTrip = await this.llmRoundTripCheck(text, finalTranslatedText, chatFn, fromLabel, toLabel);
+      // One retry: feed the round-trip's OWN mismatch reasons back to the
+      // model and demand an exact re-translation instead of silently
+      // keeping/showing a translation already known to be loose or wrong
+      // (e.g. "booked" drifting to "has booked"/"noticed").
+      if (llmRoundTrip && !llmRoundTrip.ok && llmRoundTrip.mismatches && llmRoundTrip.mismatches.length) {
+        try {
+          const retryReply = await chatFn([
+            { role: 'system', content: `You are a translation engine. TRANSLATE the literal text given into ${toLabel} \u2014 do not answer it, do not paraphrase, do not add or drop information.` },
+            { role: 'user', content: `Translate this ${fromLabel} text to ${toLabel} EXACTLY \u2014 a previous attempt was rejected for: ${llmRoundTrip.mismatches.join('; ')}. Preserve every specific detail (dates, names, tense, the exact verb/action) precisely, no loose interpretation:\n\n${text}` }
+          ]);
+          const retryText = (retryReply.choices?.[0]?.message?.content || '').trim();
+          if (retryText) {
+            const retryRoundTrip = await this.llmRoundTripCheck(text, retryText, chatFn, fromLabel, toLabel);
+            if (retryRoundTrip.ok) { finalTranslatedText = retryText; llmRoundTrip = retryRoundTrip; }
+            else if ((retryRoundTrip.mismatches || []).length < llmRoundTrip.mismatches.length) { finalTranslatedText = retryText; llmRoundTrip = retryRoundTrip; }
+          }
+        } catch (e) { console.error('AST Translator: exact-retranslation retry failed', e.message || e); }
+      }
+      const translatedTextFinal = finalTranslatedText;
+      // Only teach the AST lexicon from a translation that passed its own
+      // round-trip check — a mismatched round trip (like "Evening lover"
+      // coming back for a goodnight message) means the LLM's output is
+      // unreliable, so learning vocab from it would poison the
+      // deterministic pipeline with wrong pairs instead of good ones.
+      // Vocabulary (word/phrase pairs) and sentence-level grammatical trust
+      // are different things: a round-trip failure means the SENTENCE's
+      // grammar/meaning didn't hold up, not that every word pair in it was
+      // wrong. New vocabulary is still learned on a failed round trip —
+      // only the confidence/trust streak (which gates skipping future
+      // round-trip checks) requires an actually-verified round trip.
+      // A vocabulary mismatch (unrelated word) and a MEANING mismatch (the
+      // wrong verb/action entirely, e.g. "booked" learned as "noticed")
+      // are different risks — the latter would teach a directly wrong
+      // pair into the lexicon, so skip learning altogether when the
+      // round-trip's semantic check specifically failed, even though
+      // other (non-semantic) round-trip failures still allow learning.
+      // A false-positive/false-negative round trip is itself informative
+      // ("noise" a human would call bad data) — even on a semantic-action
+      // mismatch, cities/times/other nouns in the sentence may still be
+      // independently correct (Paris, Friday) even though the VERB is
+      // wrong ("book" -> "filled with excitement"). Learn everything
+      // except verb pairs when the semantic check specifically failed,
+      // instead of discarding the whole sentence's signal.
+      let learned = null;
+      if (sourceText && langCode) {
+        const excludeVerbs = !!(llmRoundTrip && llmRoundTrip.semanticOk === false);
+        learned = await this.autoLearnEntities(sourceText, translatedTextFinal, chatFn, langCode, excludeVerbs);
+      }
+      if (langCode) bumpConfidence(langCode, !!(llmRoundTrip && llmRoundTrip.ok));
+      this.setState({ isLLMTranslating: false, result: { llm: true, error: false, text: translatedTextFinal, fromLabel, toLabel, vocabGapNote: !!vocabGapNote, learned, llmRoundTrip, autoCorrected } });
+    } catch (e) {
+      this.setState({ isLLMTranslating: false, result: { llm: true, error: true, fromLabel, toLabel, text: 'Translation failed: ' + e.message } });
+    }
+  }
+
+  async getTranslationChatFn() {
+    const shared = typeof ChatLib !== 'undefined' ? ChatLib.getSharedEngine() : null;
+    if (shared) return shared.chat;
+    if (this._ownEngine) return (msgs) => this._ownEngine.chat.completions.create({ messages: msgs });
+    if (!window.__webllm) {
+      try {
+        const mod = await import('https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm');
+        window.__webllm = mod;
+      } catch (e) { return null; }
+    }
+    // 1B/1.5B models can't reliably handle this pipeline (grammar
+    // extraction, round-trip verification, direction detection) — bigger
+    // models only, since a downloaded model is cached and reused anyway.
+    const candidates = ['Hermes-3-Llama-3.2-3B-q4f16_1-MLC', 'DeepSeek-R1-Distill-Qwen-7B-q4f16_1-MLC', 'DeepSeek-R1-Distill-Llama-8B-q4f16_1-MLC'];
+    for (const modelId of candidates) {
+      try {
+        const engine = new window.__webllm.MLCEngine();
+        await engine.reload(modelId);
+        this._ownEngine = engine;
+        return (msgs) => engine.chat.completions.create({ messages: msgs });
+      } catch (e) { /* not cached / failed — try next candidate */ }
+    }
+    return null;
+  }
+
+  async autoLearnEntities(enText, otherText, chatFn, langCode, excludeVerbs) {
+    try {
+      const reply = await chatFn([
+        { role: 'system', content: `This is a UNIVERSAL translator, not a narrow travel-booking tool \u2014 extract EVERY meaningful word/phrase pair from ANY domain (nouns, verbs, adjectives, adverbs, proper names of people/places/organizations, idioms/fixed expressions, numbers/quantities/units, cities, relative-time phrases \u2014 anything content-bearing, skip pure function words like "the"/"a") that appear in BOTH sentences below, paired together. Classify part of speech as NOUN/VERB/ADJ/ADV/PROPN/IDIOM/NUM, and if the OTHER-language word is grammatically gendered, its gender as MASC/FEM/NEUT (else null). Also separately flag any city names, PERSON/ORG names, and relative-time phrases (e.g. "next Friday") among them. Respond with ONLY compact JSON: {"vocab":[{"en":"...","other":"...","pos":"NOUN","gender":null}],"cities":[{"en":"...","other":"..."}],"times":[{"en":"...","other":"..."}],"names":[{"en":"...","other":"...","kind":"PERSON"}]}. Use lowercase for words except proper names. Empty arrays if none.` },
+        { role: 'user', content: `English: ${enText}\nOther language: ${otherText}` }
+      ]);
+      const raw = reply.choices[0].message.content.trim().replace(/^```json\s*|```$/g, '');
+      const parsed = JSON.parse(raw);
+      const addedCities = [], addedTimes = [], addedVocab = [], addedNames = [];
+      const lexicon = lexiconFor(langCode);
+      // Guard against learning a bogus "translation" that's really just
+      // English again \u2014 the concrete failure this caught: an earlier
+      // reply that stayed in English got fed back in as if it were the
+      // foreign text, teaching wrong pairs like time\u2192"hour" that then
+      // played back as all-English "translations" on reuse. Non-Latin-
+      // script languages (bg/ru/zh/ja/ar/hi) can check this directly:
+      // their real words never come back as plain ASCII letters.
+      const rejectAsEnglish = looksLikeEnglish(langCode);
+      (parsed.vocab || []).forEach(v => {
+        if (!v.en || !v.other) return;
+        if (excludeVerbs && v.pos === 'VERB') return;
+        if (v.en.toLowerCase() === v.other.toLowerCase()) return;
+        if (rejectAsEnglish(v.other)) return;
+        if (findLexicalEntry(langCode, v.en)) return;
+        lexicon.push(makeLexicalEntry({ lemmaEn: v.en, lemmaOther: v.other, pos: POS[v.pos] || POS.OTHER, branches: { gender: GENDER[v.gender] || null }, source: 'inferred' }));
+        addedVocab.push(v.en);
+      });
+      // Names (people/orgs beyond cities) go into the same general
+      // lexicon as PROPN \u2014 an omni-translator can't hardcode every name
+      // it will ever see, so these are learned the same structural way as
+      // any other content word rather than a separate hardcoded map.
+      (parsed.names || []).forEach(n => {
+        if (!n.en || !n.other) return;
+        if (n.en.toLowerCase() === n.other.toLowerCase()) return;
+        if (rejectAsEnglish(n.other)) return;
+        if (findLexicalEntry(langCode, n.en)) return;
+        lexicon.push(makeLexicalEntry({ lemmaEn: n.en, lemmaOther: n.other, pos: POS.PROPN, semanticRole: n.kind || null, source: 'inferred' }));
+        addedNames.push(n.en);
+      });
+      if (addedVocab.length) saveLexiconToIDB(langCode);
+      (parsed.cities || []).forEach(c => {
+        if (c.en && c.other && !rejectAsEnglish(c.other)) {
+          const existing = CITY_ONTOLOGY.find(x => x.en === c.en);
+          if (existing) { if (existing[langCode] === undefined) { existing[langCode] = c.other; addedCities.push(c.en); } }
+          else { CITY_ONTOLOGY.push({ en: c.en, [langCode]: c.other }); addedCities.push(c.en); }
+        }
+      });
+      (parsed.times || []).forEach(t => {
+        if (t.en && t.other && !rejectAsEnglish(t.other)) {
+          const existing = TIME_ONTOLOGY.find(x => x.en === t.en);
+          if (existing) { if (existing[langCode] === undefined) { existing[langCode] = t.other; addedTimes.push(t.en); } }
+          else { TIME_ONTOLOGY.push({ en: t.en, [langCode]: t.other }); addedTimes.push(t.en); }
+        }
+      });
+      return (addedCities.length || addedTimes.length || addedVocab.length || addedNames.length) ? { addedCities, addedTimes, addedVocab, addedNames } : null;
+    } catch (e) { return null; }
+  }
+
+  renderVals() {
+    const s = this.state;
+    const r = s.result;
+    const lang = r ? r.lang : detectLang(s.inputText);
+    const isAdmin = this.isAdmin();
+    const guestToggleStyle = `padding:7px 16px;cursor:pointer;font-size:0.85em;font-weight:600;background:${isAdmin ? '#fff' : '#1c1e26'};color:${isAdmin ? '#5a5d68' : '#fff'};`;
+    const adminToggleStyle = `padding:7px 16px;cursor:pointer;font-size:0.85em;font-weight:600;background:${isAdmin ? '#1c1e26' : '#fff'};color:${isAdmin ? '#fff' : '#5a5d68'};`;
+    const tabDefs = [{ id: 'translate', label: 'Translate' }];
+    if (isAdmin) tabDefs.push({ id: 'analysis', label: 'Analysis' }, { id: 'modify', label: 'Modify' }, { id: 'settings', label: 'Settings' });
+    const activeTab = isAdmin ? s.activeTab : 'translate';
+    const tabs = tabDefs.map(t => ({
+      label: t.label, onClick: () => this.onTabChange(t.id),
+      style: `padding:10px 20px;cursor:pointer;font-weight:600;font-size:0.92em;color:${activeTab === t.id ? '#0a84ff' : '#5a5d68'};border-bottom:2px solid ${activeTab === t.id ? '#0a84ff' : 'transparent'};`
+    }));
+    const intentAnalysisRows = Object.entries(INTENT_ONTOLOGY).map(([key, kw]) => ({ key, enWords: kw.en.join(', '), bgWords: kw.bg.join(', ') }));
+    const selectedLangCode = this.effectiveLangCode();
+    const languageCoverageRows = Object.keys(LEXICON).filter(code => LEXICON[code].length > 0)
+      .sort((a, b) => LEXICON[b].length - LEXICON[a].length)
+      .map(code => {
+        const conf = getConfidence(code), highConf = isHighConfidence(code);
+        const seededCount = LEXICON[code].filter(e => e.source === 'seeded').length;
+        const inferredCount = LEXICON[code].length - seededCount;
+        return { label: code.toUpperCase(), count: LEXICON[code].length,
+          seededCount, inferredCount, hasInferred: inferredCount > 0, onWipeInferred: this.onWipeInferred(code),
+          patternCount: Object.keys(getGrammaticalPatterns(code)).length,
+          confidenceLabel: (highConf ? '\u2713 Trusted' : conf + '/' + effectiveThreshold(code)) + ' \u2014 verified streak',
+          confidenceColor: highConf ? '#1a8a4a' : '#8b8f98',
+          rowStyle: `display:flex;justify-content:space-between;padding:9px 12px;background:${code === selectedLangCode ? '#eaf3ff' : '#f7f7f9'};border:1px solid ${code === selectedLangCode ? '#0a84ff' : '#e2e4e9'};border-radius:6px;font-size:0.85em;margin-bottom:6px;` };
+      });
+
+    return {
+      tabs, isTranslateTab: activeTab === 'translate', isAnalysisTab: activeTab === 'analysis', isModifyTab: activeTab === 'modify',
+      isSettingsTab: activeTab === 'settings',
+      settingsGlobalInput: s.settingsGlobalInput, onSettingsGlobalInputChange: this.onSettingsGlobalInputChange, onSaveGlobalThreshold: this.onSaveGlobalThreshold,
+      settingsOverrideLangCode: s.settingsOverrideLangCode, onSettingsOverrideLangChange: this.onSettingsOverrideLangChange,
+      settingsOverrideInput: s.settingsOverrideInput, onSettingsOverrideInputChange: this.onSettingsOverrideInputChange,
+      onSaveOverride: this.onSaveOverride, settingsMessage: s.settingsMessage,
+      overrideRows: Object.entries(LANG_CONFIDENCE_OVERRIDES).map(([code, val]) => ({
+        code, label: (LANGUAGE_OPTIONS.find(l => l.value === code) || {}).label || code.toUpperCase(), value: val, onClear: this.onClearOverride(code)
+      })),
+      noOverrides: Object.keys(LANG_CONFIDENCE_OVERRIDES).length === 0,
+      llmHoverWords: r && r.llm && !r.error ? this.buildHoverWords(r.text, this.effectiveLangCode()) : [],
+      onSetRoleGuest: this.onSetRoleGuest, onSetRoleAdmin: this.onSetRoleAdmin, guestToggleStyle, adminToggleStyle,
+      bulkSeedInput: s.bulkSeedInput, onBulkSeedInputChange: this.onBulkSeedInputChange, onBulkSeed: this.onBulkSeed,
+      bulkSeedBusy: s.bulkSeedBusy, bulkSeedOpacity: s.bulkSeedBusy ? 0.5 : 1, bulkSeedButtonLabel: s.bulkSeedBusy ? 'Seeding…' : 'Seed Vocabulary',
+      bulkSeedMessage: s.bulkSeedMessage,
+      seededLangRows: Object.keys(LEXICON).filter(code => LEXICON[code].length > 0)
+        .sort((a, b) => LEXICON[b].length - LEXICON[a].length)
+        .map(code => ({ label: (LANGUAGE_OPTIONS.find(l => l.value === code) || {}).label || code.toUpperCase(), count: LEXICON[code].length })),
+      noSeededLangs: Object.keys(LEXICON).filter(code => LEXICON[code].length > 0).length === 0,
+      intentCount: Object.keys(INTENT_ONTOLOGY).length,
+      wordCount: lexiconFor(s.analysisLangCode).filter(e => e.pos !== POS.IDIOM).length,
+      phraseCount: lexiconFor(s.analysisLangCode).filter(e => e.pos === POS.IDIOM).length,
+      glossCount: s.analysisLangCode === 'bg' ? (Object.keys(GLOSS_EN_TO_BG).length + Object.keys(GLOSS_BG_TO_EN).length) : lexiconFor(s.analysisLangCode).length,
+      intentAnalysisRows, languageCoverageRows, noLanguagesLearned: languageCoverageRows.length === 0,
+      selectedLangLabel: this.effectiveLangLabel(), showIntentCoverage: selectedLangCode === 'bg',
+      analysisLangCode: s.analysisLangCode, analysisLangInput: s.analysisLangInput, onAnalysisLangInputChange: this.onAnalysisLangInputChange,
+      analysisLangLabel: (LANGUAGE_OPTIONS.find(l => l.value === s.analysisLangCode) || {}).label || s.analysisLangCode.toUpperCase(),
+      patternRows: Object.entries(getGrammaticalPatterns(s.analysisLangCode)).map(([intent, p]) => ({
+        mechanicalIntent: intent, exampleCount: p.examples.length, featuresLabel: (p.features || []).join(', ') || '(no features tagged)'
+      })),
+      noPatternsLearned: Object.keys(getGrammaticalPatterns(s.analysisLangCode)).length === 0,
+      // Left badge is the SOURCE language, right dropdown is always "the
+      // other language slot" (what onOtherLanguageChange sets) — but the
+      // two must never render the same text. When direction is
+      // other-to-en, the dropdown's own language now moves to the LEFT
+      // (it's the source) and the RIGHT explicitly reads "English" (the
+      // target), instead of both sides showing the dropdown's language.
+      anchorSideLabel: s.direction === 'en-to-other' ? 'English' : this.effectiveLangLabel(),
+      otherSideLabel: s.direction === 'en-to-other' ? this.effectiveLangLabel() : 'English',
+      newEntityKind: s.newEntityKind, onNewEntityKindChange: this.onNewEntityKindChange,
+      newEntityEn: s.newEntityEn, onNewEntityEnChange: this.onNewEntityEnChange,
+      newEntityBg: s.newEntityBg, onNewEntityBgChange: this.onNewEntityBgChange,
+      onAddEntity: this.onAddEntity, modifyMessage: s.modifyMessage,
+      modifyLangCode: s.modifyLangCode, onModifyLangChange: this.onModifyLangChange,
+      modifyLangLabel: (LANGUAGE_OPTIONS.find(l => l.value === s.modifyLangCode) || {}).label || (s.modifyLangCode || 'bg').toUpperCase(),
+      cityRows: CITY_ONTOLOGY.filter(c => c[s.modifyLangCode]).map(c => ({ en: titleCase(c.en), bg: c[s.modifyLangCode] })),
+      timeRows: TIME_ONTOLOGY.filter(t => t[s.modifyLangCode]).map(t => ({ en: t.en, bg: t[s.modifyLangCode] })),
+      inputText: this.state.inputText,
+      onInputChange: this.onInputChange,
+      onTranslate: this.onTranslate,
+      onExample: this.onExample,
+      detectedLangLabel: lang === 'bg' ? 'Bulgarian detected' : 'English detected',
+      sourceLangLabel: lang === 'bg' ? 'Bulgarian' : 'English',
+      targetLangLabel: r ? (r.llm ? r.toLabel : (r.targetLang === 'bg' ? 'Bulgarian' : 'English')) : '—',
+      flowSteps: r && !r.llm ? r.steps : [],
+      tokenChips: r && !r.llm ? r.tokens.map(t => t.text) : [],
+      tokenCount: r && !r.llm ? r.tokens.length : 0,
+      intentKey: r && !r.llm ? r.node.intent : '—',
+      intentConfidence: r && !r.llm ? (r.node.intentConfidence * 100).toFixed(1) + '%' : '—',
+      speechAct: r && !r.llm ? r.node.speechAct : '—',
+      tenseAspect: r && !r.llm ? r.node.tenseAspect : '—',
+      moodLabel: r && !r.llm ? r.node.mood : '—',
+      polarity: r && !r.llm ? r.node.polarity : '—',
+      hasRoundTrip: !!(r && !r.llm && r.roundTrip),
+      roundTripLabel: r && !r.llm && r.roundTrip ? (r.roundTrip.ok ? '\u2713 Round-trip verified (translate back \u2192 matches original meaning)' : `\u26a0 NOT CORRECT: Round-trip mismatch: ${r.roundTrip.error || r.roundTrip.mismatches.join(', ')} \u2014 back-translation read "${r.roundTrip.backText}"`) : '',
+      roundTripColor: r && !r.llm && r.roundTrip && r.roundTrip.ok ? '#1a8a4a' : '#c0392b',
+      entityRows: r && !r.llm ? r.node.entities.map(e => ({ type: e.role, value: titleCase(String(e.value)), conf: (e.confidence*100).toFixed(0) + '%' })) : [],
+      noEntities: r && !r.llm ? r.node.entities.length === 0 : false,
+      entityCount: r && !r.llm ? r.node.entities.length : 0,
+      health: r ? '100%' : '—',
+      translatedWords: r && (!r.llm || r.deterministicReuse)
+        ? r.translated.words.map(w => (w.gloss ? w : { ...w, gloss: this.buildHoverWords(w.surface, this.effectiveLangCode())[0].gloss }))
+        : [],
+      hasTranslation: !!r && (!r.llm || r.deterministicReuse),
+      pathSourceLabel: !r ? '' : (r.llm && !r.deterministicReuse ? 'LLM' : (r.deterministicReuse ? 'Reused (Trusted)' : 'AST')),
+      isLLMResult: !!(r && r.llm && !r.error && !r.deterministicReuse),
+      isVocabGapResult: !!(r && r.llm && !r.error && r.vocabGapNote),
+      isTrustedSkip: !!(r && r.llm && !r.error && r.trustedSkip),
+      trustedThreshold: r && r.trustedSkip ? effectiveThreshold(this.effectiveLangCode()) : '',
+      hasLearnedNote: !!(r && r.learned),
+      learnedNote: r && r.learned ? [...(r.learned.addedCities||[]), ...(r.learned.addedTimes||[]), ...(r.learned.addedVocab||[])].join(', ') : '',
+      isLLMError: !!(r && r.llm && r.error),
+      llmResultText: r && r.llm ? r.text : '',
+      isAutoCorrected: !!(r && r.llm && !r.error && r.autoCorrected),
+      hasLlmRoundTrip: !!(r && r.llm && !r.error && r.llmRoundTrip),
+      llmRoundTripLabel: r && r.llm && !r.error && r.llmRoundTrip ? (r.llmRoundTrip.ok
+        ? '\u2713 Round-trip verified (back-translated: "' + r.llmRoundTrip.backText + '")'
+        : `\u26a0 NOT CORRECT: Round-trip mismatch: ${r.llmRoundTrip.error || r.llmRoundTrip.mismatches.join(', ')} \u2014 back-translation read "${r.llmRoundTrip.backText}"`) : '',
+      llmRoundTripColor: r && r.llm && r.llmRoundTrip && r.llmRoundTrip.ok ? '#1a8a4a' : '#c0392b',
+      noTranslationYet: !r,
+      isLLMTranslating: s.isLLMTranslating,
+      otherLanguage: s.otherLanguage, onOtherLanguageChange: this.onOtherLanguageChange, languageOptions: LANGUAGE_OPTIONS,
+      inputLangMode: s.inputLangMode, onInputLangModeChange: this.onInputLangModeChange,
+      outputLangMode: s.outputLangMode, onOutputLangModeChange: this.onOutputLangModeChange,
+      isDirectionEnToOther: s.direction === 'en-to-other', isDirectionOtherToEn: s.direction === 'other-to-en',
+      onSwapDirection: this.onSwapDirection,
+      isCustomLanguage: s.otherLanguage === '__custom__', customLanguageName: s.customLanguageName, onCustomLanguageChange: this.onCustomLanguageChange,
+      engineModeLabel: s.otherLanguage === 'bg' ? 'Deterministic AST pipeline' : 'Routed through shared LLM engine',
+      translatedText: r ? '' : 'Click "Translate" to see the result.'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

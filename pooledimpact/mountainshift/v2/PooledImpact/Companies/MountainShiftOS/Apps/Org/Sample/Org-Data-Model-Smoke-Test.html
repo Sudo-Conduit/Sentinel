@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Org Data Model — Smoke Test</title>
+<script src="./BaseClassX.js"></script>
+<script src="./Staff.js"></script>
+<script src="./Shift.js"></script>
+<script src="./PayrollRecord.js"></script>
+<script src="./Expense.js"></script>
+<script src="./Grant.js"></script>
+<script src="./BudgetCategory.js"></script>
+<script src="./Organization.js"></script>
+<script src="./OrgPosition.js"></script>
+<style>
+  body { font:13px/1.5 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; padding:16px; }
+  h1 { color:#6b9; font-size:15px; }
+  h2 { color:#8ab4f8; font-size:13px; margin-top:20px; }
+  pre { background:#141414; border:1px solid #333; border-radius:4px; padding:10px; overflow-x:auto; white-space:pre-wrap; }
+  .ok { color:#1f9d55; } .err { color:#e05555; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="14" fill="#6b9" text-anchor="middle" font-family="monospace">DB</text></svg></template>
+</head>
+<body>
+<h1>Organization Data Model — Smoke Test (synthetic data only)</h1>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+function section(title, fn) {
+  const h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+  const pre = document.createElement('pre'); out.appendChild(pre);
+  try { pre.textContent = JSON.stringify(fn(), null, 2); }
+  catch (e) { pre.innerHTML = '<span class="err">ERROR: ' + e.message + '</span>'; }
+}
+
+const org = new Organization({ name: 'Riverside Shelter (sample data)' });
+
+const fy = '2026';
+const payrollCat = org.addBudgetCategory(new BudgetCategory({ name: 'Payroll', fiscalYear: fy, allocatedAmount: 420000 }));
+const opsCat = org.addBudgetCategory(new BudgetCategory({ name: 'Operations', fiscalYear: fy, allocatedAmount: 90000 }));
+
+const alice = org.addStaff(new Staff({ name: 'Sample Staff A', employmentType: 'full-time', roleTitle: 'Case Manager', shiftPreference: 'day', payType: 'hourly', payRate: 24, hireDate: '2023-02-01', email: 'a@example.org' }));
+const ben = org.addStaff(new Staff({ name: 'Sample Staff B', employmentType: 'part-time', roleTitle: 'Shelter Monitor', shiftPreference: 'night', payType: 'hourly', payRate: 19, hireDate: '2024-06-15', email: 'b@example.org' }));
+
+org.addShift(new Shift({ staffId: alice.id, date: '2026-07-20', shiftType: 'day', postAssignment: 'Front Desk' }));
+org.addShift(new Shift({ staffId: ben.id, date: '2026-07-20', shiftType: 'night', postAssignment: 'Floor Monitor' }));
+org.addShift(new Shift({ staffId: '', date: '2026-07-21', shiftType: 'night', status: 'open' })); // coverage gap
+
+org.addPayrollRecord(new PayrollRecord({
+  staffId: alice.id, department: '10 - AS -- SCoordination', periodStart: '2026-07-01', periodEnd: '2026-07-15',
+  earnings: [{ type: 'Regular', hours: 80, rate: 24, amount: 1920 }, { type: 'Overtime', hours: 2, rate: 36, amount: 72 }],
+  totalHours: 82, totalEarnings: 1992,
+  taxes: { fedSocSec: 123.50, fedMedcare: 28.88, stateSIT: 82.67, total: 235.05 },
+  deductions: { medicalPreTax: 180, total: 180 },
+  netPay: 1576.95,
+  employerLiability: { fedSocSecER: 123.50, fedMedcareER: 28.88, total: 152.38 },
+  payments: [{ method: 'Direct Deposit', checkDate: '2026-07-18', transactionId: 'XXXX0001', amount: 1576.95 }],
+  budgetCategoryId: payrollCat.id
+}));
+org.addPayrollRecord(new PayrollRecord({
+  staffId: ben.id, department: '10 - AS -- SCoordination', periodStart: '2026-07-01', periodEnd: '2026-07-15',
+  earnings: [{ type: 'Regular', hours: 60, rate: 19, amount: 1140 }],
+  totalHours: 60, totalEarnings: 1140,
+  taxes: { fedSocSec: 70.68, fedMedcare: 16.53, stateSIT: 47.31, total: 134.52 },
+  deductions: { total: 0 },
+  netPay: 1005.48,
+  employerLiability: { fedSocSecER: 70.68, fedMedcareER: 16.53, total: 87.21 },
+  payments: [{ method: 'Direct Deposit', checkDate: '2026-07-18', transactionId: 'XXXX0002', amount: 1005.48 }],
+  budgetCategoryId: payrollCat.id
+}));
+
+org.addExpense(new Expense({ date: '2026-07-05', category: 'Utilities', amount: 3200, vendor: 'City Power', budgetCategoryId: opsCat.id, approvedBy: alice.id }));
+org.addGrant(new Grant({ source: 'County Housing Fund', amount: 50000, receivedDate: '2026-01-15', restricted: true, budgetCategoryId: payrollCat.id }));
+
+section('BaseClassX loaded / instance sanity', () => ({
+  orgIsBaseClassXInstance: org instanceof BaseClassX,
+  staffCount: org.staff.length,
+  shiftCount: org.shifts.length
+}));
+
+section('Staff.redacted() — payroll-finance/case-worker viewpoint hides PII', () => alice.redacted());
+
+section('Scheduling projection (coverage gaps surfaced)', () => org.schedulingProjection());
+
+section('Payroll projection (grossPay/netPay computed, never stored raw)', () => org.payrollProjection());
+
+section('Budget projection (payroll + expenses vs. allocated + grant income)', () => org.budgetProjection(fy));
+
+section('roleView("case-worker") — no payroll/budget, staff redacted', () => org.roleView('case-worker'));
+section('roleView("payroll-finance") — payroll + budget, staff redacted', () => org.roleView('payroll-finance'));
+section('roleView("admin") — everything, unredacted', () => org.roleView('admin'));
+
+section('Organization.toJSON() / Organization.fromJSON() round-trip', () => {
+  const json = org.toJSON();
+  const rehydrated = Organization.fromJSON(json);
+  return { staffCountAfterRoundTrip: rehydrated.staff.length, nameAfterRoundTrip: rehydrated.name };
+});
+
+section('OrgPosition — HOPE Shelters chart as one BaseClassX tree', () => {
+  const board = OrgPosition.buildHopeSheltersChart();
+  const flat = board.flatten();
+  return { totalPositions: flat.length, titles: flat.map(p => p.title + (p.personName ? ' — ' + p.personName : '') + (p.filled === false ? ' (vacant)' : '')) };
+});
+
+section('Shift — real schedule shape (shiftLabel/epoch/computed hours+pay)', () => {
+  const s = new Shift({ staffId: alice.id, date: '2026-08-01', shiftType: 'Night', shiftLabel: '2p-12a', startEpoch: 1767405600, endEpoch: 1767448800, payRateUsed: 21.0 });
+  return s.toJSON();
+});
+</script>
+</body>
+</html>

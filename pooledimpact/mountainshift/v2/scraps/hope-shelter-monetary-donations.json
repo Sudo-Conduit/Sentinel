@@ -1,0 +1,740 @@
+[
+  {
+    "source": "James and Sheila Scovic",
+    "amount": 500,
+    "receivedDate": "2026-01-02",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-01-02",
+    "restricted": false
+  },
+  {
+    "source": "Albert Nesbitt",
+    "amount": 2450,
+    "receivedDate": "2026-01-06",
+    "restricted": false
+  },
+  {
+    "source": "Cynthia Gillies",
+    "amount": 500,
+    "receivedDate": "2026-01-06",
+    "restricted": false
+  },
+  {
+    "source": "Rosemary Bayer and John Lisiecki",
+    "amount": 500,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Victor Henderson",
+    "amount": 500,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Pastor Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Caren Shepsky and David Brady",
+    "amount": 200,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Steven Mobley",
+    "amount": 50,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Kathleen Eischeid",
+    "amount": 50,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Betty Trice",
+    "amount": 100,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 500,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "Gordon and Janice Bradshaw",
+    "amount": 400,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "Dave and Suzanne Nesbitt",
+    "amount": 40,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "Richard and Valerie Leebove",
+    "amount": 3000,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "Chuck and Mary Ann Pottenger",
+    "amount": 100,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "US Charitable Gift Trust Anonymous",
+    "amount": 3000,
+    "receivedDate": "2026-01-21",
+    "restricted": false
+  },
+  {
+    "source": "Daneil and Mary Colton",
+    "amount": 300,
+    "receivedDate": "2026-01-21",
+    "restricted": false
+  },
+  {
+    "source": "Marianne Morgan",
+    "amount": 125,
+    "receivedDate": "2026-01-26",
+    "restricted": false
+  },
+  {
+    "source": "Peter Melton",
+    "amount": 100,
+    "receivedDate": "2026-01-26",
+    "restricted": false
+  },
+  {
+    "source": "Nativity Episcopal Church Bloomfield",
+    "amount": 430,
+    "receivedDate": "2026-01-26",
+    "restricted": false
+  },
+  {
+    "source": "Community Bible Church of Waterford",
+    "amount": 761,
+    "receivedDate": "2026-01-26",
+    "restricted": false
+  },
+  {
+    "source": "Robert and Kathleen Skubic",
+    "amount": 500,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Michael and Karen Maloney",
+    "amount": 100,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Isidor and Yolande Mueller",
+    "amount": 50,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Richard and Janis Peacock",
+    "amount": 200,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Mary Ignatowski and Angela Williams",
+    "amount": 200,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Paul Huges",
+    "amount": 100,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 1000,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "David and Marion Sioma",
+    "amount": 100,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "David and Janelle Hansen",
+    "amount": 95,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Mary Alstead",
+    "amount": 50,
+    "receivedDate": "2026-02-04",
+    "restricted": false
+  },
+  {
+    "source": "Laura Miehls",
+    "amount": 1000,
+    "receivedDate": "2026-02-04",
+    "restricted": false
+  },
+  {
+    "source": "Paul and Louise Borucki",
+    "amount": 600,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "Pastor Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "Jennifer Cotaling",
+    "amount": 200,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "James Schmid and Debra Hayden-Schmid",
+    "amount": 100,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "Teresa and Terry Gonda",
+    "amount": 200,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "Steve Mobley",
+    "amount": 100,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "St. Irenaeus Parish Rochester Hills",
+    "amount": 1200,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Bruce and Laura Kennedy",
+    "amount": 200,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Steven Mobley",
+    "amount": 100,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Victor Henderson",
+    "amount": 500,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Lisa Heck-Hudson",
+    "amount": 200,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Faith Evangelical Presbyterian Church of Rochester",
+    "amount": 1580,
+    "receivedDate": "2026-02-13",
+    "restricted": false
+  },
+  {
+    "source": "Bruce and Laura Kennedy",
+    "amount": 500,
+    "receivedDate": "2026-02-17",
+    "restricted": false
+  },
+  {
+    "source": "Richard and Cecilia Ellis",
+    "amount": 50,
+    "receivedDate": "2026-02-18",
+    "restricted": false
+  },
+  {
+    "source": "Richard and Cecilia Ellis",
+    "amount": 50,
+    "receivedDate": "2026-02-19",
+    "restricted": false
+  },
+  {
+    "source": "American Endowment Fund Anonymous",
+    "amount": 250,
+    "receivedDate": "2026-02-19",
+    "restricted": false
+  },
+  {
+    "source": "St. Mary Parish Milford",
+    "amount": 500,
+    "receivedDate": "2026-02-19",
+    "restricted": false
+  },
+  {
+    "source": "Christ The Redeemer Parish",
+    "amount": 2000,
+    "receivedDate": "2026-02-19",
+    "restricted": false
+  },
+  {
+    "source": "Marianne Morgan",
+    "amount": 125,
+    "receivedDate": "2026-02-24",
+    "restricted": false
+  },
+  {
+    "source": "Mary Ann Ryan",
+    "amount": 50,
+    "receivedDate": "2026-03-02",
+    "restricted": false
+  },
+  {
+    "source": "St. Andrew Parish Rochester",
+    "amount": 1000,
+    "receivedDate": "2026-03-02",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-03-02",
+    "restricted": false
+  },
+  {
+    "source": "Jennifer Cotaling",
+    "amount": 100,
+    "receivedDate": "2026-03-04",
+    "restricted": false
+  },
+  {
+    "source": "Victor Henderson",
+    "amount": 500,
+    "receivedDate": "2026-03-04",
+    "restricted": false
+  },
+  {
+    "source": "Peter Melton",
+    "amount": 100,
+    "receivedDate": "2026-03-04",
+    "restricted": false
+  },
+  {
+    "source": "Bethany Baptist Church",
+    "amount": 300,
+    "receivedDate": "2026-03-06",
+    "restricted": false
+  },
+  {
+    "source": "Chuck and Mary Ann Pottenger",
+    "amount": 200,
+    "receivedDate": "2026-03-06",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 100,
+    "receivedDate": "2026-03-06",
+    "restricted": false
+  },
+  {
+    "source": "Marissa Beck",
+    "amount": 685,
+    "receivedDate": "2026-03-09",
+    "restricted": false
+  },
+  {
+    "source": "Anonymous",
+    "amount": 20,
+    "receivedDate": "2026-03-09",
+    "restricted": false
+  },
+  {
+    "source": "Dave and Suzanne Nesbitt",
+    "amount": 40,
+    "receivedDate": "2026-03-17",
+    "restricted": false
+  },
+  {
+    "source": "Pastor Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-03-17",
+    "restricted": false
+  },
+  {
+    "source": "St. Mary Parish Milford",
+    "amount": 642.74,
+    "receivedDate": "2026-03-17",
+    "restricted": false
+  },
+  {
+    "source": "Lakeview Food Basket",
+    "amount": 25,
+    "receivedDate": "2026-03-17",
+    "restricted": false
+  },
+  {
+    "source": "James and Virgiline Goebel",
+    "amount": 200,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Mary Ann Ryan",
+    "amount": 50,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Dave and Suzanne Nesbitt",
+    "amount": 100,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Kings of Kings Lutheran Church Orion",
+    "amount": 500,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Peter Melton",
+    "amount": 100,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Marianne Morgan",
+    "amount": 125,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Chuck and Mary Ann Pottenger",
+    "amount": 50,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Rick and Cinda McCarthy",
+    "amount": 100,
+    "receivedDate": "2026-03-31",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-03-31",
+    "restricted": false
+  },
+  {
+    "source": "David and Marion Sioma",
+    "amount": 100,
+    "receivedDate": "2026-04-03",
+    "restricted": false
+  },
+  {
+    "source": "Richard Bosler",
+    "amount": 250,
+    "receivedDate": "2026-04-03",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 500,
+    "receivedDate": "2026-04-06",
+    "restricted": false
+  },
+  {
+    "source": "Victor Henderson",
+    "amount": 500,
+    "receivedDate": "2026-04-07",
+    "restricted": false
+  },
+  {
+    "source": "Pastor Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-04-07",
+    "restricted": false
+  },
+  {
+    "source": "Nativity Episcopal Church Bloomfield",
+    "amount": 470,
+    "receivedDate": "2026-04-17",
+    "restricted": false
+  },
+  {
+    "source": "Cheryl Wolf",
+    "amount": 300,
+    "receivedDate": "2026-04-21",
+    "restricted": false
+  },
+  {
+    "source": "Lakeview Food Basket",
+    "amount": 25,
+    "receivedDate": "2026-04-21",
+    "restricted": false
+  },
+  {
+    "source": "Marianne Morgan",
+    "amount": 125,
+    "receivedDate": "2026-04-22",
+    "restricted": false
+  },
+  {
+    "source": "Baldwin Center",
+    "amount": 200,
+    "receivedDate": "2026-04-23",
+    "restricted": false
+  },
+  {
+    "source": "Ryan and Sara Walker",
+    "amount": 100,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Kevin and Mary Anne Wilseck",
+    "amount": 100,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Keith Harter and Albert Dehope III",
+    "amount": 50,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Peter Melton",
+    "amount": 100,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Bruce and Laura Kennedy",
+    "amount": 200,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-05-01",
+    "restricted": false
+  },
+  {
+    "source": "Robert and Kathleen Skubic",
+    "amount": 2000,
+    "receivedDate": "2026-05-01",
+    "restricted": false
+  },
+  {
+    "source": "Victor Henderson",
+    "amount": 500,
+    "receivedDate": "2026-05-05",
+    "restricted": false
+  },
+  {
+    "source": "Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-05-05",
+    "restricted": false
+  },
+  {
+    "source": "Steven Mobley",
+    "amount": 100,
+    "receivedDate": "2026-05-05",
+    "restricted": false
+  },
+  {
+    "source": "Gerald and Linda Romito",
+    "amount": 30,
+    "receivedDate": "2026-05-07",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 500,
+    "receivedDate": "2026-05-07",
+    "restricted": false
+  },
+  {
+    "source": "Lakeview Food Basket",
+    "amount": 25,
+    "receivedDate": "2026-05-13",
+    "restricted": false
+  },
+  {
+    "source": "Christ The Redeemer Parish",
+    "amount": 2000,
+    "receivedDate": "2026-05-13",
+    "restricted": false
+  },
+  {
+    "source": "Dave and Suzanne Nesbitt",
+    "amount": 100,
+    "receivedDate": "2026-05-15",
+    "restricted": false
+  },
+  {
+    "source": "Dave and Suzanne Nesbitt",
+    "amount": 40,
+    "receivedDate": "2026-05-15",
+    "restricted": false
+  },
+  {
+    "source": "Albert Nesbitt",
+    "amount": 1810,
+    "receivedDate": "2026-05-15",
+    "restricted": false
+  },
+  {
+    "source": "Sally Freeland",
+    "amount": 100,
+    "receivedDate": "2026-05-19",
+    "restricted": false
+  },
+  {
+    "source": "Al and Marianne Morgan",
+    "amount": 125,
+    "receivedDate": "2026-05-21",
+    "restricted": false
+  },
+  {
+    "source": "St. Mary Parish Milford",
+    "amount": 500,
+    "receivedDate": "2026-05-22",
+    "restricted": false
+  },
+  {
+    "source": "Cheryl Wolf",
+    "amount": 300,
+    "receivedDate": "2026-05-26",
+    "restricted": false
+  },
+  {
+    "source": "Stephen and Carol Fitzgerald",
+    "amount": 100,
+    "receivedDate": "2026-05-26",
+    "restricted": false
+  },
+  {
+    "source": "Peter Melton",
+    "amount": 100,
+    "receivedDate": "2026-05-26",
+    "restricted": false
+  },
+  {
+    "source": "Julia Drew",
+    "amount": 100,
+    "receivedDate": "2026-05-31",
+    "restricted": false
+  },
+  {
+    "source": "First Presbyterian Church of Troy",
+    "amount": 500,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Jack Marlatt",
+    "amount": 200,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "David and Marion Sioma",
+    "amount": 750,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Hector Beuno",
+    "amount": 200,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Savannah Spears",
+    "amount": 150,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Pledging Foundation",
+    "amount": 284.91,
+    "receivedDate": "2026-06-03",
+    "restricted": false
+  },
+  {
+    "source": "Lakeview Food Basket",
+    "amount": 25,
+    "receivedDate": "2026-06-04",
+    "restricted": false
+  },
+  {
+    "source": "Mark and Janet Davison",
+    "amount": 500,
+    "receivedDate": "2026-06-06",
+    "restricted": false
+  },
+  {
+    "source": "James Clark and Sherlynn Everly",
+    "amount": 100,
+    "receivedDate": "2026-06-07",
+    "restricted": false
+  },
+  {
+    "source": "C.A.R.E.S. of Farmington Hills, Inc.",
+    "amount": 750,
+    "receivedDate": "2026-06-09",
+    "restricted": false
+  },
+  {
+    "source": "Navtity Espiscopal Church",
+    "amount": 100,
+    "receivedDate": "2026-06-12",
+    "restricted": false
+  },
+  {
+    "source": "Need to identify all checks",
+    "amount": 12250,
+    "receivedDate": "2026-06-25",
+    "restricted": false
+  }
+]

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<template id="__bundler_thumbnail" data-bg-color="#0b0f14">
+  <svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="60" cy="100" r="30" fill="#2d5bff"/>
+    <circle cx="140" cy="100" r="30" fill="#6c8cff"/>
+    <rect x="85" y="94" width="30" height="12" fill="#fff"/>
+  </svg>
+</template>
+<helmet>
+  <style>
+    @keyframes pb-pulse { 0%,100%{ transform:scale(1); opacity:0.7; } 50%{ transform:scale(1.15); opacity:1; } }
+    body { margin:0; }
+  </style>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./ChatLib.js"></script>
+  <script type="module">
+    import * as webllm from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm';
+    window.__webllm = webllm;
+  </script>
+</helmet>
+<div style="min-height:100vh;background:#0b0f14;color:#e8ecf1;font-family:'Segoe UI',-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;">
+  <div style="width:100%;max-width:920px;background:#131922;border:1px solid #232b38;border-radius:16px;padding:28px;">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:{{ statusColor }};"></div>
+      <h1 style="margin:0;font-size:19px;font-weight:700;">Pipeline Browser II</h1>
+    </div>
+    <div style="font-size:12.5px;color:#8b95a5;margin-bottom:22px;">Voice → Text → Translated Text → AI Reply → Back-Translated → Voice. A full-circle conversation loop.</div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px;">
+
+      <!-- Stage 1: Voice to Text -->
+      <div style="background:#0e131a;border:1px solid #2a3242;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:12px;font-weight:700;color:#6c8cff;text-transform:uppercase;letter-spacing:0.5px;">1 · Voice → Text</div>
+        <sc-if value="{{ recUnsupported }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="font-size:12px;color:#f3b4b9;">SpeechRecognition unsupported in this browser.</div>
+        </sc-if>
+        <sc-if value="{{ recSupported }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <button
+              aria-label="{{ micButtonLabel }}"
+              aria-pressed="{{ isRecording }}"
+              onClick="{{ onToggleRecord }}"
+              style="width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;background:{{ micBg }};color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0;">
+              <span style="{{ pulseStyle }}"></span>
+              <span style="position:relative;z-index:1;">{{ micGlyph }}</span>
+            </button>
+            <select onChange="{{ onSourceLangChange }}" value="{{ sourceLang }}" style="flex:1;background:#131922;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:8px 9px;font-size:12.5px;">
+              <sc-for list="{{ srcLangOptions }}" as="opt" hint-placeholder-count="4">
+                <option value="{{ opt.code }}">{{ opt.label }}</option>
+              </sc-for>
+            </select>
+          </div>
+          <textarea
+            value="{{ transcript }}"
+            onInput="{{ onTranscriptEdit }}"
+            onKeyDown="{{ onTranscriptKeyDown }}"
+            placeholder="Speak, or type here… (Enter to translate)"
+            rows="4"
+            style="min-height:90px;background:#131922;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:10px;font-size:13px;line-height:1.5;font-family:inherit;resize:vertical;box-sizing:border-box;"
+          ></textarea>
+          <sc-if value="{{ isRecording }}" hint-placeholder-val="{{ false }}">
+            <div style="font-size:12px;color:#6c8cff;">{{ interim }}</div>
+          </sc-if>
+          <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:#8b95a5;cursor:pointer;">
+            <input type="checkbox" checked="{{ autoTranslate }}" onChange="{{ onToggleAutoTranslate }}" />
+            Auto-translate on stop / Enter
+          </label>
+        </sc-if>
+      </div>
+
+      <!-- Stage 2: Translate -->
+      <div style="background:#0e131a;border:1px solid #2a3242;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:12px;font-weight:700;color:#6c8cff;text-transform:uppercase;letter-spacing:0.5px;">2 · Translate</div>
+        <select onChange="{{ onTargetLangChange }}" value="{{ targetLang }}" style="background:#131922;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:8px 9px;font-size:12.5px;">
+          <sc-for list="{{ targetLangOptions }}" as="opt" hint-placeholder-count="6">
+            <option value="{{ opt.code }}">{{ opt.label }}</option>
+          </sc-for>
+        </select>
+        <button
+          onClick="{{ onTranslate }}"
+          disabled="{{ translateDisabled }}"
+          style="padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:{{ translateCursor }};background:#2d5bff;color:#fff;opacity:{{ translateOpacity }};">
+          {{ translateButtonText }}
+        </button>
+        <div style="min-height:90px;background:#131922;border:1px solid #2a3242;border-radius:8px;padding:10px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
+          <sc-if value="{{ hasTranslated }}" hint-placeholder-val="{{ false }}">
+            <span>{{ translated }}</span>
+          </sc-if>
+          <sc-if value="{{ showTranslatedPlaceholder }}" hint-placeholder-val="{{ true }}">
+            <span style="color:#4d5666;">Translated text appears here…</span>
+          </sc-if>
+        </div>
+        <sc-if value="{{ engineLoading }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:11.5px;color:#8b95a5;">⏳ Loading translation model (first use only, then cached)…</div>
+        </sc-if>
+      </div>
+
+      <!-- Stage 3: AI Reply (in target language) + back-translate to English -->
+      <div style="background:#0e131a;border:1px solid #2a3242;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:12px;font-weight:700;color:#6c8cff;text-transform:uppercase;letter-spacing:0.5px;">3 · AI Reply → English</div>
+        <button
+          onClick="{{ onAskAI }}"
+          disabled="{{ askAIDisabled }}"
+          style="padding:10px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:{{ askAICursor }};background:#2d5bff;color:#fff;opacity:{{ askAIOpacity }};">
+          {{ askAIButtonText }}
+        </button>
+        <div style="font-size:10px;color:#556080;text-transform:uppercase;letter-spacing:1px;">AI reply ({{ targetLangLabel }})</div>
+        <div style="min-height:70px;background:#131922;border:1px solid #2a3242;border-radius:8px;padding:10px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
+          <sc-if value="{{ hasAiReply }}" hint-placeholder-val="{{ false }}"><span>{{ aiReply }}</span></sc-if>
+          <sc-if value="{{ showAiReplyPlaceholder }}" hint-placeholder-val="{{ true }}"><span style="color:#4d5666;">AI's foreign-language reply appears here…</span></sc-if>
+        </div>
+        <div style="font-size:10px;color:#556080;text-transform:uppercase;letter-spacing:1px;">Back-translated (English)</div>
+        <div style="min-height:70px;background:#131922;border:1px solid #2a3242;border-radius:8px;padding:10px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;">
+          <sc-if value="{{ hasBackTranslated }}" hint-placeholder-val="{{ false }}"><span>{{ backTranslated }}</span></sc-if>
+          <sc-if value="{{ showBackTranslatedPlaceholder }}" hint-placeholder-val="{{ true }}"><span style="color:#4d5666;">English back-translation appears here…</span></sc-if>
+        </div>
+      </div>
+
+      <!-- Stage 4: Text to Voice -->
+      <div style="background:#0e131a;border:1px solid #2a3242;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+        <div style="font-size:12px;font-weight:700;color:#6c8cff;text-transform:uppercase;letter-spacing:0.5px;">4 · Text → Voice</div>
+        <sc-if value="{{ synthUnsupported }}" hint-placeholder-val="{{ false }}">
+          <div role="alert" style="font-size:12px;color:#f3b4b9;">Speech synthesis unsupported in this browser.</div>
+        </sc-if>
+        <sc-if value="{{ synthSupported }}" hint-placeholder-val="{{ true }}">
+          <select onChange="{{ onVoiceChange }}" value="{{ voiceKey }}" style="background:#131922;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:8px 9px;font-size:12.5px;">
+            <option value="">Auto (best match for language)</option>
+            <sc-for list="{{ voiceOptions }}" as="v" hint-placeholder-count="4">
+              <option value="{{ v.key }}">{{ v.label }}</option>
+            </sc-for>
+          </select>
+          <button
+            onClick="{{ onSpeak }}"
+            disabled="{{ speakDisabled }}"
+            style="padding:12px;border-radius:8px;border:none;font-size:13.5px;font-weight:600;cursor:{{ speakCursor }};background:{{ speakBg }};color:#fff;opacity:{{ speakOpacity }};">
+            {{ speakButtonText }}
+          </button>
+          <div style="font-size:11.5px;color:#4d5666;">
+            <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+              Speed <input type="range" min="0.5" max="2" step="0.01" value="{{ rate }}" onInput="{{ onRateChange }}" style="flex:1;" /> {{ rateLabel }}
+            </label>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+
+    <sc-if value="{{ errorMsg }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="margin-top:16px;background:#3a1f22;border:1px solid #6b2c31;color:#f3b4b9;border-radius:8px;padding:10px 12px;font-size:12.5px;">{{ errorMsg }}</div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const SRC_LANGS = [
+  { code: 'en-US', label: 'English (US)' },
+  { code: 'en-GB', label: 'English (UK)' },
+  { code: 'es-ES', label: 'Spanish' },
+  { code: 'fr-FR', label: 'French' },
+];
+
+const TARGET_LANGS = [
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Spanish' },
+  { code: 'fr', label: 'French' },
+  { code: 'de', label: 'German' },
+  { code: 'bg', label: 'Bulgarian' },
+  { code: 'ro', label: 'Romanian' },
+  { code: 'zh', label: 'Chinese (Mandarin)' },
+];
+
+// Maps our short target codes to full BCP-47 for the synthesis stage.
+const SYNTH_LANG_MAP = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', bg: 'bg-BG', ro: 'ro-RO', zh: 'zh-CN' };
+
+class Component extends DCLogic {
+  state = {
+    sourceLang: 'en-US',
+    isRecording: false,
+    transcript: '',
+    interim: '',
+    recUnsupported: false,
+
+    targetLang: 'es',
+    translated: '',
+    translating: false,
+    lastTranslatedInput: '',
+
+    rate: 1,
+    speaking: false,
+    synthUnsupported: false,
+    voiceKey: '',
+    voices: [],
+
+    autoTranslate: true,
+    errorMsg: '',
+    engineLoading: false,
+
+    aiReply: '',
+    backTranslated: '',
+    askingAI: false,
+  };
+
+  componentDidMount() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { this.setState({ recUnsupported: true }); console.error('[Pipeline] SpeechRecognition unavailable'); }
+    else this._SR = SR;
+
+    if (!window.speechSynthesis) { this.setState({ synthUnsupported: true }); console.error('[Pipeline] speechSynthesis unavailable'); }
+    else {
+      const load = () => {
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length) this.setState({ voices });
+      };
+      load();
+      window.speechSynthesis.onvoiceschanged = load;
+    }
+  }
+
+  voiceKeyOf(v) { return v.voiceURI || (v.name + '|' + v.lang); }
+
+  componentWillUnmount() {
+    if (this._rec) { try { this._rec.stop(); } catch (e) {} }
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+
+  buildRecognizer() {
+    const rec = new this._SR();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = this.state.sourceLang;
+
+    rec.onresult = (e) => {
+      let finalText = '';
+      let interimText = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript + ' ';
+        else interimText += r[0].transcript;
+      }
+      this.setState(s => ({
+        transcript: finalText ? (s.transcript + finalText) : s.transcript,
+        interim: interimText,
+      }));
+    };
+    rec.onerror = (e) => {
+      console.error('[Pipeline] recognition error:', e.error);
+      const msg = e.error === 'not-allowed' ? 'Microphone permission denied.' : `Recognition error: ${e.error}`;
+      this.setState({ errorMsg: msg, isRecording: false });
+    };
+    rec.onend = () => {
+      if (this.state.isRecording) { try { rec.start(); } catch (e) { this.setState({ isRecording: false }); } }
+    };
+    return rec;
+  }
+
+  onTranscriptEdit = (e) => this.setState({ transcript: e.target.value });
+  onTranscriptKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (this.state.autoTranslate) this.onTranslate(); }
+  };
+  onToggleAutoTranslate = (e) => this.setState({ autoTranslate: e.target.checked });
+  onVoiceChange = (e) => this.setState({ voiceKey: e.target.value });
+
+  onToggleRecord = async () => {
+    if (this.state.recUnsupported) return;
+    if (this.state.isRecording) {
+      this.setState({ isRecording: false, interim: '' });
+      if (this._rec) { try { this._rec.stop(); } catch (e) {} }
+      if (this.state.autoTranslate) this.onTranslate();
+      return;
+    }
+    this.setState({ errorMsg: '' });
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const p = await navigator.permissions.query({ name: 'microphone' });
+        if (p.state === 'denied') {
+          this.setState({ errorMsg: 'Microphone permission denied for this site. Enable it in browser settings, then reload.' });
+          return;
+        }
+      }
+    } catch (e) {}
+    this._rec = this.buildRecognizer();
+    try {
+      this._rec.start();
+      this.setState({ isRecording: true });
+      console.log('[Pipeline] recording started, lang=', this.state.sourceLang);
+    } catch (e) {
+      console.error('[Pipeline] failed to start recording', e);
+      this.setState({ errorMsg: 'Could not start recognition: ' + e.message });
+    }
+  };
+
+  onSourceLangChange = (e) => this.setState({ sourceLang: e.target.value });
+  onTargetLangChange = (e) => this.setState({ targetLang: e.target.value });
+  onRateChange = (e) => this.setState({ rate: Number(e.target.value) });
+
+  // Self-sufficient translation \u2014 previously this called a hook another
+  // app (AST-Translator) had to register first via window.parent.
+  // __meshSharedDocs, and even the ChatLib.getSharedEngine() step alone
+  // still required S-Matrix to be open first. Same fallback pattern as
+  // WebLLM Chat's ensureEngine(): try the shared engine, and if none
+  // exists, boot a private MLCEngine right here \u2014 no other app needs
+  // to be open at all.
+  async getChatFn() {
+    const shared = (typeof ChatLib !== 'undefined') ? ChatLib.getSharedEngine() : null;
+    if (shared) return shared.chat;
+    if (this._ownEngine) return (msgs) => this._ownEngine.chat.completions.create({ messages: msgs });
+    if (!window.__webllm) return null;
+    try {
+      this.setState({ engineLoading: true });
+      const engine = new window.__webllm.MLCEngine();
+      await engine.reload('Llama-3.2-1B-Instruct-q4f16_1-MLC');
+      this._ownEngine = engine;
+      this.setState({ engineLoading: false });
+      return (msgs) => engine.chat.completions.create({ messages: msgs });
+    } catch (e) {
+      console.error('[Pipeline] private engine boot failed', e);
+      this.setState({ engineLoading: false });
+      return null;
+    }
+  }
+
+  onTranslate = async () => {
+    const s = this.state;
+    const text = s.transcript.trim();
+    if (!text) { this.setState({ errorMsg: 'Capture some text in stage 1 first.' }); return; }
+    const chatFn = await this.getChatFn();
+    if (!chatFn) {
+      console.warn('[Pipeline] No shared inference engine \u2014 load a model in S-Matrix at least once first.');
+      this.setState({ errorMsg: 'No model available yet \u2014 open S-Matrix and load a model once, then retry.' });
+      return;
+    }
+    this.setState({ translating: true, errorMsg: '' });
+    const langLabel = (TARGET_LANGS.find(l => l.code === s.targetLang) || {}).label || s.targetLang.toUpperCase();
+    try {
+      const reply = await chatFn([
+        { role: 'system', content: `You are a translation engine, not an assistant. TRANSLATE the literal text given \u2014 do NOT answer it. Output ONLY the translated text in ${langLabel}, nothing else.` },
+        { role: 'user', content: `Translate this English text to ${langLabel}:\n\n${text}` }
+      ]);
+      const translated = (reply.choices?.[0]?.message?.content || '').trim();
+      if (!translated) throw new Error('translator returned no text');
+      console.log('[Pipeline] translated', text, '->', translated);
+      this.setState({ translated, translating: false, lastTranslatedInput: text });
+    } catch (e) {
+      console.error('[Pipeline] translation failed', e);
+      this.setState({ translating: false, errorMsg: 'Translation failed: ' + e.message });
+    }
+  };
+
+  onAskAI = async () => {
+    const s = this.state;
+    const foreignText = s.translated.trim();
+    if (!foreignText) { this.setState({ errorMsg: 'Translate stage 1\u2019s text first.' }); return; }
+    const chatFn = await this.getChatFn();
+    if (!chatFn) { this.setState({ errorMsg: 'No model available yet.' }); return; }
+    const langLabel = (TARGET_LANGS.find(l => l.code === s.targetLang) || {}).label || s.targetLang.toUpperCase();
+    this.setState({ askingAI: true, errorMsg: '' });
+    try {
+      // Step 3a: a second AI instance replies IN the target language \u2014
+      // simulating the other party in a real cross-language conversation.
+      const reply = await chatFn([
+        { role: 'system', content: `You are a helpful conversational partner. Reply naturally in ${langLabel} ONLY \u2014 no English, no translation, no explanation.` },
+        { role: 'user', content: foreignText }
+      ]);
+      const aiReply = (reply.choices?.[0]?.message?.content || '').trim();
+      if (!aiReply) throw new Error('AI returned no reply');
+      this.setState({ aiReply });
+
+      // Step 3b: translate that reply back to English, closing the loop.
+      const backReply = await chatFn([
+        { role: 'system', content: `You are a translation engine, not an assistant. TRANSLATE the literal text given \u2014 do NOT answer it. Output ONLY the translated text in English, nothing else.` },
+        { role: 'user', content: `Translate this ${langLabel} text to English:\n\n${aiReply}` }
+      ]);
+      const backTranslated = (backReply.choices?.[0]?.message?.content || '').trim();
+      if (!backTranslated) throw new Error('back-translation returned no text');
+      console.log('[Pipeline II] AI reply:', aiReply, '-> back-translated:', backTranslated);
+      this.setState({ backTranslated, askingAI: false });
+    } catch (e) {
+      console.error('[Pipeline II] AI reply/back-translate failed', e);
+      this.setState({ askingAI: false, errorMsg: 'AI reply failed: ' + e.message });
+    }
+  };
+
+  onSpeak = () => {
+    const s = this.state;
+    const text = s.backTranslated.trim() || s.translated.trim() || s.transcript.trim();
+    if (!text) { this.setState({ errorMsg: 'Nothing to speak yet.' }); return; }
+    if (s.speaking) { window.speechSynthesis.cancel(); this.setState({ speaking: false }); return; }
+    this.setState({ errorMsg: '' });
+
+    const utter = new SpeechSynthesisUtterance(text);
+    // Once back-translated to English, speak in English regardless of
+    // targetLang \u2014 that's the whole point of stage 3's round trip.
+    const targetLangCode = s.backTranslated.trim() ? 'en-US' : (s.translated.trim() ? (SYNTH_LANG_MAP[s.targetLang] || s.sourceLang) : s.sourceLang);
+    utter.lang = targetLangCode;
+    if (s.voiceKey) {
+      const fresh = window.speechSynthesis.getVoices();
+      const v = fresh.find(v => this.voiceKeyOf(v) === s.voiceKey);
+      if (v) { utter.voice = v; utter.lang = v.lang; }
+    }
+    utter.rate = s.rate;
+
+    // Turn-taking pattern (real interpreter/Zoom-style behavior): mute the
+    // mic for the duration of TTS playback so it can never pick up its own
+    // output, then unmute the instant playback ends \u2014 the two audio
+    // channels stay cleanly separated instead of overlapping.
+    utter.onstart = () => {
+      this.setState({ speaking: true });
+      if (this._rec && this.state.isRecording) { try { this._rec.abort(); } catch (e) {} this._micMutedForTTS = true; }
+    };
+    utter.onend = () => {
+      this.setState({ speaking: false });
+      if (this._micMutedForTTS) {
+        this._micMutedForTTS = false;
+        try { this._rec = this.buildRecognizer(); this._rec.start(); } catch (e) {}
+      }
+    };
+    utter.onerror = (e) => {
+      console.error('[Pipeline] synthesis error', e.error);
+      this.setState({ speaking: false, errorMsg: 'Speech error: ' + e.error });
+    };
+
+    window.speechSynthesis.cancel();
+    try {
+      window.speechSynthesis.speak(utter);
+      console.log('[Pipeline] speaking, lang=', utter.lang, 'rate=', s.rate);
+    } catch (e) {
+      console.error('[Pipeline] failed to speak', e);
+      this.setState({ errorMsg: 'Could not speak: ' + e.message });
+    }
+  };
+
+  renderVals() {
+    const s = this.state;
+    const hasTranscript = !!s.transcript.trim();
+    const hasTranslated = !!s.translated.trim();
+    const translateStale = hasTranscript && s.transcript.trim() !== s.lastTranslatedInput;
+    return {
+      statusColor: (s.recUnsupported && s.synthUnsupported) ? '#c0392b' : (s.isRecording || s.speaking ? '#2ecc71' : '#8b95a5'),
+
+      recSupported: !s.recUnsupported,
+      recUnsupported: s.recUnsupported,
+      sourceLang: s.sourceLang,
+      srcLangOptions: SRC_LANGS,
+      onSourceLangChange: this.onSourceLangChange,
+      isRecording: s.isRecording,
+      onToggleRecord: this.onToggleRecord,
+      micGlyph: s.isRecording ? '■' : '●',
+      micBg: s.isRecording ? '#c0392b' : '#2d5bff',
+      micButtonLabel: s.isRecording ? 'Stop recording' : 'Start recording',
+      pulseStyle: s.isRecording
+        ? 'position:absolute;inset:0;border-radius:50%;background:rgba(255,255,255,0.25);animation:pb-pulse 1.1s ease-in-out infinite;'
+        : 'display:none;',
+      transcript: s.transcript,
+      interim: s.interim,
+      hasTranscript,
+      showTranscriptPlaceholder: !hasTranscript && !s.isRecording,
+
+      targetLang: s.targetLang,
+      targetLangOptions: TARGET_LANGS,
+      onTargetLangChange: this.onTargetLangChange,
+      onTranslate: this.onTranslate,
+      translateDisabled: !hasTranscript || s.translating || s.engineLoading,
+      translateOpacity: (!hasTranscript || s.translating || s.engineLoading) ? 0.5 : 1,
+      translateCursor: (!hasTranscript || s.translating || s.engineLoading) ? 'not-allowed' : 'pointer',
+      translateButtonText: s.translating ? '⟳ Translating…' : (translateStale ? 'Translate (text changed)' : 'Translate'),
+      translated: s.translated,
+      hasTranslated,
+      showTranslatedPlaceholder: !hasTranslated,
+      translateUnavailable: false,
+      engineLoading: s.engineLoading,
+
+      synthSupported: !s.synthUnsupported,
+      synthUnsupported: s.synthUnsupported,
+      onSpeak: this.onSpeak,
+      speakDisabled: (!hasTranscript && !hasTranslated),
+      speakOpacity: (!hasTranscript && !hasTranslated) ? 0.5 : 1,
+      speakCursor: (!hasTranscript && !hasTranslated) ? 'not-allowed' : 'pointer',
+      speakBg: s.speaking ? '#c0392b' : '#2d5bff',
+      speakButtonText: s.speaking ? '■ Stop' : (hasTranslated ? '▶ Speak Translated' : '▶ Speak Original'),
+      rate: s.rate,
+      rateLabel: s.rate.toFixed(2) + 'x',
+      onRateChange: this.onRateChange,
+      voiceKey: s.voiceKey,
+      onVoiceChange: this.onVoiceChange,
+      voiceOptions: s.voices.map(v => ({ key: this.voiceKeyOf(v), label: `${v.name} (${v.lang})` })),
+      autoTranslate: s.autoTranslate,
+      onToggleAutoTranslate: this.onToggleAutoTranslate,
+      onTranscriptEdit: this.onTranscriptEdit,
+      onTranscriptKeyDown: this.onTranscriptKeyDown,
+
+      onAskAI: this.onAskAI,
+      askAIDisabled: !hasTranslated || s.askingAI,
+      askAIOpacity: (!hasTranslated || s.askingAI) ? 0.5 : 1,
+      askAICursor: (!hasTranslated || s.askingAI) ? 'not-allowed' : 'pointer',
+      askAIButtonText: s.askingAI ? '⟳ Asking AI…' : 'Ask AI (reply + back-translate)',
+      targetLangLabel: (TARGET_LANGS.find(l => l.code === s.targetLang) || {}).label || s.targetLang.toUpperCase(),
+      aiReply: s.aiReply,
+      hasAiReply: !!s.aiReply.trim(),
+      showAiReplyPlaceholder: !s.aiReply.trim(),
+      backTranslated: s.backTranslated,
+      hasBackTranslated: !!s.backTranslated.trim(),
+      showBackTranslatedPlaceholder: !s.backTranslated.trim(),
+
+      errorMsg: s.errorMsg,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

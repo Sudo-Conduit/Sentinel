@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>body{margin:0;background:#f4f5f7;}</style>
+</helmet>
+<div style="width:100%;min-height:100vh;display:flex;flex-direction:column;background:#f4f5f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#1c2733;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:4px;padding:0 24px;background:#fff;border-bottom:1px solid #dfe3e8;">
+    <div style="font-size:15px;font-weight:700;margin-right:20px;padding:14px 0;">Development Co Contract</div>
+    <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="3">
+      <div onClick="{{ tab.onClick }}" style="cursor:pointer;padding:14px 16px;font-size:13px;font-weight:600;color:{{ tab.color }};border-bottom:2px solid {{ tab.borderColor }};">{{ tab.label }}</div>
+    </sc-for>
+    <sc-if value="{{ hasGeneratedHtml }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ onShowGenerated }}" style="cursor:pointer;padding:14px 16px;font-size:13px;font-weight:600;color:{{ generatedTabColor }};border-bottom:2px solid {{ generatedTabBorderColor }};">Agreement (Generated)</div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isOverviewTab }}" hint-placeholder-val="{{ true }}">
+  <div style="flex:1;overflow-y:auto;padding:40px;max-width:760px;">
+    <div style="font-size:22px;font-weight:800;margin-bottom:16px;">Overview</div>
+    <p style="font-size:14px;line-height:1.7;color:#333;">Development Company provides fund development, structuring, and capital-formation services to the Fund, including sourcing and negotiating deal opportunities, coordinating due diligence, and supporting the Fund's ongoing operational and investor-relations activities.</p>
+    <p style="font-size:14px;line-height:1.7;color:#333;">Compensation for these services is structured across a monthly or flat retainer, an annual management-fee-style payment calculated against the Fund's committed capital, and an equity participation in the Fund — each configurable in the Calculation tab and reflected automatically in the generated Agreement.</p>
+    <p style="font-size:14px;line-height:1.7;color:#333;">Use the <strong>Calculation</strong> tab to model different Fund Size, fee, retainer, and equity scenarios and save them for comparison. Use the <strong>Config</strong> tab to fill in the counterparty and dates, then generate the resulting legal document for review.</p>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isCalculationTab }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:flex;overflow:hidden;">
+  <div style="width:380px;flex-shrink:0;background:#fff;border-right:1px solid #dfe3e8;padding:24px;overflow-y:auto;">
+    <div style="font-size:11.5px;color:#6b7686;margin-bottom:20px;">Adjust terms, then save options for comparison.</div>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Fund Size</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:13px;color:#6b7686;">$</span>
+      <input type="text" value="{{ fundSizeInput }}" onInput="{{ onFundSizeInput }}" style="flex:1;background:#f4f5f7;border:1px solid #dfe3e8;border-radius:6px;padding:6px 8px;font-size:13px;outline:none;"/>
+    </div>
+    <input type="range" min="10000000" max="250000000" step="1000000" value="{{ fundSize }}" onInput="{{ onFundSizeSlider }}" style="width:100%;margin-bottom:20px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Management Fee Rate</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <input type="text" value="{{ feeRateInput }}" onInput="{{ onFeeRateInput }}" style="flex:1;background:#f4f5f7;border:1px solid #dfe3e8;border-radius:6px;padding:6px 8px;font-size:13px;outline:none;"/>
+      <span style="font-size:13px;color:#6b7686;">%</span>
+    </div>
+    <input type="range" min="0" max="10" step="0.25" value="{{ feeRate }}" onInput="{{ onFeeRateSlider }}" style="width:100%;margin-bottom:20px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Base Salary</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <span style="font-size:13px;color:#6b7686;">$</span>
+      <input type="text" value="{{ retainerInput }}" onInput="{{ onRetainerInput }}" style="flex:1;background:#f4f5f7;border:1px solid #dfe3e8;border-radius:6px;padding:6px 8px;font-size:13px;outline:none;"/>
+    </div>
+    <input type="range" min="0" max="50000" step="500" value="{{ retainer }}" onInput="{{ onRetainerSlider }}" style="width:100%;margin-bottom:14px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Base Salary Activation</div>
+    <div style="display:flex;gap:8px;margin-bottom:20px;">
+      <div onClick="{{ onSetRetainerTypeMonthly }}" style="cursor:pointer;flex:1;text-align:center;padding:7px 0;border-radius:6px;font-size:12.5px;font-weight:600;background:{{ retainerTypeMonthlyBg }};color:{{ retainerTypeMonthlyColor }};">Monthly</div>
+      <div onClick="{{ onSetRetainerTypeFlat }}" style="cursor:pointer;flex:1;text-align:center;padding:7px 0;border-radius:6px;font-size:12.5px;font-weight:600;background:{{ retainerTypeFlatBg }};color:{{ retainerTypeFlatColor }};">Flat Upfront</div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Base Salary Rate (% of Fund Size)</div>
+    <div style="font-size:13px;color:#1c2733;background:#f4f5f7;border:1px solid #dfe3e8;border-radius:6px;padding:6px 8px;margin-bottom:20px;">{{ retainerPctLabel }} (derived: base salary ÷ fund size)</div>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">LTI — NAV Vesting Rate</div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+      <input type="text" value="{{ equityRateInput }}" onInput="{{ onEquityRateInput }}" style="flex:1;background:#f4f5f7;border:1px solid #dfe3e8;border-radius:6px;padding:6px 8px;font-size:13px;outline:none;"/>
+      <span style="font-size:13px;color:#6b7686;">%</span>
+    </div>
+    <input type="range" min="0" max="3" step="0.05" value="{{ equityRate }}" onInput="{{ onEquityRateSlider }}" style="width:100%;margin-bottom:24px;"/>
+
+    <div onClick="{{ onSaveOption }}" style="cursor:pointer;background:#0a84ff;color:#fff;padding:9px 0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;">+ Save as Option</div>
+  </div>
+
+  <div style="flex:1;padding:36px;overflow-y:auto;">
+
+    <div style="background:#fff;border:1px solid #1c2733;border-radius:2px;padding:24px;max-width:900px;">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;text-align:left;"></th>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;text-align:left;">Base Salary</th>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;text-align:left;">Management Fee</th>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;text-align:left;">LTI</th>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;text-align:left;">Total</th>
+            <th style="border:1px solid #b8bcc2;padding:8px 10px;background:#e8eaee;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <sc-for list="{{ optionRows }}" as="opt" hint-placeholder-count="2">
+            <tr>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;font-weight:600;">{{ opt.label }}</td>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;">{{ opt.retainerLabel }}</td>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;">{{ opt.compLabel }}</td>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;">{{ opt.equityValueLabel }}</td>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;font-weight:700;">{{ opt.totalLabel }}</td>
+              <td style="border:1px solid #b8bcc2;padding:8px 10px;text-align:center;"><span onClick="{{ opt.onRemove }}" style="cursor:pointer;color:#c0392b;">✕</span></td>
+            </tr>
+          </sc-for>
+          <sc-if value="{{ optionsEmpty }}" hint-placeholder-val="{{ false }}">
+            <tr><td colspan="5" style="border:1px solid #b8bcc2;padding:14px;color:#8e99a8;text-align:center;">No saved options yet — adjust terms on the left and click "Save as Option".</td></tr>
+          </sc-if>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isAgreementTab }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;overflow-y:auto;padding:40px;max-width:520px;">
+    <div style="font-size:22px;font-weight:800;margin-bottom:20px;">Config</div>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Counterparty Name</div>
+    <input type="text" value="{{ partyName }}" onInput="{{ onPartyNameInput }}" placeholder="Development Company, LLC" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #dfe3e8;border-radius:6px;padding:8px 10px;font-size:13px;outline:none;margin-bottom:18px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Effective Date</div>
+    <input type="date" value="{{ effectiveDate }}" onInput="{{ onEffectiveDateInput }}" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #dfe3e8;border-radius:6px;padding:8px 10px;font-size:13px;outline:none;margin-bottom:18px;"/>
+
+    <div style="font-size:11px;font-weight:700;color:#8e99a8;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px;">Agreement Creation Date</div>
+    <input type="date" value="{{ creationDate }}" onInput="{{ onCreationDateInput }}" style="width:100%;box-sizing:border-box;background:#fff;border:1px solid #dfe3e8;border-radius:6px;padding:8px 10px;font-size:13px;outline:none;margin-bottom:28px;"/>
+
+    <div style="font-size:12.5px;color:#6b7686;margin-bottom:16px;">Terms below reflect the current Calculation tab: Fund Size {{ fundSizeLabel }}, Management Fee Rate {{ feeRateLabel }}, Base Salary {{ retainerLabel }} ({{ retainerTypeLabelText }} activation), LTI (NAV Vesting) {{ equityRateLabel }}.</div>
+
+    <div onClick="{{ onGeneratePdf }}" style="cursor:pointer;background:#0a84ff;color:#fff;padding:10px 0;border-radius:8px;text-align:center;font-size:13px;font-weight:600;">Generate PDF Agreement</div>
+    <sc-if value="{{ sendMessage }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:11.5px;color:#2a9d5c;margin-top:8px;text-align:center;">{{ sendMessage }}</div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <sc-if value="{{ isGeneratedTab }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;overflow:hidden;">
+    <iframe ref="{{ agreementIframeRef }}" style="width:100%;height:100%;border:none;"></iframe>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+function money(n) { return '$' + Math.round(n).toLocaleString(); }
+function pct(n, digits) { return n.toFixed(digits == null ? 0 : digits) + '%'; }
+
+class Component extends DCLogic {
+  state = {
+    partyName: '', effectiveDate: new Date().toISOString().slice(0, 10), creationDate: new Date().toISOString().slice(0, 10),
+    fundSize: 100000000, feeRate: 3, retainer: 15000, retainerType: 'monthly', equityRate: 0.5,
+    generatedHtml: '',
+    options: [],
+    nextOptionId: 1,
+    sendMessage: null,
+    activeTab: 'overview'
+  };
+  onSetTab(tab) { return () => this.setState({ activeTab: tab }); }
+  onShowGenerated = () => this.setState({ activeTab: 'generated' });
+  agreementIframeRef = (el) => {
+    // The generated HTML contains its own double-quoted attributes (style="...", etc.), so it
+    // can never be safely embedded as an HTML attribute value (srcdoc="{{ generatedHtml }}") \u2014
+    // the first inner quote would terminate the attribute early and corrupt the markup. Setting
+    // .srcdoc as a real DOM property has no such escaping requirement, and doing it in-app
+    // (vs. window.open) avoids popup-blocker failures too.
+    this._iframeEl = el;
+    if (el && this.state.generatedHtml) el.srcdoc = this.state.generatedHtml;
+  };
+
+  setNum(key, raw) {
+    const n = parseFloat(raw.replace(/[^0-9.]/g, ''));
+    if (!isNaN(n)) this.setState({ [key]: n });
+  }
+
+  onFundSizeInput = (e) => this.setNum('fundSize', e.target.value);
+  onFundSizeSlider = (e) => this.setState({ fundSize: parseFloat(e.target.value) });
+  onFeeRateInput = (e) => this.setNum('feeRate', e.target.value);
+  onFeeRateSlider = (e) => this.setState({ feeRate: parseFloat(e.target.value) });
+  onRetainerInput = (e) => this.setNum('retainer', e.target.value);
+  onRetainerSlider = (e) => this.setState({ retainer: parseFloat(e.target.value) });
+  onEquityRateInput = (e) => this.setNum('equityRate', e.target.value);
+  onEquityRateSlider = (e) => this.setState({ equityRate: parseFloat(e.target.value) });
+  onPartyNameInput = (e) => this.setState({ partyName: e.target.value });
+  onEffectiveDateInput = (e) => this.setState({ effectiveDate: e.target.value });
+  onCreationDateInput = (e) => this.setState({ creationDate: e.target.value });
+  onSetRetainerTypeMonthly = () => this.setState({ retainerType: 'monthly' });
+  onSetRetainerTypeFlat = () => this.setState({ retainerType: 'flat' });
+
+  onSaveOption = () => {
+    const s = this.state;
+    const annualRetainer = s.retainer * 12;
+    const compensation = s.fundSize * (s.feeRate / 100);
+    const equityValue = s.fundSize * (s.equityRate / 100);
+    const total = compensation + equityValue;
+    this.setState(st => ({
+      options: [...st.options, {
+        id: st.nextOptionId, retainer: s.retainer, retainerPct: (annualRetainer / s.fundSize) * 100,
+        compensation, equityPct: s.equityRate, equityValue, total, fundSize: s.fundSize, feeRate: s.feeRate
+      }],
+      nextOptionId: st.nextOptionId + 1
+    }));
+  };
+  onRemoveOption(id) { return () => this.setState(s => ({ options: s.options.filter(o => o.id !== id) })); }
+
+  onGeneratePdf = () => {
+    const s = this.state;
+    const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : '[DATE]';
+    const retainerLine = s.retainerType === 'monthly'
+      ? `a base salary paid monthly at a rate of ${money(s.retainer)} per month, payable in advance on the first business day of each calendar month`
+      : `a base salary activated as a flat upfront payment of ${money(s.retainer)}, payable in full upon execution of this Agreement`;
+    const compAmt = s.fundSize * (s.feeRate / 100);
+    const equityAmt = s.fundSize * (s.equityRate / 100);
+    const partyLabel = s.partyName || '[COUNTERPARTY NAME]';
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Development Agreement</title>
+<style>
+body{font-family:Georgia,'Times New Roman',serif;max-width:800px;margin:60px auto;padding:0 20px;color:#111;line-height:1.6;font-size:12pt;}
+h1{font-size:16pt;text-align:center;margin-bottom:4px;}
+h2{font-size:13pt;margin-top:28px;border-bottom:1px solid #333;padding-bottom:4px;}
+.meta{text-align:center;font-size:11pt;color:#333;margin-bottom:30px;}
+.sig{margin-top:60px;display:flex;justify-content:space-between;}
+.sig div{width:45%;border-top:1px solid #111;padding-top:6px;font-size:10.5pt;}
+p{margin:12px 0;text-align:justify;}
+ol{padding-left:22px;}
+li{margin-bottom:10px;text-align:justify;}
+</style></head><body>
+<h1>DEVELOPMENT SERVICES AGREEMENT</h1>
+<div class="meta">Entered into as of ${fmtDate(s.effectiveDate)} (the "Effective Date")<br/>Prepared on ${fmtDate(s.creationDate)}</div>
+
+<p>This Development Services Agreement (this "Agreement") is entered into by and between the fund entity identified in Section 1 below ("Fund") and <strong>${partyLabel}</strong> ("Development Company"), collectively the "Parties."</p>
+
+<h2>1. Fund Size and Basis of Compensation</h2>
+<p>The Parties acknowledge that, as of the Effective Date, the Fund's committed capital ("Fund Size") is <strong>${money(s.fundSize)}</strong>. All compensation described in this Agreement is calculated with reference to the Fund Size then in effect, subject to adjustment as provided in Section 5.</p>
+
+<h2>2. Base Salary</h2>
+<p>In consideration of the services to be rendered under this Agreement, the Fund shall pay Development Company ${retainerLine}.</p>
+
+<h2>3. Management Fee Compensation</h2>
+<p>In addition to the retainer described in Section 2, the Fund shall pay Development Company an annual fee equal to <strong>${pct(s.feeRate)}</strong> of the Fund Size, currently equal to <strong>${money(compAmt)}</strong>, payable in accordance with the Fund's standard distribution schedule.</p>
+
+<h2>4. Long-Term Incentive (LTI) — NAV Vesting</h2>
+<p>As additional consideration, Development Company shall be entitled to a long-term incentive award equal to <strong>${pct(s.equityRate, 2)}</strong> of the Fund Size, currently valued at <strong>${money(equityAmt)}</strong>, vesting over a schedule tied to the Fund's Net Asset Value (NAV) performance and deployment milestones, in accordance with the terms of the Fund's governing documents.</p>
+
+<h2>5. Fund Size Adjustments</h2>
+<p>In the event the Fund Size increases or decreases following the Effective Date, all amounts calculated by reference to the Fund Size under Sections 3 and 4 shall be automatically recalculated on a pro rata basis, effective as of the date of such change, without requiring further amendment of this Agreement.</p>
+
+<h2>6. Travel and Related Expenses</h2>
+<p>All reasonable travel, lodging, and related out-of-pocket expenses incurred by Development Company in connection with the performance of its duties under this Agreement shall be the responsibility of, and shall be reimbursed by, the Fund, provided such expenses are incurred in good faith and are consistent with the Fund's then-current expense policy.</p>
+
+<h2>7. Term and Termination</h2>
+<p>This Agreement shall commence on the Effective Date and shall continue in effect until terminated by either Party upon not less than thirty (30) days' prior written notice to the other Party, or as otherwise provided herein.</p>
+
+<h2>8. Independent Contractor Status</h2>
+<p>Development Company is an independent contractor and not an employee, agent, or partner of the Fund. Nothing in this Agreement shall be construed to create a partnership, joint venture, or employment relationship between the Parties.</p>
+
+<h2>9. Confidentiality</h2>
+<p>Each Party agrees to maintain the confidentiality of all non-public information disclosed by the other Party in connection with this Agreement, and shall not disclose such information to any third party without the prior written consent of the disclosing Party, except as required by law.</p>
+
+<h2>10. Governing Law</h2>
+<p>This Agreement shall be governed by and construed in accordance with the laws of the jurisdiction in which the Fund is organized, without regard to its conflict of laws principles.</p>
+
+<h2>11. Entire Agreement</h2>
+<p>This Agreement constitutes the entire agreement between the Parties with respect to its subject matter and supersedes all prior negotiations, understandings, and agreements, whether written or oral. This Agreement may be amended only by a written instrument signed by both Parties.</p>
+
+<p style="margin-top:30px;"><strong>THIS DOCUMENT IS A DRAFT GENERATED FOR REVIEW PURPOSES AND DOES NOT CONSTITUTE A BINDING AGREEMENT UNTIL EXECUTED BY BOTH PARTIES AND REVIEWED BY LEGAL COUNSEL.</strong></p>
+
+<div class="sig">
+  <div>Fund<br/><br/>By: ______________________<br/>Name:<br/>Title:<br/>Date:</div>
+  <div>${partyLabel}<br/><br/>By: ______________________<br/>Name:<br/>Title:<br/>Date:</div>
+</div>
+</body></html>`;
+    this.setState({ generatedHtml: html, activeTab: 'generated' });
+    if (this._iframeEl) this._iframeEl.srcdoc = html;
+  };
+
+  renderVals() {
+    const s = this.state;
+    const annualRetainer = s.retainer * 12;
+    const retainerPct = s.fundSize > 0 ? (annualRetainer / s.fundSize) * 100 : 0;
+
+    const optionRows = s.options.map((opt, i) => ({
+      label: 'Option ' + String(i + 1).padStart(2, '0'),
+      retainerLabel: money(opt.retainer), rateTypeLabel: 'Fund Size ' + String.fromCharCode(65 + i),
+      retainerPctLabel: pct(opt.retainerPct, 3), compLabel: money(opt.compensation),
+      equityPctLabel: pct(opt.equityPct, 2), equityValueLabel: money(opt.equityValue),
+      totalLabel: money(opt.total), onRemove: this.onRemoveOption(opt.id)
+    }));
+
+    const TAB_DEFS = [ { key: 'overview', label: 'Overview' }, { key: 'calculation', label: 'Calculation' }, { key: 'agreement', label: 'Config' }, { key: 'generated', label: 'Agreement' } ];
+    const tabs = TAB_DEFS.filter(t => t.key !== 'generated' || s.generatedHtml).map(t => {
+      const active = s.activeTab === t.key;
+      return { label: t.label, onClick: this.onSetTab(t.key), color: active ? '#0a84ff' : '#6b7686', borderColor: active ? '#0a84ff' : 'transparent' };
+    });
+
+    return {
+      tabs, isOverviewTab: s.activeTab === 'overview', isCalculationTab: s.activeTab === 'calculation', isAgreementTab: s.activeTab === 'agreement', isGeneratedTab: s.activeTab === 'generated', agreementIframeRef: this.agreementIframeRef,
+      fundSizeLabel: money(s.fundSize), feeRateLabel: pct(s.feeRate), retainerLabel: money(s.retainer), retainerTypeLabelText: s.retainerType === 'monthly' ? 'Monthly' : 'Flat', equityRateLabel: pct(s.equityRate, 2),
+      fundSize: s.fundSize, fundSizeInput: String(Math.round(s.fundSize)), onFundSizeInput: this.onFundSizeInput, onFundSizeSlider: this.onFundSizeSlider,
+      feeRate: s.feeRate, feeRateInput: String(s.feeRate), onFeeRateInput: this.onFeeRateInput, onFeeRateSlider: this.onFeeRateSlider,
+      retainer: s.retainer, retainerInput: String(Math.round(s.retainer)), onRetainerInput: this.onRetainerInput, onRetainerSlider: this.onRetainerSlider,
+      retainerPctLabel: pct(retainerPct, 3),
+      equityRate: s.equityRate, equityRateInput: String(s.equityRate), onEquityRateInput: this.onEquityRateInput, onEquityRateSlider: this.onEquityRateSlider,
+      partyName: s.partyName, onPartyNameInput: this.onPartyNameInput,
+      effectiveDate: s.effectiveDate, onEffectiveDateInput: this.onEffectiveDateInput,
+      creationDate: s.creationDate, onCreationDateInput: this.onCreationDateInput,
+      retainerTypeMonthlyBg: s.retainerType === 'monthly' ? '#0a84ff' : '#f4f5f7', retainerTypeMonthlyColor: s.retainerType === 'monthly' ? '#fff' : '#1c2733',
+      retainerTypeFlatBg: s.retainerType === 'flat' ? '#0a84ff' : '#f4f5f7', retainerTypeFlatColor: s.retainerType === 'flat' ? '#fff' : '#1c2733',
+      onSetRetainerTypeMonthly: this.onSetRetainerTypeMonthly, onSetRetainerTypeFlat: this.onSetRetainerTypeFlat,
+      onSaveOption: this.onSaveOption, onGeneratePdf: this.onGeneratePdf, sendMessage: s.sendMessage,
+      optionRows, optionsEmpty: optionRows.length === 0
+    };
+  }
+}
+</script>
+</body>
+</html>

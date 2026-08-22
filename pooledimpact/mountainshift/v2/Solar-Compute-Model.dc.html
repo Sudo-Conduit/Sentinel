@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>body{margin:0;background:#0b1426;}</style>
+</helmet>
+<div style="min-height:100vh;background:#0b1426;color:#cdd6e8;font-family:'DM Sans',sans-serif;font-size:13px;">
+
+  <div style="border-bottom:1px solid #1e3052;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(11,20,38,0.9);">
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#f0f4fb;">{{ siteName }}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;">SOLAR + COMPUTE NODE MODEL</div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:#c9a84c;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);padding:6px 12px;border-radius:3px;">{{ dealStatus }}</div>
+  </div>
+
+  <div style="padding:26px 32px;">
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Site Inputs</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1e3052;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:10px;">
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Plant Capacity (MW)</div>
+        <input type="number" value="{{ plantMW }}" onInput="{{ onPlantMWChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Node Allocation (%)</div>
+        <input type="number" value="{{ nodeAllocPct }}" onInput="{{ onNodeAllocChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+        <div style="font-size:9.5px;color:#5a6a8a;margin-top:4px;">headroom left after existing PPAs</div>
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Cost per MW ($)</div>
+        <input type="number" value="{{ costPerMW }}" onInput="{{ onCostPerMWChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Node All-In Cost ($)</div>
+        <input type="number" value="{{ nodeCost }}" onInput="{{ onNodeCostChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+        <div style="font-size:9.5px;color:#5a6a8a;margin-top:4px;">travel, hardware, vendors, install</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:1px;background:#1e3052;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:24px;">
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:110px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Compute MW Available</div>
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:#5dade2;">{{ computeMWLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:110px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Node Count (est.)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:#f0f4fb;">{{ nodeCountLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:110px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Total Node Capex</div>
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:#bb8fce;">{{ totalNodeCapexLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:110px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Annual Compute Revenue</div>
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:#2ecc71;">{{ annualComputeRevLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:110px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Payback (months)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:18px;color:{{ paybackColor }};">{{ paybackLabel }}</div>
+      </div>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Compute Workload Mix (revenue share)</div>
+    <div style="background:#111d35;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:26px;">
+      <sc-for list="{{ workloadRows }}" as="w" hint-placeholder-count="3">
+        <div style="display:flex;align-items:center;gap:12px;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+          <div style="width:150px;font-size:12px;color:#cdd6e8;">{{ w.label }}</div>
+          <input type="range" min="0" max="100" value="{{ w.pct }}" onInput="{{ w.onChange }}" style="flex:1;" />
+          <div style="width:50px;text-align:right;font-family:'DM Mono',monospace;font-size:12px;color:{{ w.color }};">{{ w.pctLabel }}</div>
+          <div style="width:110px;text-align:right;font-family:'DM Mono',monospace;font-size:11.5px;color:#8a99b3;">{{ w.revLabel }}</div>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Revenue Streams</div>
+    <div style="background:#111d35;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:26px;">
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Energy Sale (PPA, non-node capacity)</span>
+        <span style="font-family:'DM Mono',monospace;color:#5dade2;">{{ energyRevLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Compute Hosting (Monte Carlo / LLM / Transcoding)</span>
+        <span style="font-family:'DM Mono',monospace;color:#2ecc71;">{{ annualComputeRevLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Sensor Data / Telemetry Upsell (CleanEnerG + MSOS license)</span>
+        <span style="font-family:'DM Mono',monospace;color:#c9a84c;">{{ dataRevLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#0e1830;">
+        <span style="color:#f0f4fb;font-weight:600;">Total Annual Site Revenue</span>
+        <span style="font-family:'DM Mono',monospace;color:#f0f4fb;font-weight:600;">{{ totalAnnualRevLabel }}</span>
+      </div>
+    </div>
+
+    <div style="font-size:10px;color:#556080;font-family:'DM Mono',monospace;padding-top:14px;border-top:1px solid #1e3052;">CONFIDENTIAL — Sourced from Solar+Compute node economics discussed for Bulgaria (ABDS 4.9MW + BESS) and applicable to any CleanEnergy/MountainShiftOS site. Compute pricing assumptions are illustrative — replace with live GFLOP/s market rates before use in an IM.</div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:900},&quot;siteName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Bulgaria ABDS Solar Farm&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dealStatus&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;ILLUSTRATIVE&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;defaultPlantMW&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:4.9,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0.1,&quot;max&quot;:500,&quot;step&quot;:0.1},&quot;defaultNodeAllocPct&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:20,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:100,&quot;step&quot;:1},&quot;defaultCostPerMW&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1,&quot;max&quot;:100000},&quot;defaultNodeCost&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:1000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1,&quot;max&quot;:100000}}">
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtUSDShort(n) {
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return '$' + (n / 1e3).toFixed(0) + 'K';
+  return '$' + Math.round(n);
+}
+
+class Component extends DCLogic {
+  state = {
+    plantMW: this.props.defaultPlantMW ?? 4.9,
+    nodeAllocPct: this.props.defaultNodeAllocPct ?? 20,
+    costPerMW: this.props.defaultCostPerMW ?? 2000,
+    nodeCost: this.props.defaultNodeCost ?? 1000,
+    workloadPct: { monteCarlo: 30, llmInference: 50, videoTranscoding: 20 },
+  };
+
+  onPlantMWChange = (e) => this.setState({ plantMW: Number(e.target.value) || 0 });
+  onNodeAllocChange = (e) => this.setState({ nodeAllocPct: Math.max(0, Math.min(100, Number(e.target.value) || 0)) });
+  onCostPerMWChange = (e) => this.setState({ costPerMW: Number(e.target.value) || 0 });
+  onNodeCostChange = (e) => this.setState({ nodeCost: Number(e.target.value) || 0 });
+
+  // Rebalances the other two sliders proportionally so the three always
+  // sum to 100 \u2014 same shape as a scenario weighting, not independent
+  // percentages that could silently exceed 100%.
+  setWorkloadPct(key, val) {
+    val = Math.max(0, Math.min(100, val));
+    const keys = ['monteCarlo', 'llmInference', 'videoTranscoding'];
+    const others = keys.filter(k => k !== key);
+    const remaining = 100 - val;
+    const otherSum = others.reduce((s, k) => s + this.state.workloadPct[k], 0) || 1;
+    const next = { ...this.state.workloadPct, [key]: val };
+    others.forEach(k => { next[k] = Math.round(this.state.workloadPct[k] / otherSum * remaining); });
+    const diff = 100 - keys.reduce((s, k) => s + next[k], 0);
+    next[others[0]] += diff;
+    this.setState({ workloadPct: next });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const computeMW = s.plantMW * (s.nodeAllocPct / 100);
+    // Node count must derive from nodeCost (the real $/node figure, e.g.
+    // Bulgaria ABDS's ~$1000 all-in), not costPerMW (a $/MW plant-capacity
+    // figure that has nothing to do with how many discrete compute nodes
+    // fit) \u2014 that mismatch previously made node count/capex round to 0
+    // regardless of a real compute allocation. NODE_KW_CAPACITY is the
+    // illustrative power draw per node (kW) used to convert allocated MW
+    // into a physically sensible node count.
+    const NODE_KW_CAPACITY = 1.5;
+    const nodeCount = Math.round(computeMW * 1000 / NODE_KW_CAPACITY);
+    const totalNodeCapex = nodeCount * s.nodeCost;
+
+    // Illustrative annual compute revenue per allocated MW \u2014 blended rate
+    // across Monte Carlo / LLM inference / video transcoding workloads.
+    // Placeholder until replaced with live market GFLOP/s pricing.
+    const REV_PER_MW_YEAR = { monteCarlo: 180000, llmInference: 260000, videoTranscoding: 140000 };
+    const w = s.workloadPct;
+    const blendedRevPerMW = (REV_PER_MW_YEAR.monteCarlo * w.monteCarlo + REV_PER_MW_YEAR.llmInference * w.llmInference + REV_PER_MW_YEAR.videoTranscoding * w.videoTranscoding) / 100;
+    const annualComputeRev = computeMW * blendedRevPerMW;
+
+    const nonNodeMW = s.plantMW - computeMW;
+    const ENERGY_REV_PER_MW_YEAR = 220000; // illustrative PPA rate
+    const energyRev = nonNodeMW * ENERGY_REV_PER_MW_YEAR;
+
+    const DATA_REV_PER_MW_YEAR = 15000; // sensor/telemetry + MSOS license upsell, illustrative
+    const dataRev = s.plantMW * DATA_REV_PER_MW_YEAR;
+
+    const totalAnnualRev = energyRev + annualComputeRev + dataRev;
+    const paybackMonths = annualComputeRev > 0 ? (totalNodeCapex / (annualComputeRev / 12)) : null;
+
+    const workloadRows = [
+      { key: 'monteCarlo', label: 'Monte Carlo / Research Sim', color: '#5dade2' },
+      { key: 'llmInference', label: 'LLM Inference', color: '#bb8fce' },
+      { key: 'videoTranscoding', label: 'Video Transcoding', color: '#c9a84c' },
+    ].map(row => ({
+      ...row,
+      pct: w[row.key],
+      pctLabel: w[row.key] + '%',
+      revLabel: fmtUSDShort(computeMW * REV_PER_MW_YEAR[row.key] * w[row.key] / 100),
+      onChange: (e) => this.setWorkloadPct(row.key, Number(e.target.value)),
+    }));
+
+    return {
+      siteName: this.props.siteName || 'Solar + Compute Site Model',
+      dealStatus: this.props.dealStatus || 'ILLUSTRATIVE',
+      plantMW: s.plantMW, onPlantMWChange: this.onPlantMWChange,
+      nodeAllocPct: s.nodeAllocPct, onNodeAllocChange: this.onNodeAllocChange,
+      costPerMW: s.costPerMW, onCostPerMWChange: this.onCostPerMWChange,
+      nodeCost: s.nodeCost, onNodeCostChange: this.onNodeCostChange,
+
+      computeMWLabel: computeMW.toFixed(2) + ' MW',
+      nodeCountLabel: nodeCount.toLocaleString(),
+      totalNodeCapexLabel: fmtUSDShort(totalNodeCapex),
+      annualComputeRevLabel: fmtUSDShort(annualComputeRev),
+      paybackLabel: (paybackMonths !== null && paybackMonths !== undefined) ? paybackMonths.toFixed(1) : '—',
+      paybackColor: paybackMonths && paybackMonths <= 24 ? '#2ecc71' : (paybackMonths && paybackMonths <= 48 ? '#c9a84c' : '#e74c3c'),
+
+      workloadRows,
+      energyRevLabel: fmtUSDShort(energyRev),
+      dataRevLabel: fmtUSDShort(dataRev),
+      totalAnnualRevLabel: fmtUSDShort(totalAnnualRev),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

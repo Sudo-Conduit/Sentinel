@@ -1,0 +1,1147 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<style>
+  @keyframes ds-spin { to { transform: rotate(360deg); } }
+  @keyframes ds-fadein { from { opacity: 0; } to { opacity: 1; } }
+  body { margin: 0; background: #0b0c10; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="./BaseClassX.js"></script>
+<script src="./Environment.js"></script>
+<script src="./CPU.js"></script>
+<script src="./Physical.js"></script>
+<script src="./Memory.js"></script>
+<script src="./Kernel.js"></script>
+<script src="./BIOS.js"></script>
+<script src="./Procd.js"></script>
+<script src="./llmd.js"></script>
+<script src="./StatusClock.js"></script>
+<script src="./StatusMonitor.js"></script>
+</helmet>
+
+<div ref="{{ rootWrapRef }}" style="position:relative;width:100%;height:100vh;overflow:hidden;font-family:'Noto Sans',-apple-system,'Segoe UI',system-ui,sans-serif;user-select:none;background:{{ wallpaperCss }};">
+
+<sc-if value="{{ isBoot }}" hint-placeholder-val="{{ true }}">
+  <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:#0b0c10;color:#e8e9ee;z-index:500;">
+    <div style="width:56px;height:56px;border-radius:14px;background:linear-gradient(135deg,#5b7fe0,#3f5bb5);display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:700;color:#fff;">M</div>
+    <div style="width:180px;height:3px;border-radius:2px;background:#22242c;overflow:hidden;">
+      <div style="width:40%;height:100%;background:#5b7fe0;border-radius:2px;animation:ds-spin 1.1s linear infinite;transform-origin:0 0;"></div>
+    </div>
+    <div style="font-size:13px;color:#8b8f98;letter-spacing:.02em;">{{ bootMsg }}</div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isLogin }}" hint-placeholder-val="{{ false }}">
+  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:{{ wallpaperCss }};z-index:400;animation:ds-fadein .4s ease;">
+    <sc-if value="{{ hasLockGallery }}" hint-placeholder-val="{{ false }}">
+      <div style="position:absolute;inset:0;z-index:0;background:{{ lockBaseCss }};opacity:1;"></div>
+      <div style="position:absolute;inset:0;z-index:1;background:{{ lockNextCss }};opacity:{{ lockNextOpacity }};transition:opacity {{ lockFadeMs }}ms ease;"></div>
+    </sc-if>
+    <div style="position:absolute;top:0;left:0;right:0;height:280px;z-index:1;background:linear-gradient(to bottom, rgba(0,0,0,0.8), rgba(0,0,0,0));pointer-events:none;"></div>
+    <div style="position:absolute;top:64px;left:0;right:0;z-index:2;display:flex;flex-direction:column;align-items:center;pointer-events:none;">
+      <div style="{{ loginClockStyle }}">
+        <div style="font-size:15px;font-weight:700;letter-spacing:0.12em;">{{ loginDateStr }}</div>
+        <div style="font-size:60px;font-weight:800;line-height:1.15;">{{ loginTimeStr }}</div>
+      </div>
+      <span onClick="{{ toggleLoginClockVisibility }}" style="pointer-events:auto;cursor:pointer;font-size:11px;color:rgba(255,255,255,0.55);margin-top:2px;">{{ loginClockToggleLabel }}</span>
+    </div>
+    <div style="{{ loginCardStyle }}">
+      <div style="width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#5b7fe0,#3f5bb5);display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:700;color:#fff;">{{ userInitial }}</div>
+      <div style="display:flex;gap:8px;">
+        <sc-for list="{{ users }}" as="u" hint-placeholder-count="2">
+          <button onClick="{{ selectUser }}" data-uid="{{ u.name }}" style="{{ u.pillStyle }}">{{ u.label }}</button>
+        </sc-for>
+      </div>
+      <sc-if value="{{ userNeedsPassword }}" hint-placeholder-val="{{ false }}">
+        <input type="password" placeholder="Password" value="{{ password }}" onInput="{{ onPasswordInput }}" onKeyDown="{{ onPasswordKeyDown }}" style="width:200px;padding:9px 12px;border-radius:8px;border:1px solid #33343d;background:#1c1e26;color:#e8e9ee;font-size:14px;outline:none;" />
+      </sc-if>
+      <button onClick="{{ doLogin }}" style="width:216px;padding:9px 12px;border-radius:8px;border:none;background:#5b7fe0;color:#fff;font-size:14px;font-weight:600;cursor:pointer;">Log In</button>
+      <sc-if value="{{ hasLoginError }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;color:#e06c75;">{{ loginError }}</div>
+      </sc-if>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;animation:ds-fadein .35s ease;" onContextMenu="{{ onDesktopContextMenu }}" onClick="{{ closeAllMenus }}">
+
+  <sc-if value="{{ hasGallery }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:0;background:{{ galleryBaseCss }};opacity:1;"></div>
+    <div style="position:absolute;inset:0;z-index:1;background:{{ galleryNextCss }};opacity:{{ galleryNextOpacity }};transition:opacity {{ galleryFadeMs }}ms ease;"></div>
+  </sc-if>
+
+  <sc-if value="{{ hasDockCtxMenu }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ dockCtxMenuStyle }}" onClick="{{ stopProp }}">
+      <div style="padding:6px 10px;font-size:10.5px;color:#8b8f98;text-transform:uppercase;letter-spacing:0.5px;">Docked</div>
+      <div onClick="{{ dockCtxSetDockedYes }}" style="{{ dockCtxItemYesStyle }}">Yes</div>
+      <div onClick="{{ dockCtxSetDockedNo }}" style="{{ dockCtxItemNoStyle }}">No</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ hasCtxMenu }}" hint-placeholder-val="{{ false }}">
+    <div style="{{ ctxMenuStyle }}" onClick="{{ stopProp }}">
+      <div onClick="{{ ctxNewFolder }}" style="{{ ctxItemStyle }}">New Folder</div>
+      <div onClick="{{ ctxWallpaper }}" style="{{ ctxItemStyle }}">Change Wallpaper</div>
+      <div onClick="{{ ctxGetInfo }}" style="{{ ctxItemStyle }}">Get Info</div>
+    </div>
+  </sc-if>
+
+  <div style="position:absolute;top:0;left:0;right:0;height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:rgba(18,19,24,0.62);backdrop-filter:blur(16px);z-index:9000;color:#e8e9ee;font-size:13px;z-index:200;box-shadow:0 1px 0 rgba(255,255,255,0.05);">
+    <div style="display:flex;align-items:center;gap:16px;">
+      <span style="font-weight:700;">◆</span>
+      <span style="font-weight:600;">{{ activeAppName }}</span>
+      <span onClick="{{ onOpenOmniFromMenuBar }}" title="Search" style="cursor:default;display:flex;align-items:center;padding:2px 4px;border-radius:4px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 -960 960 960" fill="#e8e9ee"><path d="M796-121 533-384q-30 26-69.96 40.5Q423.08-329 378-329q-108.16 0-183.08-75Q120-479 120-585t75-181q75-75 181.5-75t181 75Q632-691 632-584.85 632-542 618-502q-14 40-42 75l264 262-44 44ZM377-389q81.25 0 138.13-57.5Q572-504 572-585t-56.87-138.5Q458.25-781 377-781t-138.62 57.5Q181-666 181-585t57.38 138.5Q295.75-389 377-389Z"/></svg>
+      </span>
+      <sc-for list="{{ menuBarMenus }}" as="m" hint-placeholder-count="4">
+        <div style="position:relative;">
+          <span onClick="{{ m.toggle }}" style="cursor:default;padding:2px 4px;border-radius:4px;">{{ m.label }}</span>
+          <sc-if value="{{ m.open }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;top:22px;left:0;min-width:160px;background:#22242c;border:1px solid #33343d;border-radius:8px;padding:5px;box-shadow:0 12px 30px rgba(0,0,0,0.4);z-index:9001;">
+              <sc-for list="{{ m.items }}" as="mi" hint-placeholder-count="2">
+                <div onClick="{{ mi.onClick }}" style="padding:6px 10px;border-radius:5px;font-size:13px;cursor:default;">{{ mi.label }}</div>
+              </sc-for>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <div ref="{{ monitorRef }}"></div>
+      <div ref="{{ clockRef }}"></div>
+      <span onClick="{{ logout }}" style="cursor:pointer;opacity:.85;">⏻</span>
+    </div>
+  </div>
+
+  <sc-for list="{{ windowVms }}" as="win" hint-placeholder-count="1">
+    <div style="{{ win.style }}" onMouseDown="{{ win.onFocus }}">
+      <div onMouseDown="{{ win.onHeaderDown }}" style="{{ win.headerStyle }}">
+        <div style="display:flex;gap:7px;">
+          <span onClick="{{ win.onClose }}" style="{{ win.dotCloseStyle }}"></span>
+          <span onClick="{{ win.onMinimize }}" style="{{ win.dotMinStyle }}"></span>
+          <span onClick="{{ win.onMaximize }}" style="{{ win.dotMaxStyle }}"></span>
+        </div>
+        <div style="flex:1;text-align:center;font-size:12.5px;font-weight:600;color:#d5d7de;">{{ win.title }}</div>
+        <div style="width:52px;"></div>
+      </div>
+      <div style="{{ win.bodyWrapStyle }}">
+        <sc-if value="{{ win.isBlurred }}" hint-placeholder-val="{{ false }}">
+          <div onClick="{{ win.onFocus }}" style="{{ win.shimStyle }}"></div>
+        </sc-if>
+        <sc-if value="{{ win.isIframe }}" hint-placeholder-val="{{ false }}">
+          <iframe src="{{ win.src }}" title="{{ win.title }}" onLoad="{{ win.onIframeLoad }}" style="width:100%;height:100%;border:none;background:#fff;"></iframe>
+        </sc-if>
+        <div style="{{ win.dragBlockerStyle }}"></div>
+        <sc-if value="{{ win.isSettings }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:20px;color:#1c1e26;font-size:13px;display:flex;flex-direction:column;gap:14px;height:100%;box-sizing:border-box;background:#f4f5f7;overflow:auto;">
+            <div style="font-weight:700;font-size:15px;">Desktop &amp; Clock</div>
+            <div>
+              <div style="margin-bottom:6px;color:#5a5d68;">Desktop Wallpaper</div>
+              <div style="display:flex;gap:10px;">
+                <sc-for list="{{ wallpaperSwatches }}" as="w" hint-placeholder-count="3">
+                  <div onClick="{{ w.onPick }}" style="{{ w.style }}">
+                    <sc-if value="{{ w.removable }}" hint-placeholder-val="{{ false }}">
+                      <span onClick="{{ w.onRemove }}" style="position:absolute;top:-6px;right:-6px;width:16px;height:16px;border-radius:50%;background:#e0666e;color:#fff;font-size:10px;line-height:16px;text-align:center;cursor:pointer;">×</span>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+              <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+                <div style="margin-top:10px;display:flex;gap:8px;">
+                  <input type="text" placeholder="Paste an image URL…" value="{{ customUrlValue }}" onInput="{{ onCustomUrlInput }}" onKeyDown="{{ onCustomUrlKeyDown }}" style="flex:1;padding:7px 10px;border-radius:7px;border:1px solid #d3d5db;font-size:12.5px;outline:none;" />
+                  <button onClick="{{ applyCustomWallpaper }}" style="padding:7px 14px;border-radius:7px;border:1px solid #d3d5db;background:#fff;cursor:pointer;font-size:12.5px;">Set</button>
+                </div>
+              </sc-if>
+            </div>
+            <div>
+              <div style="margin-bottom:6px;color:#5a5d68;">Open Windows Maximized</div>
+              <button onClick="{{ toggleOpenMaximized }}" style="padding:7px 12px;border-radius:7px;border:1px solid #d3d5db;background:#fff;cursor:pointer;white-space:nowrap;min-width:80px;">{{ openMaximizedLabel }}</button>
+            </div>
+            <div>
+              <div style="margin-bottom:6px;color:#5a5d68;">Menu bar clock</div>
+              <button onClick="{{ toggleClockFormat }}" style="padding:7px 12px;border-radius:7px;border:1px solid #d3d5db;background:#fff;cursor:pointer;white-space:nowrap;min-width:80px;">{{ clockFormatLabel }}</button>
+            </div>
+            <div>
+              <div style="margin-bottom:6px;color:#5a5d68;">Default Language</div>
+              <select value="{{ defaultLanguage }}" onChange="{{ onDefaultLanguageChange }}" style="padding:7px 10px;border-radius:7px;border:1px solid #d3d5db;background:#fff;font-size:12.5px;">
+                <sc-for list="{{ defaultLanguageOptions }}" as="lo" hint-placeholder-count="5">
+                  <option value="{{ lo.value }}">{{ lo.label }}</option>
+                </sc-for>
+              </select>
+            </div>
+            <div>
+              <div style="margin-bottom:6px;color:#5a5d68;">Dock position</div>
+              <div style="display:flex;gap:8px;">
+                <sc-for list="{{ dockPosOptions }}" as="dp" hint-placeholder-count="3">
+                  <div onClick="{{ dp.onPick }}" style="{{ dp.style }}">{{ dp.label }}</div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="border-top:1px solid #e2e4e9;padding-top:12px;">
+              <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+              <div style="font-weight:700;font-size:15px;margin-bottom:8px;">Galleries</div>
+              <div style="color:#5a5d68;font-size:12px;margin-bottom:8px;">A named list of image URLs that fades between random images on the desktop — photos, a dashboard feed, a kiosk display.</div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                <input type="text" placeholder="Gallery name" value="{{ galleryNameValue }}" onInput="{{ onGalleryNameInput }}" style="padding:7px 10px;border-radius:7px;border:1px solid #d3d5db;font-size:12.5px;outline:none;" />
+                <textarea placeholder="One image URL per line" value="{{ galleryUrlsValue }}" onInput="{{ onGalleryUrlsInput }}" style="padding:7px 10px;border-radius:7px;border:1px solid #d3d5db;font-size:12.5px;outline:none;min-height:60px;font-family:inherit;resize:vertical;"></textarea>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  <span style="color:#5a5d68;">Fade every</span>
+                  <input type="number" min="2" value="{{ galleryIntervalValue }}" onInput="{{ onGalleryIntervalInput }}" style="width:56px;padding:6px 8px;border-radius:6px;border:1px solid #d3d5db;font-size:12.5px;" />
+                  <span style="color:#5a5d68;">sec</span>
+                  <button onClick="{{ saveGallery }}" style="margin-left:auto;padding:7px 14px;border-radius:7px;border:1px solid #d3d5db;background:#fff;cursor:pointer;font-size:12.5px;">Save Gallery</button>
+                </div>
+              </div>
+              <sc-for list="{{ galleryRows }}" as="g" hint-placeholder-count="0">
+                <div style="{{ g.style }}">
+                  <div style="flex:1;min-width:0;cursor:pointer;" onClick="{{ g.onEdit }}">
+                    <div style="font-weight:600;font-size:13px;text-decoration:underline;text-decoration-color:#c7cad1;">{{ g.name }}</div>
+                    <div style="color:#8b8f98;font-size:11.5px;">{{ g.meta }}</div>
+                  </div>
+                  <button onClick="{{ g.onToggle }}" style="{{ g.toggleStyle }}">{{ g.toggleLabel }}</button>
+                  <button onClick="{{ g.onLock }}" style="{{ g.lockStyle }}">{{ g.lockLabel }}</button>
+                  <button onClick="{{ g.onDelete }}" style="padding:6px 10px;border-radius:6px;border:1px solid #d3d5db;background:#fff;cursor:pointer;font-size:12px;color:#e0666e;">Delete</button>
+                </div>
+              </sc-for>
+              </sc-if>
+              <sc-if value="{{ isGuest }}" hint-placeholder-val="{{ false }}">
+                <div style="color:#8b8f98;font-size:12.5px;">Guest is limited to the default wallpaper gallery.</div>
+              </sc-if>
+              <sc-if value="{{ hasGalleryModal }}" hint-placeholder-val="{{ false }}">
+                <div style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;" onClick="{{ closeGalleryModal }}">
+                  <div style="width:420px;max-height:70vh;display:flex;flex-direction:column;background:#fff;border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,0.4);padding:16px;" onClick="{{ stopProp }}">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                      <div style="font-weight:700;font-size:14px;">{{ galleryModalName }}</div>
+                      <span style="cursor:pointer;color:#8b8f98;font-size:16px;" onClick="{{ closeGalleryModal }}">×</span>
+                    </div>
+                    <div style="flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
+                      <sc-for list="{{ galleryModalImages }}" as="im" hint-placeholder-count="2">
+                        <div style="display:flex;align-items:center;gap:8px;padding:6px;border:1px solid #e2e4e9;border-radius:8px;">
+                          <div style="width:44px;height:30px;border-radius:5px;flex-shrink:0;background:{{ im.css }};"></div>
+                          <div style="flex:1;min-width:0;font-size:11.5px;color:#5a5d68;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ im.url }}</div>
+                          <span style="cursor:pointer;color:#e0666e;font-size:13px;" onClick="{{ im.onRemove }}">×</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                      <input type="text" placeholder="Add image URL…" value="{{ galleryModalUrlValue }}" onInput="{{ onGalleryModalUrlInput }}" onKeyDown="{{ onGalleryModalUrlKeyDown }}" style="flex:1;padding:7px 10px;border-radius:7px;border:1px solid #d3d5db;font-size:12.5px;outline:none;" />
+                      <button onClick="{{ addGalleryModalImage }}" style="padding:7px 14px;border-radius:7px;border:1px solid #d3d5db;background:#fff;cursor:pointer;font-size:12.5px;">Add</button>
+                    </div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+        <sc-if value="{{ win.isAbout }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:26px;color:#1c1e26;font-size:13px;line-height:1.7;height:100%;box-sizing:border-box;background:#f4f5f7;">
+            <div style="font-weight:700;font-size:16px;margin-bottom:8px;">About This Mesh</div>
+            <div>Firmware: {{ kernelInfo.firmwareType }}</div>
+            <div>Booted from: {{ kernelInfo.bootedFrom }}</div>
+            <div>Scheduler: {{ kernelInfo.schedulerPolicy }}</div>
+            <div>Processes: {{ kernelInfo.count }}</div>
+          </div>
+        </sc-if>
+      </div>
+      <sc-for list="{{ win.resizeEdges }}" as="rh" hint-placeholder-count="8">
+        <div onMouseDown="{{ rh.onDown }}" style="{{ rh.style }}"></div>
+      </sc-for>
+    </div>
+  </sc-for>
+
+  <div style="{{ dockOuterStyle }}">
+    <div style="{{ dockInnerStyle }}">
+      <sc-for list="{{ dockApps }}" as="app" hint-placeholder-count="4">
+        <sc-if value="{{ app.dividerBeforeStyle }}" hint-placeholder-val="{{ false }}">
+          <div style="{{ app.dividerBeforeStyle }}"></div>
+        </sc-if>
+        <div onClick="{{ app.onLaunch }}" onContextMenu="{{ app.onContextMenu }}" title="{{ app.name }}" style="display:flex;align-items:center;gap:4px;cursor:pointer;position:relative;">
+          <div style="{{ app.iconStyle }}">{{ app.glyph }}</div>
+          <div style="{{ app.dotStyle }}"></div>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ switcherOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:9500;">
+      <div style="display:flex;gap:10px;padding:20px;border-radius:16px;background:rgba(20,21,27,0.78);backdrop-filter:blur(20px);box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+        <sc-for list="{{ switcherItems }}" as="it" hint-placeholder-count="2">
+          <div style="{{ it.style }}">
+            <div style="{{ it.iconStyle }}">{{ it.glyph }}</div>
+            <div style="font-size:11.5px;color:#e8e9ee;">{{ it.title }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ omniOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:absolute;inset:0;z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding-top:14vh;background:rgba(0,0,0,0.25);" onClick="{{ omniClose }}">
+      <div style="width:320px;max-width:80vw;background:rgba(28,30,38,0.3);backdrop-filter:blur(22px);border-radius:14px;border:0.5px solid #FFFFFF66;box-shadow:rgba(0,0,0,0.55) 0px 24px 70px;overflow:hidden;" onClick="{{ stopProp }}">
+        <input type="text" autoFocus="{{ true }}" placeholder="Search apps…" value="{{ omniQuery }}" onInput="{{ onOmniInput }}" style="width:100%;box-sizing:border-box;padding:16px 18px;font-size:19px;border-width:medium;border-style:none;border-color:#fff;outline:none;background:#00000080;color:rgb(255 255 255);" />
+        <div style="border-top:1px solid #33343d;max-height:260px;overflow:auto;padding:6px;">
+          <sc-for list="{{ omniResults }}" as="r" hint-placeholder-count="2">
+            <div onClick="{{ r.onPick }}" style="{{ r.style }}">
+              <div style="{{ r.iconStyle }}">{{ r.glyph }}</div>
+              <div style="font-size:14px;color:#e8e9ee;">{{ r.label }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</sc-if>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const APPS = [
+  { id: 'finder', name: 'Finder', glyph: '📂', color: '#3f8ae0', src: './FinderDialog.dc.html', pinned: true },
+  { id: 'ide', name: 'VB6 IDE', glyph: 'V', color: '#5b7fe0', icon: './assets/icon-ide.png', src: './VB6IDE-Alpine.html', pinned: true },
+  { id: 'reports', name: 'Org Reports', glyph: 'R', color: '#b3cc66', src: './Org-Reports-UI.html', pinned: true },
+  { id: 'terminal', name: 'Terminal', glyph: '>_', color: '#2b2d33', src: './Terminal.dc.html', pinned: true },
+  { id: 'smatrix', name: 'LLM Engine', glyph: 'S\u00b7M', color: '#7c3aed', icon: './assets/icon-llm-engine.png', src: './SMatrix.html', pinned: true },
+  { id: 'network', name: 'Network', glyph: 'N', color: '#2b8a6b', src: './abf-crm-6.html', pinned: true },
+  { id: 'finance', name: 'Finance Portal Pro', glyph: '$', color: '#1f6f4a', icon: './assets/icon-finance-portal-pro.png', src: './conduit_fund_db-16.html', pinned: true },
+  { id: 'slides', name: 'Slides', glyph: '▤', color: '#e0666e', src: './Slides.html', pinned: true },
+  { id: 'mergex', name: 'MergeX', glyph: '⑂', color: '#4a68c4', src: './MergeX.dc.html', pinned: true },
+  { id: 'dbx', name: 'DBX', glyph: '⛁', color: '#5b7fe0', src: './DBX.dc.html', pinned: true },
+  { id: 'memorymap', name: 'MemoryMap Manager', glyph: '▤', color: '#5b8def', src: './MemoryMap-Manager.dc.html', pinned: true },
+  { id: 'cvcsim', name: 'CVC Simulator', glyph: '⚭', color: '#3fb950', src: './CVC-Simulator.dc.html', pinned: true },
+  { id: 'calcx', name: 'CalcX', glyph: '▦', color: '#2fa86e', src: './CalcX.dc.html', pinned: true },
+  { id: 'composex', name: 'ComposeX', glyph: '✎', color: '#e0a866', src: './ComposeX.dc.html', pinned: true },
+  { id: 'drawx', name: 'DrawX', glyph: '◈', color: '#8e66e0', src: './DrawX.dc.html', pinned: true },
+  { id: 'appstore', name: 'AppStation', glyph: '⌘', color: '#0a84ff', src: './AppStore.dc.html', pinned: true },
+  { id: 'asttranslator', name: 'AST Translator', glyph: '文', color: '#2f9e6e', src: './AST-Translator.dc.html', pinned: true },
+  { id: 'pipelinebrowser', name: 'Pipeline Browser', glyph: '⇄', color: '#5dade2', src: './Pipeline-Browser.dc.html', pinned: true },
+  { id: 'pipelinebrowser2', name: 'Pipeline Browser II', glyph: '⇄', color: '#8e6ee0', src: './Pipeline-Browser-II.dc.html', pinned: true },
+  { id: 'chatwebllm', name: 'WebLLM Chat', glyph: '💬', color: '#4a4af0', src: './ChatApp-WebLLM.dc.html', pinned: true },
+  { id: 'chatsignal', name: 'Relay', glyph: '💬', color: '#2b7de9', src: './ChatApp-Signal.dc.html', pinned: true },
+  { id: 'settings', name: 'Settings', glyph: 'S', color: '#8b8f98', icon: './assets/icon-settings.png', pinned: true },
+  { id: 'about', name: 'About This Mesh', glyph: 'i', color: '#3f5bb5', pinned: false }
+];
+const WALLPAPERS = [
+  "center/cover no-repeat url('./uploads/pasted-1784829430936-0.png')",
+  "center/cover no-repeat url('https://images.unsplash.com/photo-1499678329028-101435549a4e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D')",
+  "center/cover no-repeat url('https://wallpaperaccess.com/full/129471.jpg')",
+  "center/cover no-repeat url('https://wallpaperaccess.com/full/81235.jpg')",
+  "center/cover no-repeat url('https://wallpapercave.com/wp/Ti6qoP7.jpg')"
+];
+const ADMIN_TEST_GALLERY = {
+  id: 'gal_admin_test', name: 'Admin Test Gallery', interval: 15,
+  urls: ['./uploads/pasted-1784904246851-0.png', './uploads/pasted-1784904303864-0.png']
+};
+const CASCADE = 34;
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+class Component extends DCLogic {
+  state = {
+    phase: 'boot', bootMsg: 'Starting MeshOS\u2026', userSel: 'root', password: '', loginError: '',
+    windows: [], zTop: 10, activeWinId: null, openMenu: null, ctxMenu: null, wallpaperIdx: 0,
+    customWallpaper: null, customUrl: '', customWallpapers: [], clockFormat: '12h', procCount: 0, dockPos: 'bottom', defaultLanguage: 'en',
+    switcherOpen: false, switcherIdx: 0, omniOpen: false, omniQuery: '', omniIdx: 0,
+    loginIdle: false,
+    loginClockVisible: true, loginNow: Date.now(),
+    galleries: [], activeGalleryId: null, galleryNameInput: '', galleryUrlsInput: '', galleryIntervalInput: 15,
+    galleryBaseCss: '', galleryNextCss: '', galleryNextOpacity: 0,
+    galleryModalId: null, galleryModalUrl: '',
+    lockGalleryId: null, lockBaseCss: '', lockNextCss: '', lockNextOpacity: 0
+  };
+
+  static STORAGE_KEY = 'meshos.desktopshell.state.v1';
+
+  _loadPersisted() {
+    try {
+      const raw = localStorage.getItem(Component.STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) { return null; }
+  }
+  _persist() {
+    const s = this.state;
+    try {
+      localStorage.setItem(Component.STORAGE_KEY, JSON.stringify({
+        windows: s.windows, wallpaperIdx: s.wallpaperIdx, customWallpaper: s.customWallpaper,
+        clockFormat: s.clockFormat, dockPos: s.dockPos, defaultLanguage: s.defaultLanguage, zTop: s.zTop, activeWinId: s.activeWinId,
+        galleries: s.galleries, activeGalleryId: s.activeGalleryId, lockGalleryId: s.lockGalleryId, loginClockVisible: s.loginClockVisible
+      }));
+    } catch (e) {}
+  }
+
+  componentDidMount() {
+    this._userHashes = { root: null, guest: null };
+    // Chrome auto-scrolls the nearest scroll container (even overflow:hidden ones) when an
+    // autoFocus'd input inside a nested same-origin iframe receives focus — e.g. Terminal's
+    // input, or S-Matrix's prompt box — carrying the whole menu bar/desktop off-screen even
+    // though nothing here ever calls scrollIntoView itself. Hard guard: never let this
+    // wrapper actually scroll, no matter what triggers it.
+    this._rootWrapEl = null;
+    this._clampScroll = () => { if (this._rootWrapEl && this._rootWrapEl.scrollTop !== 0) this._rootWrapEl.scrollTop = 0; };
+    this.rootWrapRef = (el) => {
+      if (el && el !== this._rootWrapEl) {
+        this._rootWrapEl = el;
+        el.addEventListener('scroll', this._clampScroll, { passive: true });
+      }
+      this._clampScroll();
+    };
+    const persisted = this._loadPersisted();
+    this._nextWinId = persisted && persisted.windows.length ? Math.max(...persisted.windows.map(w => w.id)) + 1 : 1;
+    this._drag = null;
+    this.clockRef = (el) => { if (el && !this._clockMounted) { this._clockMounted = true; this._clock = new StatusClock({ showSeconds: false }); this._clock.mount(el); this._clock.start(); } };
+    this.monitorRef = (el) => { if (el && !this._monitorMounted) { this._monitorMounted = true; this._monitor = new StatusMonitor({ refreshMs: 1500 }); this._monitor.mount(el, this._kernel); this._monitor.start(); } };
+
+    // Force Quit reconciliation: if a window's kernel pid was killed from outside
+    // this window (e.g. Terminal's `kill <pid>`, or a cascade from a killed
+    // parent), close its window immediately — no cleanup/save, matching real
+    // Force Quit.
+    this._forceQuitInterval = setInterval(() => {
+      if (!this._kernel || this.state.phase !== 'desktop' || !this.state.windows.length) return;
+      const alive = new Set(this._kernel.ps().map(p => p.pid));
+      const survivors = this.state.windows.filter(w => w.pid == null || alive.has(w.pid));
+      if (survivors.length !== this.state.windows.length) this.setState({ windows: survivors }, () => this._persist());
+    }, 1000);
+
+    document.addEventListener('mousemove', this._onGlobalMouseMove = (e) => { this._handleDrag(e); this._resetLoginIdle(); });
+    document.addEventListener('mouseup', this._onGlobalMouseUp = () => { if (this._drag) { this._drag = null; this.forceUpdate(); this._persist(); } this._resetLoginIdle(); });
+    document.addEventListener('keydown', this._onGlobalKeyDown = (e) => { this._handleKeyDown(e); this._resetLoginIdle(); });
+    document.addEventListener('keyup', this._onGlobalKeyUp = (e) => this._handleKeyUp(e));
+
+    sha256('wfobbs').then(h => { this._userHashes.root = h; });
+
+    const messages = ['Starting MeshOS\u2026', 'Running POST\u2026', 'Scanning boot devices\u2026', 'Loading kernel\u2026'];
+    let i = 0;
+    this._bootTimer = setInterval(() => {
+      i++;
+      if (i < messages.length) this.setState({ bootMsg: messages[i] });
+    }, 320);
+    setTimeout(async () => {
+      clearInterval(this._bootTimer);
+      const physical = new Physical({ capacityMHz: 2600, ramBytes: 0x400000 });
+      const bios = new BIOS();
+      this._kernel = await bios.boot(physical, null, null);
+      this._kernel.fork('kernel.js', 0); // real pid-1 init process, mirrors standalone boot path
+      window.__meshKernel = this._kernel; // single shared Kernel — child windows (iframes) attach to this instance instead of booting their own
+      window.__meshDefaultLanguage = this.state.defaultLanguage; // OS-level Default Language setting, readable by any child app (e.g. AST-Translator's dropdown/direction seed)
+      window.__meshUser = this.state.userSel; // 'root' (admin) or 'guest' — child app windows read this to gate admin-only actions
+      window.__meshLaunchApp = (appId) => this.launchApp(appId); // lets a child app (e.g. Finder's Applications section) launch a real dock app/window
+      if (window.Llmd) window.Llmd.attachKernel(this._kernel); // llmd's downloads/inference show up as real processes too
+      if (typeof Procd !== 'undefined') Procd.attachKernel(this._kernel); // gallery slideshows, demos, etc. become real Kernel processes too
+      if (persisted && persisted.windows) {
+        persisted.windows.forEach(w => { if (w.pid == null) { const p = this._kernel.fork(w.title, 0); w.pid = p.pid; } else { this._kernel.fork(w.title, 0); } });
+        if (this._monitor) this._monitor.refresh();
+      }
+      this.setState({
+        phase: 'login',
+        windows: (persisted && persisted.windows) || [],
+        wallpaperIdx: persisted && persisted.wallpaperIdx != null ? Math.min(persisted.wallpaperIdx, WALLPAPERS.length - 1) : 0,
+        customWallpaper: (persisted && persisted.customWallpaper) || null,
+        customWallpapers: (persisted && persisted.customWallpapers) || [],
+        clockFormat: (persisted && persisted.clockFormat) || '12h',
+        dockPos: (persisted && persisted.dockPos) || 'bottom',
+        defaultLanguage: (persisted && persisted.defaultLanguage) || 'en',
+        zTop: (persisted && persisted.zTop) || 10,
+        activeWinId: (persisted && persisted.activeWinId) || null,
+        galleries: (persisted && persisted.galleries) || [],
+        lockGalleryId: (persisted && persisted.lockGalleryId) || null
+      });
+      // Resume any gallery slideshow that was running (persisted.activeGalleryId), now that galleries are loaded.
+      const resumeId = persisted && persisted.activeGalleryId;
+      if (resumeId) setTimeout(() => this.startGallery(resumeId), 0);
+      // Prefetch every saved gallery's images up front so Play (or lock-screen resume) hits a warm cache immediately.
+      ((persisted && persisted.galleries) || []).forEach(g => this._prefetchGallery(g));
+      // Lock screen slideshow runs pre-login — start it independent of who (if anyone) is authenticated.
+      if (persisted && persisted.lockGalleryId) setTimeout(() => this.startLockGallery(persisted.lockGalleryId), 0);
+      if (this._clock && persisted && persisted.clockFormat) this._clock.setFormat(persisted.clockFormat);
+      if (persisted && persisted.loginClockVisible === false) this.setState({ loginClockVisible: false });
+      this._resetLoginIdle();
+      this._startLoginClock();
+    }, 1500);
+  }
+
+  componentWillUnmount() {
+    clearInterval(this._bootTimer);
+    if (this._forceQuitInterval) clearInterval(this._forceQuitInterval);
+    if (this._loginClockInterval) clearInterval(this._loginClockInterval);
+    if (this._loginIdleTimer) clearTimeout(this._loginIdleTimer);
+    document.removeEventListener('mousemove', this._onGlobalMouseMove);
+    document.removeEventListener('mouseup', this._onGlobalMouseUp);
+    document.removeEventListener('keydown', this._onGlobalKeyDown);
+    document.removeEventListener('keyup', this._onGlobalKeyUp);
+    if (this._clock) this._clock.destroy();
+    if (this._monitor) this._monitor.destroy();
+  }
+
+  // ─── Login screen date/time overlay: visible by default at 50% opacity,
+  // fading to 0 over 5 minutes on its own clock, independent of the login
+  // card's idle-fade. setVisibility toggles it and restarts the fade.
+  _startLoginClock() {
+    this._loginClockShownAt = Date.now();
+    if (this._loginClockInterval) clearInterval(this._loginClockInterval);
+    this._loginClockInterval = setInterval(() => { if (this.state.phase === 'login') this.setState({ loginNow: Date.now() }); }, 20000);
+  }
+  _formatLoginDate(d) {
+    const dow = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+    const mon = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${dow}  ${mon}  ${day}  ${d.getFullYear()}`;
+  }
+  _formatLoginTime(d, format) {
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    if (format === '24h') return `${String(d.getHours()).padStart(2, '0')}:${mm}`;
+    const h = d.getHours(); const ap = h >= 12 ? 'PM' : 'AM'; const h12 = h % 12 || 12;
+    return `${h12}:${mm} ${ap}`;
+  }
+  toggleLoginClockVisibility() {
+    this.setState(s => {
+      const next = !s.loginClockVisible;
+      if (next) this._loginClockShownAt = Date.now();
+      return { loginClockVisible: next };
+    }, () => this._persist());
+  }
+  _resetLoginIdle() {
+    if (this.state.phase !== 'login') return;
+    if (this.state.loginIdle) this.setState({ loginIdle: false });
+    if (this._loginIdleTimer) clearTimeout(this._loginIdleTimer);
+    // 30s of no mouse/click/keyboard activity on the login/lock screen fades the
+    // card away to a bare kiosk view (dashboard, menu board, ad rotation, etc.);
+    // any activity brings it right back.
+    this._loginIdleTimer = setTimeout(() => { if (this.state.phase === 'login') this.setState({ loginIdle: true }); }, 30000);
+  }
+  _handleDrag(e) {
+    if (!this._drag) return;
+    const d = this._drag;
+    const MINW = 320, MINH = 200;
+    this.setState(s => ({
+      windows: s.windows.map(w => {
+        if (w.id !== d.id) return w;
+        if (d.mode === 'move') return { ...w, x: Math.max(0, d.startX + (e.clientX - d.mouseX)), y: Math.max(26, d.startY + (e.clientY - d.mouseY)) };
+        // Directional resize: dir is a combo of n/s/e/w (e.g. 'se', 'w', 'n').
+        // Left/top-involving directions must also shift x/y so the OPPOSITE
+        // edge stays anchored in place, not just grow from the fixed corner.
+        const dir = d.dir || 'se';
+        let next = { ...w };
+        const dx = e.clientX - d.mouseX, dy = e.clientY - d.mouseY;
+        if (dir.includes('e')) next.w = Math.max(MINW, d.startW + dx);
+        if (dir.includes('s')) next.h = Math.max(MINH, d.startH + dy);
+        if (dir.includes('w')) {
+          const w2 = Math.max(MINW, d.startW - dx);
+          next.w = w2; next.x = d.startX + (d.startW - w2);
+        }
+        if (dir.includes('n')) {
+          const h2 = Math.max(MINH, d.startH - dy);
+          next.h = h2; next.y = Math.max(26, d.startY + (d.startH - h2));
+        }
+        return next;
+      })
+    }));
+  }
+  componentWillUnmountDrag() {}
+
+  _wireIframeKeys(iframeEl) {
+    try {
+      const doc = iframeEl.contentDocument;
+      if (!doc || doc.__meshKeysWired) return;
+      doc.__meshKeysWired = true;
+      doc.addEventListener('keydown', (e) => { this._handleKeyDown(e); }, true);
+      doc.addEventListener('keyup', (e) => { this._handleKeyUp(e); }, true);
+    } catch (err) { /* cross-origin, skip */ }
+  }
+  _handleKeyDown(e) {
+    if (this.state.phase !== 'desktop') return;
+    if (e.code === 'Space') this._spaceHeld = true;
+    if (this._spaceHeld && e.key === '`') {
+      e.preventDefault();
+      const wins = this.state.windows;
+      if (!wins.length) return;
+      if (!this.state.switcherOpen) {
+        const curIdx = Math.max(0, wins.findIndex(w => w.id === this.state.activeWinId));
+        this.setState({ switcherOpen: true, switcherIdx: (curIdx + 1) % wins.length });
+      } else {
+        this.setState(s => ({ switcherIdx: (s.switcherIdx + 1) % wins.length }));
+      }
+      return;
+    }
+    if (e.shiftKey && e.code === 'Space' && !this.state.switcherOpen && !this.state.omniOpen) {
+      const active = document.activeElement;
+      if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
+      e.preventDefault();
+      this.setState({ omniOpen: true, omniQuery: '', omniIdx: 0 });
+      return;
+    }
+    if (this.state.omniOpen) {
+      if (e.key === 'Escape') { this.setState({ omniOpen: false }); return; }
+      if (e.key === 'ArrowDown') { e.preventDefault(); this.setState(s => ({ omniIdx: Math.min(s.omniIdx + 1, this._omniResults().length - 1) })); return; }
+      if (e.key === 'ArrowUp') { e.preventDefault(); this.setState(s => ({ omniIdx: Math.max(s.omniIdx - 1, 0) })); return; }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const results = this._omniResults();
+        const pick = results[this.state.omniIdx];
+        if (pick) this.launchApp(pick.id);
+        this.setState({ omniOpen: false });
+        return;
+      }
+    }
+  }
+  _handleKeyUp(e) {
+    if (e.code === 'Space') {
+      this._spaceHeld = false;
+      if (this.state.switcherOpen) {
+        const wins = this.state.windows;
+        const win = wins[this.state.switcherIdx];
+        this.setState({ switcherOpen: false });
+        if (win) this._bringToFront(win.id);
+      }
+    }
+    if (e.key === 'Meta' || e.key === 'Control') {
+      if (this.state.switcherOpen) {
+        const wins = this.state.windows;
+        const win = wins[this.state.switcherIdx];
+        this.setState({ switcherOpen: false });
+        if (win) this._bringToFront(win.id);
+      }
+    }
+  }
+  _omniResults() {
+    const q = this.state.omniQuery.trim().toLowerCase();
+    return APPS.filter(a => !q || a.name.toLowerCase().includes(q));
+  }
+  omniInput(v) { this.setState({ omniQuery: v, omniIdx: 0 }); }
+  omniPick(id) { this.launchApp(id); this.setState({ omniOpen: false }); }
+  omniClose() { this.setState({ omniOpen: false }); }
+
+  _bringToFront(id) {
+    this.setState(s => ({ zTop: s.zTop + 1, activeWinId: id, windows: s.windows.map(w => w.id === id ? { ...w, z: s.zTop + 1, minimized: false } : w) }), () => this._persist());
+  }
+
+  launchApp(appId) {
+    const app = APPS.find(a => a.id === appId);
+    if (!app) return;
+    const existing = this.state.windows.find(w => w.appId === appId);
+    if (existing) { this._bringToFront(existing.id); return; }
+    const pid = this._kernel ? this._kernel.fork(app.name, 0).pid : null;
+    if (this._monitor) this._monitor.refresh();
+    const idx = this.state.windows.length;
+    const id = this._nextWinId++;
+    const ins = this._dockInsets();
+    const fullW = window.innerWidth - ins.left - ins.right;
+    const fullH = window.innerHeight - ins.top - ins.bottom;
+    const openMaximized = this.state.openWindowsMaximized !== false;
+    const cascX = 140 + (idx % 5) * CASCADE, cascY = 60 + (idx % 5) * CASCADE;
+    this.setState(s => ({
+      zTop: s.zTop + 1, activeWinId: id,
+      windows: [...s.windows, {
+        id, appId, pid, title: app.name,
+        x: openMaximized ? ins.left : cascX, y: openMaximized ? ins.top : cascY, w: openMaximized ? fullW : 760, h: openMaximized ? fullH : 480,
+        prevX: cascX, prevY: cascY, prevW: 760, prevH: 480,
+        z: s.zTop + 1, minimized: false, maximized: openMaximized
+      }]
+    }), () => this._persist());
+  }
+
+  closeWindow(id, e) {
+    if (e) e.stopPropagation();
+    const win = this.state.windows.find(w => w.id === id);
+    if (win && this._kernel && win.pid != null) this._kernel.kill(win.pid);
+    if (win && this._kernel && this._kernel.ps) {
+      this._kernel.ps().filter(p => p.ppid === win.pid).forEach(p => this._kernel.kill(p.pid));
+    }
+    if (this._monitor) this._monitor.refresh();
+    this.setState(s => ({ windows: s.windows.filter(w => w.id !== id) }));
+  }
+  minimizeWindow(id, e) { if (e) e.stopPropagation(); this.setState(s => ({ windows: s.windows.map(w => w.id === id ? { ...w, minimized: true } : w) })); }
+  _dockInsets() {
+    return { left: 5, right: 5, top: 31, bottom: 5 };
+  }
+  toggleMaximize(id, e) {
+    if (e) e.stopPropagation();
+    const ins = this._dockInsets();
+    this.setState(s => ({ windows: s.windows.map(w => w.id === id ? (w.maximized ? { ...w, maximized: false, x: w.prevX, y: w.prevY, w: w.prevW, h: w.prevH } : { ...w, maximized: true, prevX: w.x, prevY: w.y, prevW: w.w, prevH: w.h, x: ins.left, y: ins.top, w: window.innerWidth - ins.left - ins.right, h: window.innerHeight - ins.top - ins.bottom }) : w) }));
+  }
+  onHeaderDown(win, e) {
+    e.preventDefault();
+    this._bringToFront(win.id);
+    this._drag = { id: win.id, mode: 'move', mouseX: e.clientX, mouseY: e.clientY, startX: win.x, startY: win.y };
+    this.forceUpdate();
+  }
+  onResizeDown(win, dir, e) {
+    e.preventDefault(); e.stopPropagation();
+    this._bringToFront(win.id);
+    this._drag = { id: win.id, mode: 'resize', dir, mouseX: e.clientX, mouseY: e.clientY, startW: win.w, startH: win.h, startX: win.x, startY: win.y };
+    this.forceUpdate();
+  }
+
+  selectUser(uname) { this.setState({ userSel: uname, password: '', loginError: '' }); }
+  onPasswordInput(v) { this.setState({ password: v, loginError: '' }); }
+  async doLogin() {
+    const hash = this._userHashes[this.state.userSel];
+    if (hash) {
+      const attempt = this.state.password ? await sha256(this.state.password) : null;
+      if (attempt !== hash) { this.setState({ loginError: 'Incorrect password' }); return; }
+    }
+    this.setState(s => ({
+      phase: 'desktop', password: '',
+      // Seed the Admin Test Gallery once for root — doesn't overwrite if already present/edited.
+      galleries: (this.state.userSel === 'root' && !s.galleries.some(g => g.id === ADMIN_TEST_GALLERY.id))
+        ? [...s.galleries, ADMIN_TEST_GALLERY] : s.galleries
+    }), () => {
+      window.__meshUser = this.state.userSel;
+      if (this._loggedOutWindows && this._loggedOutWindows.user === this.state.userSel && this._loggedOutWindows.windows.length) {
+        this.setState({ windows: this._loggedOutWindows.windows });
+      }
+      this._loggedOutWindows = null;
+      this._persist();
+    });
+  }
+  logout() {
+    // Windows are only hidden while at the login screen, not destroyed \u2014
+    // previously `windows: []` wiped them before persisting, so a re-login
+    // (same or different user) could never see them again. Stash them and
+    // restore only for the same user re-logging in; a different user still
+    // gets a clean desktop.
+    this._loggedOutWindows = { user: this.state.userSel, windows: this.state.windows };
+    this.setState({ phase: 'login', windows: [], password: '', userSel: 'root' }, () => { window.__meshUser = 'root'; this._resetLoginIdle(); this._startLoginClock(); });
+  }
+
+  toggleMenu(name) { this.setState(s => ({ openMenu: s.openMenu === name ? null : name })); }
+  closeAllMenus() { this.setState({ openMenu: null, ctxMenu: null, dockCtxMenu: null }); }
+  onDesktopContextMenu(e) { e.preventDefault(); this.setState({ ctxMenu: { x: e.clientX, y: e.clientY } }); }
+  onDockAppContextMenu(appId, e) { e.preventDefault(); e.stopPropagation(); this.setState({ dockCtxMenu: { appId, x: e.clientX, y: e.clientY } }); }
+  setAppDocked(appId, docked) {
+    this.setState(s => ({
+      unpinnedAppIds: docked ? (s.unpinnedAppIds || []).filter(id => id !== appId) : [...(s.unpinnedAppIds || []), appId],
+      dockCtxMenu: null
+    }), () => this._persist());
+  }
+  ctxWallpaper(e) { e.stopPropagation(); this.setState(s => ({ wallpaperIdx: (s.wallpaperIdx + 1) % WALLPAPERS.length, ctxMenu: null })); }
+  ctxNoop(e) { e.stopPropagation(); this.setState({ ctxMenu: null }); }
+  pickWallpaper(idx) { this.setState({ wallpaperIdx: idx, customWallpaper: null }, () => this._persist()); }
+  onCustomUrlInput(v) { this.setState({ customUrl: v }); }
+  applyCustomWallpaper() {
+    const url = this.state.customUrl.trim();
+    if (!url) return;
+    const css = `center/cover no-repeat url('${url.replace(/'/g, "\\'")}')`;
+    this.setState(s => ({
+      customWallpaper: css,
+      customWallpapers: s.customWallpapers.includes(css) ? s.customWallpapers : [...s.customWallpapers, css],
+      customUrl: ''
+    }), () => this._persist());
+  }
+  pickCustomWallpaper(css) { this.setState({ customWallpaper: css }, () => this._persist()); }
+  removeCustomWallpaper(css, e) {
+    if (e) e.stopPropagation();
+    this.setState(s => ({
+      customWallpapers: s.customWallpapers.filter(w => w !== css),
+      customWallpaper: s.customWallpaper === css ? null : s.customWallpaper
+    }), () => this._persist());
+  }
+
+  // ─── Named Galleries (slideshow wallpaper) ──────────────────────────────
+  onGalleryNameInput(v) { this.setState({ galleryNameInput: v }); }
+  onGalleryUrlsInput(v) { this.setState({ galleryUrlsInput: v }); }
+  onGalleryIntervalInput(v) { this.setState({ galleryIntervalInput: Math.max(2, parseInt(v, 10) || 15) }); }
+  saveGallery() {
+    const name = this.state.galleryNameInput.trim();
+    const urls = this.state.galleryUrlsInput.split('\n').map(u => u.trim()).filter(Boolean);
+    if (!name || !urls.length) return;
+    const g = { id: 'gal_' + Date.now(), name, urls, interval: this.state.galleryIntervalInput };
+    this._prefetchGallery(g);
+    this.setState(s => ({ galleries: [...s.galleries, g], galleryNameInput: '', galleryUrlsInput: '' }), () => this._persist());
+  }
+  _prefetchGallery(g) {
+    // Warm the browser image cache for every URL up front — this is what makes a
+    // 100-200ms fade interval usable; without it every tick would stall on a cold
+    // network/decode fetch instead of a cache hit.
+    g.urls.forEach(u => { const img = new Image(); img.src = u; });
+  }
+  deleteGallery(id, e) {
+    if (e) e.stopPropagation();
+    if (this.state.activeGalleryId === id) this.stopGallery();
+    this.setState(s => ({ galleries: s.galleries.filter(g => g.id !== id) }), () => this._persist());
+  }
+  _galleryPickNext(g, excludeUrl) {
+    const pool = g.urls.length > 1 ? g.urls.filter(u => u !== excludeUrl) : g.urls;
+    return pool[Math.floor(Math.random() * pool.length)];
+  }
+  startGallery(id) {
+    if (this.state.userSel !== 'root') return;
+    const g = this.state.galleries.find(x => x.id === id);
+    if (!g || !g.urls.length) return;
+    this._prefetchGallery(g);
+    if (this._galleryJob) this._galleryJob.stop();
+    const first = this._galleryPickNext(g, null);
+    this.setState({
+      activeGalleryId: id,
+      galleryBaseCss: `center/cover no-repeat url('${first.replace(/'/g, "\\'")}')`,
+      galleryNextCss: '', galleryNextOpacity: 0
+    }, () => this._persist());
+    this._galleryCurUrl = first;
+    // A real Procd job (Kernel-forked, ps/jobs/top-visible) instead of a bare
+    // setInterval — no different than top's own live-updating job.
+    if (typeof Procd !== 'undefined') {
+      this._galleryJob = Procd.registerJob('gallery:' + g.name, 'background', Math.max(100, g.interval * 1000), () => this._tickGallery(id), () => {}, () => {});
+    } else {
+      if (this._galleryTimer) clearInterval(this._galleryTimer);
+      this._galleryTimer = setInterval(() => this._tickGallery(id), Math.max(100, g.interval * 1000));
+    }
+  }
+  stopGallery() {
+    if (this._galleryJob) { this._galleryJob.stop(); this._galleryJob = null; }
+    if (this._galleryTimer) { clearInterval(this._galleryTimer); this._galleryTimer = null; }
+    this.setState({ activeGalleryId: null }, () => this._persist());
+  }
+  toggleGallery(id) {
+    if (this.state.activeGalleryId === id) this.stopGallery();
+    else this.startGallery(id);
+  }
+  openGalleryModal(id, e) { if (e) e.stopPropagation(); this.setState({ galleryModalId: id, galleryModalUrl: '' }); }
+  closeGalleryModal() { this.setState({ galleryModalId: null, galleryModalUrl: '' }); }
+  onGalleryModalUrlInput(v) { this.setState({ galleryModalUrl: v }); }
+  addGalleryModalImage() {
+    const url = this.state.galleryModalUrl.trim();
+    if (!url) return;
+    this.setState(s => ({
+      galleries: s.galleries.map(g => g.id === s.galleryModalId ? { ...g, urls: [...g.urls, url] } : g),
+      galleryModalUrl: ''
+    }), () => this._persist());
+  }
+  removeGalleryModalImage(url) {
+    this.setState(s => ({
+      galleries: s.galleries.map(g => g.id === s.galleryModalId ? { ...g, urls: g.urls.filter(u => u !== url) } : g)
+    }), () => this._persist());
+  }
+  _tickGallery(id) {
+    const g = this.state.galleries.find(x => x.id === id);
+    if (!g || this.state.activeGalleryId !== id) { if (this._galleryTimer) clearInterval(this._galleryTimer); return; }
+    const next = this._galleryPickNext(g, this._galleryCurUrl);
+    this._galleryCurUrl = next;
+    const css = `center/cover no-repeat url('${next.replace(/'/g, "\\'")}')`;
+    // Base layer stays fully opaque with the CURRENT image the whole time — the
+    // static desktop wallpaper behind it is never revealed. Only the top "next"
+    // layer animates in; once its fade completes, we commit it into base and
+    // reset it invisible, ready for the next tick. Fade duration is capped to a
+    // fraction of the interval so fast (100-200ms) galleries still look clean.
+    const fadeMs = Math.min(1200, Math.max(80, g.interval * 1000 * 0.6));
+    this.setState({ galleryNextCss: css, galleryNextOpacity: 0, galleryFadeMs: fadeMs });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (this.state.activeGalleryId === id) this.setState({ galleryNextOpacity: 1 });
+    }));
+    if (this._galleryCommitTimer) clearTimeout(this._galleryCommitTimer);
+    this._galleryCommitTimer = setTimeout(() => {
+      if (this.state.activeGalleryId === id) this.setState({ galleryBaseCss: css, galleryNextOpacity: 0 });
+    }, fadeMs + 40);
+  }
+
+  // ─── Lock Screen gallery (independent of the desktop gallery, runs pre-login) ──
+  toggleLockGallery(id, e) {
+    if (e) e.stopPropagation();
+    if (this.state.lockGalleryId === id) { this.stopLockGallery(); return; }
+    this.startLockGallery(id);
+  }
+  startLockGallery(id) {
+    const g = this.state.galleries.find(x => x.id === id) || (id === ADMIN_TEST_GALLERY.id ? ADMIN_TEST_GALLERY : null);
+    if (!g || !g.urls.length) return;
+    this._prefetchGallery(g);
+    if (this._lockGalleryJob) this._lockGalleryJob.stop();
+    const first = this._galleryPickNext(g, null);
+    this._lockCurUrl = first;
+    this.setState({
+      lockGalleryId: id,
+      lockBaseCss: `center/cover no-repeat url('${first.replace(/'/g, "\\'")}')`,
+      lockNextCss: '', lockNextOpacity: 0
+    }, () => this._persist());
+    if (typeof Procd !== 'undefined') {
+      this._lockGalleryJob = Procd.registerJob('lockscreen:' + g.name, 'background', Math.max(100, g.interval * 1000), () => this._tickLockGallery(id), () => {}, () => {});
+    } else {
+      if (this._lockGalleryTimer) clearInterval(this._lockGalleryTimer);
+      this._lockGalleryTimer = setInterval(() => this._tickLockGallery(id), Math.max(100, g.interval * 1000));
+    }
+  }
+  stopLockGallery() {
+    if (this._lockGalleryJob) { this._lockGalleryJob.stop(); this._lockGalleryJob = null; }
+    if (this._lockGalleryTimer) { clearInterval(this._lockGalleryTimer); this._lockGalleryTimer = null; }
+    this.setState({ lockGalleryId: null }, () => this._persist());
+  }
+  _tickLockGallery(id) {
+    const g = this.state.galleries.find(x => x.id === id) || (id === ADMIN_TEST_GALLERY.id ? ADMIN_TEST_GALLERY : null);
+    if (!g || this.state.lockGalleryId !== id) { if (this._lockGalleryTimer) clearInterval(this._lockGalleryTimer); return; }
+    const next = this._galleryPickNext(g, this._lockCurUrl);
+    this._lockCurUrl = next;
+    const css = `center/cover no-repeat url('${next.replace(/'/g, "\\'")}')`;
+    const fadeMs = Math.min(1200, Math.max(80, g.interval * 1000 * 0.6));
+    this.setState({ lockNextCss: css, lockNextOpacity: 0, lockFadeMs: fadeMs });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (this.state.lockGalleryId === id) this.setState({ lockNextOpacity: 1 });
+    }));
+    if (this._lockCommitTimer) clearTimeout(this._lockCommitTimer);
+    this._lockCommitTimer = setTimeout(() => {
+      if (this.state.lockGalleryId === id) this.setState({ lockBaseCss: css, lockNextOpacity: 0 });
+    }, fadeMs + 40);
+  }
+  setDockPos(pos) {
+    this.setState({ dockPos: pos }, () => this._persist());
+    setTimeout(() => {
+      const ins = this._dockInsets();
+      this.setState(s => ({ windows: s.windows.map(w => w.maximized ? { ...w, x: ins.left, y: ins.top, w: window.innerWidth - ins.left - ins.right, h: window.innerHeight - ins.top - ins.bottom } : w) }), () => this._persist());
+    }, 0);
+  }
+  toggleOpenMaximized() {
+    const next = this.state.openWindowsMaximized === false;
+    this.setState({ openWindowsMaximized: next }, () => this._persist());
+  }
+  toggleClockFormat() {
+    const next = this.state.clockFormat === '12h' ? '24h' : '12h';
+    this.setState({ clockFormat: next }, () => this._persist());
+    if (this._clock) this._clock.setFormat(next);
+  }
+
+  onDefaultLanguageChange(e) {
+    this.setState({ defaultLanguage: e.target.value }, () => { this._persist(); window.__meshDefaultLanguage = e.target.value; });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const dotStyle = (bg) => `width:11px;height:11px;border-radius:50%;background:${bg};border:none;cursor:pointer;padding:0;`;
+
+    const menuDefs = [
+      { label: 'File', items: [{ label: 'New Window', onClick: () => this.launchApp('ide') }, { label: 'Close Window', onClick: () => s.activeWinId && this.closeWindow(s.activeWinId) }] },
+      { label: 'Edit', items: [{ label: 'Undo', onClick: () => this.closeAllMenus() }, { label: 'Redo', onClick: () => this.closeAllMenus() }] },
+      { label: 'View', items: [{ label: 'Change Wallpaper', onClick: (e) => this.ctxWallpaper(e || { stopPropagation(){} }) }] },
+      { label: 'Window', items: s.windows.length ? s.windows.map(w => ({ label: w.title, onClick: () => this._bringToFront(w.id) })) : [{ label: 'No Open Windows', onClick: () => this.closeAllMenus() }] }
+    ];
+
+    const activeApp = APPS.find(a => a.id === (s.windows.find(w => w.id === s.activeWinId) || {}).appId);
+    const kernelInfo = { firmwareType: this._kernel ? this._kernel.firmwareType : '\u2014', bootedFrom: this._kernel ? this._kernel.bootedFrom : '\u2014', schedulerPolicy: this._kernel ? this._kernel.schedulerPolicy : '\u2014', count: s.windows.length };
+
+    const sortedZ = [...s.windows].map(w => w.z).sort((a, b) => a - b);
+    const windowVms = s.windows.map(w => ({
+      id: w.id,
+      title: w.title,
+      isIframe: w.appId === 'ide' || w.appId === 'reports' || w.appId === 'terminal' || w.appId === 'smatrix' || w.appId === 'network' || w.appId === 'finance' || w.appId === 'slides' || w.appId === 'dbx' || w.appId === 'memorymap' || w.appId === 'cvcsim' || w.appId === 'calcx' || w.appId === 'composex' || w.appId === 'drawx' || w.appId === 'pipelinebrowser2' || w.appId === 'finder' || w.appId === 'appstore' || w.appId === 'asttranslator' || w.appId === 'chatwebllm' || w.appId === 'chatsignal' || w.appId === 'pipelinebrowser',
+      onIframeLoad: (e) => this._wireIframeKeys(e.target),
+      isSettings: w.appId === 'settings',
+      isAbout: w.appId === 'about',
+      src: (() => { const base = APPS.find(a => a.id === w.appId).src; return base && s.userSel === 'root' ? base + (base.includes('?') ? '&' : '?') + 'osAdmin=1' : base; })(),
+      style: `position:absolute;left:${w.x}px;top:${w.y}px;width:${w.w}px;height:${w.h}px;display:${w.minimized ? 'none' : 'flex'};flex-direction:column;border-radius:10px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.45);z-index:${10 + sortedZ.indexOf(w.z)};background:#1c1e26;border:1px solid #777777;isolation:isolate;transform:translateZ(0);will-change:transform;`,
+      headerStyle: `height:32px;display:flex;align-items:center;gap:8px;padding:0 10px;background:#22242c;cursor:default;flex-shrink:0;`,
+      bodyWrapStyle: `flex:1;min-height:0;background:#fff;position:relative;`,
+      dragBlockerStyle: `position:absolute;inset:0;z-index:20;display:${this._drag && this._drag.id === w.id ? 'block' : 'none'};cursor:${this._drag && this._drag.mode === 'move' ? 'move' : 'inherit'};`,
+      isBlurred: w.id !== s.activeWinId,
+      shimStyle: `position:absolute;inset:0;background:rgba(0,0,0,0.2);cursor:default;z-index:5;`,
+      dotCloseStyle: dotStyle('#e0666e'),
+      dotMinStyle: dotStyle('#e0b566'),
+      dotMaxStyle: dotStyle('#7fbf7f'),
+      resizeHandleStyle: `position:absolute;right:2px;bottom:2px;width:14px;height:14px;cursor:nwse-resize;border-right:2px solid #4a4d58;border-bottom:2px solid #4a4d58;border-radius:0 0 3px 0;`,
+      resizeEdges: [
+        { dir: 'n', style: 'position:absolute;top:-3px;left:8px;right:8px;height:6px;cursor:ns-resize;' },
+        { dir: 's', style: 'position:absolute;bottom:-3px;left:8px;right:8px;height:6px;cursor:ns-resize;' },
+        { dir: 'w', style: 'position:absolute;left:-3px;top:8px;bottom:8px;width:6px;cursor:ew-resize;' },
+        { dir: 'e', style: 'position:absolute;right:-3px;top:8px;bottom:8px;width:6px;cursor:ew-resize;' },
+        { dir: 'nw', style: 'position:absolute;top:-3px;left:-3px;width:12px;height:12px;cursor:nwse-resize;' },
+        { dir: 'ne', style: 'position:absolute;top:-3px;right:-3px;width:12px;height:12px;cursor:nesw-resize;' },
+        { dir: 'sw', style: 'position:absolute;bottom:-3px;left:-3px;width:12px;height:12px;cursor:nesw-resize;' },
+        { dir: 'se', style: 'position:absolute;bottom:-3px;right:-3px;width:12px;height:12px;cursor:nwse-resize;' },
+      ].map(h => ({ dir: h.dir, style: h.style, onDown: (e) => this.onResizeDown(w, h.dir, e) })),
+      onFocus: () => this._bringToFront(w.id),
+      onHeaderDown: (e) => this.onHeaderDown(w, e),
+      onResizeDown: (e) => this.onResizeDown(w, 'se', e),
+      onClose: (e) => this.closeWindow(w.id, e),
+      onMinimize: (e) => this.minimizeWindow(w.id, e),
+      onMaximize: (e) => this.toggleMaximize(w.id, e)
+    }));
+
+    const dockPos = s.dockPos;
+    const dockOuterStyle = dockPos === 'left'
+      ? `position:absolute;left:10px;top:35px;display:flex;z-index:2;`
+      : dockPos === 'right'
+      ? `position:absolute;right:10px;top:35px;display:flex;justify-content:flex-end;z-index:2;`
+      : `position:absolute;bottom:10px;left:0;right:0;display:flex;justify-content:center;z-index:2;`;
+    const dockInnerStyle = dockPos === 'bottom'
+      ? `display:flex;align-items:flex-end;gap:8px;padding:5px 14px;border-radius:14px;background:rgba(18,19,24,0.55);backdrop-filter:blur(16px);box-shadow:0 10px 30px rgba(0,0,0,0.35);`
+      : `display:flex;flex-direction:column;align-items:center;gap:8px;padding:9px 11px;border-radius:14px;background:rgba(18,19,24,0.55);backdrop-filter:blur(16px);box-shadow:0 10px 30px rgba(0,0,0,0.35);`;
+    const dockPosOptions = ['bottom', 'left', 'right'].map(p => ({ label: p.charAt(0).toUpperCase() + p.slice(1), value: p, style: `padding:7px 14px;border-radius:7px;border:1px solid ${s.dockPos === p ? '#5b7fe0' : '#d3d5db'};background:${s.dockPos === p ? 'rgba(91,127,224,0.12)' : '#fff'};cursor:pointer;font-size:12.5px;`, onPick: () => this.setDockPos(p) }));
+
+    const _appFor = (w) => APPS.find(a => a.id === w.appId) || {};
+    const unpinned = s.unpinnedAppIds || [];
+    const runningAppIds = new Set(s.windows.map(w => w.appId));
+    const dockedApps = APPS.filter(a => a.pinned && !unpinned.includes(a.id));
+    const dynamicApps = APPS.filter(a => runningAppIds.has(a.id) && !(a.pinned && !unpinned.includes(a.id)));
+    const mkDockItem = (a, isFirstDynamic) => ({
+      name: a.name,
+      glyph: a.icon ? '' : a.glyph,
+      iconStyle: a.icon
+        ? `width:36px;height:36px;border-radius:9px;background:center/cover no-repeat url('${a.icon}');box-shadow:0 4px 10px rgba(0,0,0,0.3);`
+        : `width:36px;height:36px;border-radius:9px;background:${a.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;box-shadow:0 4px 10px rgba(0,0,0,0.3);`,
+      dotStyle: `position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:${s.windows.some(w => w.appId === a.id) ? '#e8e9ee' : 'transparent'};`,
+      onLaunch: () => this.launchApp(a.id),
+      onContextMenu: (e) => this.onDockAppContextMenu(a.id, e),
+      dividerBeforeStyle: isFirstDynamic ? (s.dockPos === 'bottom' ? 'width:0.5px;align-self:stretch;background:rgba(255,255,255,0.5);' : 'height:0.5px;align-self:stretch;background:rgba(255,255,255,0.5);') : ''
+    });
+    const dockApps = [
+      ...dockedApps.map(a => mkDockItem(a, false)),
+      ...dynamicApps.map((a, i) => mkDockItem(a, i === 0))
+    ];
+
+    const users = [
+      { name: 'root', label: 'Root' },
+      { name: 'guest', label: 'Guest' }
+    ].map(u => ({ name: u.name, label: u.label, pillStyle: `padding:6px 14px;border-radius:20px;border:1px solid ${s.userSel === u.name ? '#5b7fe0' : '#33343d'};background:${s.userSel === u.name ? 'rgba(91,127,224,0.18)' : 'transparent'};color:#e8e9ee;font-size:12.5px;cursor:pointer;` }));
+
+    return {
+      isBoot: s.phase === 'boot', isLogin: s.phase === 'login', isDesktop: s.phase === 'desktop',
+      rootWrapRef: this.rootWrapRef,
+      bootMsg: s.bootMsg,
+      wallpaperCss: s.userSel !== 'root'
+        ? WALLPAPERS[Math.min(s.wallpaperIdx, WALLPAPERS.length - 1)]
+        : (s.customWallpaper || WALLPAPERS[s.wallpaperIdx]),
+      users,
+      userInitial: s.userSel === 'root' ? 'R' : 'G',
+      selectUser: (e) => this.selectUser(e.currentTarget.dataset.uid),
+      userNeedsPassword: s.userSel === 'root',
+      password: s.password,
+      onPasswordInput: (e) => this.onPasswordInput(e.target.value),
+      onPasswordKeyDown: (e) => { if (e.key === 'Enter') this.doLogin(); },
+      doLogin: () => this.doLogin(),
+      hasLoginError: !!s.loginError,
+      loginError: s.loginError,
+      activeAppName: activeApp ? activeApp.name : 'Finder',
+      menuBarMenus: menuDefs.map(m => ({ label: m.label, open: s.openMenu === m.label, toggle: (e) => { e.stopPropagation(); this.toggleMenu(m.label); }, items: m.items.map(it => ({ label: it.label, onClick: (e) => { e.stopPropagation(); it.onClick(e); this.closeAllMenus(); } })) })),
+      clockRef: this.clockRef, monitorRef: this.monitorRef,
+      logout: () => this.logout(),
+      hasDockCtxMenu: !!s.dockCtxMenu,
+      dockCtxMenuStyle: s.dockCtxMenu ? `position:absolute;left:${s.dockCtxMenu.x}px;top:${s.dockCtxMenu.y - 90}px;background:#22242c;border:1px solid #33343d;border-radius:8px;padding:5px;min-width:120px;box-shadow:0 12px 30px rgba(0,0,0,0.4);z-index:9002;` : '',
+      dockCtxItemYesStyle: `padding:7px 10px;border-radius:5px;font-size:13px;color:${s.dockCtxMenu && !(s.unpinnedAppIds || []).includes(s.dockCtxMenu.appId) ? '#7fbf7f' : '#e8e9ee'};cursor:default;`,
+      dockCtxItemNoStyle: `padding:7px 10px;border-radius:5px;font-size:13px;color:${s.dockCtxMenu && (s.unpinnedAppIds || []).includes(s.dockCtxMenu.appId) ? '#e0666e' : '#e8e9ee'};cursor:default;`,
+      dockCtxSetDockedYes: () => s.dockCtxMenu && this.setAppDocked(s.dockCtxMenu.appId, true),
+      dockCtxSetDockedNo: () => s.dockCtxMenu && this.setAppDocked(s.dockCtxMenu.appId, false),
+      hasCtxMenu: !!s.ctxMenu,
+      ctxMenuStyle: s.ctxMenu ? `position:absolute;left:${s.ctxMenu.x}px;top:${s.ctxMenu.y}px;background:#22242c;border:1px solid #33343d;border-radius:8px;padding:5px;min-width:170px;box-shadow:0 12px 30px rgba(0,0,0,0.4);z-index:300;` : '',
+      ctxItemStyle: `padding:7px 10px;border-radius:5px;font-size:13px;color:#e8e9ee;cursor:default;`,
+      ctxNewFolder: (e) => this.ctxNoop(e),
+      ctxWallpaper: (e) => this.ctxWallpaper(e),
+      ctxGetInfo: (e) => this.ctxNoop(e),
+      stopProp: (e) => e.stopPropagation(),
+      onDesktopContextMenu: (e) => this.onDesktopContextMenu(e),
+      closeAllMenus: () => this.closeAllMenus(),
+      windowVms,
+      dockApps,
+      isAdmin: s.userSel === 'root',
+      isGuest: s.userSel !== 'root',
+      wallpaperSwatches: WALLPAPERS.map((wp, i) => ({ removable: false, style: `position:relative;width:52px;height:34px;border-radius:6px;background:${wp};cursor:pointer;border:2px solid ${!s.customWallpaper && s.wallpaperIdx === i ? '#5b7fe0' : 'transparent'};`, onPick: () => this.pickWallpaper(i), onRemove: () => {} }))
+        .concat(s.userSel === 'root' ? s.customWallpapers.map(css => ({
+          removable: true,
+          style: `position:relative;width:52px;height:34px;border-radius:6px;background:${css};cursor:pointer;border:2px solid ${s.customWallpaper === css ? '#5b7fe0' : 'transparent'};`,
+          onPick: () => this.pickCustomWallpaper(css),
+          onRemove: (e) => this.removeCustomWallpaper(css, e)
+        })) : []),
+      customUrlValue: s.customUrl,
+      onCustomUrlInput: (e) => this.onCustomUrlInput(e.target.value),
+      onCustomUrlKeyDown: (e) => { if (e.key === 'Enter') this.applyCustomWallpaper(); },
+      applyCustomWallpaper: () => this.applyCustomWallpaper(),
+      hasGallery: s.userSel === 'root' && !!s.activeGalleryId,
+      hasLockGallery: s.userSel === 'root' && !!s.lockGalleryId,
+      lockBaseCss: s.lockBaseCss, lockNextCss: s.lockNextCss, lockNextOpacity: s.lockNextOpacity,
+      lockFadeMs: s.lockFadeMs || 1200,
+      loginDateStr: this._formatLoginDate(new Date(s.loginNow)),
+      loginTimeStr: this._formatLoginTime(new Date(s.loginNow), s.clockFormat),
+      loginClockToggleLabel: s.loginClockVisible ? 'Hide clock' : 'Show clock',
+      toggleLoginClockVisibility: () => this.toggleLoginClockVisibility(),
+      loginClockStyle: (() => {
+        const elapsed = s.loginNow - (this._loginClockShownAt || s.loginNow);
+        const opacity = s.loginClockVisible ? Math.max(0.6, 0.8 - 0.2 * (elapsed / 300000)) : 0;
+        return `text-align:center;color:#fff;opacity:${opacity};transition:opacity 1s linear;text-shadow:0 2px 12px rgba(0,0,0,0.25);`;
+      })(),
+      loginCardStyle: `position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:14px;padding:36px 40px;border-radius:18px;background:rgba(20,21,27,0.55);backdrop-filter:blur(18px);box-shadow:0 20px 60px rgba(0,0,0,0.4);min-width:280px;opacity:${s.loginIdle ? 0 : 1};pointer-events:${s.loginIdle ? 'none' : 'auto'};transition:opacity 1.2s ease;`,
+      galleryBaseCss: s.galleryBaseCss, galleryNextCss: s.galleryNextCss, galleryNextOpacity: s.galleryNextOpacity,
+      galleryFadeMs: s.galleryFadeMs || 1200,
+      galleryNameValue: s.galleryNameInput,
+      onGalleryNameInput: (e) => this.onGalleryNameInput(e.target.value),
+      galleryUrlsValue: s.galleryUrlsInput,
+      onGalleryUrlsInput: (e) => this.onGalleryUrlsInput(e.target.value),
+      galleryIntervalValue: s.galleryIntervalInput,
+      onGalleryIntervalInput: (e) => this.onGalleryIntervalInput(e.target.value),
+      saveGallery: () => this.saveGallery(),
+      galleryRows: s.galleries.map(g => ({
+        name: g.name,
+        meta: `${g.urls.length} image${g.urls.length === 1 ? '' : 's'} · every ${g.interval}s`,
+        style: `display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;background:${s.activeGalleryId === g.id ? '#eef1fb' : '#fff'};border:1px solid #e2e4e9;margin-bottom:6px;`,
+        toggleStyle: `padding:6px 10px;border-radius:6px;border:1px solid #d3d5db;background:${s.activeGalleryId === g.id ? '#3f5bb5' : '#fff'};color:${s.activeGalleryId === g.id ? '#fff' : '#1c1e26'};cursor:pointer;font-size:12px;`,
+        toggleLabel: s.activeGalleryId === g.id ? '🖥 Desktop ✓' : '🖥 Use for Desktop',
+        onToggle: () => this.toggleGallery(g.id),
+        onDelete: (e) => this.deleteGallery(g.id, e),
+        onEdit: (e) => this.openGalleryModal(g.id, e),
+        lockLabel: s.lockGalleryId === g.id ? '🔒 Lock Screen ✓' : '🔒 Use for Lock',
+        lockStyle: `padding:6px 10px;border-radius:6px;border:1px solid #d3d5db;background:${s.lockGalleryId === g.id ? '#3f5bb5' : '#fff'};color:${s.lockGalleryId === g.id ? '#fff' : '#1c1e26'};cursor:pointer;font-size:12px;`,
+        onLock: (e) => this.toggleLockGallery(g.id, e)
+      })),
+      hasGalleryModal: !!s.galleryModalId,
+      galleryModalName: (s.galleries.find(g => g.id === s.galleryModalId) || {}).name || '',
+      galleryModalImages: (s.galleries.find(g => g.id === s.galleryModalId) || { urls: [] }).urls.map(u => ({
+        url: u, css: `center/cover no-repeat url('${u.replace(/'/g, "\\'")}')`,
+        onRemove: () => this.removeGalleryModalImage(u)
+      })),
+      galleryModalUrlValue: s.galleryModalUrl,
+      onGalleryModalUrlInput: (e) => this.onGalleryModalUrlInput(e.target.value),
+      onGalleryModalUrlKeyDown: (e) => { if (e.key === 'Enter') this.addGalleryModalImage(); },
+      addGalleryModalImage: () => this.addGalleryModalImage(),
+      closeGalleryModal: () => this.closeGalleryModal(),
+      toggleClockFormat: () => this.toggleClockFormat(),
+      clockFormatLabel: s.clockFormat === '12h' ? '12-hour' : '24-hour',
+      toggleOpenMaximized: () => this.toggleOpenMaximized(),
+      openMaximizedLabel: s.openWindowsMaximized === false ? 'False' : 'True',
+      defaultLanguage: s.defaultLanguage,
+      onDefaultLanguageChange: (e) => this.onDefaultLanguageChange(e),
+      defaultLanguageOptions: [
+        { value: 'en', label: 'English' }, { value: 'es', label: 'Spanish' }, { value: 'fr', label: 'French' },
+        { value: 'de', label: 'German' }, { value: 'it', label: 'Italian' }, { value: 'pt', label: 'Portuguese' },
+        { value: 'ru', label: 'Russian' }, { value: 'bg', label: 'Bulgarian' }, { value: 'zh', label: 'Chinese (Mandarin)' },
+        { value: 'ja', label: 'Japanese' }, { value: 'ar', label: 'Arabic' }, { value: 'hi', label: 'Hindi' }
+      ],
+      dockOuterStyle, dockInnerStyle, dockPosOptions,
+      kernelInfo,
+      switcherOpen: s.switcherOpen,
+      switcherItems: s.windows.map((w, i) => ({
+        title: w.title,
+        style: `display:flex;flex-direction:column;align-items:center;gap:8px;padding:14px;border-radius:12px;background:${i === s.switcherIdx ? 'rgba(91,127,224,0.28)' : 'transparent'};border:2px solid ${i === s.switcherIdx ? '#5b7fe0' : 'transparent'};`,
+        iconStyle: _appFor(w).icon
+          ? `width:56px;height:56px;border-radius:14px;background:center/cover no-repeat url('${_appFor(w).icon}');`
+          : `width:56px;height:56px;border-radius:14px;background:${_appFor(w).color || '#5a5d68'};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:18px;`,
+        glyph: _appFor(w).icon ? '' : (_appFor(w).glyph || '?')
+      })),
+      omniOpen: s.omniOpen,
+      omniQuery: s.omniQuery,
+      onOmniInput: (e) => this.omniInput(e.target.value),
+      onOpenOmniFromMenuBar: (e) => { e.stopPropagation(); this.setState({ omniOpen: true, omniQuery: '', omniIdx: 0 }); },
+      omniClose: () => this.omniClose(),
+      omniResults: this._omniResults().map((a, i) => ({
+        id: a.id, label: a.name, glyph: a.icon ? '' : a.glyph,
+        style: `display:flex;align-items:center;gap:12px;padding:9px 12px;border-radius:8px;cursor:pointer;background:${i === s.omniIdx ? 'rgba(91,127,224,0.16)' : 'transparent'};`,
+        iconStyle: a.icon
+          ? `width:32px;height:32px;border-radius:8px;background:center/cover no-repeat url('${a.icon}');flex-shrink:0;`
+          : `width:32px;height:32px;border-radius:8px;background:${a.color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:14px;flex-shrink:0;`,
+        onPick: () => this.omniPick(a.id)
+      }))
+    };
+  }
+}
+
+</script>
+</body>
+</html>

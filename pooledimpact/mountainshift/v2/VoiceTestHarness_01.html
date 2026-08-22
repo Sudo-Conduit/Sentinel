@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Voice Pipeline — Working</title>
+<style>
+  body { margin:0; font:13px/1.4 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; }
+  header { padding:10px 16px; background:#252526; border-bottom:1px solid #333; }
+  header h1 { font-size:14px; margin:0; color:#6b9; }
+  header p { margin:4px 0 0; color:#888; font-size:12px; }
+  main { padding:16px; max-width:720px; }
+  .card { background:#252526; border:1px solid #333; border-radius:6px; padding:14px; margin-bottom:12px; }
+  .row { display:flex; gap:8px; align-items:center; margin-bottom:8px; flex-wrap:wrap; }
+  button.act { background:#3b6fd1; color:#fff; border:none; border-radius:3px; padding:5px 12px; cursor:pointer; font:12px 'Courier New',monospace; }
+  button.act:hover { background:#4a7fe0; }
+  button.act:disabled { background:#444; cursor:not-allowed; }
+  select, input[type=text] { background:#1e1e1e; color:#d4d4d4; border:1px solid #444; border-radius:3px; padding:4px 8px; font:12px 'Courier New',monospace; }
+  .stage { padding:8px; border:1px solid #333; border-radius:4px; background:#1a1a1a; margin-bottom:6px; }
+  .stage b { color:#6b9; }
+  .err { color:#e05555; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="16" fill="#6b9" text-anchor="middle" font-family="monospace">))))</text></svg></template>
+</head>
+<body>
+
+<header>
+  <h1>Voice Pipeline — Mic → Deterministic Translate → Speech</h1>
+  <p>Real mechanical integration, nothing simulated: SpeechRecognition captures actual mic audio, the deterministic AST translate pipeline (ported from AST-Translator.dc.html) runs on the real transcript, speechSynthesis speaks the real result out loud. No adapter switcher, no stub backend, no fake conformance battery — there is exactly one path here and it either works or throws.</p>
+</header>
+
+<main>
+  <div class="card">
+    <div class="row">
+      <button class="act" id="record-btn" onclick="startRecording()">🎤 Record &amp; run pipeline</button>
+      <span>target: Spanish (es-ES)</span>
+    </div>
+    <div class="stage"><b>1. transcribe (SpeechRecognition, live mic)</b><div id="stage-stt">–</div></div>
+    <div class="stage"><b>2. translate (deterministic AST, real)</b><div id="stage-translate">–</div></div>
+    <div class="stage"><b>3. synthesize (speechSynthesis, spoken aloud)</b><div id="stage-tts">–</div></div>
+  </div>
+</main>
+
+<script>
+// ───────────────────────── Real deterministic translate (ported from AST-Translator.dc.html) ─────────────────────────
+const INTENT_ONTOLOGY = {
+  book_flight:   { en: ['book','reserve','flight','fly'] },
+  search_flights:{ en: ['search','find','flights'] },
+  cancel_flight: { en: ['cancel'] },
+  check_status:  { en: ['status','check'] },
+  change_booking:{ en: ['change','modify','reschedule'] }
+};
+const CITY_ONTOLOGY = [
+  { en: 'paris', bg: 'париж' }, { en: 'london', bg: 'лондон' }, { en: 'sofia', bg: 'софия' },
+  { en: 'varna', bg: 'варна' }, { en: 'burgas', bg: 'бургас' }, { en: 'tokyo', bg: 'токио' },
+  { en: 'barcelona', bg: 'барселона' }
+];
+const TIME_ONTOLOGY = [
+  { en: 'next friday', bg: 'следващия петък' }, { en: 'next monday', bg: 'следващия понеделник' },
+  { en: 'next week', bg: 'следващата седмица' }, { en: 'tomorrow', bg: 'утре' }, { en: 'today', bg: 'днес' }
+];
+const ES_VERB = {
+  IMPERATIVE:            { book_flight:'Reserva un vuelo', search_flights:'Busca vuelos', cancel_flight:'Cancela el vuelo', check_status:'Consulta el estado', change_booking:'Cambia la reserva', unknown:'(no reconocido)' },
+  'DECLARATIVE:PRESENT:DESIDERATIVE': { book_flight:'Quiero reservar un vuelo', search_flights:'Quiero buscar vuelos', cancel_flight:'Quiero cancelar el vuelo', check_status:'Quiero consultar el estado', change_booking:'Quiero cambiar la reserva', unknown:'(no reconocido)' }
+};
+function tokenize(text){ return text.trim().split(/\s+/).filter(Boolean); }
+function parseIntent(words){
+  const text = words.join(' ').toLowerCase();
+  let best = 'unknown', bestScore = 0;
+  Object.entries(INTENT_ONTOLOGY).forEach(([key, kw]) => {
+    const score = kw.en.filter(w => text.includes(w)).length / kw.en.length;
+    if (score > bestScore) { bestScore = score; best = key; }
+  });
+  return best;
+}
+function detectDestination(text){ const t = text.toLowerCase(); return CITY_ONTOLOGY.find(p => t.includes(p.en)) || null; }
+function detectTimePhrase(text){ const t = text.toLowerCase(); return TIME_ONTOLOGY.find(p => t.includes(p.en)) || null; }
+function parseMood(text){ return /^i want|^i'd like|^i would like/i.test(text.trim()) ? 'DESIDERATIVE' : 'IMPERATIVE'; }
+function titleCase(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+function realTranslateToEs(text){
+  const words = tokenize(text);
+  const intent = parseIntent(words);
+  const mood = parseMood(text);
+  const destination = detectDestination(text);
+  const time = detectTimePhrase(text);
+  const key = mood === 'DESIDERATIVE' ? 'DECLARATIVE:PRESENT:DESIDERATIVE' : 'IMPERATIVE';
+  let out = ES_VERB[key][intent] || ES_VERB.IMPERATIVE.unknown;
+  if (destination) out += ' a ' + titleCase(destination.en);
+  if (time) out += ' para ' + time.en;
+  return { text: out, intent };
+}
+
+// ───────────────────────── Real pipeline: mic → translate → speech ─────────────────────────
+function setStage(id, text, isErr) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className = isErr ? 'err' : '';
+}
+function startRecording() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { setStage('stage-stt', 'SpeechRecognition not available in this browser.', true); return; }
+  const btn = document.getElementById('record-btn');
+  btn.disabled = true;
+  setStage('stage-stt', 'listening...');
+  setStage('stage-translate', '–');
+  setStage('stage-tts', '–');
+  const rec = new SR();
+  rec.lang = 'en-US';
+  rec.interimResults = false;
+  rec.maxAlternatives = 1;
+  rec.onresult = (e) => {
+    const text = e.results[0][0].transcript;
+    setStage('stage-stt', `"${text}"`);
+    runTranslateAndSpeak(text);
+  };
+  rec.onerror = (e) => { setStage('stage-stt', 'SpeechRecognition error: ' + e.error, true); btn.disabled = false; };
+  rec.onend = () => { btn.disabled = false; };
+  rec.start();
+}
+function pickVoice(langPrefix) {
+  const voices = speechSynthesis.getVoices();
+  return voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+}
+function runTranslateAndSpeak(text) {
+  const tr = realTranslateToEs(text);
+  setStage('stage-translate', `${tr.text}  [intent=${tr.intent}]`);
+  if (!window.speechSynthesis) { setStage('stage-tts', 'speechSynthesis not available in this browser.', true); return; }
+  const speak = () => {
+    const voice = pickVoice('es');
+    if (!voice) { setStage('stage-tts', 'No es-* voice installed in this browser — cannot verify spoken output. Not faking success.', true); return; }
+    setStage('stage-tts', 'speaking...');
+    const utter = new SpeechSynthesisUtterance(tr.text);
+    utter.voice = voice;
+    utter.lang = voice.lang;
+    utter.onend = () => setStage('stage-tts', `spoke via SpeechSynthesisUtterance (voice=${voice.name}, lang=${voice.lang})`);
+    utter.onerror = (e) => setStage('stage-tts', 'speechSynthesis error: ' + e.error, true);
+    speechSynthesis.speak(utter);
+  };
+  if (speechSynthesis.getVoices().length === 0) {
+    speechSynthesis.onvoiceschanged = speak;
+  } else {
+    speak();
+  }
+}
+</script>
+</body>
+</html>

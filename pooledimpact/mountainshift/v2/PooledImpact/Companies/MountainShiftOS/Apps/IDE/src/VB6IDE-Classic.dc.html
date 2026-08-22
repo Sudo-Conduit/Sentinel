@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+<script src="./BaseClassX.js"></script>
+<script src="./FileFS.js"></script>
+<script src="./AppClasses.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="width:1180px;height:720px;background:#eef1f5;border:1px solid #d7dce3;border-radius:6px;overflow:hidden;display:flex;flex-direction:column;font-family:system-ui,-apple-system,sans-serif;box-shadow:0 8px 30px rgba(20,30,50,.12)">
+
+<div style="height:30px;background:#1f2430;color:#fff;display:flex;align-items:center;padding:0 12px;font:12px system-ui;justify-content:space-between;flex-shrink:0">
+<span>Visual Basic 6.0 (Prototype) — Project1</span>
+<div style="display:flex;gap:6px">
+<div style="width:12px;height:12px;border-radius:2px;background:#4a5568"></div>
+<div style="width:12px;height:12px;border-radius:2px;background:#4a5568"></div>
+<div style="width:12px;height:12px;border-radius:2px;background:#c65a5a"></div>
+</div>
+</div>
+
+<div style="height:26px;background:#f7f8fa;border-bottom:1px solid #e2e6ec;display:flex;align-items:center;padding:0 8px;gap:14px;font:12px system-ui;color:#2b3140;flex-shrink:0">
+<div style="display:flex;align-items:center;gap:2px;position:relative;cursor:pointer" onClick="{{ toggleFileMenu }}">
+<span>File</span>
+<span style="font:10px system-ui;color:#8b93a0">▾</span>
+<sc-if value="{{ fileMenuOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;top:26px;left:0;background:#fff;border:1px solid #d7dce3;border-radius:4px;box-shadow:0 4px 12px rgba(20,30,50,.15);min-width:140px;z-index:100">
+<div onClick="{{ newForm }}" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">New Form</div>
+<div onClick="{{ saveForm }}" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Save Form…</div>
+<div onClick="{{ loadForm }}" style="padding:6px 12px;font:12px system-ui;color:#2b3140;cursor:pointer;border-bottom:1px solid #eef1f5">Load Form…</div>
+<div style="padding:6px 12px;font:12px system-ui;color:#8b93a0;cursor:default">Save Project</div>
+</div>
+</sc-if>
+</div>
+<span>Edit</span><span>View</span><span>Project</span><span>Format</span><span>Debug</span><span style="font-weight:600;color:#3b6fd1">Run</span><span>Query</span><span>Diagram</span><span>Tools</span><span>Add-Ins</span><span>Window</span><span>Help</span>
+</div>
+
+<div style="height:34px;background:#fff;border-bottom:1px solid #e2e6ec;display:flex;align-items:center;padding:0 8px;gap:6px;flex-shrink:0">
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">New</div>
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">Open</div>
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">Save</div>
+<div style="width:1px;height:20px;background:#e2e6ec"></div>
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">Cut</div>
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">Copy</div>
+<div style="padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;font:12px system-ui;color:#8b93a0">Paste</div>
+<div style="width:1px;height:20px;background:#e2e6ec"></div>
+<div onClick="{{ runStart }}" style="{{ startBtnStyle }}">▶ Start</div>
+<div style="{{ breakBtnStyle }}">⏸ Break</div>
+<div onClick="{{ runEnd }}" style="{{ endBtnStyle }}">■ End</div>
+</div>
+
+<div style="flex:1;display:flex;min-height:0">
+
+<sc-if value="{{ isDesign }}" hint-placeholder-val="{{ true }}">
+<div style="width:110px;background:#fff;border-right:1px solid #e2e6ec;display:flex;flex-direction:column;flex-shrink:0">
+<div style="padding:6px 8px;font:11px system-ui;color:#5b6472;font-weight:600;border-bottom:1px solid #eef1f5">Toolbox</div>
+<div style="flex:1;overflow:auto;padding:6px;display:grid;grid-template-columns:repeat(3,1fr);gap:4px;align-content:start">
+<sc-for list="{{ tools }}" as="t" hint-placeholder-count="12">
+<div onClick="{{ t.onClick }}" title="{{ t.label }}" style="width:100%;aspect-ratio:1;display:flex;align-items:center;justify-content:center;font:10px ui-monospace,Menlo,monospace;border:1px solid {{ t.borderColor }};background:{{ t.bgColor }};border-radius:3px;cursor:pointer;color:#2b3140;box-sizing:border-box">{{ t.abbr }}</div>
+</sc-for>
+</div>
+</div>
+</sc-if>
+
+<div style="flex:1;overflow:auto;background:#e4e8ee;padding:26px;display:flex;justify-content:center;align-items:flex-start">
+<div ref="{{ setFormRef }}" onMouseDown="{{ onFormMouseDown }}" style="position:relative;width:660px;height:340px;background:#eef1f2;border:1px solid #c3c8d0;box-shadow:0 2px 10px rgba(20,30,50,.08);cursor:{{ formCursor }};background-image:{{ formBgImage }};background-size:14px 14px;flex-shrink:0">
+<div style="position:absolute;top:0;left:0;right:0;height:24px;background:#f7f8fa;border-bottom:1px solid #e2e6ec;display:flex;align-items:center;padding:0 8px;font:11px system-ui;color:#2b3140;box-sizing:border-box">{{ formTitleText }}</div>
+<div style="position:absolute;top:24px;left:0;right:0;bottom:0">
+
+<sc-for list="{{ controls }}" as="c" hint-placeholder-count="4">
+<div style="position:absolute;left:{{ c.left }}px;top:{{ c.top }}px;width:{{ c.width }}px;height:{{ c.height }}px;outline:{{ c.outline }};outline-offset:2px;cursor:{{ c.cursorStyle }};z-index:{{ c.zIndex }};display:{{ c.displayCss }};box-sizing:border-box" onMouseDown="{{ c.pointerFn }}">
+
+<sc-if value="{{ c.isFrame }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;border:1px solid #c3c8d0;border-radius:3px;position:relative">
+<div style="position:absolute;top:-8px;left:8px;background:#eef1f2;padding:0 4px;font:12px system-ui;color:#3a4150">{{ c.caption }}</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isLabel }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;display:flex;align-items:center;font:12px system-ui;color:#20242c;white-space:nowrap;overflow:hidden">{{ c.caption }}</div>
+</sc-if>
+
+<sc-if value="{{ c.showTextDiv }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;padding:2px 5px;font:12px system-ui;color:#1f2430;overflow:hidden;white-space:nowrap;box-sizing:border-box">{{ c.text }}</div>
+</sc-if>
+<sc-if value="{{ c.showTextInput }}" hint-placeholder-val="{{ false }}">
+<input value="{{ c.text }}" onInput="{{ c.textFn }}" style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;padding:2px 5px;font:12px system-ui;color:#1f2430;box-sizing:border-box"/>
+</sc-if>
+
+<sc-if value="{{ c.isButton }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#f4f6f9;border:1px solid #c3c8d0;border-radius:4px;display:flex;align-items:center;justify-content:center;font:12px system-ui;color:#1f2430;box-shadow:0 1px 0 rgba(0,0,0,.04)">{{ c.caption }}</div>
+</sc-if>
+
+<sc-if value="{{ c.isCheckbox }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:6px;height:100%;font:12px system-ui;color:#20242c">
+<div style="width:14px;height:14px;border:1px solid #8b93a0;border-radius:2px;background:#fff;display:flex;align-items:center;justify-content:center;font:11px system-ui;color:#3b6fd1;flex-shrink:0">{{ c.checkMark }}</div>
+<span style="overflow:hidden;white-space:nowrap">{{ c.caption }}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isOption }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;gap:6px;height:100%;font:12px system-ui;color:#20242c">
+<div style="width:14px;height:14px;border:1px solid #8b93a0;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;font:9px system-ui;color:#3b6fd1;flex-shrink:0">{{ c.radioMark }}</div>
+<span style="overflow:hidden;white-space:nowrap">{{ c.caption }}</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isCombo }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;border-radius:2px;display:flex;align-items:center;justify-content:space-between;padding:2px 5px;font:12px system-ui;color:#1f2430;cursor:pointer;box-sizing:border-box">
+<span style="overflow:hidden;white-space:nowrap">{{ c.text }}</span><span style="color:#6b7280">▾</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isListlike }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;overflow:hidden;font:12px system-ui;box-sizing:border-box">
+<sc-for list="{{ c.items }}" as="it" hint-placeholder-count="3">
+<div style="padding:2px 6px;border-bottom:1px solid #eef1f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it }}</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isHScroll }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#eef1f5;border:1px solid #c3c8d0;display:flex;align-items:stretch;box-sizing:border-box">
+<div style="width:16px;background:#fff;border-right:1px solid #c3c8d0;display:flex;align-items:center;justify-content:center;font:10px system-ui">◂</div>
+<div style="flex:1"></div>
+<div style="width:16px;background:#fff;border-left:1px solid #c3c8d0;display:flex;align-items:center;justify-content:center;font:10px system-ui">▸</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isVScroll }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#eef1f5;border:1px solid #c3c8d0;display:flex;flex-direction:column;align-items:stretch;box-sizing:border-box">
+<div style="height:16px;background:#fff;border-bottom:1px solid #c3c8d0;display:flex;align-items:center;justify-content:center;font:10px system-ui">▴</div>
+<div style="flex:1"></div>
+<div style="height:16px;background:#fff;border-top:1px solid #c3c8d0;display:flex;align-items:center;justify-content:center;font:10px system-ui">▾</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isTimer }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px dashed #8b93a0;border-radius:50%;display:flex;align-items:center;justify-content:center;font:9px system-ui;color:#6b7280">Tmr</div>
+</sc-if>
+
+<sc-if value="{{ c.isShape }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#eef1f5;border:1px solid #7b8695;box-sizing:border-box"></div>
+</sc-if>
+
+<sc-if value="{{ c.isLine }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:2px;background:#4a5568;margin-top:calc(50% - 1px)"></div>
+</sc-if>
+
+<sc-if value="{{ c.isPicture }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;display:flex;align-items:center;justify-content:center;box-sizing:border-box">
+<div style="width:60%;height:60%;border:1px solid #c3c8d0;position:relative;overflow:hidden">
+<div style="position:absolute;bottom:0;left:0;width:0;height:0;border-left:14px solid transparent;border-right:14px solid transparent;border-bottom:14px solid #c3c8d0"></div>
+<div style="position:absolute;top:4px;left:4px;width:8px;height:8px;border-radius:50%;background:#dcdfe4"></div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isData }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#eef1f5;border:1px solid #c3c8d0;display:flex;align-items:center;justify-content:space-between;padding:0 6px;font:11px system-ui;color:#2b3140;box-sizing:border-box">
+<span>◂◂</span><span>◂</span><span style="font-weight:600;overflow:hidden;white-space:nowrap">{{ c.caption }}</span><span>▸</span><span>▸▸</span>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.isOle }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px dashed #8b93a0;display:flex;align-items:center;justify-content:center;font:11px system-ui;color:#6b7280;box-sizing:border-box">OLE Object</div>
+</sc-if>
+
+<sc-if value="{{ c.isGrid }}" hint-placeholder-val="{{ false }}">
+<div style="width:100%;height:100%;background:#fff;border:1px solid #c3c8d0;overflow:hidden;font:11px system-ui;display:flex;flex-direction:column;box-sizing:border-box">
+<div style="display:flex;background:#eef1f5;border-bottom:1px solid #c3c8d0;font-weight:600">
+<sc-for list="{{ c.columns }}" as="col" hint-placeholder-count="4">
+<div style="flex:1;padding:3px 5px;border-right:1px solid #dde1e7;white-space:nowrap;overflow:hidden">{{ col }}</div>
+</sc-for>
+</div>
+<sc-for list="{{ c.rows }}" as="row" hint-placeholder-count="3">
+<div style="display:flex;border-bottom:1px solid #eef1f5">
+<sc-for list="{{ row }}" as="cell" hint-placeholder-count="4">
+<div style="flex:1;padding:3px 5px;border-right:1px solid #eef1f5;white-space:nowrap;overflow:hidden">{{ cell }}</div>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ c.showHandle }}" hint-placeholder-val="{{ false }}">
+<div onMouseDown="{{ c.resizeFn }}" style="position:absolute;right:-5px;bottom:-5px;width:10px;height:10px;background:#3b6fd1;border:1px solid #fff;border-radius:2px;cursor:nwse-resize"></div>
+</sc-if>
+
+</div>
+</sc-for>
+
+</div>
+</div>
+</div>
+
+<sc-if value="{{ isDesign }}" hint-placeholder-val="{{ true }}">
+<div style="width:260px;background:#fff;border-left:1px solid #e2e6ec;display:flex;flex-direction:column;flex-shrink:0">
+<div style="height:180px;display:flex;flex-direction:column;border-bottom:1px solid #e2e6ec;flex-shrink:0">
+<div style="padding:6px 8px;font:11px system-ui;color:#5b6472;font-weight:600;border-bottom:1px solid #eef1f5">Project Explorer</div>
+<div style="flex:1;overflow:auto;padding:8px;font:12px system-ui;color:#2b3140">
+<div style="padding:2px 0">▾ Project1 (Project1.vbp)</div>
+<div style="padding:2px 0 2px 14px">▾ Forms</div>
+<div style="padding:3px 6px;margin-left:24px;background:#e8f0fc;border-radius:3px;color:#1f4fb0;display:inline-block">▪ Form1 (Form1.frm)</div>
+</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;min-height:0">
+<div style="padding:6px 8px;font:11px system-ui;color:#5b6472;font-weight:600;border-bottom:1px solid #eef1f5">Properties — {{ selectedName }}</div>
+<div style="padding:4px 8px;font:11px system-ui;color:#5b6472;border-bottom:1px solid #eef1f5">{{ selectedType }}</div>
+<sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;overflow:auto">
+<sc-for list="{{ propRows }}" as="row" hint-placeholder-count="6">
+<div style="display:flex;border-bottom:1px solid #eef1f5;font:11px system-ui">
+<div style="width:86px;flex-shrink:0;padding:4px 6px;color:#5b6472;background:#f7f8fa;border-right:1px solid #eef1f5">{{ row.label }}</div>
+<div style="flex:1;padding:2px 6px;display:flex;align-items:center;min-width:0">
+<sc-if value="{{ row.isText }}" hint-placeholder-val="{{ true }}"><input value="{{ row.value }}" onInput="{{ row.onChange }}" style="width:100%;border:none;outline:none;font:11px system-ui;background:transparent"/></sc-if>
+<sc-if value="{{ row.isNumber }}" hint-placeholder-val="{{ false }}"><input type="number" value="{{ row.value }}" onInput="{{ row.onChange }}" style="width:100%;border:none;outline:none;font:11px system-ui;background:transparent"/></sc-if>
+<sc-if value="{{ row.isCheckbox }}" hint-placeholder-val="{{ false }}"><input type="checkbox" checked="{{ row.value }}" onChange="{{ row.onChange }}"/></sc-if>
+</div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+<sc-if value="{{ hasNoSelection }}" hint-placeholder-val="{{ false }}">
+<div style="padding:16px;color:#8b93a0;font:12px system-ui;text-align:center">No control selected.<br/>Click a control on the form.</div>
+</sc-if>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+<div style="height:22px;background:#f7f8fa;border-top:1px solid #e2e6ec;display:flex;align-items:center;padding:0 10px;font:11px system-ui;color:#5b6472;gap:16px;flex-shrink:0">
+<span>{{ modeLabel }}</span>
+<sc-if value="{{ isRun }}" hint-placeholder-val="{{ false }}"><span>{{ runStatus }}</span></sc-if>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:760},&quot;showNewForm&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Form&quot;}}">
+class Component extends DCLogic {
+  state = {
+    mode: 'design',
+    selectedId: null,
+    armedTool: null,
+    runStatus: '',
+    rightTab: 'properties',
+    fileMenuOpen: false,
+    seq: 200,
+    controls: [
+      { id:'f1', type:'frame', x:20, y:20, w:300, h:180, props:{ name:'Frame1', caption:'Customer Information' } },
+      { id:'l1', type:'label', x:40, y:58, w:100, h:18, props:{ name:'Label1', caption:'Customer Name:' } },
+      { id:'t1', type:'textbox', x:150, y:55, w:150, h:22, props:{ name:'txtName', text:'' } },
+      { id:'l2', type:'label', x:40, y:88, w:100, h:18, props:{ name:'Label2', caption:'Company:' } },
+      { id:'t2', type:'textbox', x:150, y:85, w:150, h:22, props:{ name:'txtCompany', text:'' } },
+      { id:'l3', type:'label', x:40, y:118, w:100, h:18, props:{ name:'Label3', caption:'Phone:' } },
+      { id:'t3', type:'textbox', x:150, y:115, w:150, h:22, props:{ name:'txtPhone', text:'' } },
+      { id:'l4', type:'label', x:40, y:148, w:100, h:18, props:{ name:'Label4', caption:'Region:' } },
+      { id:'cb1', type:'combobox', x:150, y:145, w:150, h:22, props:{ name:'cboRegion', text:'North', items:['North','South','East','West'] } },
+      { id:'f2', type:'frame', x:340, y:20, w:300, h:180, props:{ name:'Frame2', caption:'Order Details' } },
+      { id:'g1', type:'grid', x:360, y:55, w:260, h:130, props:{ name:'MSFlexGrid1', columns:['Order #','Product','Qty','Price'], rows:[['1001','Widget A','2','$19.99'],['1002','Widget B','1','$34.50'],['1003','Gadget C','5','$8.25']] } },
+      { id:'l5', type:'label', x:20, y:218, w:70, h:18, props:{ name:'Label5', caption:'Notes:' } },
+      { id:'t4', type:'textbox', x:100, y:215, w:540, h:50, props:{ name:'txtNotes', text:'' } },
+      { id:'b1', type:'commandbutton', x:480, y:280, w:80, h:30, props:{ name:'cmdSave', caption:'Save' } },
+      { id:'b2', type:'commandbutton', x:568, y:280, w:80, h:30, props:{ name:'cmdCancel', caption:'Cancel' } }
+    ]
+  };
+
+  tools = [
+    { type:'pointer', abbr:'Ptr', label:'Pointer' },
+    { type:'label', abbr:'A', label:'Label' },
+    { type:'textbox', abbr:'ab', label:'TextBox' },
+    { type:'commandbutton', abbr:'Cmd', label:'CommandButton' },
+    { type:'frame', abbr:'Frm', label:'Frame' },
+    { type:'checkbox', abbr:'Chk', label:'CheckBox' },
+    { type:'optionbutton', abbr:'Opt', label:'OptionButton' },
+    { type:'combobox', abbr:'Cbo', label:'ComboBox' },
+    { type:'listbox', abbr:'Lst', label:'ListBox' },
+    { type:'hscrollbar', abbr:'H-S', label:'HScrollBar' },
+    { type:'vscrollbar', abbr:'V-S', label:'VScrollBar' },
+    { type:'timer', abbr:'Tmr', label:'Timer' },
+    { type:'drivelistbox', abbr:'Drv', label:'DriveListBox' },
+    { type:'dirlistbox', abbr:'Dir', label:'DirListBox' },
+    { type:'filelistbox', abbr:'Fil', label:'FileListBox' },
+    { type:'shape', abbr:'Shp', label:'Shape' },
+    { type:'line', abbr:'Lin', label:'Line' },
+    { type:'image', abbr:'Img', label:'Image' },
+    { type:'picturebox', abbr:'Pic', label:'PictureBox' },
+    { type:'data', abbr:'Dat', label:'Data' },
+    { type:'ole', abbr:'OLE', label:'OLE' }
+  ];
+
+  componentDidMount() {
+    this.fs = null;
+    this._initializeFS();
+    this._onMove = (e) => {
+      if (this._dragging && this._dragId) {
+        const dx = e.clientX - this._dragStartMouse.x, dy = e.clientY - this._dragStartMouse.y;
+        this.updateGeomDirect(this._dragId, 'x', Math.max(0, this._dragStartPos.x + dx));
+        this.updateGeomDirect(this._dragId, 'y', Math.max(0, this._dragStartPos.y + dy));
+      } else if (this._resizing && this._resizeId) {
+        const dx = e.clientX - this._resizeStartMouse.x, dy = e.clientY - this._resizeStartMouse.y;
+        this.updateGeomDirect(this._resizeId, 'w', Math.max(12, this._resizeStartSize.w + dx));
+        this.updateGeomDirect(this._resizeId, 'h', Math.max(12, this._resizeStartSize.h + dy));
+      }
+    };
+    this._onUp = () => { this._dragging = false; this._resizing = false; this._dragId = null; this._resizeId = null; };
+    window.addEventListener('mousemove', this._onMove);
+    window.addEventListener('mouseup', this._onUp);
+  }
+  componentWillUnmount() {
+    window.removeEventListener('mousemove', this._onMove);
+    window.removeEventListener('mouseup', this._onUp);
+  }
+
+  getControl(id) { return this.state.controls.find(c => c.id === id); }
+
+  onFormMouseDown(e) {
+    if (this.state.armedTool) {
+      const rect = this._formEl.getBoundingClientRect();
+      const x = e.clientX - rect.left, y = e.clientY - rect.top - 24;
+      this.addControlAt(this.state.armedTool, x, y);
+    } else {
+      this.setState({ selectedId: null });
+    }
+  }
+
+  addControlAt(type, x, y) {
+    const [w, h] = this.defaultDims(type);
+    const n = this.state.seq;
+    const id = 'c' + n;
+    const ctrl = { id, type, x: Math.max(0, Math.round(x - w / 2)), y: Math.max(0, Math.round(y - h / 2)), w, h, props: { name: this.namePrefix(type) + n, ...this.defaultProps(type) } };
+    this.setState(s => ({ controls: [...s.controls, ctrl], seq: s.seq + 1, selectedId: id, armedTool: null }));
+  }
+
+  selectControl(id) { this.setState({ selectedId: id }); }
+
+  beginDrag(e, id) {
+    const c = this.getControl(id);
+    if (!c) return;
+    this._dragging = true; this._dragId = id;
+    this._dragStartMouse = { x: e.clientX, y: e.clientY };
+    this._dragStartPos = { x: c.x, y: c.y };
+  }
+  beginResize(e, id) {
+    e.stopPropagation();
+    const c = this.getControl(id);
+    if (!c) return;
+    this.selectControl(id);
+    this._resizing = true; this._resizeId = id;
+    this._resizeStartMouse = { x: e.clientX, y: e.clientY };
+    this._resizeStartSize = { w: c.w, h: c.h };
+  }
+
+  updateProp(key, val) { if (!this.state.selectedId) return; this.updatePropFor(this.state.selectedId, key, val); }
+  updatePropFor(id, key, val) { this.setState(s => ({ controls: s.controls.map(c => c.id === id ? { ...c, props: { ...c.props, [key]: val } } : c) })); }
+  updateGeom(key, val) { if (!this.state.selectedId) return; this.updateGeomDirect(this.state.selectedId, key, parseInt(val, 10) || 0); }
+  updateGeomDirect(id, key, val) { this.setState(s => ({ controls: s.controls.map(c => c.id === id ? { ...c, [key]: Math.round(val) } : c) })); }
+
+  toggleChecked(id) { const c = this.getControl(id); if (c) this.updatePropFor(id, 'checked', !c.props.checked); }
+  selectRadio(id) { this.setState(s => ({ controls: s.controls.map(c => c.type === 'optionbutton' ? { ...c, props: { ...c.props, checked: c.id === id } } : c) })); }
+  onButtonClick(c) {
+    const cap = (c.props.caption || '').toLowerCase();
+    if (cap === 'save') this.setState({ runStatus: 'Record saved.' });
+    else if (cap === 'cancel') this.setState({ runStatus: 'Cancelled.' });
+    else this.setState({ runStatus: '"' + c.props.caption + '" clicked.' });
+  }
+  onComboClick(id) {
+    const c = this.getControl(id);
+    if (!c || !c.props.items || !c.props.items.length) return;
+    const idx = c.props.items.indexOf(c.props.text);
+    const next = c.props.items[(idx + 1) % c.props.items.length];
+    this.updatePropFor(id, 'text', next);
+  }
+  onControlPointerDown(e, id) {
+    const c = this.getControl(id);
+    if (!c) return;
+    if (this.state.mode === 'run') {
+      if (c.type === 'checkbox') this.toggleChecked(id);
+      else if (c.type === 'optionbutton') this.selectRadio(id);
+      else if (c.type === 'commandbutton') this.onButtonClick(c);
+      else if (c.type === 'combobox') this.onComboClick(id);
+      return;
+    }
+    e.stopPropagation();
+    this.selectControl(id);
+    this.beginDrag(e, id);
+  }
+
+  runStart() { this.setState({ mode: 'run', selectedId: null, armedTool: null, runStatus: '' }); }
+  runEnd() { this.setState({ mode: 'design', runStatus: '' }); }
+  armTool(type) {
+    if (type === 'pointer') { this.setState({ armedTool: null }); return; }
+    this.setState(s => ({ armedTool: s.armedTool === type ? null : type }));
+  }
+  setRightTab(tab) { this.setState({ rightTab: tab }); }
+  _initializeFS() {
+    if (typeof FileFS === 'undefined') return;
+    try {
+      this.fs = FileFS.create({ autoSave: true });
+    } catch (e) {
+      console.warn('FileFS initialization error:', e);
+    }
+  }
+
+  toggleFileMenu() { this.setState(s => ({ fileMenuOpen: !s.fileMenuOpen })); }
+  newForm() {
+    this.setState(s => ({ fileMenuOpen: false, controls: [], selectedId: null, seq: 200, mode: 'design' }));
+  }
+  saveForm() {
+    if (!this.fs) {
+      alert('FileFS not available');
+      return;
+    }
+    const formData = JSON.stringify({ controls: this.state.controls, name: 'Form1' }, null, 2);
+    this.fs.writeFile('/forms/Form1.json', formData).then(() => {
+      this.setState({ runStatus: 'Form saved.' });
+    }).catch(err => {
+      console.error('Save error:', err);
+      this.setState({ runStatus: 'Save failed: ' + err.message });
+    });
+  }
+  loadForm() {
+    if (!this.fs) {
+      alert('FileFS not available');
+      return;
+    }
+    this.fs.readFile('/forms/Form1.json', 'utf8').then(data => {
+      const loaded = JSON.parse(data);
+      this.setState({ controls: loaded.controls, runStatus: 'Form loaded.' });
+    }).catch(err => {
+      console.error('Load error:', err);
+      this.setState({ runStatus: 'Load failed: ' + err.message });
+    });
+  }
+
+  defaultDims(type) {
+    const d = { label:[110,18], textbox:[130,22], commandbutton:[90,28], frame:[200,140], checkbox:[130,20], optionbutton:[130,20], combobox:[130,22], listbox:[130,80], hscrollbar:[130,18], vscrollbar:[18,110], timer:[32,32], drivelistbox:[150,22], dirlistbox:[150,90], filelistbox:[150,90], shape:[60,60], line:[100,2], image:[100,80], picturebox:[100,80], data:[180,24], ole:[120,90] };
+    return d[type] || [100,30];
+  }
+  defaultProps(type) {
+    switch (type) {
+      case 'label': return { caption: 'Label' };
+      case 'textbox': return { text: '' };
+      case 'commandbutton': return { caption: 'Command' };
+      case 'frame': return { caption: 'Frame' };
+      case 'checkbox': return { caption: 'Check', checked: false };
+      case 'optionbutton': return { caption: 'Option', checked: false };
+      case 'combobox': return { text: 'Item 1', items: ['Item 1','Item 2','Item 3'] };
+      case 'listbox': return { items: ['Item 1','Item 2','Item 3'] };
+      case 'drivelistbox': return { text: 'C:\\' };
+      case 'dirlistbox': return { items: ['\\Program Files','\\Windows','\\Users'] };
+      case 'filelistbox': return { items: ['readme.txt','data.dat','setup.exe'] };
+      case 'data': return { caption: 'Data1' };
+      default: return {};
+    }
+  }
+  namePrefix(type) {
+    const m = { label:'Label', textbox:'Text', commandbutton:'Command', frame:'Frame', checkbox:'Check', optionbutton:'Option', combobox:'Combo', listbox:'List', hscrollbar:'HScroll', vscrollbar:'VScroll', timer:'Timer', drivelistbox:'Drive', dirlistbox:'Dir', filelistbox:'File', shape:'Shape', line:'Line', image:'Image', picturebox:'Picture', data:'Data', ole:'OLE' };
+    return m[type] || 'Ctrl';
+  }
+
+  buildPropRows(c) {
+    const rows = [];
+    rows.push({ key:'name', label:'(Name)', kind:'text', value:c.props.name, onChange:(e)=>this.updateProp('name', e.target.value) });
+    if ('caption' in c.props) rows.push({ key:'caption', label:'Caption', kind:'text', value:c.props.caption, onChange:(e)=>this.updateProp('caption', e.target.value) });
+    if ('text' in c.props) rows.push({ key:'text', label:'Text', kind:'text', value:c.props.text, onChange:(e)=>this.updateProp('text', e.target.value) });
+    if ('checked' in c.props) rows.push({ key:'checked', label:'Value', kind:'checkbox', value:!!c.props.checked, onChange:(e)=>this.updateProp('checked', e.target.checked) });
+    rows.push({ key:'left', label:'Left', kind:'number', value:c.x, onChange:(e)=>this.updateGeom('x', e.target.value) });
+    rows.push({ key:'top', label:'Top', kind:'number', value:c.y, onChange:(e)=>this.updateGeom('y', e.target.value) });
+    rows.push({ key:'width', label:'Width', kind:'number', value:c.w, onChange:(e)=>this.updateGeom('w', e.target.value) });
+    rows.push({ key:'height', label:'Height', kind:'number', value:c.h, onChange:(e)=>this.updateGeom('h', e.target.value) });
+    return rows;
+  }
+
+  btnStyle(enabled) {
+    return enabled
+      ? 'display:flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #d7dce3;border-radius:4px;background:#fff;font:12px system-ui;color:#1f2430;cursor:pointer'
+      : 'display:flex;align-items:center;gap:4px;padding:4px 10px;border:1px solid #eef1f5;border-radius:4px;background:#f7f8fa;font:12px system-ui;color:#b3b9c2;cursor:default';
+  }
+
+  renderVals() {
+    const s = this.state;
+    const isDesign = s.mode === 'design';
+    const isRun = s.mode === 'run';
+    const selected = s.controls.find(c => c.id === s.selectedId) || null;
+    if (this.props.showNewForm && !this._propsNewFormApplied) {
+      this._propsNewFormApplied = true;
+      this.newForm();
+      return {};
+    }
+    if (!this.props.showNewForm) this._propsNewFormApplied = false;
+
+    const controls = s.controls.map(c => {
+      const sel = c.id === s.selectedId;
+      return {
+        id: c.id, type: c.type,
+        isLabel: c.type === 'label', isTextbox: c.type === 'textbox', isButton: c.type === 'commandbutton',
+        isCheckbox: c.type === 'checkbox', isOption: c.type === 'optionbutton', isFrame: c.type === 'frame',
+        isCombo: c.type === 'combobox', isListlike: c.type === 'listbox' || c.type === 'dirlistbox' || c.type === 'filelistbox',
+        isHScroll: c.type === 'hscrollbar', isVScroll: c.type === 'vscrollbar', isTimer: c.type === 'timer',
+        isShape: c.type === 'shape', isLine: c.type === 'line', isPicture: c.type === 'image' || c.type === 'picturebox',
+        isData: c.type === 'data', isOle: c.type === 'ole', isGrid: c.type === 'grid',
+        showTextDiv: c.type === 'textbox' && isDesign, showTextInput: c.type === 'textbox' && isRun,
+        left: c.x, top: c.y, width: c.w, height: c.h,
+        caption: c.props.caption || '', text: c.props.text || '',
+        checkMark: c.props.checked ? '\u2713' : '', radioMark: c.props.checked ? '\u25CF' : '',
+        items: c.props.items || [], columns: c.props.columns || [], rows: c.props.rows || [],
+        outline: sel && isDesign ? '1px dashed #3b6fd1' : '1px solid transparent',
+        zIndex: c.type === 'frame' ? 0 : (sel ? 5 : 1),
+        cursorStyle: isDesign ? 'move' : 'default',
+        displayCss: (c.type === 'timer' && isRun) ? 'none' : 'block',
+        showHandle: sel && isDesign,
+        pointerFn: (e) => this.onControlPointerDown(e, c.id),
+        resizeFn: (e) => this.beginResize(e, c.id),
+        textFn: (e) => this.updatePropFor(c.id, 'text', e.target.value)
+      };
+    });
+
+    const propRowsRaw = selected ? this.buildPropRows(selected) : [];
+    const propRows = propRowsRaw.map(r => ({ ...r, isText: r.kind === 'text', isNumber: r.kind === 'number', isCheckbox: r.kind === 'checkbox' }));
+
+    const tools = this.tools.map(t => {
+      const armed = s.armedTool === t.type;
+      return { ...t, armed, borderColor: armed ? '#3b6fd1' : '#d7dce3', bgColor: armed ? '#e8f0fc' : '#ffffff', onClick: () => this.armTool(t.type) };
+    });
+
+    return {
+      mode: s.mode, isDesign, isRun,
+      controls,
+      hasSelection: !!selected, hasNoSelection: !selected,
+      selectedName: selected ? selected.props.name : '(none)',
+      selectedType: selected ? this.namePrefix(selected.type) : '',
+      propRows, tools,
+      runStatus: s.runStatus,
+      modeLabel: isDesign ? 'Design mode' : 'Run mode',
+      rightTab: s.rightTab, isExplorerTab: s.rightTab === 'explorer', isPropertiesTab: s.rightTab === 'properties',
+      setRightTabExplorer: () => this.setRightTab('explorer'),
+      setRightTabProperties: () => this.setRightTab('properties'),
+      setFormRef: (el) => { this._formEl = el; },
+      onFormMouseDown: (e) => this.onFormMouseDown(e),
+      runStart: () => this.runStart(), runEnd: () => this.runEnd(),
+      startBtnStyle: this.btnStyle(isDesign),
+      endBtnStyle: this.btnStyle(isRun),
+      breakBtnStyle: this.btnStyle(false),
+      formTitleText: isRun ? 'Customer Entry — running' : 'Form1 (Form)',
+      formBgImage: isDesign ? 'radial-gradient(circle, #d7dce3 1px, transparent 1px)' : 'none',
+      formCursor: isDesign ? (s.armedTool ? 'crosshair' : 'default') : 'default',
+      toggleFileMenu: () => this.toggleFileMenu(),
+      fileMenuOpen: s.fileMenuOpen,
+      newForm: () => this.newForm(),
+      saveForm: () => this.saveForm(),
+      loadForm: () => this.loadForm()
+    };
+  }
+}
+</script>
+</body>
+</html>

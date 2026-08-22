@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Lasagna Limit — TopMonitor demo</title>
+<script>
+window.MathJax = { tex: { inlineMath: [['$','$']], displayMath: [['$$','$$']] } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" id="MathJax-script" async></script>
+<style>
+  body { background: #12141a; color: #d4d4d4; font: 14px system-ui; padding: 40px; }
+  button { background: #3b6fd1; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; font-size: 13px; cursor: pointer; margin-right: 8px; }
+  h1 { font-size: 18px; color: #4ec9b0; }
+  p { color: #8b93a0; max-width: 640px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1>Lasagna Limit demo (TopMonitor.js)</h1>
+<p>Small 4&times;3 matrix, $S_\delta = S_0 + \delta P$, $\delta \to 0$ each tick (then loops). Real Jacobi SVD computes singular values live; $\sigma$, $\|\Delta S\|$, and $r_{\text{eff}}$ are all derived from the actual matrix, not simulated numbers.</p>
+<button onclick="TopMonitor.run('demo lasagna --ui')">Open UI panel</button>
+<button onclick="TopMonitor.run('demo lasagna --console')">Run in console (open DevTools)</button>
+<button onclick="TopMonitor.run('stop')">Stop all</button>
+<script src="./TopMonitor.js"></script>
+</body>
+</html>
