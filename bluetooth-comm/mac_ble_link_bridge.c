@@ -165,15 +165,21 @@ static void delegate_did_update_state(id self, SEL _cmd, id peripheral) {
     id service = ((msgsend_id_t)objc_msgSend)(cls("CBMutableService"), sel("alloc"));
     service = ((msgsend_init_svc_t)objc_msgSend)(service, sel("initWithType:primary:"), svc_uuid, (BOOL)1);
 
-    // arrayWithObjects: is nil-terminated variadic; two real objects plus
-    // the required nil terminator needs a 3-id-arg send.
-    id chars = ((msgsend_id_id_id_id_t)objc_msgSend)(cls("NSArray"), sel("arrayWithObjects:"), rx_char, tx_char, (id)NULL);
+    // NSArray's arrayWithObjects: is a variadic method - calling a variadic
+    // ObjC method through a fixed-arity objc_msgSend cast is unsafe (arm64's
+    // calling convention handles variadic args differently, and it segfaults
+    // in practice). NSMutableArray + addObject: are ordinary fixed-arity
+    // methods, so they're safe through this technique.
+    id chars = ((msgsend_id_t)objc_msgSend)(cls("NSMutableArray"), sel("array"));
+    ((msgsend_void_id_t)objc_msgSend)(chars, sel("addObject:"), rx_char);
+    ((msgsend_void_id_t)objc_msgSend)(chars, sel("addObject:"), tx_char);
     ((msgsend_void_id_t)objc_msgSend)(service, sel("setCharacteristics:"), chars);
 
     ((msgsend_void_id_t)objc_msgSend)(peripheral, sel("addService:"), service);
 
     id name = ((msgsend_id_cstr_t)objc_msgSend)(cls("NSString"), sel("stringWithUTF8String:"), "Sentinel-Mac");
-    id svc_uuid_array = ((msgsend_id_id_id_t)objc_msgSend)(cls("NSArray"), sel("arrayWithObjects:"), svc_uuid, (id)NULL);
+    id svc_uuid_array = ((msgsend_id_t)objc_msgSend)(cls("NSMutableArray"), sel("array"));
+    ((msgsend_void_id_t)objc_msgSend)(svc_uuid_array, sel("addObject:"), svc_uuid);
 
     id adv = ((msgsend_id_t)objc_msgSend)(cls("NSMutableDictionary"), sel("dictionary"));
     ((msgsend_id_id_id_t)objc_msgSend)(adv, sel("setObject:forKey:"), name, CBAdvertisementDataLocalNameKey);
