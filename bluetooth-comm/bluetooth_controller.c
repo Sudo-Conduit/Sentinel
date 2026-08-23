@@ -1,12 +1,17 @@
 // bluetooth_controller.c
 // Target: wasm32-unknown-unknown (-nostdlib -O3)
 //
-// HCI-level BLE controller: brings the radio up, scans, and connects to the
-// first peer it hears advertise. Once connected it hands the connection
-// handle to link_protocol.c, which owns the actual application communication
-// layer (see link_protocol.h). This file only ever speaks HCI: commands,
-// events, and (post-connection) raw ACL data framing — it has no idea what
-// bytes travel over the link once it's up.
+// HCI-level BLE controller. Boots the radio (reset, event mask) to
+// STATE_READY and then sits idle until the host calls
+// controller_go_discoverable(), which drives real LE advertising
+// (connectable, carrying the local name) up alongside LE scanning — this
+// node is simultaneously discoverable and looking for peers, exactly like
+// two phones opening a nearby-share sheet. Whichever side's scanner hears
+// the other's advertisement first initiates the connection; once connected
+// it hands the connection handle to link_protocol.c, which owns the actual
+// application communication layer (see link_protocol.h). This file only
+// ever speaks HCI: commands, events, and (post-connection) raw ACL data
+// framing — it has no idea what bytes travel over the link once it's up.
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -32,9 +37,14 @@ extern uint32_t host_uart_read_bytes(uint8_t *buf, uint32_t max_len);
 #define HCI_OP_SET_EVENT_MASK            0x0C01
 #define HCI_OP_DISCONNECT                0x0406 // Link Control
 #define HCI_OP_READ_LOCAL_VERSION        0x1001 // Informational Parameters
-#define HCI_OP_BLE_SET_SCAN_PARAMS       0x200B // LE Controller
+#define HCI_OP_LE_SET_ADV_PARAMS         0x2006 // LE Controller
+#define HCI_OP_LE_SET_ADV_DATA           0x2008
+#define HCI_OP_LE_SET_ADV_ENABLE         0x200A
+#define HCI_OP_BLE_SET_SCAN_PARAMS       0x200B
 #define HCI_OP_BLE_SET_SCAN_ENABLE       0x200C
 #define HCI_OP_LE_CREATE_CONNECTION      0x200D
+
+#define LOCAL_NAME_MAX_LEN               20 // fits the 31-byte AD payload alongside the type/length header
 
 // --- HCI Event Codes ---
 #define HCI_EVT_INQUIRY_COMPLETE         0x01
@@ -52,8 +62,12 @@ typedef enum {
     STATE_SENDING_RESET,
     STATE_WAIT_RESET_ACK,
     STATE_SETTING_EVENT_MASK,
-    STATE_CONFIGURING_LE_SCAN,
-    STATE_SCANNING_ACTIVE,
+    STATE_READY,                  // named, radio configured, idle until told to go discoverable
+    STATE_ADV_PARAMS_SENT,
+    STATE_ADV_DATA_SENT,
+    STATE_ADV_ENABLED,
+    STATE_SCAN_PARAMS_SENT,
+    STATE_DISCOVERABLE,           // advertising (connectable) and scanning at once
     STATE_CONNECTING,
     STATE_CONNECTED,
     STATE_ERROR
@@ -67,6 +81,10 @@ static bool     g_connect_requested = false;
 static uint8_t  g_peer_addr_type = 0;
 static uint8_t  g_peer_addr[6];
 static uint16_t g_conn_handle = 0;
+
+static bool     g_discoverable_requested = false;
+static uint8_t  g_local_name[LOCAL_NAME_MAX_LEN];
+static uint8_t  g_local_name_len = 0;
 
 // --- HCI Command Transmitter ---
 static bool send_hci_command(uint16_t opcode, uint8_t param_len, const uint8_t *params) {
@@ -121,12 +139,25 @@ bool controller_send_acl(uint16_t conn_handle, const uint8_t *data, uint16_t len
 void controller_init(void) {
     g_state = STATE_SENDING_RESET;
     g_connect_requested = false;
+    g_discoverable_requested = false;
     g_conn_handle = 0;
     link_init();
 }
 
 void controller_set_local_name(const uint8_t *name, uint8_t len) {
+    if (len > LOCAL_NAME_MAX_LEN) len = LOCAL_NAME_MAX_LEN;
+    sentinel_memcpy(g_local_name, name, len);
+    g_local_name_len = len;
     link_set_local_name(name, len);
+}
+
+// Host calls this once the radio has finished booting (STATE_READY) to make
+// this node advertise itself as connectable while it keeps scanning for
+// others — real HCI advertising, not something the embedder has to fake.
+void controller_go_discoverable(void) {
+    if (g_state == STATE_READY) {
+        g_discoverable_requested = true;
+    }
 }
 
 void controller_disconnect(void) {
@@ -151,24 +182,72 @@ void controller_step_state_machine(void) {
             // Enable standard HCI events (8-byte mask)
             uint8_t mask[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xBF, 0x00, 0x00 };
             if (send_hci_command(HCI_OP_SET_EVENT_MASK, 8, mask)) {
-                g_state = STATE_CONFIGURING_LE_SCAN;
+                g_state = STATE_READY;
             }
             break;
         }
 
-        case STATE_CONFIGURING_LE_SCAN: {
+        case STATE_READY:
+            if (g_discoverable_requested) {
+                // Connectable undirected advertising, ~100ms interval, all channels.
+                uint8_t adv_params[15] = {
+                    0xA0, 0x00, 0xA0, 0x00, // interval min/max
+                    0x00,                   // adv type: ADV_IND (connectable, undirected)
+                    0x00,                   // own addr type: public
+                    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // direct addr (unused)
+                    0x07,                   // channel map: 37+38+39
+                    0x00                    // filter policy: allow any
+                };
+                if (send_hci_command(HCI_OP_LE_SET_ADV_PARAMS, 15, adv_params)) {
+                    g_state = STATE_ADV_PARAMS_SENT;
+                }
+            }
+            break;
+
+        case STATE_ADV_PARAMS_SENT: {
+            // Advertising Data: fixed 31-byte field, only the "Complete Local
+            // Name" AD structure is populated so a scanning peer can read the
+            // name straight off the advertisement, before any connection exists.
+            uint8_t adv_data[32] = {0};
+            uint8_t ad_len = (uint8_t)(1 + g_local_name_len); // type byte + name bytes
+            adv_data[0] = (uint8_t)(1 + ad_len);              // overall payload length
+            adv_data[1] = ad_len;
+            adv_data[2] = 0x09;                               // AD type: Complete Local Name
+            sentinel_memcpy(&adv_data[3], g_local_name, g_local_name_len);
+
+            if (send_hci_command(HCI_OP_LE_SET_ADV_DATA, 32, adv_data)) {
+                g_state = STATE_ADV_DATA_SENT;
+            }
+            break;
+        }
+
+        case STATE_ADV_DATA_SENT: {
+            uint8_t enable[1] = { 0x01 };
+            if (send_hci_command(HCI_OP_LE_SET_ADV_ENABLE, 1, enable)) {
+                g_state = STATE_ADV_ENABLED;
+            }
+            break;
+        }
+
+        case STATE_ADV_ENABLED: {
             // Active Scanning (0x01), Interval 0x0010 (10ms), Window 0x0010 (10ms), Public Addr
             uint8_t scan_params[7] = { 0x01, 0x10, 0x00, 0x10, 0x00, 0x00, 0x00 };
             if (send_hci_command(HCI_OP_BLE_SET_SCAN_PARAMS, 7, scan_params)) {
-                // Enable BLE Scanning (0x01), Filter Duplicates (0x01)
-                uint8_t scan_enable[2] = { 0x01, 0x01 };
-                send_hci_command(HCI_OP_BLE_SET_SCAN_ENABLE, 2, scan_enable);
-                g_state = STATE_SCANNING_ACTIVE;
+                g_state = STATE_SCAN_PARAMS_SENT;
             }
             break;
         }
 
-        case STATE_SCANNING_ACTIVE:
+        case STATE_SCAN_PARAMS_SENT: {
+            // Enable BLE Scanning (0x01), Filter Duplicates (0x01)
+            uint8_t scan_enable[2] = { 0x01, 0x01 };
+            if (send_hci_command(HCI_OP_BLE_SET_SCAN_ENABLE, 2, scan_enable)) {
+                g_state = STATE_DISCOVERABLE;
+            }
+            break;
+        }
+
+        case STATE_DISCOVERABLE:
             if (g_connect_requested) {
                 uint8_t params[25];
                 params[0] = 0x60; params[1] = 0x00; // scan interval
@@ -220,10 +299,15 @@ static void handle_le_connection_complete(const uint8_t *payload, uint8_t len) {
     uint8_t status = payload[0];
 
     if (status != 0x00) {
-        g_state = STATE_SCANNING_ACTIVE;
+        g_state = STATE_DISCOVERABLE;
         g_connect_requested = false;
         return;
     }
+
+    // A connection is up: stop advertising (real controllers do this
+    // automatically for a connectable advertisement, but we're explicit).
+    uint8_t adv_disable[1] = { 0x00 };
+    send_hci_command(HCI_OP_LE_SET_ADV_ENABLE, 1, adv_disable);
 
     g_conn_handle = (uint16_t)payload[1] | ((uint16_t)payload[2] << 8);
     g_state = STATE_CONNECTED;
@@ -238,7 +322,7 @@ static void handle_le_advertising_report(const uint8_t *payload, uint8_t len) {
     uint8_t num_reports = payload[0];
     if (num_reports < 1) return;
 
-    if (!g_connect_requested && g_state == STATE_SCANNING_ACTIVE) {
+    if (!g_connect_requested && g_state == STATE_DISCOVERABLE) {
         g_peer_addr_type = payload[2];
         sentinel_memcpy(g_peer_addr, &payload[3], 6);
         g_connect_requested = true;
@@ -264,7 +348,12 @@ static void handle_disconnection_complete(const uint8_t *payload, uint8_t len) {
     link_on_disconnected();
     g_conn_handle = 0;
     g_connect_requested = false;
-    g_state = STATE_SCANNING_ACTIVE;
+
+    // Re-enable advertising so this node is findable again.
+    uint8_t adv_enable[1] = { 0x01 };
+    send_hci_command(HCI_OP_LE_SET_ADV_ENABLE, 1, adv_enable);
+
+    g_state = STATE_DISCOVERABLE;
 }
 
 static void parse_hci_event(const uint8_t *evt_buf, uint32_t len) {
