@@ -48,6 +48,7 @@ typedef id      (*msgsend_id_id_id_id_t)(id, SEL, id, id, id);
 typedef id      (*msgsend_id_cstr_t)(id, SEL, const char *);
 typedef long    (*msgsend_long_t)(id, SEL);
 typedef void    (*msgsend_void_id_t)(id, SEL, id);
+typedef const char *(*msgsend_cstr_t)(id, SEL);
 
 static id cls(const char *name) { return (id)objc_getClass(name); }
 static SEL sel(const char *name) { return sel_registerName(name); }
@@ -86,9 +87,29 @@ static void delegate_did_update_state(id self, SEL _cmd, id peripheral) {
     ((msgsend_id_id_id_t)objc_msgSend)(dict, sel("setObject:forKey:"), name, CBAdvertisementDataLocalNameKey);
 
     ((msgsend_void_id_t)objc_msgSend)(peripheral, sel("startAdvertising:"), dict);
-    printf("[CoreBLE/C] startAdvertising: called — this Mac should now be visible\n"
-           "            as \"Sentinel-Mac\" to any nearby BLE scanner (a phone's\n"
-           "            Bluetooth settings, nRF Connect, etc).\n");
+    printf("[CoreBLE/C] startAdvertising: called — waiting for didStartAdvertisingError:\n"
+           "            to confirm whether the OS actually accepted it.\n");
+}
+
+// ---- Delegate method implementation:
+//      -peripheralManager:didStartAdvertisingError: ----
+// startAdvertising: is fire-and-forget; this is the only way to learn
+// whether the OS actually turned the radio on or silently refused.
+static void delegate_did_start_advertising(id self, SEL _cmd, id peripheral, id error) {
+    (void)self;
+    (void)_cmd;
+    (void)peripheral;
+
+    if (error == (id)NULL) {
+        printf("[CoreBLE/C] didStartAdvertisingError: none — OS confirms advertising is live.\n"
+               "            This Mac should now be visible as \"Sentinel-Mac\" to any\n"
+               "            nearby BLE scanner (nRF Connect, etc).\n");
+        return;
+    }
+
+    id desc = ((msgsend_id_t)objc_msgSend)(error, sel("localizedDescription"));
+    const char *desc_cstr = ((msgsend_cstr_t)objc_msgSend)(desc, sel("UTF8String"));
+    printf("[CoreBLE/C] didStartAdvertisingError: %s\n", desc_cstr ? desc_cstr : "(no description)");
 }
 
 int main(void) {
@@ -104,7 +125,10 @@ int main(void) {
     // Type encoding "v@:@" = void return, (self, _cmd, id argument).
     BOOL added = class_addMethod(delegate_class, sel("peripheralManagerDidUpdateState:"),
                                   (IMP)delegate_did_update_state, "v@:@");
-    if (!added) {
+    // "v@:@@" = void return, (self, _cmd, id peripheral, id error).
+    BOOL added2 = class_addMethod(delegate_class, sel("peripheralManager:didStartAdvertisingError:"),
+                                   (IMP)delegate_did_start_advertising, "v@:@@");
+    if (!added || !added2) {
         fprintf(stderr, "class_addMethod failed\n");
         return 1;
     }
