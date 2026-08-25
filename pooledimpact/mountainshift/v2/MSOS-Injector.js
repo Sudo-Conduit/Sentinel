@@ -8,15 +8,16 @@
  * Expects (loaded on the page before this script, same convention as
  * every other MSOS entry point -- see DesktopShell.dc.html etc.):
  *   <script src="./SharedWorkerDecorator.js"></script>
+ *   <script src="./CPU.js"></script>
  *   <script src="./BaseClassX.js"></script>
  *
  * Nothing here is hand-typed/copied source. The worker's own script
  * (WorkerCore, below) is composed by SharedWorkerDecorator from this
  * real function. The payload relayed into the page (previously a
- * hand-pasted MY_CODE template literal) is now built from the real,
- * live BaseClassX class (reflected via toString()) plus CPU.js's real
- * file text (fetched -- CPU.js is ES5 prototype-style, so it doesn't
- * round-trip through toString(); see SharedWorkerDecorator.js).
+ * hand-pasted MY_CODE template literal) is built from the real, live
+ * CPU and BaseClassX classes via toString() -- both are real ES6
+ * `class` bodies (CPU.js was rewritten from ES5 prototype-style
+ * specifically so it would reflect cleanly, same as BaseClassX).
  */
 (function()
 {
@@ -80,27 +81,20 @@
         }, 3000);
     }
 
-    async function composePayload()
+    // Both CPU and BaseClassX are real ES6 classes -- toString() reflects
+    // their full source (methods included), so this payload stays live
+    // with zero duplication and no fetch() needed.
+    function composePayload()
     {
-        const composer = new CodeComposer();
-
-        // ES5 prototype-style -- toString() on the constructor alone
-        // would silently drop every CPU.prototype.X instruction handler.
-        // Read the real file's text instead: still zero hand-pasting,
-        // always current, just not reflectable.
-        const cpuSource = await fetch('./CPU.js').then(r => r.text());
-        composer.injectSource(cpuSource);
-
-        // Real ES6 class -- toString() reflects its full source
-        // (methods included), so this stays live with zero duplication.
-        composer.inject(BaseClassX);
-
-        return composer.toString();
+        return new CodeComposer()
+            .inject(CPU)
+            .inject(BaseClassX)
+            .toString();
     }
 
     let injected = false;
 
-    async function start()
+    function start()
     {
         const decorated = new SharedWorkerDecorator(WorkerCore).build();
 
@@ -115,7 +109,7 @@
         };
         decorated.worker.port.start();
 
-        const payload = await composePayload();
+        const payload = composePayload();
         decorated.worker.port.postMessage({ action: 'STORE', code: payload });
 
         window.__worker = decorated.worker;
