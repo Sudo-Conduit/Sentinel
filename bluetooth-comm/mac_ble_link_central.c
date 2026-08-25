@@ -108,12 +108,12 @@ static void delegate_did_update_state(id self, SEL _cmd, id central) {
     printf("[CoreBLE] central state -> %ld\n", state);
     if (state != 5 /* poweredOn */) return;
 
-    id svc_uuid = ((msgsend_id_arg1_t)objc_msgSend)(cls("CBUUID"), sel("UUIDWithString:"),
-                    ((msgsend_id_cstr_t)objc_msgSend)(cls("NSString"), sel("stringWithUTF8String:"), NUS_SERVICE_UUID));
-    id services = ((msgsend_id_t)objc_msgSend)(cls("NSMutableArray"), sel("array"));
-    ((msgsend_void_id_t)objc_msgSend)(services, sel("addObject:"), svc_uuid);
-
-    ((void (*)(id, SEL, id, id))objc_msgSend)(central, sel("scanForPeripheralsWithServices:options:"), services, (id)NULL);
+    // Scan for everything rather than filtering by service UUID: a 128-bit
+    // custom UUID plus a name can exceed BLE's legacy 31-byte advertising
+    // payload, which can make UUID-filtered scanning miss a device that's
+    // genuinely advertising. Matching by name in didDiscoverPeripheral: is
+    // more robust and is how most real BLE central apps do this anyway.
+    ((void (*)(id, SEL, id, id))objc_msgSend)(central, sel("scanForPeripheralsWithServices:options:"), (id)NULL, (id)NULL);
     printf("[CoreBLE] scanning for Sentinel-Mac...\n");
 }
 
@@ -122,9 +122,13 @@ static void delegate_did_discover(id self, SEL _cmd, id central, id peripheral, 
     if (g_peripheral != (id)NULL) return; // already found one, ignore the rest
 
     id name = ((msgsend_id_t)objc_msgSend)(peripheral, sel("name"));
-    const char *name_cstr = name != (id)NULL ? ((msgsend_cvoidptr_t)objc_msgSend)(name, sel("UTF8String")) : "?";
-    printf("[CoreBLE] discovered \"%s\"\n", name_cstr);
+    const char *name_cstr = name != (id)NULL ? ((msgsend_cvoidptr_t)objc_msgSend)(name, sel("UTF8String")) : NULL;
 
+    if (name_cstr == NULL) return; // unnamed device, not our target
+    printf("[CoreBLE] saw \"%s\"\n", name_cstr);
+    if (strcmp(name_cstr, "Sentinel-Mac") != 0) return; // not our target, keep scanning
+
+    printf("[CoreBLE] found Sentinel-Mac — connecting.\n");
     g_peripheral = peripheral;
     // retain across the connection attempt: CoreBluetooth requires the app
     // hold a strong reference, which a global id effectively does here
