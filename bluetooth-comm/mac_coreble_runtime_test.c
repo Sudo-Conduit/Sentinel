@@ -126,7 +126,10 @@ int main(void) {
     BOOL added = class_addMethod(delegate_class, sel("peripheralManagerDidUpdateState:"),
                                   (IMP)delegate_did_update_state, "v@:@");
     // "v@:@@" = void return, (self, _cmd, id peripheral, id error).
-    BOOL added2 = class_addMethod(delegate_class, sel("peripheralManager:didStartAdvertisingError:"),
+    // NB: the real selector is peripheralManagerDidStartAdvertising:error:
+    // - registering the wrong name means the method is never called, which
+    // silently hides advertising failures.
+    BOOL added2 = class_addMethod(delegate_class, sel("peripheralManagerDidStartAdvertising:error:"),
                                    (IMP)delegate_did_start_advertising, "v@:@@");
     if (!added || !added2) {
         fprintf(stderr, "class_addMethod failed\n");

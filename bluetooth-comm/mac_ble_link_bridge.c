@@ -175,18 +175,35 @@ static void delegate_did_update_state(id self, SEL _cmd, id peripheral) {
     ((msgsend_void_id_t)objc_msgSend)(chars, sel("addObject:"), tx_char);
     ((msgsend_void_id_t)objc_msgSend)(service, sel("setCharacteristics:"), chars);
 
+    // addService: is async - advertising starts in didAddService: below,
+    // once the GATT database actually holds the service.
     ((msgsend_void_id_t)objc_msgSend)(peripheral, sel("addService:"), service);
+    printf("[CoreBLE] Nordic UART Service submitted, waiting for didAddService...\n");
+}
 
+static void delegate_did_add_service(id self, SEL _cmd, id peripheral, id service, id error) {
+    (void)self; (void)_cmd; (void)service;
+
+    if (error != (id)NULL) {
+        id desc = ((msgsend_id_t)objc_msgSend)(error, sel("localizedDescription"));
+        const char *desc_cstr = ((msgsend_cvoidptr_t)objc_msgSend)(desc, sel("UTF8String"));
+        printf("[CoreBLE] didAddService error: %s\n", desc_cstr ? desc_cstr : "(no description)");
+        return;
+    }
+    printf("[CoreBLE] service added to GATT database.\n");
+
+    // Advertise the local name ONLY. BLE's legacy advertising payload is 31
+    // bytes: a 128-bit service UUID costs 18 (16 + 2 header) and
+    // "Sentinel-Mac" costs 14 (12 + 2) = 32, one byte over, which makes
+    // startAdvertising: fail. The service is still fully discoverable after
+    // connecting via discoverServices:, and the central matches by name,
+    // so nothing is lost by leaving the UUID out of the advertisement.
     id name = ((msgsend_id_cstr_t)objc_msgSend)(cls("NSString"), sel("stringWithUTF8String:"), "Sentinel-Mac");
-    id svc_uuid_array = ((msgsend_id_t)objc_msgSend)(cls("NSMutableArray"), sel("array"));
-    ((msgsend_void_id_t)objc_msgSend)(svc_uuid_array, sel("addObject:"), svc_uuid);
-
     id adv = ((msgsend_id_t)objc_msgSend)(cls("NSMutableDictionary"), sel("dictionary"));
     ((msgsend_id_id_id_t)objc_msgSend)(adv, sel("setObject:forKey:"), name, CBAdvertisementDataLocalNameKey);
-    ((msgsend_id_id_id_t)objc_msgSend)(adv, sel("setObject:forKey:"), svc_uuid_array, CBAdvertisementDataServiceUUIDsKey);
     ((msgsend_void_id_t)objc_msgSend)(peripheral, sel("startAdvertising:"), adv);
 
-    printf("[CoreBLE] Nordic UART Service registered, advertising as \"Sentinel-Mac\".\n");
+    printf("[CoreBLE] startAdvertising: called as \"Sentinel-Mac\".\n");
 }
 
 static void delegate_did_start_advertising(id self, SEL _cmd, id peripheral, id error) {
@@ -274,8 +291,14 @@ int main(void) {
 
     class_addMethod(delegate_class, sel("peripheralManagerDidUpdateState:"),
                      (IMP)delegate_did_update_state, "v@:@");
-    class_addMethod(delegate_class, sel("peripheralManager:didStartAdvertisingError:"),
+    // NB: the real selector is peripheralManagerDidStartAdvertising:error:
+    // (NOT peripheralManager:didStartAdvertisingError:). Getting this wrong
+    // registers a method nothing ever calls, which silently hides every
+    // advertising failure - exactly what happened before this was fixed.
+    class_addMethod(delegate_class, sel("peripheralManagerDidStartAdvertising:error:"),
                      (IMP)delegate_did_start_advertising, "v@:@@");
+    class_addMethod(delegate_class, sel("peripheralManager:didAddService:error:"),
+                     (IMP)delegate_did_add_service, "v@:@@@");
     class_addMethod(delegate_class, sel("peripheralManager:central:didSubscribeToCharacteristic:"),
                      (IMP)delegate_did_subscribe, "v@:@@@");
     class_addMethod(delegate_class, sel("peripheralManager:central:didUnsubscribeFromCharacteristic:"),
