@@ -82,6 +82,43 @@
     return eigvals;
   }
 
+  // Diagonalizes a dim x dim density matrix and returns its von Neumann
+  // entropy. Shared by the pure-state path (vonNeumannEntropy) and the
+  // genuine-mixture path (densityMatrixFromMixture + buildNestedShell),
+  // so both compute entropy the same, eigenvalue-correct way.
+  function entropyFromDensityMatrix(rho, dim) {
+    if (dim === 0) return 0;
+    const eigvals = computeEigenvalues(rho, dim);
+    let entropy = 0;
+    for (let i = 0; i < dim; i++) {
+      const p = Math.max(0, eigvals[i]);
+      if (p > 1e-12) entropy -= p * Math.log2(p);
+    }
+    return Math.max(0, entropy);
+  }
+
+  // rho = sum_c weights[c] * |components[c]><components[c]| — an actual
+  // statistical mixture, not the outer product of a single collapsed
+  // vector. A single vector's outer product is always rank-1 (a pure
+  // state), so its von Neumann entropy is always ~0 regardless of what
+  // went into building the vector. Same dim x dim memory footprint as
+  // the pure-state density matrix; just a weighted sum over components.
+  function densityMatrixFromMixture(components, weights, dim) {
+    const rho = new Float64Array(dim * dim);
+    for (let c = 0; c < components.length; c++) {
+      const w = weights[c];
+      const comp = components[c];
+      for (let i = 0; i < dim; i++) {
+        const wi = w * comp[i];
+        if (wi === 0) continue;
+        for (let j = 0; j < dim; j++) {
+          rho[i * dim + j] += wi * comp[j];
+        }
+      }
+    }
+    return rho;
+  }
+
   function vonNeumannEntropy(state) {
     const n = state.length;
     if (n === 0) return 0;
@@ -93,13 +130,7 @@
           rho[i * n + j] = state[i] * state[j];
         }
       }
-      const eigvals = computeEigenvalues(rho, n);
-      let entropy = 0;
-      for (let i = 0; i < n; i++) {
-        const p = Math.max(0, eigvals[i]);
-        if (p > 1e-12) entropy -= p * Math.log2(p);
-      }
-      return Math.max(0, entropy);
+      return entropyFromDensityMatrix(rho, n);
     }
 
     let purity = 0;
@@ -113,6 +144,7 @@
 
     const numComponents = Math.max(2, Math.floor(entropyTarget * 4) + 1);
     const weights = new Float64Array(numComponents);
+    const components = [];
 
     let totalWeight = 0;
     for (let i = 0; i < numComponents; i++) {
@@ -134,6 +166,8 @@
       norm = Math.sqrt(norm);
       for (let i = 0; i < dim; i++) component[i] /= (norm || 1);
 
+      components.push(component);
+
       for (let i = 0; i < dim; i++) {
         state[i] += Math.sqrt(weights[c]) * component[i];
       }
@@ -144,7 +178,7 @@
     norm = Math.sqrt(norm);
     for (let i = 0; i < dim; i++) state[i] /= (norm || 1);
 
-    return state;
+    return { state, components, weights };
   }
 
   function buildTensorFromArrays(R1, R2) {
@@ -172,7 +206,7 @@
     const R1_sub = R1.slice(0, 5);
     const R2_sub = [0, [1, [2, [1]]]];
     const tensorData = buildTensorFromArrays(R1_sub, R2_sub);
-    const state = buildMixedState(rank, entropyTarget);
+    const { state } = buildMixedState(rank, entropyTarget);
     return { state, tensorData, rank, size: 1 << rank };
   }
 
@@ -342,19 +376,26 @@ Confidential: ${this.confidential ? 'YES — Proprietary' : 'NO'}
     extractFeaturesWithValues(state, rank) { return extractFeaturesWithValues(state, rank); }
 
     // ─── Corrected buildNestedShell ──────────────────────────────────
+    // Entropy is computed from the shell's actual density matrix — a
+    // weighted mixture of buildMixedState's components — rather than the
+    // outer product of a single collapsed state vector. The latter is
+    // always rank-1 (a pure state) by construction, so it always yields
+    // ~0 entropy no matter what the shell contains; the mixture density
+    // matrix is the same dim x dim size but genuinely reflects the mix.
     buildNestedShell(shellNumber, electronCount, innerShell) {
       const dim = 1 << shellNumber;
 
       // Build the outer shell's state first
-      const outerState = buildMixedState(shellNumber, 0.7);
-      const outerEntropy = vonNeumannEntropy(outerState);
+      const { state: outerState, components: outerComponents, weights: outerWeights } = buildMixedState(shellNumber, 0.7);
+      const outerRho = densityMatrixFromMixture(outerComponents, outerWeights, dim);
       const outerAmplitude = outerState[Math.min(4, outerState.length - 1)] || 0;
 
       let state;
+      let rho;
       let amplitude;
 
       if (innerShell && innerShell.state) {
-        // Combine inner + outer
+        // Combine inner + outer states (for amplitude/feature extraction)
         const innerState = innerShell.state;
         const newState = new Float64Array(dim);
         for (let i = 0; i < innerState.length && i < dim; i++) {
@@ -371,14 +412,38 @@ Confidential: ${this.confidential ? 'YES — Proprietary' : 'NO'}
           for (let i = 0; i < newState.length; i++) newState[i] /= norm;
         }
         state = newState;
+
+        // Combine inner + outer density matrices the same 0.5/0.5 way,
+        // then renormalize the trace back to 1 (a valid density matrix).
+        const innerRho = innerShell.rho;
+        const innerDim = innerState.length;
+        const newRho = new Float64Array(dim * dim);
+        for (let i = 0; i < innerDim && i < dim; i++) {
+          for (let j = 0; j < innerDim && j < dim; j++) {
+            newRho[i * dim + j] += 0.5 * innerRho[i * innerDim + j];
+          }
+        }
+        for (let i = 0; i < dim; i++) {
+          for (let j = 0; j < dim; j++) {
+            newRho[i * dim + j] += 0.5 * outerRho[i * dim + j];
+          }
+        }
+        let trace = 0;
+        for (let i = 0; i < dim; i++) trace += newRho[i * dim + i];
+        if (trace > 0) {
+          for (let k = 0; k < newRho.length; k++) newRho[k] /= trace;
+        }
+        rho = newRho;
+
         // The amplitude of this shell is the outer shell's amplitude
         amplitude = outerAmplitude;
       } else {
         state = outerState;
+        rho = outerRho;
         amplitude = outerAmplitude;
       }
 
-      const entropy = vonNeumannEntropy(state);
+      const entropy = entropyFromDensityMatrix(rho, dim);
 
       return {
         shell: shellNumber,
@@ -387,7 +452,8 @@ Confidential: ${this.confidential ? 'YES — Proprietary' : 'NO'}
         amplitude: amplitude,
         inner: innerShell || null,
         size: dim,
-        state: state
+        state: state,
+        rho: rho
       };
     }
 
@@ -655,7 +721,7 @@ ${CONFIDENTIAL}
     const totalElectrons = Object.values(shells).reduce((a, b) => a + b, 0);
     const totalQubits = 1 + totalElectrons;
 
-    const anchorState = buildMixedState(1, 0.7);
+    const { state: anchorState } = buildMixedState(1, 0.7);
     const anchorEntropy = vonNeumannEntropy(anchorState);
     const anchorAmplitude = anchorState[Math.min(4, anchorState.length - 1)] || 0;
 
@@ -665,7 +731,7 @@ ${CONFIDENTIAL}
 
     for (const [shell, count] of Object.entries(shells)) {
       const rank = parseInt(shell);
-      const state = buildMixedState(rank, 0.7);
+      const { state } = buildMixedState(rank, 0.7);
       const entropy = vonNeumannEntropy(state);
       const amplitude = state[Math.min(4, state.length - 1)] || 0;
       shellData.push({ shell: rank, count, entropy, amplitude, state });
