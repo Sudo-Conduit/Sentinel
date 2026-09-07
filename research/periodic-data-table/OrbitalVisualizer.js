@@ -38,6 +38,23 @@
     function defaultOrbitalFor(block) { return defsForBlock(block).order[0]; }
     function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
 
+    // Rejection-samples one point on the shell for the given orbital def,
+    // returning {ct, st, phi, r} (spherical) so callers can place either a
+    // cloud point or a discrete electron marker with the same real shape.
+    function sampleShell(def, shellInner, shellThickness) {
+        var ct, st, phi, r, density, attempts = 0, accepted = false;
+        do {
+            attempts++;
+            r = shellInner + Math.random() * shellThickness;
+            ct = Math.random() * 2 - 1; // uniform in [-1,1] == uniform solid angle
+            st = Math.sqrt(1 - ct * ct);
+            phi = Math.random() * Math.PI * 2;
+            density = def.fn(ct, st, phi);
+            accepted = Math.random() < (density / def.max);
+        } while (!accepted && attempts < 40);
+        return { ct: ct, st: st, phi: phi, r: r };
+    }
+
     function getElement(symbol) {
         if (root.PDT.bySymbol[symbol]) return root.PDT.bySymbol[symbol];
         var lower = symbol.toLowerCase();
@@ -49,9 +66,10 @@
 
     // options.ui (default true) controls whether OrbitalVisualizer builds its
     // own fixed dark control panel. Pass { ui: false } to drive everything
-    // through the public API instead (setOrbital, isPulsing, spherical.radius,
-    // setElement, destroy) from a host page's own themed controls; see
-    // OrbitalVisualizer.orbitalsForBlock for populating an external shape list.
+    // through the public API instead (setOrbital, isPulsing, isRotating,
+    // showElectrons, spherical.radius, target, setElement, destroy) from a
+    // host page's own themed controls; see OrbitalVisualizer.orbitalsForBlock
+    // for populating an external shape list.
     var OrbitalVisualizer = function(container, symbol, orbitalChoice, options) {
         this.container = container;
         this.elementData = getElement(symbol);
@@ -71,15 +89,25 @@
         container.appendChild(this.renderer.domElement);
 
         this.clock = new root.THREE.Clock();
-        this.isPulsing = true; // Pulse is ON by default
+        this.isPulsing = true;    // Pulse is ON by default
+        this.isRotating = true;   // Auto-rotate is ON by default; pause freezes in place
+        this.showElectrons = false; // Discrete electron markers are opt-in
         this.isDragging = false;
         this.previousMousePosition = { x: 0, y: 0 };
         this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
+        this.target = { x: 0, y: 0, z: 0 }; // orbit/look-at center; Ctrl+Drag pans this
+        this._elapsed = 0; // advances every frame (drives Pulse)
+        this._rotAngle = 0; // advances only while isRotating (drives the Y spin)
+        this._wobble = 0;    // advances only while isRotating (drives the X wobble)
+        this._recorder = null;
+        this._recordedChunks = [];
+        this.saveRecording = this._defaultSaveRecording.bind(this); // overridable hook
 
         // Build the full visualization
         this._updateShellRadius();
         this._createParticles();
         this._createRing();
+        this._createElectrons();
         this._createNucleus();
         this._setupCameraControls();
         if (this._showUI) this._createUI();
@@ -111,13 +139,19 @@
             if (!self.isDragging) return;
             var dx = e.clientX - self.previousMousePosition.x;
             var dy = e.clientY - self.previousMousePosition.y;
-            self.spherical.theta -= dx * 0.01;
-            self.spherical.phi -= dy * 0.01;
-            self.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, self.spherical.phi));
+            if (e.ctrlKey || e.metaKey) {
+                self._pan(dx, dy);
+            } else {
+                self.spherical.theta -= dx * 0.01;
+                self.spherical.phi -= dy * 0.01;
+                self.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, self.spherical.phi));
+            }
             self.previousMousePosition = { x: e.clientX, y: e.clientY };
         });
         this.renderer.domElement.addEventListener('mouseup', function() { self.isDragging = false; });
 
+        // Touch stays single-finger-orbit only; Ctrl+Drag pan is a desktop
+        // (mouse + modifier key) interaction, not extended to touch here.
         this.renderer.domElement.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
                 self.isDragging = true;
@@ -143,12 +177,33 @@
         });
     };
 
+    // Screen-space pan: reads the camera's own current right/up axes (so it
+    // matches whatever THREE actually rendered last frame, poles included)
+    // and moves the orbit target along them, scaled by distance so pan
+    // speed feels consistent whether zoomed in or out.
+    OrbitalVisualizer.prototype._pan = function(dx, dy) {
+        var panScale = this.spherical.radius * 0.0018;
+        var right = new root.THREE.Vector3();
+        var up = new root.THREE.Vector3();
+        var ignored = new root.THREE.Vector3();
+        this.camera.matrixWorld.extractBasis(right, up, ignored);
+        this.target.x += (-right.x * dx + up.x * dy) * panScale;
+        this.target.y += (-right.y * dx + up.y * dy) * panScale;
+        this.target.z += (-right.z * dx + up.z * dy) * panScale;
+    };
+
+    // Undoes any Ctrl+Drag panning and returns to the default framing.
+    OrbitalVisualizer.prototype.resetView = function() {
+        this.target = { x: 0, y: 0, z: 0 };
+        this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
+    };
+
     OrbitalVisualizer.prototype._updateCamera = function() {
-        var x = this.spherical.radius * Math.sin(this.spherical.phi) * Math.cos(this.spherical.theta);
-        var y = this.spherical.radius * Math.sin(this.spherical.phi) * Math.sin(this.spherical.theta);
-        var z = this.spherical.radius * Math.cos(this.spherical.phi);
+        var x = this.target.x + this.spherical.radius * Math.sin(this.spherical.phi) * Math.cos(this.spherical.theta);
+        var y = this.target.y + this.spherical.radius * Math.sin(this.spherical.phi) * Math.sin(this.spherical.theta);
+        var z = this.target.z + this.spherical.radius * Math.cos(this.spherical.phi);
         this.camera.position.set(x, y, z);
-        this.camera.lookAt(0, 0, 0);
+        this.camera.lookAt(this.target.x, this.target.y, this.target.z);
     };
 
     // ─── Shell scale (ties the particle cloud and the dz2 ring to the ──
@@ -173,20 +228,10 @@
         var shellThickness = this.shellRadius * 0.6; // outer = inner * 1.6
 
         for (var i = 0; i < count; i++) {
-            var ct, st, phi, r, density, attempts = 0, accepted = false;
-            do {
-                attempts++;
-                r = shellInner + Math.random() * shellThickness;
-                ct = Math.random() * 2 - 1;          // uniform in [-1,1] == uniform solid angle
-                st = Math.sqrt(1 - ct * ct);
-                phi = Math.random() * Math.PI * 2;
-                density = def.fn(ct, st, phi);
-                accepted = Math.random() < (density / def.max);
-            } while (!accepted && attempts < 40);
-
-            positions[i * 3]     = r * st * Math.cos(phi);
-            positions[i * 3 + 1] = r * st * Math.sin(phi);
-            positions[i * 3 + 2] = r * ct;
+            var s = sampleShell(def, shellInner, shellThickness);
+            positions[i * 3]     = s.r * s.st * Math.cos(s.phi);
+            positions[i * 3 + 1] = s.r * s.st * Math.sin(s.phi);
+            positions[i * 3 + 2] = s.r * s.ct;
         }
 
         var geometry = new root.THREE.BufferGeometry();
@@ -227,6 +272,45 @@
         this.scene.add(this.ring);
     };
 
+    // ─── ELECTRONS (optional: occ discrete markers, same real shape) ──
+    // Off by default. When on, places exactly elementData.occ bright markers
+    // on the shell using the same rejection-sampled density as the diffuse
+    // cloud, so they land where the orbital is actually dense rather than
+    // scattered uniformly.
+    OrbitalVisualizer.prototype._createElectrons = function() {
+        if (this.electronGroup) {
+            this.scene.remove(this.electronGroup);
+            this.electronGroup = null;
+        }
+        if (this._electronGeometry) { this._electronGeometry.dispose(); this._electronGeometry = null; }
+        if (this._electronMaterial) { this._electronMaterial.dispose(); this._electronMaterial = null; }
+        if (!this.showElectrons) return;
+
+        var def = defsForBlock(this.elementData.block)[this.orbitalChoice];
+        var shellInner = this.shellRadius;
+        var shellThickness = this.shellRadius * 0.6;
+        var count = Math.max(1, this.elementData.occ || 1);
+
+        this._electronGeometry = new root.THREE.SphereGeometry(0.09, 12, 12);
+        this._electronMaterial = new root.THREE.MeshBasicMaterial({ color: 0xfff2b2 });
+        this.electronGroup = new root.THREE.Group();
+
+        for (var i = 0; i < count; i++) {
+            var s = sampleShell(def, shellInner, shellThickness);
+            var mesh = new root.THREE.Mesh(this._electronGeometry, this._electronMaterial);
+            mesh.position.set(s.r * s.st * Math.cos(s.phi), s.r * s.st * Math.sin(s.phi), s.r * s.ct);
+            this.electronGroup.add(mesh);
+        }
+        this.scene.add(this.electronGroup);
+    };
+
+    // Toggle the discrete electron markers on/off from outside (host UI or
+    // the built-in checkbox both go through this).
+    OrbitalVisualizer.prototype.setShowElectrons = function(bool) {
+        this.showElectrons = !!bool;
+        this._createElectrons();
+    };
+
     // ─── The Nucleus ────────────────────────────────────────────
     OrbitalVisualizer.prototype._createNucleus = function() {
         var nucleusGeometry = new root.THREE.SphereGeometry(0.1, 16, 16);
@@ -245,6 +329,7 @@
         if (this.orbitalSelect) this.orbitalSelect.value = key;
         this._createRing();
         this._createParticles();
+        this._createElectrons();
     };
 
     // ─── Case-Insensitive Switch ────────────────────────────────
@@ -258,7 +343,62 @@
         this._rebuildOrbitalOptions();
         this._createParticles();
         this._createRing();
+        this._createElectrons();
         console.log(`✅ Element switched to '${this.elementData.symbol}'`);
+    };
+
+    // ─── Recording (canvas capture -> WebM blob) ─────────────────
+    // Uses captureStream + MediaRecorder directly on the rendered canvas, so
+    // whatever is currently visible (any rotation/pause/electrons state) is
+    // exactly what gets recorded. Unsupported in browsers without
+    // HTMLCanvasElement.captureStream or MediaRecorder (notably older Safari);
+    // callers should check isRecordingSupported() before offering the control.
+    OrbitalVisualizer.prototype.isRecordingSupported = function() {
+        return !!(this.renderer.domElement.captureStream && root.MediaRecorder);
+    };
+
+    OrbitalVisualizer.prototype.startRecording = function() {
+        if (this._recorder || !this.isRecordingSupported()) return false;
+        var self = this;
+        var stream = this.renderer.domElement.captureStream(30);
+        this._recordedChunks = [];
+        this._recorder = new root.MediaRecorder(stream, { mimeType: 'video/webm' });
+        this._recorder.ondataavailable = function(e) {
+            if (e.data && e.data.size) self._recordedChunks.push(e.data);
+        };
+        this._recorder.start();
+        return true;
+    };
+
+    // Resolves with the recorded video/webm Blob once the recorder has
+    // fully flushed. Rejects if nothing was recording.
+    OrbitalVisualizer.prototype.stopRecording = function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            if (!self._recorder) { reject(new Error('Not recording')); return; }
+            self._recorder.onstop = function() {
+                var blob = new root.Blob(self._recordedChunks, { type: 'video/webm' });
+                self._recordedChunks = [];
+                self._recorder = null;
+                resolve(blob);
+            };
+            self._recorder.stop();
+        });
+    };
+
+    // Default save behavior: a plain <a download> blob link, which works in
+    // an ordinary browser tab. A host page can override `instance.saveRecording`
+    // with its own function(blob, filename) — e.g. routing through a
+    // platform's own file-save capability where a plain link would be inert.
+    OrbitalVisualizer.prototype._defaultSaveRecording = function(blob, filename) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
     };
 
     // ─── UI (With Pulse Toggle) ─────────────────────────────────
@@ -279,7 +419,7 @@
     OrbitalVisualizer.prototype._createUI = function() {
         var self = this;
         this.uiPanel = document.createElement('div');
-        this.uiPanel.style.cssText = 'position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.9);border:1px solid #00aaff;border-radius:8px;padding:12px;z-index:10000;font-family:monospace;color:white;display:flex;flex-direction:column;gap:10px;';
+        this.uiPanel.style.cssText = 'position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.9);border:1px solid #00aaff;border-radius:8px;padding:12px;z-index:10000;font-family:monospace;color:white;display:flex;flex-direction:column;gap:10px;max-width:200px;';
 
         var zoomRow = document.createElement('div');
         zoomRow.style.cssText = 'display:flex;gap:5px;';
@@ -291,8 +431,14 @@
         this.zoomOutBtn.textContent = '-';
         this.zoomOutBtn.style.cssText = 'background:#ff00aa;color:#000;border:none;padding:8px;border-radius:4px;cursor:pointer;font-size:18px;';
         this.zoomOutBtn.addEventListener('click', function() { self.spherical.radius += 0.5; if (self.spherical.radius > 15) self.spherical.radius = 15; });
+        this.resetBtn = document.createElement('button');
+        this.resetBtn.textContent = '⟳';
+        this.resetBtn.title = 'Reset view';
+        this.resetBtn.style.cssText = 'background:#333;color:#fff;border:1px solid #666;padding:8px;border-radius:4px;cursor:pointer;font-size:14px;';
+        this.resetBtn.addEventListener('click', function() { self.resetView(); });
         zoomRow.appendChild(this.zoomInBtn);
         zoomRow.appendChild(this.zoomOutBtn);
+        zoomRow.appendChild(this.resetBtn);
 
         this.pulseBtn = document.createElement('button');
         this.pulseBtn.textContent = 'Pulse: ON'; // Default ON
@@ -302,13 +448,35 @@
             self.pulseBtn.textContent = self.isPulsing ? 'Pulse: ON' : 'Pulse: OFF';
         });
 
+        this.rotateBtn = document.createElement('button');
+        this.rotateBtn.textContent = 'Rotate: ON';
+        this.rotateBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:6px;border-radius:4px;cursor:pointer;';
+        this.rotateBtn.addEventListener('click', function() {
+            self.isRotating = !self.isRotating;
+            self.rotateBtn.textContent = self.isRotating ? 'Rotate: ON' : 'Rotate: OFF';
+        });
+
+        this.electronsLabel = document.createElement('label');
+        this.electronsLabel.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;';
+        this.electronsCheckbox = document.createElement('input');
+        this.electronsCheckbox.type = 'checkbox';
+        this.electronsCheckbox.checked = this.showElectrons;
+        this.electronsCheckbox.addEventListener('change', function() {
+            self.setShowElectrons(self.electronsCheckbox.checked);
+        });
+        this.electronsLabel.appendChild(this.electronsCheckbox);
+        this.electronsLabel.appendChild(document.createTextNode('Show electrons'));
+
         this.input = document.createElement('input');
         this.input.placeholder = 'Enter symbol (e.g., Fe)';
         this.input.style.cssText = 'background:#111;color:#0ff;border:1px solid #0ff;padding:4px;border-radius:4px;';
         this.setBtn = document.createElement('button');
         this.setBtn.textContent = 'Set Element';
         this.setBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:4px;border-radius:4px;cursor:pointer;';
-        this.setBtn.addEventListener('click', function() { self.setElement(self.input.value); });
+        this.setBtn.addEventListener('click', function() {
+            self.setElement(self.input.value);
+            self.electronsCheckbox.checked = self.showElectrons;
+        });
 
         this.orbitalSelect = document.createElement('select');
         this.orbitalSelect.style.cssText = 'background:#111;color:#fff;border:1px solid #0ff;padding:4px;border-radius:4px;';
@@ -316,6 +484,35 @@
         this.orbitalSelect.addEventListener('change', function() {
             self.setOrbital(this.value);
         });
+
+        this.recordBtn = document.createElement('button');
+        this.recordBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:6px;border-radius:4px;cursor:pointer;';
+        if (!this.isRecordingSupported()) {
+            this.recordBtn.textContent = 'Record (unsupported)';
+            this.recordBtn.disabled = true;
+            this.recordBtn.style.opacity = '0.5';
+            this.recordBtn.style.cursor = 'not-allowed';
+        } else {
+            this.recordBtn.textContent = 'Record';
+            this.recordBtn.addEventListener('click', function() {
+                if (!self._recorder) {
+                    self.startRecording();
+                    self.recordBtn.textContent = 'Stop';
+                    self.recordBtn.style.background = '#ff0000';
+                    self.recordBtn.style.color = '#fff';
+                } else {
+                    self.recordBtn.disabled = true;
+                    self.stopRecording().then(function(blob) {
+                        var filename = self.elementData.symbol + '-' + self.orbitalChoice + '.webm';
+                        self.saveRecording(blob, filename);
+                        self.recordBtn.textContent = 'Record';
+                        self.recordBtn.style.background = '#00aaff';
+                        self.recordBtn.style.color = '#000';
+                        self.recordBtn.disabled = false;
+                    });
+                }
+            });
+        }
 
         this.closeBtn = document.createElement('button');
         this.closeBtn.textContent = 'Close';
@@ -329,9 +526,12 @@
 
         this.uiPanel.appendChild(zoomRow);
         this.uiPanel.appendChild(this.pulseBtn);
+        this.uiPanel.appendChild(this.rotateBtn);
+        this.uiPanel.appendChild(this.electronsLabel);
         this.uiPanel.appendChild(this.input);
         this.uiPanel.appendChild(this.setBtn);
         this.uiPanel.appendChild(this.orbitalSelect);
+        this.uiPanel.appendChild(this.recordBtn);
         this.uiPanel.appendChild(this.closeBtn);
         this.uiPanel.appendChild(this.destroyBtn);
         this.container.appendChild(this.uiPanel);
@@ -342,6 +542,7 @@
     };
 
     OrbitalVisualizer.prototype.destroy = function() {
+        if (this._recorder) { try { this._recorder.stop(); } catch (e) {} this._recorder = null; }
         if (this.container) {
             // .remove() (not container.removeChild) so this is safe even if a
             // host page already replaced the container's contents itself
@@ -355,6 +556,8 @@
         if (this.material) this.material.dispose();
         if (this.points) this.points.geometry.dispose();
         if (this.ring) this.ring.geometry.dispose();
+        if (this._electronGeometry) this._electronGeometry.dispose();
+        if (this._electronMaterial) this._electronMaterial.dispose();
         if (this.nucleus) this.nucleus.geometry.dispose();
         cancelAnimationFrame(this._animationId);
         this._animationId = null;
@@ -366,22 +569,31 @@
         var loop = function() {
             self._animationId = requestAnimationFrame(loop);
 
-            var elapsed = self.clock.getElapsedTime();
+            var dt = self.clock.getDelta();
+            self._elapsed += dt;
+            if (self.isRotating) {
+                self._rotAngle += dt * 0.5;
+                self._wobble += dt * 0.3;
+            }
             self._updateCamera();
 
-            // PULSE: If pulse is ON, modulate opacity
+            // PULSE: If pulse is ON, modulate opacity. Independent of Rotate.
             if (self.isPulsing) {
-                self.material.opacity = 0.7 + 0.3 * Math.sin(elapsed * 3.0);
+                self.material.opacity = 0.7 + 0.3 * Math.sin(self._elapsed * 3.0);
             } else {
                 self.material.opacity = 0.7;
             }
 
-            // Rotate
-            self.points.rotation.y = elapsed * 0.5;
-            self.points.rotation.x = Math.sin(elapsed * 0.3) * 0.2;
+            // Rotate (frozen in place, not reset, while isRotating is off)
+            self.points.rotation.y = self._rotAngle;
+            self.points.rotation.x = Math.sin(self._wobble) * 0.2;
             if (self.ring) {
-                self.ring.rotation.y = elapsed * 0.5;
-                self.ring.rotation.x = Math.sin(elapsed * 0.3) * 0.2;
+                self.ring.rotation.y = self._rotAngle;
+                self.ring.rotation.x = Math.sin(self._wobble) * 0.2;
+            }
+            if (self.electronGroup) {
+                self.electronGroup.rotation.y = self._rotAngle;
+                self.electronGroup.rotation.x = Math.sin(self._wobble) * 0.2;
             }
 
             self.renderer.render(self.scene, self.camera);
