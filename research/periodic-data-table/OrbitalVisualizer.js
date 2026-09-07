@@ -47,10 +47,16 @@
         return null;
     }
 
-    var OrbitalVisualizer = function(container, symbol, orbitalChoice) {
+    // options.ui (default true) controls whether OrbitalVisualizer builds its
+    // own fixed dark control panel. Pass { ui: false } to drive everything
+    // through the public API instead (setOrbital, isPulsing, spherical.radius,
+    // setElement, destroy) from a host page's own themed controls; see
+    // OrbitalVisualizer.orbitalsForBlock for populating an external shape list.
+    var OrbitalVisualizer = function(container, symbol, orbitalChoice, options) {
         this.container = container;
         this.elementData = getElement(symbol);
         if (!this.elementData) throw new Error('Element not found');
+        this._showUI = !options || options.ui !== false;
 
         var defs0 = defsForBlock(this.elementData.block);
         this.orbitalChoice = (orbitalChoice && defs0[orbitalChoice]) ? orbitalChoice : defaultOrbitalFor(this.elementData.block);
@@ -76,12 +82,22 @@
         this._createRing();
         this._createNucleus();
         this._setupCameraControls();
-        this._createUI();
+        if (this._showUI) this._createUI();
         this._animate();
     };
 
-    OrbitalVisualizer.create = function(container, symbol, orbitalChoice) {
-        return new OrbitalVisualizer(container, symbol, orbitalChoice);
+    OrbitalVisualizer.create = function(container, symbol, orbitalChoice, options) {
+        return new OrbitalVisualizer(container, symbol, orbitalChoice, options);
+    };
+
+    // Static helper so a host page can build its own orbital-shape picker
+    // for whatever block the current element belongs to, without reaching
+    // into OrbitalVisualizer's internals: [{ key, label, ring }, ...].
+    OrbitalVisualizer.orbitalsForBlock = function(block) {
+        var defs = defsForBlock(block);
+        return defs.order.map(function(key) {
+            return { key: key, label: defs[key].label, ring: !!defs[key].ring };
+        });
     };
 
     // ─── Camera Controls ─────────────────────────────────────────
@@ -219,6 +235,18 @@
         this.scene.add(this.nucleus);
     };
 
+    // Change the orbital subtype within the current element's block (e.g.
+    // 'dxy' while on Fe). Silently ignored if `key` isn't valid for the
+    // current block. Safe to call whether or not the built-in UI exists.
+    OrbitalVisualizer.prototype.setOrbital = function(key) {
+        var defs = defsForBlock(this.elementData.block);
+        if (!defs[key]) return;
+        this.orbitalChoice = key;
+        if (this.orbitalSelect) this.orbitalSelect.value = key;
+        this._createRing();
+        this._createParticles();
+    };
+
     // ─── Case-Insensitive Switch ────────────────────────────────
     OrbitalVisualizer.prototype.setElement = function(symbol) {
         if (!symbol) return;
@@ -286,9 +314,7 @@
         this.orbitalSelect.style.cssText = 'background:#111;color:#fff;border:1px solid #0ff;padding:4px;border-radius:4px;';
         this._rebuildOrbitalOptions();
         this.orbitalSelect.addEventListener('change', function() {
-            self.orbitalChoice = this.value;
-            self._createRing();
-            self._createParticles();
+            self.setOrbital(this.value);
         });
 
         this.closeBtn = document.createElement('button');
@@ -317,8 +343,11 @@
 
     OrbitalVisualizer.prototype.destroy = function() {
         if (this.container) {
-            this.container.removeChild(this.uiPanel);
-            this.container.removeChild(this.renderer.domElement);
+            // .remove() (not container.removeChild) so this is safe even if a
+            // host page already replaced the container's contents itself
+            // (e.g. innerHTML = ...) before calling destroy().
+            if (this.uiPanel) this.uiPanel.remove();
+            if (this.renderer && this.renderer.domElement) this.renderer.domElement.remove();
             this.container.style.display = 'none';
             this.container = null;
         }
