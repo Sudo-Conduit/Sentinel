@@ -54,6 +54,34 @@
   .fieldnote code{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:12.5px;}
 
   footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between;}
+
+  .report{margin-top:20px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:26px 28px;}
+  .report h2{font-family:var(--font-display); font-size:22px; margin:0 0 4px;}
+  .report .report-sub{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); margin:0 0 22px;}
+  .report section{margin-bottom:26px;}
+  .report section:last-child{margin-bottom:0;}
+  .report h3{font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;}
+  .badge{font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:4px;}
+  .badge-derived{background:rgba(0,170,255,.15); color:var(--accent); border:1px solid rgba(0,170,255,.4);}
+  .badge-cited{background:rgba(255,193,7,.12); color:#ffc107; border:1px solid rgba(255,193,7,.4);}
+  .badge-input{background:rgba(80,208,80,.12); color:#7ed67e; border:1px solid rgba(80,208,80,.4);}
+  .badge-notcomputed{background:rgba(255,47,176,.1); color:var(--accent-2); border:1px solid rgba(255,47,176,.35);}
+  .report table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px;}
+  .report th{text-align:left; color:var(--ink-muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;}
+  .report td{padding:6px 8px; border-bottom:1px solid var(--surface-2); color:var(--ink);}
+  .report ul{margin:0; padding-left:18px; font-size:12.5px; line-height:1.7; color:var(--ink-muted);}
+  .report ul.notcomputed li{color:var(--ink-muted);}
+  .report .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-family:var(--font-mono); font-size:12.5px;}
+  .report .kv .k{color:var(--ink-muted);}
+  .report .kv .v{color:var(--ink);}
+  .report .refcard{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:13px; line-height:1.6; color:var(--ink-muted);}
+  .report .refcard b{color:var(--ink);}
+  .report .empty-note{font-size:12.5px; color:var(--ink-muted); font-style:italic;}
+  @media print{
+    body *{visibility:hidden;}
+    .report, .report *{visibility:visible;}
+    .report{position:absolute; left:0; top:0; width:100%; border:none;}
+  }
 </style>
 
 <div class="page">
@@ -70,6 +98,8 @@
       <label for="smilesInput">SMILES</label>
       <input type="text" id="smilesInput" placeholder="e.g. c1ccccc1, CC(=O)O, C1=CC=CC=C1..." autocomplete="off" spellcheck="false">
       <button class="cfg-btn" id="loadSmilesBtn">Build</button>
+      <span class="cfg-sep"></span>
+      <button class="cfg-btn" id="toggleReportBtn">Full Report &#9662;</button>
     </div>
   </header>
 
@@ -78,10 +108,12 @@
     <div class="info-panel" id="infoPanel"></div>
   </div>
 
+  <div class="report" id="reportPanel" hidden></div>
+
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. Ring-closure bonds (pink) are the one honest exception: a simple spanning-tree placement can't solve true ring/macrocycle closure, so that bond's real resulting length is reported and flagged rather than silently assumed correct &mdash; true ring 3D embedding needs real conformer generation, which is out of scope for this module. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -93,6 +125,7 @@
 <script src="./CoordinationChemistry.js"></script>
 <script src="./MolecularStructure.js"></script>
 <script src="./MolecularGeometry.js"></script>
+<script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
 (function() {
@@ -154,7 +187,7 @@
         '<div class="info-row"><span class="k">Delocalization energy</span><span class="v">' + esc(structure.aromaticity.delocalizationEnergyEv) + ' eV</span></div>';
     }
     infoPanel.innerHTML =
-      '<h2>Derived Report</h2>' +
+      '<h2>Quick Summary</h2>' +
       '<div class="info-row"><span class="k">Formula (Hill)</span><span class="v">' + esc(structure.formula.string) + '</span></div>' +
       '<div class="info-row"><span class="k">Molar mass</span><span class="v">' + esc(structure.molarMass.value) + ' g/mol</span></div>' +
       '<div class="info-row"><span class="k">Heavy + implicit-H atom count</span><span class="v">' + esc(geometry.atoms.length) + '</span></div>' +
@@ -172,17 +205,110 @@
   var smilesInput = document.getElementById('smilesInput');
   var loadSmilesBtn = document.getElementById('loadSmilesBtn');
 
+  var reportPanel = document.getElementById('reportPanel');
+  var toggleReportBtn = document.getElementById('toggleReportBtn');
+  var current = { mol: null, structure: null, geometry: null, sourceSmiles: null };
+
+  function badge(kind, label) { return '<span class="badge badge-' + kind + '">' + label + '</span>'; }
+
+  function renderReport() {
+    if (!current.structure) return;
+    var report = MolecularReport.build(current.mol, {
+      planar: true,
+      sourceSmiles: current.sourceSmiles,
+      structureResult: current.structure,
+      geometryResult: current.geometry
+    });
+    if (report.error) { reportPanel.innerHTML = '<p>' + esc(report.error) + '</p>'; return; }
+
+    var identityRows =
+      '<div class="kv">' +
+      '<span class="k">Formula (Hill)</span><span class="v">' + esc(report.identity.formula) + '</span>' +
+      '<span class="k">Molar mass</span><span class="v">' + esc(report.identity.molarMassGramsPerMol) + ' g/mol</span>' +
+      '<span class="k">Heavy atom count</span><span class="v">' + esc(report.identity.heavyAtomCount) + '</span>' +
+      (report.identity.sourceSmilesAsEntered ? '<span class="k">SMILES as entered</span><span class="v">' + esc(report.identity.sourceSmilesAsEntered) + '</span>' : '') +
+      '</div>';
+
+    var bondingRows = report.bonding.perAtom.map(function(a) {
+      if (a.error) return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td colspan="5">' + esc(a.error) + '</td></tr>';
+      return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td>' + esc(a.implicitH) + '</td><td>' +
+        esc(a.hybridization || '—') + '</td><td>' + esc(a.lonePairs === null ? '—' : a.lonePairs) + '</td><td>' +
+        esc(Array.isArray(a.geometry) ? a.geometry.join(' / ') : (a.geometry || '—')) + '</td><td>' +
+        esc(a.piSystemRole || '—') + '</td></tr>';
+    }).join('');
+
+    var aromHtml = '<p class="empty-note">No conjugated/aromatic system in this molecule.</p>';
+    if (report.bonding.aromaticity) {
+      var ar = report.bonding.aromaticity;
+      aromHtml = '<div class="kv">' +
+        '<span class="k">Verdict</span><span class="v">' + esc(ar.verdict) + '</span>' +
+        '<span class="k">&pi; electrons</span><span class="v">' + esc(ar.piElectrons) + '</span>' +
+        '<span class="k">Delocalization energy</span><span class="v">' + esc(ar.delocalizationEnergyEv) + ' eV</span>' +
+        '<span class="k">Kekule structure exists</span><span class="v">' + esc(ar.kekuleExists) + '</span>' +
+        '<span class="k">Planar (declared)</span><span class="v">' + esc(ar.planarDeclared) + '</span>' +
+        '</div>' + (ar.note ? '<p class="empty-note">' + esc(ar.note) + '</p>' : '');
+    }
+
+    var geomHtml = '<div class="kv">' +
+      '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
+      '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
+      '<span class="k">Bonds</span><span class="v">' + esc(report.geometry.bondCount) + '</span>' +
+      '<span class="k">Ring-closure (unsolved) bonds</span><span class="v">' + esc(report.geometry.ringClosureBondCount) + '</span>' +
+      '<span class="k">Estimated (uncalibrated) bond lengths</span><span class="v">' + esc(report.geometry.estimatedBondLengthCount) + '</span>' +
+      '</div>';
+    if (report.geometry.ringClosureBonds.length) {
+      geomHtml += '<ul style="margin-top:10px">' + report.geometry.ringClosureBonds.map(function(rc) {
+        return '<li>atoms ' + rc.atoms[0] + '&ndash;' + rc.atoms[1] + ': ' + rc.actualLengthAngstrom + ' &Aring; actual vs ' + rc.idealLengthAngstrom + ' &Aring; ideal &mdash; ' + esc(rc.note) + '</li>';
+      }).join('') + '</ul>';
+    }
+
+    var refHtml = '<p class="empty-note">No matching entry in CoordinationChemistry.js\'s reference library for this formula.</p>';
+    if (report.referenceContext) {
+      var rc = report.referenceContext;
+      refHtml = '<div class="refcard"><b>' + esc(rc.name) + '</b><br>' +
+        (rc.metal ? 'Metal center: ' + esc(rc.metal) + '<br>' : '') +
+        (rc.geometryDescription ? esc(rc.geometryDescription) + '<br>' : '') +
+        (rc.notes ? '<br>' + esc(rc.notes) : '') +
+        '<br><br><i>' + esc(rc.source) + '</i></div>';
+    }
+
+    var warnHtml = report.warnings.length
+      ? '<ul>' + report.warnings.map(function(w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>'
+      : '<p class="empty-note">None.</p>';
+
+    reportPanel.innerHTML =
+      '<h2>Molecular Structure Report</h2>' +
+      '<p class="report-sub">' + esc(report.identity.formula) + ' &middot; generated by MolecularReport.js v' + esc(report.version) + '</p>' +
+      '<section><h3>Identity ' + badge('derived', 'derived') + (report.identity.sourceSmilesAsEntered ? badge('input', 'input') : '') + '</h3>' + identityRows + '</section>' +
+      '<section><h3>Per-Atom Bonding Analysis ' + badge('derived', 'derived') + '</h3>' +
+        '<table><thead><tr><th>#</th><th>El.</th><th>Implicit H</th><th>Hybridization</th><th>Lone pairs</th><th>Geometry</th><th>&pi; role</th></tr></thead><tbody>' + bondingRows + '</tbody></table></section>' +
+      '<section><h3>Aromaticity / Conjugation ' + badge('derived', 'derived') + '</h3>' + aromHtml + '</section>' +
+      '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
+      '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
+      '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
+        report.provenance.notComputed.map(function(s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></section>' +
+      '<section><h3>Warnings</h3>' + warnHtml + '</section>';
+  }
+
+  toggleReportBtn.addEventListener('click', function() {
+    var willShow = reportPanel.hidden;
+    reportPanel.hidden = !willShow;
+    if (willShow) renderReport();
+  });
+
   // Shared core: everything downstream of "we already have a molecule
   // graph" is identical regardless of whether it came from the preset
   // list or from typed SMILES - same pipeline, same honesty about what's
   // derived vs. an error.
-  function loadFromMolecule(mol) {
+  function loadFromMolecule(mol, sourceSmiles) {
     if (mol.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(mol.error) + '</p>'; return false; }
     var opts = { planar: true };
     var structure = MolecularStructure.analyze(mol, opts);
     var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
     if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
     renderInfo(structure, geometry);
+    current.mol = mol; current.structure = structure; current.geometry = geometry; current.sourceSmiles = sourceSmiles || null;
+    if (!reportPanel.hidden) renderReport();
     if (viewer) viewer.setGeometry(geometry);
     else viewer = MolecularViewer.create(container, geometry);
     return true;
@@ -193,7 +319,7 @@
     smilesInput.value = m.special ? '' : m.smiles;
     smilesInput.classList.remove('invalid');
     var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
-    loadFromMolecule(mol);
+    loadFromMolecule(mol, m.special ? null : m.smiles);
   }
 
   // SMILES-style topology entry (Build/Add path) - the must-have input
@@ -205,7 +331,7 @@
     var text = smilesInput.value.trim();
     if (!text) return;
     var mol = MolecularStructure.fromSmiles(text);
-    var ok = loadFromMolecule(mol);
+    var ok = loadFromMolecule(mol, text);
     smilesInput.classList.toggle('invalid', !ok);
   }
 
