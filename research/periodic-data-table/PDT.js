@@ -241,16 +241,27 @@
         return S;
     }
 
-    // period is the periodic-table row (used for s/p blocks directly), but
-    // the block-defining subshell's real principal quantum number differs
-    // for d/f blocks — a d-block period-4 element's valence electrons are
-    // 3d, not 4d; an f-block period-6 lanthanide's are 4f, not 6f. Getting
-    // this right also matters for the n^2 denominator in the hydrogenic
-    // energy formula below, which previously used period unconditionally.
-    function blockPrincipalQuantumNumber(period, block) {
-        if (block === 'd') return period - 1;
-        if (block === 'f') return period - 2;
-        return period;
+    // Textbook convention: an atom's first-ionized electron is its
+    // outermost occupied subshell — not looked up by block letter, but
+    // found directly from the real electron configuration already
+    // computed above: whichever occupied subshell has the highest n (ties
+    // broken by highest l). This reproduces the right answer for every
+    // block without ever special-casing one: for s/p-block it lands on
+    // that block's own ns/np subshell (both occupied at n=period, p wins
+    // the tie); for d/f-block it lands on ns automatically, because
+    // (n-1)d and (n-2)f sit at a strictly lower n than the outermost ns —
+    // no "if block is d or f" branch needed. This is also why real
+    // transition-metal/lanthanide chemistry ionizes ns before (n-1)d or
+    // (n-2)f (e.g. Fe: [Ar]3d6 4s2 loses 4s first, giving [Ar]3d6): it
+    // falls out of the same rule, not a separate fact about those blocks.
+    const L_RANK = { s: 0, p: 1, d: 2, f: 3 };
+    function outermostOccupiedSubshell(Z) {
+        const config = electronConfiguration(Z);
+        let best = config[0];
+        config.forEach(c => {
+            if (c.n > best.n || (c.n === best.n && L_RANK[c.l] > L_RANK[best.l])) best = c;
+        });
+        return best;
     }
 
     // ================================================================
@@ -259,8 +270,9 @@
     function computeFVTPhysics(Z, occ, cap, period, block) {
         const half = cap / 2;
         const V = half - Math.abs(occ - half);
-        const n = blockPrincipalQuantumNumber(period, block);
-        const S = slaterShielding(Z, n, block);
+        const outer = outermostOccupiedSubshell(Z);
+        const n = outer.n;
+        const S = slaterShielding(Z, outer.n, outer.l);
         const Z_eff = Z - S;
         const bonding = getBondingType(V, block, occ, cap);
 
