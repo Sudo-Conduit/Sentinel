@@ -36,6 +36,10 @@
   .scope-caption .desc{font-family:var(--font-body); font-size:13px; color:var(--ink-muted); text-align:right;}
   .scope-caption .desc b{color:var(--ink); font-weight:600; font-family:var(--font-mono);}
 
+  .add-row{display:flex; justify-content:flex-start; margin-top:20px;}
+  .add-btn{font-family:var(--font-mono); font-size:12.5px; letter-spacing:.04em; color:var(--accent); background:var(--surface); border:1px dashed var(--line); border-radius:10px; padding:12px 18px; cursor:pointer;}
+  .add-btn:hover{border-color:var(--accent); color:var(--ink);}
+
   .fieldnote{margin-top:30px; padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; font-size:13.5px; line-height:1.65; color:var(--ink-muted); max-width:80ch;}
   .fieldnote b{color:var(--ink);}
   .fieldnote code{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:12.5px;}
@@ -76,6 +80,9 @@
     </div>
   </div>
 
+  <div class="add-row"><button class="add-btn" id="addElementBtn">+ Add Element</button></div>
+
+  <p class="fieldnote">Destroy fully removes a scope &mdash; canvas and caption both &mdash; freeing the slot; <b>+ Add Element</b> then drops in a fresh one for any symbol.</p>
   <p class="fieldnote"><b>How the cloud is built &mdash;</b> each point is accepted with probability proportional to its orbital's real angular density, normalized against that function's true analytic maximum (<code>accept &lt; density / max</code>), not a pass/fail threshold. Shell radius comes from each element's own Slater radius (FVT's Z<sub>eff</sub>-derived screening estimate), so heavier, tighter atoms render a visibly smaller cloud than light ones &mdash; try typing <b>Fr</b> into a scope next to <b>Fe</b> and compare.</p>
 
   <footer>
@@ -738,7 +745,9 @@
     // through the public API instead (setOrbital, isPulsing, isRotating,
     // showElectrons, spherical.radius, target, setElement, destroy) from a
     // host page's own themed controls; see OrbitalVisualizer.orbitalsForBlock
-    // for populating an external shape list.
+    // for populating an external shape list. options.onDestroy, if given, is
+    // called at the end of destroy() so a host page can remove any wrapper
+    // markup (e.g. a caption header) it built around `container`.
     var OrbitalVisualizer = function(container, symbol, orbitalChoice, options) {
         this.container = container;
         this.elementData = getElement(symbol);
@@ -773,6 +782,11 @@
         this._recorder = null;
         this._recordedChunks = [];
         this.saveRecording = this._defaultSaveRecording.bind(this); // overridable hook
+        // Fires at the end of destroy() so a host page can remove whatever
+        // wrapper markup it built around `container` (e.g. Orbital Scope's
+        // sibling caption header), which OrbitalVisualizer has no way to
+        // reach on its own.
+        this.onDestroy = (options && typeof options.onDestroy === 'function') ? options.onDestroy : null;
 
         // Build the full visualization
         this._updateShellRadius();
@@ -1241,11 +1255,6 @@
             });
         }
 
-        this.closeBtn = document.createElement('button');
-        this.closeBtn.textContent = 'Close';
-        this.closeBtn.style.cssText = 'background:#ff00aa;color:#000;border:none;padding:4px;border-radius:4px;cursor:pointer;';
-        this.closeBtn.addEventListener('click', function() { self.close(); });
-
         this.destroyBtn = document.createElement('button');
         this.destroyBtn.textContent = 'Destroy';
         this.destroyBtn.style.cssText = 'background:#ff0000;color:#fff;border:none;padding:4px;border-radius:4px;cursor:pointer;';
@@ -1260,7 +1269,6 @@
         this.uiPanel.appendChild(this.setBtn);
         this.uiPanel.appendChild(this.orbitalSelect);
         this.uiPanel.appendChild(this.recordBtn);
-        this.uiPanel.appendChild(this.closeBtn);
         this.uiPanel.appendChild(this.destroyBtn);
         this.container.appendChild(this.uiPanel);
 
@@ -1271,10 +1279,6 @@
         this.hudToggleBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#00aaff;border:1px solid #00aaff;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;z-index:10001;';
         this.hudToggleBtn.addEventListener('click', function() { self.setHudVisible(!self.hudVisible); });
         this.container.appendChild(this.hudToggleBtn);
-    };
-
-    OrbitalVisualizer.prototype.close = function() {
-        if (this.container) this.container.style.display = 'none';
     };
 
     OrbitalVisualizer.prototype.destroy = function() {
@@ -1298,6 +1302,7 @@
         if (this.nucleus) this.nucleus.geometry.dispose();
         cancelAnimationFrame(this._animationId);
         this._animationId = null;
+        if (this.onDestroy) this.onDestroy();
     };
 
     // ─── ANIMATION (Includes Pulse) ──────────────────────────────
@@ -1362,10 +1367,51 @@
     this._defaultSaveRecording(blob, filename);
   }
 
-  [
-    OrbitalVisualizer.create(document.getElementById('scope-s'), 'H'),
-    OrbitalVisualizer.create(document.getElementById('scope-p'), 'N', 'pz'),
-    OrbitalVisualizer.create(document.getElementById('scope-d'), 'Fe', 'dz2'),
-    OrbitalVisualizer.create(document.getElementById('scope-f'), 'Ce')
-  ].forEach(v => { v.saveRecording = saveViaPlatform.bind(v); });
+  // Builds one scope's caption markup from live element/shape data, so a
+  // dynamically-added scope (Add Element) reads the same as the four
+  // hand-written ones above it.
+  function captionHTML(symbol, block, orbitalKey) {
+    const meta = PDT.get(symbol);
+    const shapes = OrbitalVisualizer.orbitalsForBlock(block);
+    const shape = shapes.find(s => s.key === orbitalKey) || shapes[0];
+    return `<span class="tag">${block}-orbital</span><span class="desc"><b>${meta.symbol}</b> &middot; ${meta.name} &middot; ${shape.label}</span>`;
+  }
+
+  // Wires one scope div: instantiates the visualizer with an onDestroy hook
+  // that removes the *entire* .scope block (canvas + caption header) —
+  // Destroy is meant to free the slot completely, not just blank the canvas.
+  function wireScope(scopeEl, symbol, orbitalChoice) {
+    const canvas = scopeEl.querySelector('.scope-canvas');
+    const instance = OrbitalVisualizer.create(canvas, symbol, orbitalChoice, {
+      onDestroy: () => scopeEl.remove()
+    });
+    instance.saveRecording = saveViaPlatform.bind(instance);
+    return instance;
+  }
+
+  document.querySelectorAll('.scope').forEach(scopeEl => {
+    const canvas = scopeEl.querySelector('.scope-canvas');
+    const orbitalChoice = { 'scope-p': 'pz', 'scope-d': 'dz2' }[canvas.id];
+    const symbol = { 'scope-s': 'H', 'scope-p': 'N', 'scope-d': 'Fe', 'scope-f': 'Ce' }[canvas.id];
+    wireScope(scopeEl, symbol, orbitalChoice);
+  });
+
+  // + Add Element: drops a brand-new scope block into the grid for any
+  // symbol the user types, using the same wireScope/captionHTML path as the
+  // built-in four — this is what Destroy's full-slot removal makes possible.
+  document.getElementById('addElementBtn').addEventListener('click', () => {
+    const raw = window.prompt('Element symbol to add (e.g., Cu, Xe, U):');
+    if (!raw) return;
+    const symbol = raw.trim();
+    const meta = PDT.get(symbol);
+    if (!meta) { alert(`Unknown element symbol: "${symbol}"`); return; }
+
+    const scopeEl = document.createElement('div');
+    scopeEl.className = 'scope';
+    scopeEl.innerHTML = `<div class="scope-canvas"></div><div class="scope-caption"></div>`;
+    document.querySelector('.grid').appendChild(scopeEl);
+
+    const instance = wireScope(scopeEl, meta.symbol);
+    scopeEl.querySelector('.scope-caption').innerHTML = captionHTML(meta.symbol, meta.block, instance.orbitalChoice);
+  });
 </script>

@@ -104,7 +104,9 @@
     // through the public API instead (setOrbital, isPulsing, isRotating,
     // showElectrons, spherical.radius, target, setElement, destroy) from a
     // host page's own themed controls; see OrbitalVisualizer.orbitalsForBlock
-    // for populating an external shape list.
+    // for populating an external shape list. options.onDestroy, if given, is
+    // called at the end of destroy() so a host page can remove any wrapper
+    // markup (e.g. a caption header) it built around `container`.
     var OrbitalVisualizer = function(container, symbol, orbitalChoice, options) {
         this.container = container;
         this.elementData = getElement(symbol);
@@ -139,6 +141,11 @@
         this._recorder = null;
         this._recordedChunks = [];
         this.saveRecording = this._defaultSaveRecording.bind(this); // overridable hook
+        // Fires at the end of destroy() so a host page can remove whatever
+        // wrapper markup it built around `container` (e.g. Orbital Scope's
+        // sibling caption header), which OrbitalVisualizer has no way to
+        // reach on its own.
+        this.onDestroy = (options && typeof options.onDestroy === 'function') ? options.onDestroy : null;
 
         // Build the full visualization
         this._updateShellRadius();
@@ -607,11 +614,6 @@
             });
         }
 
-        this.closeBtn = document.createElement('button');
-        this.closeBtn.textContent = 'Close';
-        this.closeBtn.style.cssText = 'background:#ff00aa;color:#000;border:none;padding:4px;border-radius:4px;cursor:pointer;';
-        this.closeBtn.addEventListener('click', function() { self.close(); });
-
         this.destroyBtn = document.createElement('button');
         this.destroyBtn.textContent = 'Destroy';
         this.destroyBtn.style.cssText = 'background:#ff0000;color:#fff;border:none;padding:4px;border-radius:4px;cursor:pointer;';
@@ -626,7 +628,6 @@
         this.uiPanel.appendChild(this.setBtn);
         this.uiPanel.appendChild(this.orbitalSelect);
         this.uiPanel.appendChild(this.recordBtn);
-        this.uiPanel.appendChild(this.closeBtn);
         this.uiPanel.appendChild(this.destroyBtn);
         this.container.appendChild(this.uiPanel);
 
@@ -637,10 +638,6 @@
         this.hudToggleBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#00aaff;border:1px solid #00aaff;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;z-index:10001;';
         this.hudToggleBtn.addEventListener('click', function() { self.setHudVisible(!self.hudVisible); });
         this.container.appendChild(this.hudToggleBtn);
-    };
-
-    OrbitalVisualizer.prototype.close = function() {
-        if (this.container) this.container.style.display = 'none';
     };
 
     OrbitalVisualizer.prototype.destroy = function() {
@@ -664,6 +661,7 @@
         if (this.nucleus) this.nucleus.geometry.dispose();
         cancelAnimationFrame(this._animationId);
         this._animationId = null;
+        if (this.onDestroy) this.onDestroy();
     };
 
     // ─── ANIMATION (Includes Pulse) ──────────────────────────────
