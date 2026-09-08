@@ -1,11 +1,20 @@
 // UMD IIFE - Aromaticity module (Kekule matching + real Huckel MO energies)
 //
-// Scope: a single simple (non-fused) monocyclic ring. Fused/bridged ring
-// systems (porphyrin's macrocycle) are NOT handled here — deciding which
-// cycle(s) in a fused system constitute the real delocalization pathway is
-// a separate, harder problem (see the architecture note at the bottom).
+// Scope: any connected conjugated-atom graph — a simple ring, or a fused/
+// bridged system like porphyrin's macrocycle. Earlier versions assumed the
+// input was one simple ring (atoms in ring order, edges implied by
+// wraparound) and left fused systems unhandled, on the theory that "which
+// cycle is the real aromatic ring" (ring perception / SSSR) needed solving
+// first. It doesn't: real Huckel MO theory for a fused system is one
+// secular matrix over the whole conjugated framework, not one calculation
+// per ring — so this module takes an explicit bond list instead of
+// assuming a wraparound cycle, and the same matching + diagonalization
+// pipeline runs over any topology without needing to pick out "the" ring
+// first. What's still a declared input, not derived: which atoms belong
+// to the conjugated system at all, and each atom's role (see below) — see
+// the architecture note at the bottom for what that leaves open.
 //
-// Once a ring's bonds and atom roles are known, we don't need a
+// Once a system's bonds and atom roles are known, we don't need a
 // per-molecule guessed stabilization constant: each atom's own
 // Z_eff-derived orbital_energy (already computed by PDT.js) IS the Huckel
 // "alpha" (Coulomb integral) for that atom, no different from how real
@@ -141,28 +150,31 @@
         return { totalEnergy: total, openShell: openShell };
     }
 
-    // ring = {
-    //   atoms: [{ symbol, role }, ...] in ring order (consecutive atoms are
-    //     ring-bonded; the list wraps from last back to first),
+    // system = {
+    //   atoms: [{ symbol, role }, ...],
+    //   bonds: [[i, j], ...],  // arbitrary conjugated-system connectivity —
+    //     a simple ring (wraparound edges), a fused/branching system
+    //     (porphyrin), or even a non-cyclic conjugated chain all work the
+    //     same way here.
     //   planar: boolean   // declared, not derived — see architecture note
     // }
     // role is required per atom and is one of:
-    //   'needsDoubleBond' — must be matched to exactly one ring double bond
-    //     (contributes 1 pi electron): ordinary ring carbons, pyridine-type N.
+    //   'needsDoubleBond' — must be matched to exactly one double bond
+    //     among its own bonds (contributes 1 pi electron): ordinary
+    //     conjugated carbons, pyridine-type N.
     //   'lonePairDonor'   — contributes its lone pair to the pi system and
-    //     takes zero ring double bonds (contributes 2 pi electrons):
+    //     takes zero double bonds (contributes 2 pi electrons):
     //     pyrrole-type N, furan-type O, thiophene-type S.
-    function analyzeRing(ring) {
-        var atoms = ring.atoms || [];
+    function analyze(system) {
+        var atoms = system.atoms || [];
+        var bonds = system.bonds || [];
         var n = atoms.length;
-        if (n < 3) return { error: 'A ring needs at least 3 atoms.' };
-
-        var ringEdges = [];
-        for (var i = 0; i < n; i++) ringEdges.push([i, (i + 1) % n]);
+        if (n < 2) return { error: 'A conjugated system needs at least 2 atoms.' };
 
         var needsDoubleBond = [];
         var lonePairDonors = [];
         var alphas = [];
+        var degree = new Array(n).fill(0);
         for (var idx = 0; idx < n; idx++) {
             var atom = atoms[idx];
             var role = atom.role;
@@ -174,9 +186,21 @@
             if (!el) return { error: 'Unknown element: ' + atom.symbol };
             alphas.push(el.orbital_energy); // real, Z_eff-derived — not guessed
         }
+        bonds.forEach(function(b) { degree[b[0]]++; degree[b[1]]++; });
+
+        // A simple monocyclic ring (every atom degree 2, edge count ==
+        // atom count) is the one topology Huckel's original 4n+2 theorem
+        // was actually proven for. Anything else (fused, branched, or a
+        // non-cyclic chain) still gets a pi-electron count and a
+        // 6/4-remainder classification reported below, but it's an
+        // informational, commonly-used-in-practice convention there, not
+        // the rigorous textbook result — the real, generalizable signal
+        // for any topology is delocalizationEnergyEv and openShellHOMO,
+        // computed the same way (diagonalization) regardless of shape.
+        var isSimpleMonocycle = bonds.length === n && degree.every(function(d) { return d === 2; });
 
         var candidateSet = {};
-        ringEdges.forEach(function(e) {
+        bonds.forEach(function(e) {
             if (needsDoubleBond.indexOf(e[0]) !== -1 && needsDoubleBond.indexOf(e[1]) !== -1) {
                 candidateSet[e[0] + '|' + e[1]] = true;
             }
@@ -186,18 +210,19 @@
         var kekuleExists = matching !== null;
 
         var piElectrons = needsDoubleBond.length * 1 + lonePairDonors.length * 2;
-        var planar = !!ring.planar;
+        var planar = !!system.planar;
         var fullyConjugated = kekuleExists;
         var huckelApplicable = planar && fullyConjugated;
 
         // Build the real Huckel secular matrix: diagonal = each atom's own
-        // orbital_energy, off-diagonal = beta for ring-bonded neighbors.
+        // orbital_energy, off-diagonal = beta for bonded neighbors —
+        // whatever shape those bonds form.
         var H = [];
-        for (i = 0; i < n; i++) {
+        for (var i = 0; i < n; i++) {
             H.push(new Array(n).fill(0));
             H[i][i] = alphas[i];
         }
-        ringEdges.forEach(function(e) {
+        bonds.forEach(function(e) {
             H[e[0]][e[1]] = BETA_EV;
             H[e[1]][e[0]] = BETA_EV;
         });
@@ -224,21 +249,34 @@
 
         var delocalizationEnergy = huckelApplicable ? (fill.totalEnergy - referenceEnergy) : 0;
 
+        // The 4n+2/4n electron-count check is Huckel's original theorem,
+        // proven for simple monocyclic rings — reported here as an
+        // informational, commonly-used-in-practice label (piElectrons and
+        // conventional4nPlus2Style are always computed), but it does NOT
+        // drive the verdict below. The verdict is instead driven by what
+        // actually generalizes to any topology: does diagonalizing the
+        // real system come out lower in energy than the localized
+        // reference (delocalizationEnergy < 0, genuinely stabilizing), and
+        // is the ground state closed-shell (no degenerate half-filled
+        // HOMO — an open shell is a real instability regardless of
+        // electron count or ring shape).
         var remainder4 = piElectrons % 4;
-        var isAromaticCount = remainder4 === 2;
-        var isAntiaromaticCount = remainder4 === 0 && piElectrons > 0;
+        var conventional4nPlus2Style = remainder4 === 2;
+        var STABILIZATION_EPS_EV = 1e-3;
 
         var verdict;
         if (!huckelApplicable) verdict = 'nonaromatic';
-        else if (isAromaticCount && !fill.openShell) verdict = 'aromatic';
-        else if (isAntiaromaticCount || fill.openShell) verdict = 'antiaromatic';
+        else if (fill.openShell) verdict = 'antiaromatic';
+        else if (delocalizationEnergy < -STABILIZATION_EPS_EV) verdict = 'aromatic';
         else verdict = 'nonaromatic';
 
         return {
-            ringSize: n,
+            atomCount: n,
+            isSimpleMonocycle: isSimpleMonocycle,
             kekuleExists: kekuleExists,
             matching: matching,
             piElectrons: piElectrons,
+            conventional4nPlus2Style: conventional4nPlus2Style,
             planar: planar,
             fullyConjugated: fullyConjugated,
             huckelApplicable: huckelApplicable,
@@ -250,25 +288,34 @@
             verdict: verdict,
             note: fill.openShell
                 ? 'Degenerate HOMO left half-filled — simple closed-shell Huckel filling cannot honestly report a single destabilization number here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is beyond this model.'
-                : undefined
+                : (!isSimpleMonocycle ? 'Not a simple monocyclic ring — piElectrons/conventional4nPlus2Style are informational only; the verdict above comes from delocalizationEnergyEv and openShellHOMO, not electron-count parity.' : undefined)
         };
     }
 
     // ARCHITECTURE NOTE: role (needsDoubleBond vs lonePairDonor) and
-    // planarity are still declared inputs, not derived facts — see the
-    // reasoning in the module's history. What changed here is the ENERGY:
-    // alpha now comes from PDT's real orbital_energy per atom instead of a
-    // per-molecule guessed stabilization constant, and beta is the one
-    // remaining universal (not molecule-specific) parameter, same as real
-    // Huckel theory. This module also only ever sees one simple ring — a
-    // fused system like porphyrin needs a separate ring-selection step
-    // first, not attempted here.
+    // planarity are still declared inputs, not derived facts — auto-
+    // classifying role needs substituent/H-count/charge rules this module
+    // doesn't have, and deriving true planarity needs real 3D geometry
+    // this codebase has never had. What generalizing to arbitrary `bonds`
+    // solves is different: no ring-perception/SSSR step is needed to pick
+    // out "the" aromatic ring in a fused system, because there's no longer
+    // a per-ring calculation to aim it at — the whole conjugated framework
+    // gets one secular matrix and one diagonalization, same as a simple
+    // ring. What's still open for a fused macrocycle specifically: which
+    // atoms belong to the conjugated system is a declared input (e.g. a
+    // porphyrin's saturated side chains have to be excluded by hand), and
+    // the traditional "18 pi electron aromatic pathway" language for
+    // porphyrins refers to a specific historically-debated subset of the
+    // full ring system, not literally every atom in it — so a full-system
+    // piElectrons count here will legitimately disagree with that folk
+    // number; delocalizationEnergyEv is the real, computed answer, and
+    // conventional4nPlus2Style is only ever an informational label.
 
     return {
-        analyzeRing: analyzeRing,
+        analyze: analyze,
         _findPerfectMatching: findPerfectMatching,
         _jacobiEigenvalues: jacobiEigenvalues,
         BETA_EV: BETA_EV,
-        version: '0.2'
+        version: '0.3'
     };
 }));
