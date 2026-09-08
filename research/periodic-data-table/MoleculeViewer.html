@@ -1,0 +1,177 @@
+<title>Molecule Viewer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
+    --ink:#e7edf5; --ink-muted:#7c8ba0;
+    --accent:#00aaff; --accent-2:#ff2fb0;
+    --font-display:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0;}
+  .page{max-width:1180px; margin:0 auto; padding:44px 28px 60px;}
+
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 12px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:clamp(30px,4.6vw,46px); line-height:1.05; margin:0 0 16px; text-wrap:balance;}
+  .thesis{font-size:15.5px; line-height:1.65; color:var(--ink-muted); margin:0 0 8px; max-width:80ch;}
+  .thesis b{color:var(--ink); font-weight:600;}
+  .controls-hint{font-family:var(--font-mono); font-size:12.5px; color:var(--ink-muted); margin:14px 0 0;}
+  .controls-hint kbd{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:11.5px;}
+
+  .config-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:18px 0 4px;}
+  .config-bar label{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
+  .config-bar select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; max-width:260px;}
+
+  .grid{display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px;}
+  @media (min-width:860px){ .grid{grid-template-columns:1.4fr 1fr;} }
+
+  .scope{background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .scope-canvas{position:relative; width:100%; aspect-ratio:4/3; background:var(--bg);}
+  .scope-canvas canvas{display:block;}
+
+  .info-panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; font-family:var(--font-mono); font-size:12.5px; line-height:1.7;}
+  .info-panel h2{font-family:var(--font-display); font-size:14px; margin:0 0 12px; color:var(--accent); text-transform:uppercase; letter-spacing:.06em;}
+  .info-row{display:flex; justify-content:space-between; gap:10px; border-bottom:1px solid var(--line); padding:5px 0;}
+  .info-row .k{color:var(--ink-muted);}
+  .info-row .v{color:var(--ink); text-align:right;}
+  .tag{display:inline-block; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid var(--accent); color:var(--accent); margin-top:8px;}
+  .warn-list{margin:10px 0 0; padding-left:16px; color:var(--accent-2); font-size:11.5px; line-height:1.6;}
+  .warn-list li{margin-bottom:4px;}
+  .legend{margin-top:14px; display:flex; flex-wrap:wrap; gap:8px 14px; font-size:11px; color:var(--ink-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:10px; height:10px; border-radius:50%; display:inline-block;}
+
+  .fieldnote{margin-top:30px; padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; font-size:13.5px; line-height:1.65; color:var(--ink-muted); max-width:80ch;}
+  .fieldnote b{color:var(--ink);}
+  .fieldnote code{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:12.5px;}
+
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between;}
+</style>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Field Valence Theory &middot; Molecular Structure</p>
+    <h1>Molecule Viewer</h1>
+    <p class="thesis">Every structure here is built the same way: a molecule's own graph (from a built-in reference set for now) run through <b>MolecularStructure.js</b> for real per-atom hybridization/lone-pair/formal-charge derivation, then <b>MolecularGeometry.js</b> for idealized VSEPR 3D coordinates &mdash; textbook electron-domain geometry, not a measured crystal or NMR structure.</p>
+    <p class="controls-hint">Drag to orbit &middot; <kbd>Cmd</kbd>+drag to pan &middot; scroll to zoom.</p>
+    <div class="config-bar">
+      <label for="moleculeSelect">Molecule</label>
+      <select id="moleculeSelect"></select>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="scope"><div class="scope-canvas" id="viewerContainer"></div></div>
+    <div class="info-panel" id="infoPanel"></div>
+  </div>
+
+  <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. Ring-closure bonds (pink) are the one honest exception: a simple spanning-tree placement can't solve true ring/macrocycle closure, so that bond's real resulting length is reported and flagged rather than silently assumed correct &mdash; true ring 3D embedding needs real conformer generation, which is out of scope for this module. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
+
+  <footer>
+    <span>MolecularViewer.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>Author: Will Fobbs &middot; Pooled Impact</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./PDT.js"></script>
+<script src="./Smiles.js"></script>
+<script src="./Aromaticity.js"></script>
+<script src="./CoordinationChemistry.js"></script>
+<script src="./MolecularStructure.js"></script>
+<script src="./MolecularGeometry.js"></script>
+<script src="./MolecularViewer.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // Built-in reference set - the SMILES text-entry path (Build/Add) is
+  // the next item; until then this page demonstrates the pipeline on a
+  // fixed, known-good set already validated in this project's own
+  // scratchpad test suites.
+  var MOLECULES = [
+    { label: 'Methane (CH4)', smiles: 'C' },
+    { label: 'Ammonia (NH3)', smiles: 'N' },
+    { label: 'Water (H2O)', smiles: 'O' },
+    { label: 'Ethylene (C2H4)', smiles: 'C=C' },
+    { label: 'Acetylene (C2H2)', smiles: 'C#C' },
+    { label: 'Formaldehyde (CH2O)', smiles: 'C=O' },
+    { label: 'Carbon dioxide (CO2)', smiles: 'O=C=O' },
+    { label: 'Benzene (C6H6)', smiles: 'c1ccccc1' },
+    { label: 'Pyrrole (C4H5N)', smiles: 'c1cc[nH]c1' },
+    { label: 'Heme b macrocycle + Fe (from CoordinationChemistry.buildPorphineMacrocycle)', special: 'heme' }
+  ];
+
+  function buildHemeGraphMolecule() {
+    var macrocycle = CoordinationChemistry.buildPorphineMacrocycle();
+    var atoms = macrocycle.atoms.map(function(a) { return { symbol: a.symbol, explicitH: null, charge: 0, aromatic: true }; });
+    atoms.push({ symbol: 'Fe', explicitH: 0, charge: 2 });
+    var feIdx = atoms.length - 1;
+    var bonds = macrocycle.bonds.map(function(b) { return [b[0], b[1], 'aromatic']; });
+    macrocycle.atoms.forEach(function(a, i) { if (a.symbol === 'N') bonds.push([feIdx, i, 1]); });
+    return MolecularStructure.fromGraph({ atoms: atoms, bonds: bonds });
+  }
+
+  var select = document.getElementById('moleculeSelect');
+  MOLECULES.forEach(function(m, i) {
+    var opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = m.label;
+    select.appendChild(opt);
+  });
+  select.value = 7; // benzene - shows off Kekulization + ring-closure flagging by default
+
+  var container = document.getElementById('viewerContainer');
+  var infoPanel = document.getElementById('infoPanel');
+  var viewer = null;
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+  function renderInfo(structure, geometry) {
+    var warnHtml = '';
+    var allWarnings = (structure.warnings || []).concat(geometry.warnings || []);
+    if (allWarnings.length) {
+      warnHtml = '<ul class="warn-list">' + allWarnings.slice(0, 8).map(function(w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+    }
+    var aromHtml = '';
+    if (structure.aromaticity && !structure.aromaticity.error) {
+      aromHtml =
+        '<div class="info-row"><span class="k">Aromaticity verdict</span><span class="v">' + esc(structure.aromaticity.verdict) + '</span></div>' +
+        '<div class="info-row"><span class="k">&pi; electrons</span><span class="v">' + esc(structure.aromaticity.piElectrons) + '</span></div>' +
+        '<div class="info-row"><span class="k">Delocalization energy</span><span class="v">' + esc(structure.aromaticity.delocalizationEnergyEv) + ' eV</span></div>';
+    }
+    infoPanel.innerHTML =
+      '<h2>Derived Report</h2>' +
+      '<div class="info-row"><span class="k">Formula (Hill)</span><span class="v">' + esc(structure.formula.string) + '</span></div>' +
+      '<div class="info-row"><span class="k">Molar mass</span><span class="v">' + esc(structure.molarMass.value) + ' g/mol</span></div>' +
+      '<div class="info-row"><span class="k">Heavy + implicit-H atom count</span><span class="v">' + esc(geometry.atoms.length) + '</span></div>' +
+      '<div class="info-row"><span class="k">Bonds</span><span class="v">' + esc(geometry.bonds.length) + '</span></div>' +
+      aromHtml +
+      '<div class="tag">' + esc(geometry.geometrySource) + '</div>' +
+      warnHtml +
+      '<div class="legend">' +
+        '<span><span class="swatch" style="background:#8a97a8"></span>bond</span>' +
+        '<span><span class="swatch" style="background:#00aaff"></span>aromatic bond</span>' +
+        '<span><span class="swatch" style="background:#ff2fb0"></span>ring-closure (unsolved) bond</span>' +
+      '</div>';
+  }
+
+  function loadMolecule(idx) {
+    var m = MOLECULES[idx];
+    var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
+    if (mol.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(mol.error) + '</p>'; return; }
+    var opts = { planar: true };
+    var structure = MolecularStructure.analyze(mol, opts);
+    var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
+    if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return; }
+    renderInfo(structure, geometry);
+    if (viewer) viewer.setGeometry(geometry);
+    else viewer = MolecularViewer.create(container, geometry);
+  }
+
+  select.addEventListener('change', function() { loadMolecule(parseInt(select.value, 10)); });
+  loadMolecule(parseInt(select.value, 10));
+}());
+</script>
