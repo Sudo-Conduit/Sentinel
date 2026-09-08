@@ -38,6 +38,17 @@
     function defaultOrbitalFor(block) { return defsForBlock(block).order[0]; }
     function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
 
+    // Real electron markers are colored by the element's bonding character,
+    // so e.g. Carbon reads as "donor" (green) at a glance without opening
+    // the data panel.
+    var BOND_COLORS = {
+        inert: 0xffe066,      // yellow
+        donor: 0x4caf50,      // green
+        acceptor: 0xef4444,   // red
+        amphoteric: 0x9c55e0  // purple
+    };
+    var VACANT_COLOR = 0xdddddd;
+
     // Rejection-samples one point on the shell for the given orbital def,
     // returning {ct, st, phi, r} (spherical) so callers can place either a
     // cloud point or a discrete electron marker with the same real shape.
@@ -272,34 +283,58 @@
         this.scene.add(this.ring);
     };
 
-    // ─── ELECTRONS (optional: occ discrete markers, same real shape) ──
-    // Off by default. When on, places exactly elementData.occ bright markers
-    // on the shell using the same rejection-sampled density as the diffuse
-    // cloud, so they land where the orbital is actually dense rather than
-    // scattered uniformly.
+    // ─── ELECTRONS (optional: occ real + (cap-occ) vacant, same real shape) ──
+    // Off by default. When on, samples all `cap` slots of the current
+    // orbital using the same rejection-sampled density as the diffuse cloud
+    // (so every marker lands where the orbital is actually dense): the
+    // first `occ` render as solid, opaque electrons colored by the
+    // element's bonding character (BOND_COLORS); the remaining `cap - occ`
+    // render as light #DDD ghost markers (translucent fill + wireframe
+    // outline) showing the orbital's unfilled capacity — so e.g. Carbon's
+    // p-orbital reads at a glance as "2 filled, 4 vacant, donor-green".
     OrbitalVisualizer.prototype._createElectrons = function() {
         if (this.electronGroup) {
             this.scene.remove(this.electronGroup);
             this.electronGroup = null;
         }
-        if (this._electronGeometry) { this._electronGeometry.dispose(); this._electronGeometry = null; }
-        if (this._electronMaterial) { this._electronMaterial.dispose(); this._electronMaterial = null; }
+        [this._electronGeometry, this._electronMaterial, this._vacantGeometry,
+         this._vacantFillMaterial, this._vacantBorderGeometry, this._vacantBorderMaterial]
+            .forEach(function(o) { if (o) o.dispose(); });
+        this._electronGeometry = this._electronMaterial = null;
+        this._vacantGeometry = this._vacantFillMaterial = this._vacantBorderGeometry = this._vacantBorderMaterial = null;
         if (!this.showElectrons) return;
 
         var def = defsForBlock(this.elementData.block)[this.orbitalChoice];
         var shellInner = this.shellRadius;
         var shellThickness = this.shellRadius * 0.6;
-        var count = Math.max(1, this.elementData.occ || 1);
+        var cap = this.elementData.cap || 1;
+        var occ = Math.min(this.elementData.occ || 0, cap);
+        var bondColor = BOND_COLORS[this.elementData.bonding && this.elementData.bonding.type] || 0xffffff;
 
         this._electronGeometry = new root.THREE.SphereGeometry(0.09, 12, 12);
-        this._electronMaterial = new root.THREE.MeshBasicMaterial({ color: 0xfff2b2 });
+        this._electronMaterial = new root.THREE.MeshBasicMaterial({ color: bondColor });
+        this._vacantGeometry = new root.THREE.SphereGeometry(0.08, 10, 10);
+        this._vacantFillMaterial = new root.THREE.MeshBasicMaterial({ color: VACANT_COLOR, transparent: true, opacity: 0.28 });
+        this._vacantBorderGeometry = new root.THREE.SphereGeometry(0.1, 10, 10);
+        this._vacantBorderMaterial = new root.THREE.MeshBasicMaterial({ color: VACANT_COLOR, wireframe: true, transparent: true, opacity: 0.55 });
+
         this.electronGroup = new root.THREE.Group();
 
-        for (var i = 0; i < count; i++) {
+        for (var i = 0; i < cap; i++) {
             var s = sampleShell(def, shellInner, shellThickness);
-            var mesh = new root.THREE.Mesh(this._electronGeometry, this._electronMaterial);
-            mesh.position.set(s.r * s.st * Math.cos(s.phi), s.r * s.st * Math.sin(s.phi), s.r * s.ct);
-            this.electronGroup.add(mesh);
+            var x = s.r * s.st * Math.cos(s.phi), y = s.r * s.st * Math.sin(s.phi), z = s.r * s.ct;
+            if (i < occ) {
+                var mesh = new root.THREE.Mesh(this._electronGeometry, this._electronMaterial);
+                mesh.position.set(x, y, z);
+                this.electronGroup.add(mesh);
+            } else {
+                var fill = new root.THREE.Mesh(this._vacantGeometry, this._vacantFillMaterial);
+                fill.position.set(x, y, z);
+                var border = new root.THREE.Mesh(this._vacantBorderGeometry, this._vacantBorderMaterial);
+                border.position.set(x, y, z);
+                this.electronGroup.add(fill);
+                this.electronGroup.add(border);
+            }
         }
         this.scene.add(this.electronGroup);
     };
@@ -458,6 +493,7 @@
 
         this.electronsLabel = document.createElement('label');
         this.electronsLabel.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;';
+        this.electronsLabel.title = 'Filled = bonding color (yellow inert, green donor, red acceptor, purple amphoteric). Gray outline = vacant slot.';
         this.electronsCheckbox = document.createElement('input');
         this.electronsCheckbox.type = 'checkbox';
         this.electronsCheckbox.checked = this.showElectrons;
@@ -465,7 +501,7 @@
             self.setShowElectrons(self.electronsCheckbox.checked);
         });
         this.electronsLabel.appendChild(this.electronsCheckbox);
-        this.electronsLabel.appendChild(document.createTextNode('Show electrons'));
+        this.electronsLabel.appendChild(document.createTextNode('Show Electrons'));
 
         this.input = document.createElement('input');
         this.input.placeholder = 'Enter symbol (e.g., Fe)';
@@ -556,8 +592,9 @@
         if (this.material) this.material.dispose();
         if (this.points) this.points.geometry.dispose();
         if (this.ring) this.ring.geometry.dispose();
-        if (this._electronGeometry) this._electronGeometry.dispose();
-        if (this._electronMaterial) this._electronMaterial.dispose();
+        [this._electronGeometry, this._electronMaterial, this._vacantGeometry,
+         this._vacantFillMaterial, this._vacantBorderGeometry, this._vacantBorderMaterial]
+            .forEach(function(o) { if (o) o.dispose(); });
         if (this.nucleus) this.nucleus.geometry.dispose();
         cancelAnimationFrame(this._animationId);
         this._animationId = null;
