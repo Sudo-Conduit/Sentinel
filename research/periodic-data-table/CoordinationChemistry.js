@@ -184,8 +184,13 @@
     // ─── Public entry point ─────────────────────────────────────────────
     // Runs PDT.stable's parser + naive global check first (for the parsed
     // atom list and for side-by-side comparison), then layers the local
-    // per-metal-center analysis on top.
-    function analyze(formula) {
+    // per-metal-center analysis on top. options.betaModel ('constant',
+    // default, or 'ratio') passes straight through to Aromaticity.analyze
+    // for whatever reference macrocycle gets checked — see Aromaticity.js
+    // for what the two models mean and why 'ratio' is a labeled
+    // extrapolation, not a validated derivation.
+    function analyze(formula, options) {
+        options = options || {};
         var t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
         var naiveGlobal = PDT.stable(formula);
         if (naiveGlobal.error) return { error: naiveGlobal.error };
@@ -231,7 +236,7 @@
             if (!Aromaticity) {
                 referenceStable = null; // Aromaticity.js not loaded in this environment — no reference verdict available
             } else {
-                aromaticity = Aromaticity.analyze(reference.macrocycle);
+                aromaticity = Aromaticity.analyze(reference.macrocycle, { betaModel: options.betaModel });
                 referenceStable = allCentersBalanced && !aromaticity.error && aromaticity.verdict !== 'antiaromatic';
             }
         }

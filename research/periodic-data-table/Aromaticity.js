@@ -47,6 +47,43 @@
     // fit the way STABILIZATION_PER_ELECTRON constants were before.
     var BETA_EV = -1.0;
 
+    // Two ways to turn (alpha_i, alpha_j) into a bond's beta — selectable
+    // per call via options.betaModel, not a single hardcoded choice, so
+    // both can be run side by side on the same system rather than
+    // committing to one before it's been tested against the other:
+    //
+    // 'constant' (default) — BETA_EV for every bond, unconditionally.
+    // Matches real simple-Huckel practice (one shared beta, not fit per
+    // molecule) and is what every result so far has used.
+    //
+    // 'ratio' — an attempt to derive beta from PDT's own alphas instead of
+    // importing it, tried first as the real Wolfsberg-Helmholz semi-
+    // empirical form (beta_ij = K*(alpha_i+alpha_j)/2, K=1.75). That
+    // breaks outright: using our own alpha_C=-122.4 eV it predicts
+    // beta_CC=-214 eV, 214x larger than the -1.0 eV BETA_EV needed to
+    // reproduce benzene's real resonance energy — because PDT's
+    // orbital_energy is a simplified hydrogenic approximation whose
+    // ABSOLUTE magnitude runs ~10-60x hotter than real ionization
+    // energies for every multi-electron element (H matches real IE
+    // exactly; C/N/O are off ~9-11x; Fe ~62x), even though the RELATIVE
+    // pattern across elements — N more tightly bound than C, Fe more than
+    // N — is directionally real. 'ratio' salvages only that relative
+    // pattern: it scales BETA_EV by the geometric mean of each atom's
+    // alpha relative to carbon's, so it reproduces today's calibrated
+    // C-C beta exactly (ratio=1 when both atoms are carbon — every
+    // all-carbon result is identical under both models by construction)
+    // and only diverges for heteroatom bonds. This is a labeled
+    // EXTRAPOLATION of the model's own internal logic, not a derivation —
+    // unlike the eigenvalue solver, there is no independent known-correct
+    // number to validate it against.
+    var ALPHA_C_REFERENCE = PDT.get('C').orbital_energy;
+    function computeBeta(alphaI, alphaJ, betaModel) {
+        if (betaModel === 'ratio') {
+            return BETA_EV * Math.sqrt((alphaI / ALPHA_C_REFERENCE) * (alphaJ / ALPHA_C_REFERENCE));
+        }
+        return BETA_EV;
+    }
+
     // Exact perfect-matching search via backtracking, not Edmonds' Blossom
     // algorithm: ring sizes here (a handful to a couple dozen atoms) make
     // brute-force search fully adequate and far easier to verify correct
@@ -165,7 +202,9 @@
     //   'lonePairDonor'   — contributes its lone pair to the pi system and
     //     takes zero double bonds (contributes 2 pi electrons):
     //     pyrrole-type N, furan-type O, thiophene-type S.
-    function analyze(system) {
+    function analyze(system, options) {
+        options = options || {};
+        var betaModel = options.betaModel === 'ratio' ? 'ratio' : 'constant';
         var atoms = system.atoms || [];
         var bonds = system.bonds || [];
         var n = atoms.length;
@@ -223,8 +262,9 @@
             H[i][i] = alphas[i];
         }
         bonds.forEach(function(e) {
-            H[e[0]][e[1]] = BETA_EV;
-            H[e[1]][e[0]] = BETA_EV;
+            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel);
+            H[e[0]][e[1]] = b;
+            H[e[1]][e[0]] = b;
         });
 
         var eigenvalues = jacobiEigenvalues(H);
@@ -242,7 +282,7 @@
                 if (counted[v]) return;
                 var w = matching[v];
                 counted[v] = counted[w] = true;
-                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + BETA_EV);
+                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel));
             });
         }
         lonePairDonors.forEach(function(v) { referenceEnergy += 2 * alphas[v]; });
@@ -271,6 +311,7 @@
         else verdict = 'nonaromatic';
 
         return {
+            betaModel: betaModel,
             atomCount: n,
             isSimpleMonocycle: isSimpleMonocycle,
             kekuleExists: kekuleExists,
@@ -311,11 +352,29 @@
     // number; delocalizationEnergyEv is the real, computed answer, and
     // conventional4nPlus2Style is only ever an informational label.
 
+    // Runs both beta models on the same system and returns them side by
+    // side, plus a diff — the intended way to actually use 'ratio' for
+    // now: as a comparison against 'constant', not a silent replacement.
+    // For any all-carbon system the two are mathematically identical
+    // (computeBeta('ratio') reduces to BETA_EV when alpha_i=alpha_j), so
+    // deltaEv should come out exactly 0 there — a good self-check that
+    // the two models are wired correctly whenever a heteroatom is added.
+    function compareBetaModels(system) {
+        var constant = analyze(system, { betaModel: 'constant' });
+        var ratio = analyze(system, { betaModel: 'ratio' });
+        var deltaEv = (!constant.error && !ratio.error)
+            ? Math.round((ratio.delocalizationEnergyEv - constant.delocalizationEnergyEv) * 1000) / 1000
+            : null;
+        return { constant: constant, ratio: ratio, deltaEv: deltaEv };
+    }
+
     return {
         analyze: analyze,
+        compareBetaModels: compareBetaModels,
         _findPerfectMatching: findPerfectMatching,
         _jacobiEigenvalues: jacobiEigenvalues,
+        _computeBeta: computeBeta,
         BETA_EV: BETA_EV,
-        version: '0.3'
+        version: '0.4'
     };
 }));
