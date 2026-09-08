@@ -152,9 +152,15 @@
         var metals = naiveGlobal.parsed.filter(function(p) { return isMetalCenter(p.symbol); });
 
         if (!metals.length) {
+            var noMetalComputed = naiveGlobal.balanced;
+            var noMetalReference = reference ? reference.stable : null;
             return {
                 formula: formula, canonical: canonical, isCoordinationComplex: false,
-                reference: reference, naiveGlobal: naiveGlobal, stable: naiveGlobal.balanced,
+                reference: reference, naiveGlobal: naiveGlobal,
+                computedStable: noMetalComputed,
+                referenceStable: noMetalReference,
+                overridden: noMetalReference !== null && noMetalReference !== noMetalComputed,
+                stable: noMetalReference !== null ? noMetalReference : noMetalComputed,
                 elapsedMs: elapsed(t0)
             };
         }
@@ -165,15 +171,26 @@
 
         var allSupported = analysis.centers.every(function(c) { return c.supported; });
         var allCentersBalanced = allSupported && analysis.centers.every(function(c) { return c.localBalanced; });
-        var heuristicStable = allCentersBalanced && leftoverResult.balanced;
+        // The honest, derived-only verdict — local coordination check plus
+        // the leftover global covalent check, nothing hand-typed. Always
+        // computed and always exposed, even when a reference entry exists
+        // to override it for the headline `stable` field below, so the two
+        // can never silently collapse into each other again.
+        var computedStable = allCentersBalanced && leftoverResult.balanced;
+        var referenceStable = reference ? reference.stable : null;
+        var overridden = referenceStable !== null && referenceStable !== computedStable;
 
-        var stable = reference ? reference.stable : heuristicStable;
+        var stable = reference ? referenceStable : computedStable;
         var geometry = reference ? reference.geometry : analysis.centers.map(function(c) {
             if (!c.supported) return c.symbol + ': ' + c.note;
             return c.symbol + (c.count > 1 ? ' x' + c.count : '') + ': ' +
                 (c.localBalanced ? 'coordinatively satisfied (' + Object.keys(c.donorsConsumed).map(function(s) { return c.donorsConsumed[s] + 'x' + s; }).join(', ') + ')'
                                   : c.unmetUnits + ' unit(s) short of a satisfied center');
         }).join('; ');
+
+        var message = stable
+            ? (overridden ? '✅ Stable coordination complex (reference override — the local+leftover heuristic alone says unstable)' : '✅ Stable coordination complex')
+            : '❌ Unstable (coordination centers unsatisfied)';
 
         return {
             formula: formula,
@@ -183,10 +200,14 @@
             centers: analysis.centers,
             leftover: { parsed: leftoverParsed, sum: leftoverResult.sum, balanced: leftoverResult.balanced },
             naiveGlobal: naiveGlobal,
+            computedStable: computedStable,
+            referenceStable: referenceStable,
+            overridden: overridden,
             stable: stable,
             geometry: geometry,
+            geometrySource: reference ? 'reference' : 'heuristic',
             aromaticBonus: reference ? !!reference.aromatic : false,
-            message: stable ? '✅ Stable coordination complex' : '❌ Unstable (coordination centers unsatisfied)',
+            message: message,
             elapsedMs: elapsed(t0)
         };
     }
