@@ -313,27 +313,25 @@
     // ================================================================
     // 6. STABILITY CHECKER
     // ================================================================
-    function checkStability(formula) {
-        const parsed = parseFormula(formula);
-        if (parsed.error) return { error: parsed.error };
-
+    // Sums count*V*sign across a flat [{symbol,count}] list, branching over
+    // every sign choice for amphoteric elements (V(p) with cap===6). This is
+    // the whole-formula global check; extracted out of checkStability so
+    // other modules (e.g. CoordinationChemistry, which runs the same check
+    // on a leftover atom pool after pulling coordination bonds out of it)
+    // can reuse the exact same math instead of re-deriving it.
+    function sumValenceBalance(parsedEntries) {
         let sum = 0;
         let hasAmphoteric = false;
-        let amphotericOptions = [];
+        const amphotericOptions = [];
 
-        for (const entry of parsed) {
+        for (const entry of parsedEntries) {
             const el = bySymbol[entry.symbol];
             if (!el) return { error: `Unknown element: ${entry.symbol}` };
             const v = el.V;
             const type = el.bonding.value;
             if (Array.isArray(type)) {
                 hasAmphoteric = true;
-                amphotericOptions.push({
-                    symbol: entry.symbol,
-                    count: entry.count,
-                    v: v,
-                    options: type
-                });
+                amphotericOptions.push({ symbol: entry.symbol, count: entry.count, v: v, options: type });
             } else {
                 sum += entry.count * v * type;
             }
@@ -341,9 +339,6 @@
 
         if (hasAmphoteric) {
             const results = [];
-            const indices = amphotericOptions.map(() => 0);
-            const maxIndices = amphotericOptions.map(opt => opt.options.length);
-
             function tryCombination(depth, currentSum) {
                 if (depth === amphotericOptions.length) {
                     results.push(currentSum);
@@ -351,29 +346,29 @@
                 }
                 const opt = amphotericOptions[depth];
                 for (let i = 0; i < opt.options.length; i++) {
-                    const sign = opt.options[i];
-                    const newSum = currentSum + opt.count * opt.v * sign;
-                    tryCombination(depth + 1, newSum);
+                    tryCombination(depth + 1, currentSum + opt.count * opt.v * opt.options[i]);
                 }
             }
             tryCombination(0, sum);
-
-            const balanced = results.some(s => s === 0);
-            return {
-                formula: formula,
-                parsed: parsed,
-                sum: results,
-                balanced: balanced,
-                message: balanced ? "✅ Stable molecule" : "❌ Unstable molecule"
-            };
+            return { sum: results, balanced: results.some(s => s === 0) };
         }
+
+        return { sum: sum, balanced: (sum === 0) };
+    }
+
+    function checkStability(formula) {
+        const parsed = parseFormula(formula);
+        if (parsed.error) return { error: parsed.error };
+
+        const result = sumValenceBalance(parsed);
+        if (result.error) return result;
 
         return {
             formula: formula,
             parsed: parsed,
-            sum: sum,
-            balanced: (sum === 0),
-            message: (sum === 0) ? "✅ Stable molecule" : "❌ Unstable molecule"
+            sum: result.sum,
+            balanced: result.balanced,
+            message: result.balanced ? "✅ Stable molecule" : "❌ Unstable molecule"
         };
     }
 
@@ -539,6 +534,7 @@
         stable: checkStability,
         solve: balanceEquation,
         compute: computeFVTPhysics,
+        valenceBalance: sumValenceBalance,
         version: "1.0",
         date: "2026-09-06",
         author: "Pooled Impact"
