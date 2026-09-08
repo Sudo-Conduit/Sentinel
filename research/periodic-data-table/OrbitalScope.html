@@ -762,6 +762,7 @@
         this.isRotating = true;   // Auto-rotate is ON by default; pause freezes in place
         this.showElectrons = false; // Discrete electron markers are opt-in
         this.cloudOpacity = 0.7;  // base opacity of the diffuse point cloud; Pulse modulates around this
+        this.hudVisible = true;   // built-in control panel visibility (has no effect in headless mode)
         this.isDragging = false;
         this.previousMousePosition = { x: 0, y: 0 };
         this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
@@ -1009,6 +1010,18 @@
         this.cloudOpacity = clamp(Number(v), 0, 1);
     };
 
+    // Shows/hides the built-in control panel so the shape itself can fill
+    // the view unobstructed. The small hudToggleBtn that triggers this lives
+    // outside uiPanel (appended straight to the container) specifically so
+    // it never hides along with the rest of the HUD — otherwise there'd be
+    // no way to bring the controls back. No-op in headless mode (ui:false),
+    // since there's no built-in panel to hide.
+    OrbitalVisualizer.prototype.setHudVisible = function(visible) {
+        this.hudVisible = !!visible;
+        if (this.uiPanel) this.uiPanel.style.display = this.hudVisible ? 'flex' : 'none';
+        if (this.hudToggleBtn) this.hudToggleBtn.textContent = this.hudVisible ? 'Hide HUD' : 'Show HUD';
+    };
+
     // ─── The Nucleus ────────────────────────────────────────────
     OrbitalVisualizer.prototype._createNucleus = function() {
         var nucleusGeometry = new root.THREE.SphereGeometry(0.1, 16, 16);
@@ -1250,6 +1263,14 @@
         this.uiPanel.appendChild(this.closeBtn);
         this.uiPanel.appendChild(this.destroyBtn);
         this.container.appendChild(this.uiPanel);
+
+        // Deliberately outside uiPanel and appended after it, so it always
+        // sits on top and is never hidden along with the rest of the HUD.
+        this.hudToggleBtn = document.createElement('button');
+        this.hudToggleBtn.textContent = 'Hide HUD';
+        this.hudToggleBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#00aaff;border:1px solid #00aaff;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;z-index:10001;';
+        this.hudToggleBtn.addEventListener('click', function() { self.setHudVisible(!self.hudVisible); });
+        this.container.appendChild(this.hudToggleBtn);
     };
 
     OrbitalVisualizer.prototype.close = function() {
@@ -1263,6 +1284,7 @@
             // host page already replaced the container's contents itself
             // (e.g. innerHTML = ...) before calling destroy().
             if (this.uiPanel) this.uiPanel.remove();
+            if (this.hudToggleBtn) this.hudToggleBtn.remove();
             if (this.renderer && this.renderer.domElement) this.renderer.domElement.remove();
             this.container.style.display = 'none';
             this.container = null;
@@ -1320,6 +1342,7 @@
 
     root.OrbitalVisualizer = OrbitalVisualizer;
 })(window);
+
 
 
 
