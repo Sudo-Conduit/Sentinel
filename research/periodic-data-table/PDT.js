@@ -203,6 +203,30 @@
         return config;
     }
 
+    // Classical main-group valence electron count: the ns+np electrons of
+    // the outermost shell that has an occupied s or p subshell — H=1,
+    // C=4, N=5, O=6, F=7, S=6, etc., matching what every textbook Lewis-
+    // structure/VSEPR treatment means by "valence electrons." For a
+    // transition metal this deliberately only counts the outer ns
+    // electrons (e.g. Fe -> 2, from 4s), NOT the (n-1)d electrons —
+    // classical VSEPR/Lewis lone-pair bookkeeping isn't the right model
+    // for d-block bonding to begin with (that's coordinate/ligand-field
+    // chemistry), so a small number here is the correct signal to a
+    // caller to route a d/f-block atom away from that model entirely,
+    // not an attempt at a real "d-block valence electron count."
+    function valenceElectronCount(Z) {
+        const config = electronConfiguration(Z);
+        let maxSpN = 0;
+        config.forEach(c => {
+            if ((c.l === 's' || c.l === 'p') && c.count > 0 && c.n > maxSpN) maxSpN = c.n;
+        });
+        let total = 0;
+        config.forEach(c => {
+            if ((c.l === 's' || c.l === 'p') && c.n === maxSpN) total += c.count;
+        });
+        return total;
+    }
+
     // Real Slater group order: ns and np fill together as one group; nd
     // and nf are each their own group.
     function groupKey(n, l) { return (l === 's' || l === 'p') ? (n + 'sp') : (n + '' + l); }
@@ -704,6 +728,7 @@
         // step left behind. Not a lookup — accepts any Z, any step up to
         // that element's electron count.
         ionizationAnalysis: ionizationAnalysis,
+        valenceElectronCount: valenceElectronCount,
         version: "1.0",
         date: "2026-09-06",
         author: "Pooled Impact"

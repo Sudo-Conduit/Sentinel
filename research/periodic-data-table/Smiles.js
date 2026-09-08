@@ -304,7 +304,15 @@
             }
         });
 
-        return { atoms: atoms, bonds: bonds, planar: !!planar };
+        // originalIndex[newIdx] maps back to the index in `parsed.atoms` -
+        // additive, existing callers that only read atoms/bonds/planar are
+        // unaffected. Lets a caller (e.g. MolecularStructure.js) merge role
+        // and Kekule-matching results computed here back onto its own,
+        // larger atom list that includes non-ring/substituent atoms too.
+        var originalIndex = [];
+        for (i = 0; i < n; i++) if (included[i]) originalIndex.push(i);
+
+        return { atoms: atoms, bonds: bonds, planar: !!planar, originalIndex: originalIndex };
     }
 
     // Serializes an Aromaticity.js-style {atoms:[{symbol,role}], bonds}
