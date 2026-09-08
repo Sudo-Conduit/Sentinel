@@ -14,15 +14,25 @@
 // *leftover* atom pool after pulling out whatever satisfies each metal
 // center locally, and reports both. See ARCHITECTURE NOTE below for the
 // one real limitation this approach has.
+//
+// The ring/macrocycle side of a reference compound is no longer a
+// hardcoded stable/aromatic flag. A REFERENCE_LIBRARY entry now records
+// the macrocycle's real bond graph (same shape Aromaticity.js consumes)
+// and CoordinationChemistry hands it to Aromaticity.analyze() for a real
+// diagonalized verdict — the entry asserts a STRUCTURE (real, documented
+// connectivity), not an ANSWER; the answer is derived, same principle as
+// the local metal-coordination check already was.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./PDT'], factory);
+        define(['./PDT', './Aromaticity'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'));
+        var Arom;
+        try { Arom = require('./Aromaticity.js'); } catch (e) { Arom = null; }
+        module.exports = factory(require('./PDT.js'), Arom);
     } else {
-        root.CoordinationChemistry = factory(root.PDT);
+        root.CoordinationChemistry = factory(root.PDT, root.Aromaticity);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, Aromaticity) {
     'use strict';
     if (!PDT) throw new Error('CoordinationChemistry requires PDT');
 
@@ -49,26 +59,59 @@
             .join('');
     }
 
+    // Builds porphine's real fused macrocycle skeleton (C20N4: 4 pyrrole
+    // 5-rings + 4 meso-carbon bridges) as an Aromaticity.js-compatible
+    // {atoms, bonds, planar} graph — the free-base tautomer's 2 NH-type
+    // (lone-pair donor) and 2 =N- type (needs-a-double-bond) nitrogens,
+    // arranged trans to each other. Built programmatically rather than
+    // hand-typed, same as it was validated in Aromaticity.js's own tests.
+    function buildPorphineMacrocycle() {
+        var atoms = [];
+        var bonds = [];
+        var ringAtomIdx = [];
+        for (var k = 0; k < 4; k++) {
+            var nRole = (k % 2 === 0) ? 'lonePairDonor' : 'needsDoubleBond';
+            var N = atoms.push({ symbol: 'N', role: nRole }) - 1;
+            var Ca1 = atoms.push({ symbol: 'C', role: 'needsDoubleBond' }) - 1;
+            var Cb1 = atoms.push({ symbol: 'C', role: 'needsDoubleBond' }) - 1;
+            var Cb2 = atoms.push({ symbol: 'C', role: 'needsDoubleBond' }) - 1;
+            var Ca2 = atoms.push({ symbol: 'C', role: 'needsDoubleBond' }) - 1;
+            bonds.push([N, Ca1], [Ca1, Cb1], [Cb1, Cb2], [Cb2, Ca2], [Ca2, N]);
+            ringAtomIdx.push({ N: N, Ca1: Ca1, Cb1: Cb1, Cb2: Cb2, Ca2: Ca2 });
+        }
+        for (k = 0; k < 4; k++) {
+            var M = atoms.push({ symbol: 'C', role: 'needsDoubleBond' }) - 1;
+            bonds.push([ringAtomIdx[k].Ca2, M], [M, ringAtomIdx[(k + 1) % 4].Ca1]);
+        }
+        return { atoms: atoms, bonds: bonds, planar: true };
+    }
+
     // ─── Reference library ──────────────────────────────────────────────
     // Known coordination compounds where the real metal-ligand connectivity
     // is simply recorded, not inferred — see ARCHITECTURE NOTE below for why
     // that's necessary for anything beyond the single-metal heuristic case.
-    // Keyed by canonicalFormula().
+    // Keyed by canonicalFormula(). `macrocycle`, when present, is a real
+    // bond graph handed to Aromaticity.analyze() for a computed verdict —
+    // not a hardcoded stable/aromatic flag.
     var REFERENCE_LIBRARY = {
         'C34Fe1H32N4O4': {
             name: 'Heme b (iron-protoporphyrin IX)',
             metal: 'Fe',
             ligandDonors: { N: 4 },
-            stable: true,
+            macrocycle: buildPorphineMacrocycle(),
             geometry: 'Square-pyramidal / octahedral at Fe — 4 pyrrole N equatorial ' +
                 '(satisfied by this formula alone); 1-2 axial sites are occupied in ' +
                 'vivo by a protein residue and/or a substrate or O2, not present in ' +
                 'the bare cofactor formula.',
-            aromatic: true,
             notes: 'The Fe-N4 porphyrin core shared by hemoglobin, myoglobin, and ' +
-                'cytochrome P450. The macrocycle is an 18 pi-electron aromatic ' +
-                'system — additional real stabilization this model does not derive ' +
-                'on its own; recorded here as a flag rather than computed.'
+                'cytochrome P450. `macrocycle` is porphine\'s real 24-atom fused-ring ' +
+                'skeleton (the core macrocycle only — heme b\'s real peripheral methyl/' +
+                'vinyl/propionate substituents are not modeled here, so this covers ' +
+                'fewer than all 34 carbons in the full formula; see the module-level ' +
+                'architecture note on "which atoms belong to the conjugated system"). ' +
+                'Fe itself is not yet a node in this graph — its coordination is still ' +
+                'checked separately by analyzeCenters below, not unified into one ' +
+                'diagonalization with the ring.'
         }
     };
 
@@ -153,14 +196,13 @@
 
         if (!metals.length) {
             var noMetalComputed = naiveGlobal.balanced;
-            var noMetalReference = reference ? reference.stable : null;
             return {
                 formula: formula, canonical: canonical, isCoordinationComplex: false,
                 reference: reference, naiveGlobal: naiveGlobal,
                 computedStable: noMetalComputed,
-                referenceStable: noMetalReference,
-                overridden: noMetalReference !== null && noMetalReference !== noMetalComputed,
-                stable: noMetalReference !== null ? noMetalReference : noMetalComputed,
+                referenceStable: null,
+                overridden: false,
+                stable: noMetalComputed,
                 elapsedMs: elapsed(t0)
             };
         }
@@ -177,10 +219,25 @@
         // to override it for the headline `stable` field below, so the two
         // can never silently collapse into each other again.
         var computedStable = allCentersBalanced && leftoverResult.balanced;
-        var referenceStable = reference ? reference.stable : null;
+
+        // If the reference declares a macrocycle graph, run it through
+        // Aromaticity.analyze() for a real diagonalized verdict instead of
+        // trusting a hardcoded stable/aromatic flag. referenceStable is
+        // now DERIVED (centers satisfied AND the ring isn't antiaromatic),
+        // not read off the reference entry.
+        var aromaticity = null;
+        var referenceStable = null;
+        if (reference && reference.macrocycle) {
+            if (!Aromaticity) {
+                referenceStable = null; // Aromaticity.js not loaded in this environment — no reference verdict available
+            } else {
+                aromaticity = Aromaticity.analyze(reference.macrocycle);
+                referenceStable = allCentersBalanced && !aromaticity.error && aromaticity.verdict !== 'antiaromatic';
+            }
+        }
         var overridden = referenceStable !== null && referenceStable !== computedStable;
 
-        var stable = reference ? referenceStable : computedStable;
+        var stable = referenceStable !== null ? referenceStable : computedStable;
         var geometry = reference ? reference.geometry : analysis.centers.map(function(c) {
             if (!c.supported) return c.symbol + ': ' + c.note;
             return c.symbol + (c.count > 1 ? ' x' + c.count : '') + ': ' +
@@ -189,7 +246,7 @@
         }).join('; ');
 
         var message = stable
-            ? (overridden ? '✅ Stable coordination complex (reference override — the local+leftover heuristic alone says unstable)' : '✅ Stable coordination complex')
+            ? (overridden ? '✅ Stable coordination complex (reference macrocycle analysis override — the local+leftover heuristic alone says unstable)' : '✅ Stable coordination complex')
             : '❌ Unstable (coordination centers unsatisfied)';
 
         return {
@@ -200,13 +257,13 @@
             centers: analysis.centers,
             leftover: { parsed: leftoverParsed, sum: leftoverResult.sum, balanced: leftoverResult.balanced },
             naiveGlobal: naiveGlobal,
+            aromaticity: aromaticity,
             computedStable: computedStable,
             referenceStable: referenceStable,
             overridden: overridden,
             stable: stable,
             geometry: geometry,
             geometrySource: reference ? 'reference' : 'heuristic',
-            aromaticBonus: reference ? !!reference.aromatic : false,
             message: message,
             elapsedMs: elapsed(t0)
         };
@@ -230,12 +287,22 @@
     // treat the heuristic result as a best-effort estimate and prefer a
     // REFERENCE_LIBRARY entry (real, documented connectivity) when one
     // exists, which is what `analyze()` already does.
+    //
+    // A REFERENCE_LIBRARY entry's `macrocycle` graph and the metal-center
+    // check above are still two SEPARATE computations that happen to
+    // agree (both independently arrive at "4 N"), not one unified graph —
+    // Fe is not a node in `macrocycle`, so Aromaticity.js never sees the
+    // metal at all. Unifying them into one diagonalization is a real next
+    // step, not attempted here. Also still open: which atoms belong to
+    // the conjugated system in the first place (heme b's real peripheral
+    // substituents aren't modeled by the bare porphine skeleton above).
 
     return {
         isMetalCenter: isMetalCenter,
         canonicalFormula: canonicalFormula,
+        buildPorphineMacrocycle: buildPorphineMacrocycle,
         analyze: analyze,
         referenceLibrary: REFERENCE_LIBRARY,
-        version: '0.1'
+        version: '0.2'
     };
 }));
