@@ -36,6 +36,13 @@
   .scope-caption .desc{font-family:var(--font-body); font-size:13px; color:var(--ink-muted); text-align:right;}
   .scope-caption .desc b{color:var(--ink); font-weight:600; font-family:var(--font-mono);}
 
+  .config-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:18px 0 4px;}
+  .config-bar label{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
+  .config-bar select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; max-width:220px;}
+  .cfg-btn{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  .cfg-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .cfg-sep{width:1px; align-self:stretch; background:var(--line); margin:0 2px;}
+
   .add-row{display:flex; justify-content:flex-start; margin-top:20px;}
   .add-btn{font-family:var(--font-mono); font-size:12.5px; letter-spacing:.04em; color:var(--accent); background:var(--surface); border:1px dashed var(--line); border-radius:10px; padding:12px 18px; cursor:pointer;}
   .add-btn:hover{border-color:var(--accent); color:var(--ink);}
@@ -53,6 +60,16 @@
     <h1>Orbital Scope</h1>
     <p class="thesis">Four live point clouds, one per orbital block, each shaped by <b>rejection-sampling the real spherical-harmonic magnitude</b> for its type instead of a fixed density cutoff &mdash; the difference between an actual dumbbell and a sphere with a thin gap in it.</p>
     <p class="controls-hint">Drag a scope to orbit it &middot; scroll to zoom &middot; <kbd>Set Element</kbd> accepts any symbol and swaps its shape list to match that element's real block.</p>
+    <div class="config-bar">
+      <label for="configSelect">Layout</label>
+      <select id="configSelect"></select>
+      <button class="cfg-btn" id="saveConfigBtn">Save</button>
+      <button class="cfg-btn" id="deleteConfigBtn">Delete</button>
+      <span class="cfg-sep"></span>
+      <button class="cfg-btn" id="exportConfigBtn">Export to file&hellip;</button>
+      <button class="cfg-btn" id="importConfigBtn">Load from file&hellip;</button>
+      <input type="file" id="importFileInput" accept="application/json,.json" hidden>
+    </div>
     <div class="specs">
       <div class="spec"><span class="n">4</span><span class="l">Orbital families</span></div>
       <div class="spec"><span class="n">10</span><span class="l">Selectable shapes</span></div>
@@ -61,28 +78,11 @@
     </div>
   </header>
 
-  <div class="grid">
-    <div class="scope">
-      <div class="scope-canvas" id="scope-s"></div>
-      <div class="scope-caption"><span class="tag">s-orbital</span><span class="desc"><b>H</b> &middot; Hydrogen &middot; 1s &middot; sphere, no lobes</span></div>
-    </div>
-    <div class="scope">
-      <div class="scope-canvas" id="scope-p"></div>
-      <div class="scope-caption"><span class="tag">p-orbital</span><span class="desc"><b>N</b> &middot; Nitrogen &middot; pz &middot; dumbbell, node at the equator</span></div>
-    </div>
-    <div class="scope">
-      <div class="scope-canvas" id="scope-d"></div>
-      <div class="scope-caption"><span class="tag">d-orbital</span><span class="desc"><b>Fe</b> &middot; Iron &middot; dz2 &middot; dumbbell + torus</span></div>
-    </div>
-    <div class="scope">
-      <div class="scope-canvas" id="scope-f"></div>
-      <div class="scope-caption"><span class="tag">f-orbital</span><span class="desc"><b>Ce</b> &middot; Cerium &middot; fz3 &middot; multi-lobed</span></div>
-    </div>
-  </div>
+  <div class="grid" id="grid"></div>
 
   <div class="add-row"><button class="add-btn" id="addElementBtn">+ Add Element</button></div>
 
-  <p class="fieldnote">Destroy fully removes a scope &mdash; canvas and caption both &mdash; freeing the slot; <b>+ Add Element</b> then drops in a fresh one for any symbol.</p>
+  <p class="fieldnote">Destroy fully removes a scope &mdash; canvas and caption both &mdash; freeing the slot; <b>+ Add Element</b> then drops in a fresh one for any symbol. <b>Layout</b> saves and reloads the whole grid &mdash; which scopes are showing and how each is set up &mdash; to this browser, or export it to a file to hand the exact layout to someone else.</p>
   <p class="fieldnote"><b>How the cloud is built &mdash;</b> each point is accepted with probability proportional to its orbital's real angular density, normalized against that function's true analytic maximum (<code>accept &lt; density / max</code>), not a pass/fail threshold. Shell radius comes from each element's own Slater radius (FVT's Z<sub>eff</sub>-derived screening estimate), so heavier, tighter atoms render a visibly smaller cloud than light ones &mdash; try typing <b>Fr</b> into a scope next to <b>Fe</b> and compare.</p>
 
   <footer>
@@ -1367,9 +1367,9 @@
     this._defaultSaveRecording(blob, filename);
   }
 
-  // Builds one scope's caption markup from live element/shape data, so a
-  // dynamically-added scope (Add Element) reads the same as the four
-  // hand-written ones above it.
+  // Builds one scope's caption markup from live element/shape data, so
+  // every scope — Demo, Add Element, or restored from a saved layout —
+  // reads the same way.
   function captionHTML(symbol, block, orbitalKey) {
     const meta = PDT.get(symbol);
     const shapes = OrbitalVisualizer.orbitalsForBlock(block);
@@ -1377,41 +1377,278 @@
     return `<span class="tag">${block}-orbital</span><span class="desc"><b>${meta.symbol}</b> &middot; ${meta.name} &middot; ${shape.label}</span>`;
   }
 
-  // Wires one scope div: instantiates the visualizer with an onDestroy hook
-  // that removes the *entire* .scope block (canvas + caption header) —
-  // Destroy is meant to free the slot completely, not just blank the canvas.
+  // scopeEl -> its live OrbitalVisualizer instance, so a saved layout can
+  // read back exactly what's on screen and Destroy can forget a scope that's
+  // gone. Wiring lives in one place (wireScope) so every code path that
+  // creates a scope — Demo, Add Element, loading a layout — behaves alike.
+  const scopeInstances = new Map();
+
   function wireScope(scopeEl, symbol, orbitalChoice) {
     const canvas = scopeEl.querySelector('.scope-canvas');
     const instance = OrbitalVisualizer.create(canvas, symbol, orbitalChoice, {
-      onDestroy: () => scopeEl.remove()
+      onDestroy: () => { scopeInstances.delete(scopeEl); scopeEl.remove(); }
     });
     instance.saveRecording = saveViaPlatform.bind(instance);
+    scopeInstances.set(scopeEl, instance);
     return instance;
   }
 
-  document.querySelectorAll('.scope').forEach(scopeEl => {
-    const canvas = scopeEl.querySelector('.scope-canvas');
-    const orbitalChoice = { 'scope-p': 'pz', 'scope-d': 'dz2' }[canvas.id];
-    const symbol = { 'scope-s': 'H', 'scope-p': 'N', 'scope-d': 'Fe', 'scope-f': 'Ce' }[canvas.id];
-    wireScope(scopeEl, symbol, orbitalChoice);
-  });
+  // The built-in control panel only updates its own buttons/checkbox/slider
+  // in response to *its own* clicks, so restoring saved state programmatically
+  // has to also push the matching control by hand or the HUD would silently
+  // lie about what's showing.
+  function applyScopeState(instance, cfg) {
+    if (typeof cfg.showElectrons === 'boolean') {
+      instance.setShowElectrons(cfg.showElectrons);
+      if (instance.electronsCheckbox) instance.electronsCheckbox.checked = cfg.showElectrons;
+    }
+    if (typeof cfg.cloudOpacity === 'number') {
+      instance.setCloudOpacity(cfg.cloudOpacity);
+      if (instance.opacitySlider) instance.opacitySlider.value = String(instance.cloudOpacity);
+    }
+    if (typeof cfg.isPulsing === 'boolean') {
+      instance.isPulsing = cfg.isPulsing;
+      if (instance.pulseBtn) instance.pulseBtn.textContent = cfg.isPulsing ? 'Pulse: ON' : 'Pulse: OFF';
+    }
+    if (typeof cfg.isRotating === 'boolean') {
+      instance.isRotating = cfg.isRotating;
+      if (instance.rotateBtn) instance.rotateBtn.textContent = cfg.isRotating ? 'Rotate: ON' : 'Rotate: OFF';
+    }
+  }
+
+  // Creates one scope from a config entry ({symbol, orbital, ...}). Shared
+  // by Add Element and layout loading so they can never drift apart.
+  function addScopeFromConfig(cfg) {
+    const meta = PDT.get(cfg.symbol);
+    if (!meta) return null;
+    const scopeEl = document.createElement('div');
+    scopeEl.className = 'scope';
+    scopeEl.innerHTML = `<div class="scope-canvas"></div><div class="scope-caption"></div>`;
+    document.getElementById('grid').appendChild(scopeEl);
+    const instance = wireScope(scopeEl, meta.symbol, cfg.orbital);
+    scopeEl.querySelector('.scope-caption').innerHTML = captionHTML(meta.symbol, meta.block, instance.orbitalChoice);
+    applyScopeState(instance, cfg);
+    return instance;
+  }
+
+  function clearAllScopes() {
+    Array.from(scopeInstances.keys()).forEach(scopeEl => {
+      const instance = scopeInstances.get(scopeEl);
+      if (instance) instance.destroy(); // onDestroy removes scopeEl + forgets it
+    });
+  }
+
+  // Reads every live scope's current state back into one config object, in
+  // display order — the thing Save/Export actually persists.
+  function captureConfig(name) {
+    const scopes = Array.from(document.querySelectorAll('.scope')).map(scopeEl => {
+      const instance = scopeInstances.get(scopeEl);
+      if (!instance) return null;
+      return {
+        symbol: instance.elementData.symbol,
+        orbital: instance.orbitalChoice,
+        showElectrons: instance.showElectrons,
+        cloudOpacity: instance.cloudOpacity,
+        isPulsing: instance.isPulsing,
+        isRotating: instance.isRotating
+      };
+    }).filter(Boolean);
+    return { version: 1, name: name || 'Untitled', savedAt: new Date().toISOString(), scopes };
+  }
+
+  function loadConfig(config) {
+    clearAllScopes();
+    (config.scopes || []).forEach(addScopeFromConfig);
+    currentConfigName = config.name || 'Untitled';
+  }
 
   // + Add Element: drops a brand-new scope block into the grid for any
-  // symbol the user types, using the same wireScope/captionHTML path as the
-  // built-in four — this is what Destroy's full-slot removal makes possible.
+  // symbol the user types — this is what Destroy's full-slot removal makes
+  // possible.
   document.getElementById('addElementBtn').addEventListener('click', () => {
     const raw = window.prompt('Element symbol to add (e.g., Cu, Xe, U):');
     if (!raw) return;
     const symbol = raw.trim();
-    const meta = PDT.get(symbol);
-    if (!meta) { alert(`Unknown element symbol: "${symbol}"`); return; }
-
-    const scopeEl = document.createElement('div');
-    scopeEl.className = 'scope';
-    scopeEl.innerHTML = `<div class="scope-canvas"></div><div class="scope-caption"></div>`;
-    document.querySelector('.grid').appendChild(scopeEl);
-
-    const instance = wireScope(scopeEl, meta.symbol);
-    scopeEl.querySelector('.scope-caption').innerHTML = captionHTML(meta.symbol, meta.block, instance.orbitalChoice);
+    if (!PDT.get(symbol)) { alert(`Unknown element symbol: "${symbol}"`); return; }
+    addScopeFromConfig({ symbol });
   });
+
+  // ─── Layout persistence: IndexedDB (per-browser dropdown) + JSON file ──
+  // (export/import, which is what makes a layout shareable with someone
+  // else's browser). A "layout" is just the grid's scope list — see
+  // captureConfig above for the exact shape saved.
+  const DEMO_CONFIG = {
+    version: 1,
+    name: 'Demo',
+    scopes: [
+      { symbol: 'H', orbital: 's' },
+      { symbol: 'N', orbital: 'pz' },
+      { symbol: 'Fe', orbital: 'dz2' },
+      { symbol: 'Ce', orbital: 'fz3' }
+    ]
+  };
+  const CONFIG_DB_NAME = 'orbital-scope-layouts';
+  const CONFIG_STORE = 'layouts';
+  let currentConfigName = 'Demo';
+
+  function openConfigDB() {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(CONFIG_DB_NAME, 1);
+      req.onupgradeneeded = () => { req.result.createObjectStore(CONFIG_STORE, { keyPath: 'name' }); };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbSaveConfig(config) {
+    const db = await openConfigDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIG_STORE, 'readwrite');
+      tx.objectStore(CONFIG_STORE).put(config);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  async function idbGetConfig(name) {
+    const db = await openConfigDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIG_STORE, 'readonly');
+      const req = tx.objectStore(CONFIG_STORE).get(name);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbListConfigs() {
+    const db = await openConfigDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIG_STORE, 'readonly');
+      const req = tx.objectStore(CONFIG_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  }
+  async function idbDeleteConfig(name) {
+    const db = await openConfigDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(CONFIG_STORE, 'readwrite');
+      tx.objectStore(CONFIG_STORE).delete(name);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function refreshConfigSelect(selectValue) {
+    const select = document.getElementById('configSelect');
+    const keep = selectValue || select.value;
+    select.innerHTML = '';
+    const demoOpt = document.createElement('option');
+    demoOpt.value = '__demo__';
+    demoOpt.textContent = 'Demo (default)';
+    select.appendChild(demoOpt);
+    let saved = [];
+    try { saved = await idbListConfigs(); } catch (err) { /* IndexedDB unavailable here — Demo still works */ }
+    saved.sort((a, b) => a.name.localeCompare(b.name)).forEach(cfg => {
+      const opt = document.createElement('option');
+      opt.value = cfg.name;
+      opt.textContent = cfg.name;
+      select.appendChild(opt);
+    });
+    const hasKeep = Array.from(select.options).some(o => o.value === keep);
+    select.value = hasKeep ? keep : '__demo__';
+  }
+
+  document.getElementById('configSelect').addEventListener('change', async (e) => {
+    const val = e.target.value;
+    if (val === '__demo__') { loadConfig(DEMO_CONFIG); return; }
+    if (val === '__imported__') return; // already the live layout
+    try {
+      const config = await idbGetConfig(val);
+      if (config) loadConfig(config);
+    } catch (err) { alert('Could not load that layout: ' + err.message); }
+  });
+
+  document.getElementById('saveConfigBtn').addEventListener('click', async () => {
+    const suggested = currentConfigName === 'Demo' ? '' : currentConfigName;
+    const name = window.prompt('Save current layout as:', suggested);
+    if (!name || !name.trim()) return;
+    const config = captureConfig(name.trim());
+    try {
+      await idbSaveConfig(config);
+      currentConfigName = config.name;
+      await refreshConfigSelect(config.name);
+    } catch (err) {
+      alert("Could not save to this browser's storage: " + err.message);
+    }
+  });
+
+  document.getElementById('deleteConfigBtn').addEventListener('click', async () => {
+    const select = document.getElementById('configSelect');
+    const val = select.value;
+    if (val === '__demo__') { alert('The Demo layout is built in and cannot be deleted.'); return; }
+    if (val === '__imported__') { alert("This layout was loaded from a file, not saved here — there's nothing to delete."); return; }
+    if (!window.confirm(`Delete saved layout "${val}"?`)) return;
+    try {
+      await idbDeleteConfig(val);
+      if (currentConfigName === val) currentConfigName = 'Demo';
+      await refreshConfigSelect();
+    } catch (err) {
+      alert('Could not delete: ' + err.message);
+    }
+  });
+
+  // Export: writes the current layout to a .json file, through the same
+  // platform save prompt Record uses (a plain link is inert in the Artifact
+  // sandbox) — this file is what makes a layout shareable with someone
+  // else's browser.
+  document.getElementById('exportConfigBtn').addEventListener('click', async () => {
+    const name = window.prompt('File name for this layout:', currentConfigName === 'Demo' ? 'orbital-scope-layout' : currentConfigName);
+    if (!name || !name.trim()) return;
+    const config = captureConfig(name.trim());
+    const filename = name.trim().replace(/[^a-z0-9_-]+/gi, '-').toLowerCase() + '.json';
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    try {
+      const downloads = await claude.use('downloads');
+      if (downloads) { await downloads.save({ filename, data: blob }); return; }
+    } catch (err) { /* declined or unavailable — fall through */ }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  });
+
+  // Import: a hidden file input reads the chosen .json straight off the
+  // local filesystem. No platform capability needed here — pulling a
+  // user-selected file IN isn't the sandboxed "push a file OUT" case
+  // Record/Export have to route around.
+  document.getElementById('importConfigBtn').addEventListener('click', () => {
+    document.getElementById('importFileInput').click();
+  });
+  document.getElementById('importFileInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      const config = JSON.parse(await file.text());
+      if (!config || !Array.isArray(config.scopes)) throw new Error('Not an Orbital Scope layout file');
+      loadConfig(config);
+      const select = document.getElementById('configSelect');
+      let opt = select.querySelector('option[value="__imported__"]');
+      if (!opt) {
+        opt = document.createElement('option');
+        opt.value = '__imported__';
+        select.insertBefore(opt, select.options[1] || null);
+      }
+      opt.textContent = `${config.name || file.name} (imported)`;
+      select.value = '__imported__';
+    } catch (err) {
+      alert('Could not load that file as an Orbital Scope layout: ' + err.message);
+    }
+  });
+
+  // ─── Boot: always the Demo layout, never a remembered last-used one ────
+  loadConfig(DEMO_CONFIG);
+  refreshConfigSelect('__demo__');
 </script>
