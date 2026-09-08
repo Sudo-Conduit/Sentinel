@@ -445,7 +445,7 @@
         this.isDragging = false;
         this.previousMousePosition = { x: 0, y: 0 };
         this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
-        this.target = { x: 0, y: 0, z: 0 }; // orbit/look-at center; Ctrl+Drag pans this
+        this.target = { x: 0, y: 0, z: 0 }; // orbit/look-at center; Cmd+Drag pans this
         this._elapsed = 0; // advances every frame (drives Pulse)
         this._rotAngle = 0; // advances only while isRotating (drives the Y spin)
         this._wobble = 0;    // advances only while isRotating (drives the X wobble)
@@ -465,6 +465,7 @@
         this._createElectrons();
         this._createNucleus();
         this._setupCameraControls();
+        this._setupResize();
         if (this._showUI) this._createUI();
         this._animate();
     };
@@ -494,7 +495,10 @@
             if (!self.isDragging) return;
             var dx = e.clientX - self.previousMousePosition.x;
             var dy = e.clientY - self.previousMousePosition.y;
-            if (e.ctrlKey || e.metaKey) {
+            if (e.metaKey) {
+                // Cmd only, not Ctrl: Ctrl+Drag collides with OS/browser
+                // gestures (e.g. trackpad zoom, right-click emulation) on
+                // several platforms, which made panning unreliable there.
                 self._pan(dx, dy);
             } else {
                 self.spherical.theta -= dx * 0.01;
@@ -505,7 +509,7 @@
         });
         this.renderer.domElement.addEventListener('mouseup', function() { self.isDragging = false; });
 
-        // Touch stays single-finger-orbit only; Ctrl+Drag pan is a desktop
+        // Touch stays single-finger-orbit only; Cmd+Drag pan is a desktop
         // (mouse + modifier key) interaction, not extended to touch here.
         this.renderer.domElement.addEventListener('touchstart', function(e) {
             if (e.touches.length === 1) {
@@ -532,6 +536,29 @@
         });
     };
 
+    // The renderer/camera are only ever sized once, at construction, from
+    // container.clientWidth/Height — so when the *container's* CSS size
+    // changes later (a host page's layout reflowing, e.g. Orbital Scope's
+    // grid going full-width once only one scope is left), the canvas never
+    // follows unless something tells it to. A ResizeObserver on the
+    // container is exactly that signal.
+    OrbitalVisualizer.prototype._setupResize = function() {
+        var self = this;
+        if (typeof ResizeObserver === 'undefined') return;
+        this._resizeObserver = new ResizeObserver(function() { self._onResize(); });
+        this._resizeObserver.observe(this.container);
+    };
+
+    OrbitalVisualizer.prototype._onResize = function() {
+        if (!this.container || !this.renderer) return;
+        var width = this.container.clientWidth;
+        var height = this.container.clientHeight;
+        if (!width || !height) return;
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    };
+
     // Screen-space pan: reads the camera's own current right/up axes (so it
     // matches whatever THREE actually rendered last frame, poles included)
     // and moves the orbit target along them, scaled by distance so pan
@@ -547,7 +574,7 @@
         this.target.z += (-right.z * dx + up.z * dy) * panScale;
     };
 
-    // Undoes any Ctrl+Drag panning and returns to the default framing.
+    // Undoes any Cmd+Drag panning and returns to the default framing.
     OrbitalVisualizer.prototype.resetView = function() {
         this.target = { x: 0, y: 0, z: 0 };
         this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
@@ -953,6 +980,7 @@
 
     OrbitalVisualizer.prototype.destroy = function() {
         if (this._recorder) { try { this._recorder.stop(); } catch (e) {} this._recorder = null; }
+        if (this._resizeObserver) { this._resizeObserver.disconnect(); this._resizeObserver = null; }
         if (this.container) {
             // .remove() (not container.removeChild) so this is safe even if a
             // host page already replaced the container's contents itself
