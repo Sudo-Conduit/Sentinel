@@ -210,9 +210,14 @@
     const GROUP_N = { '1sp': 1, '2sp': 2, '3sp': 3, '3d': 3, '4sp': 4, '4d': 4, '4f': 4, '5sp': 5, '5d': 5, '5f': 5, '6sp': 6, '6d': 6, '7sp': 7 };
 
     // Real Slater's rules shielding constant for an electron in subshell
-    // (targetN, targetL), given the full electron configuration up to Z.
-    function slaterShielding(Z, targetN, targetL) {
-        const config = electronConfiguration(Z);
+    // (targetN, targetL), given an explicit electron configuration —
+    // not always the neutral atom's. Taking `config` as a parameter
+    // (rather than always deriving it from Z internally) is what lets
+    // this same function serve any ionization step, not just the first:
+    // the shielding a departing electron feels depends on which OTHER
+    // electrons are actually still present, and after step 1 that's no
+    // longer the full neutral-atom configuration.
+    function slaterShielding(config, targetN, targetL) {
         const groups = {};
         config.forEach(c => { const k = groupKey(c.n, c.l); groups[k] = (groups[k] || 0) + c.count; });
         const targetGroup = groupKey(targetN, targetL);
@@ -255,13 +260,59 @@
     // (n-2)f (e.g. Fe: [Ar]3d6 4s2 loses 4s first, giving [Ar]3d6): it
     // falls out of the same rule, not a separate fact about those blocks.
     const L_RANK = { s: 0, p: 1, d: 2, f: 3 };
-    function outermostOccupiedSubshell(Z) {
-        const config = electronConfiguration(Z);
-        let best = config[0];
+    function outermostOccupiedSubshell(config) {
+        let best = null;
         config.forEach(c => {
-            if (c.n > best.n || (c.n === best.n && L_RANK[c.l] > L_RANK[best.l])) best = c;
+            if (c.count <= 0) return;
+            if (!best || c.n > best.n || (c.n === best.n && L_RANK[c.l] > L_RANK[best.l])) best = c;
         });
         return best;
+    }
+
+    // Removes `count` electrons from a NEUTRAL atom's configuration, one
+    // at a time, always from whichever subshell is currently outermost —
+    // the same rule that finds the first-ionized electron, just applied
+    // repeatedly. This is what makes "second ionization," "third," etc.
+    // a real, general capability instead of a fact only known about
+    // ionization step 1: removing electron 2 has to first recognize that,
+    // for Fe, electron 1 already emptied 4s down to 4s1, so electron 2
+    // still comes from 4s (not 3d) — and only once 4s is fully empty does
+    // the outermost subshell shift to 3d for further removals. Nothing
+    // here is specific to "first" — it falls out of applying the general
+    // rule as many times as asked.
+    function electronConfigurationAfterRemoving(Z, count) {
+        const config = electronConfiguration(Z).map(c => ({ n: c.n, l: c.l, count: c.count }));
+        for (let i = 0; i < count; i++) {
+            const outer = outermostOccupiedSubshell(config);
+            if (!outer) break; // no electrons left to remove
+            outer.count -= 1;
+        }
+        return config.filter(c => c.count > 0);
+    }
+
+    // General ionization analysis: step=1 is the neutral atom's first
+    // ionization (today's default everywhere else in this file); step=2
+    // is the energy to remove the NEXT electron from the +1 ion produced
+    // by step 1; step=N works the same way for any N up to the atom's
+    // total electron count. Each step finds its own outermost subshell
+    // and computes Slater shielding against the electrons actually still
+    // present at that point — not a special "second ionization" formula,
+    // the same general machinery run on a smaller configuration.
+    function ionizationAnalysis(Z, step) {
+        step = step || 1;
+        const before = electronConfigurationAfterRemoving(Z, step - 1);
+        const target = outermostOccupiedSubshell(before);
+        if (!target) return { error: 'No electrons remain to ionize at step ' + step + ' for Z=' + Z };
+        const S = slaterShielding(before, target.n, target.l);
+        const Z_eff = Z - S;
+        const orbital_energy = -13.6 * Z_eff * Z_eff / (target.n * target.n);
+        return {
+            Z, step, n: target.n, l: target.l,
+            S: Math.round(S * 1000) / 1000,
+            Z_eff: Math.round(Z_eff * 1000) / 1000,
+            orbital_energy: Math.round(orbital_energy * 100) / 100,
+            ionization_energy: Math.round(-orbital_energy * 100) / 100
+        };
     }
 
     // ================================================================
@@ -270,10 +321,15 @@
     function computeFVTPhysics(Z, occ, cap, period, block) {
         const half = cap / 2;
         const V = half - Math.abs(occ - half);
-        const outer = outermostOccupiedSubshell(Z);
-        const n = outer.n;
-        const S = slaterShielding(Z, outer.n, outer.l);
-        const Z_eff = Z - S;
+        // The rest of this file's per-element data (orbital_energy,
+        // Z_eff, etc.) always means step 1 — the neutral atom's first
+        // ionization — which is exactly ionizationAnalysis(Z, 1). Any
+        // other step is available directly via PDT.ionizationAnalysis
+        // without touching this default.
+        const first = ionizationAnalysis(Z, 1);
+        const n = first.n;
+        const S = first.S;
+        const Z_eff = first.Z_eff;
         const bonding = getBondingType(V, block, occ, cap);
 
         const slater_radius = (n * n) / Z_eff;
@@ -641,6 +697,13 @@
         solve: balanceEquation,
         compute: computeFVTPhysics,
         valenceBalance: sumValenceBalance,
+        // General successive-ionization capability — step=1 is what every
+        // element's own orbital_energy/Z_eff already uses by default;
+        // step=2, 3, ... compute the same real physics for removing the
+        // next electron, and the next, from whichever ion the previous
+        // step left behind. Not a lookup — accepts any Z, any step up to
+        // that element's electron count.
+        ionizationAnalysis: ionizationAnalysis,
         version: "1.0",
         date: "2026-09-06",
         author: "Pooled Impact"
