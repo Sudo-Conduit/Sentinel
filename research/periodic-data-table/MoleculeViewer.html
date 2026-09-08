@@ -23,6 +23,12 @@
   .config-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:18px 0 4px;}
   .config-bar label{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
   .config-bar select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; max-width:260px;}
+  .config-bar input[type=text]{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 10px; min-width:220px; flex:1 1 220px;}
+  .config-bar input[type=text]:focus{outline:none; border-color:var(--accent);}
+  .config-bar input[type=text].invalid{border-color:var(--accent-2);}
+  .cfg-btn{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  .cfg-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .cfg-sep{width:1px; align-self:stretch; background:var(--line); margin:0 4px;}
 
   .grid{display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px;}
   @media (min-width:860px){ .grid{grid-template-columns:1.4fr 1fr;} }
@@ -54,11 +60,16 @@
   <header>
     <p class="eyebrow">Field Valence Theory &middot; Molecular Structure</p>
     <h1>Molecule Viewer</h1>
-    <p class="thesis">Every structure here is built the same way: a molecule's own graph (from a built-in reference set for now) run through <b>MolecularStructure.js</b> for real per-atom hybridization/lone-pair/formal-charge derivation, then <b>MolecularGeometry.js</b> for idealized VSEPR 3D coordinates &mdash; textbook electron-domain geometry, not a measured crystal or NMR structure.</p>
+    <p class="thesis">Every structure here is built the same way: a molecule's graph &mdash; from the reference set below, or typed in as SMILES &mdash; run through <b>MolecularStructure.js</b> for real per-atom hybridization/lone-pair/formal-charge derivation, then <b>MolecularGeometry.js</b> for idealized VSEPR 3D coordinates &mdash; textbook electron-domain geometry, not a measured crystal or NMR structure.</p>
     <p class="controls-hint">Drag to orbit &middot; <kbd>Cmd</kbd>+drag to pan &middot; scroll to zoom.</p>
     <div class="config-bar">
       <label for="moleculeSelect">Molecule</label>
       <select id="moleculeSelect"></select>
+    </div>
+    <div class="config-bar">
+      <label for="smilesInput">SMILES</label>
+      <input type="text" id="smilesInput" placeholder="e.g. c1ccccc1, CC(=O)O, C1=CC=CC=C1..." autocomplete="off" spellcheck="false">
+      <button class="cfg-btn" id="loadSmilesBtn">Build</button>
     </div>
   </header>
 
@@ -158,20 +169,51 @@
       '</div>';
   }
 
-  function loadMolecule(idx) {
-    var m = MOLECULES[idx];
-    var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
-    if (mol.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(mol.error) + '</p>'; return; }
+  var smilesInput = document.getElementById('smilesInput');
+  var loadSmilesBtn = document.getElementById('loadSmilesBtn');
+
+  // Shared core: everything downstream of "we already have a molecule
+  // graph" is identical regardless of whether it came from the preset
+  // list or from typed SMILES - same pipeline, same honesty about what's
+  // derived vs. an error.
+  function loadFromMolecule(mol) {
+    if (mol.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(mol.error) + '</p>'; return false; }
     var opts = { planar: true };
     var structure = MolecularStructure.analyze(mol, opts);
     var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
-    if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return; }
+    if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
     renderInfo(structure, geometry);
     if (viewer) viewer.setGeometry(geometry);
     else viewer = MolecularViewer.create(container, geometry);
+    return true;
   }
 
-  select.addEventListener('change', function() { loadMolecule(parseInt(select.value, 10)); });
-  loadMolecule(parseInt(select.value, 10));
+  function loadPreset(idx) {
+    var m = MOLECULES[idx];
+    smilesInput.value = m.special ? '' : m.smiles;
+    smilesInput.classList.remove('invalid');
+    var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
+    loadFromMolecule(mol);
+  }
+
+  // SMILES-style topology entry (Build/Add path) - the must-have input
+  // alongside the fixed preset list. Runs the exact same Smiles.js parser
+  // already validated in this project's own scratchpad suites (benzene,
+  // pyrrole, Kekulized rings, the porphine round-trip) - nothing new is
+  // trusted here, just wired to a text box.
+  function loadFromSmilesText() {
+    var text = smilesInput.value.trim();
+    if (!text) return;
+    var mol = MolecularStructure.fromSmiles(text);
+    var ok = loadFromMolecule(mol);
+    smilesInput.classList.toggle('invalid', !ok);
+  }
+
+  select.addEventListener('change', function() { loadPreset(parseInt(select.value, 10)); });
+  loadSmilesBtn.addEventListener('click', loadFromSmilesText);
+  smilesInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') loadFromSmilesText(); });
+  smilesInput.addEventListener('input', function() { smilesInput.classList.remove('invalid'); });
+
+  loadPreset(parseInt(select.value, 10));
 }());
 </script>
