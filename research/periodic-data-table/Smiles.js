@@ -307,6 +307,80 @@
         return { atoms: atoms, bonds: bonds, planar: !!planar };
     }
 
+    // Serializes an Aromaticity.js-style {atoms:[{symbol,role}], bonds}
+    // graph BACK into a SMILES string (lowercase-aromatic form, [xH] for a
+    // lonePairDonor heteroatom) — a DFS spanning tree with non-tree edges
+    // becoming numbered ring closures, and all-but-the-last child at a
+    // branch point wrapped in parens. Exists specifically to round-trip
+    // graphs this codebase already built and verified through the parser,
+    // as a way to cross-check the parser against known-correct ground
+    // truth without having to recall a real-world SMILES string from
+    // memory (which would carry the same transcription-error risk hand-
+    // typing a large atom/bond array always has).
+    function serialize(system) {
+        var atoms = system.atoms;
+        var n = atoms.length;
+        var adj = [];
+        for (var i = 0; i < n; i++) adj.push([]);
+        system.bonds.forEach(function(b) { adj[b[0]].push(b[1]); adj[b[1]].push(b[0]); });
+
+        function edgeKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+
+        var visited = new Array(n).fill(false);
+        var parent = new Array(n).fill(-1);
+        var treeEdge = {};
+        function buildTree(u) {
+            visited[u] = true;
+            adj[u].forEach(function(v) {
+                if (!visited[v]) {
+                    parent[v] = u;
+                    treeEdge[edgeKey(u, v)] = true;
+                    buildTree(v);
+                }
+            });
+        }
+        for (i = 0; i < n; i++) if (!visited[i]) buildTree(i);
+
+        var closureDigit = {};
+        var nextDigit = 1;
+        system.bonds.forEach(function(b) {
+            var key = edgeKey(b[0], b[1]);
+            if (!treeEdge[key]) closureDigit[key] = nextDigit++;
+        });
+        var atomRingDigits = [];
+        for (i = 0; i < n; i++) atomRingDigits.push([]);
+        system.bonds.forEach(function(b) {
+            var key = edgeKey(b[0], b[1]);
+            if (closureDigit[key] !== undefined) {
+                atomRingDigits[b[0]].push(closureDigit[key]);
+                atomRingDigits[b[1]].push(closureDigit[key]);
+            }
+        });
+
+        var AROMATIC_CAPABLE = { b: true, c: true, n: true, o: true, p: true, s: true };
+        function atomToken(atom) {
+            var lower = atom.symbol.toLowerCase();
+            if (!AROMATIC_CAPABLE[lower]) return '[' + atom.symbol + ']';
+            if (atom.role === 'lonePairDonor') return '[' + lower + 'H]';
+            return lower;
+        }
+
+        function emit(u, parentNode) {
+            var s = atomToken(atoms[u]);
+            atomRingDigits[u].forEach(function(d) { s += d; });
+            var children = adj[u].filter(function(v) { return v !== parentNode && parent[v] === u; });
+            children.forEach(function(v, idx) {
+                var sub = emit(v, u);
+                s += (idx < children.length - 1) ? '(' + sub + ')' : sub;
+            });
+            return s;
+        }
+
+        var pieces = [];
+        for (i = 0; i < n; i++) if (parent[i] === -1) pieces.push(emit(i, -1));
+        return pieces.join('.');
+    }
+
     // Full molecular formula (heavy atoms + implicit/explicit H), for
     // cross-checking a parsed SMILES against a known real formula the same
     // way the hand-built porphine graph was formula-checked. Implicit H on
@@ -326,7 +400,8 @@
     return {
         parse: parse,
         toAromaticSystem: toAromaticSystem,
+        serialize: serialize,
         heavyAtomFormula: heavyAtomFormula,
-        version: '0.1'
+        version: '0.2'
     };
 }));
