@@ -182,34 +182,125 @@
         return { atoms: atoms, bonds: bonds };
     }
 
-    // Converts a parsed SMILES graph's AROMATIC subsystem (lowercase atoms
-    // only, and only bonds between two aromatic atoms) into the
-    // {atoms, bonds} shape Aromaticity.analyze() consumes, deriving each
-    // atom's role from explicit-H bracket notation rather than requiring
-    // it be hand-declared. `planar` is NOT derived — it's a declared
-    // argument here, same limitation as everywhere else in this codebase;
-    // callers should only pass true for structures independently known to
-    // be planar.
-    function toAromaticSystem(parsed, planar) {
-        var aromaticIndices = [];
-        parsed.atoms.forEach(function(a, i) { if (a.aromatic) aromaticIndices.push(i); });
-        var indexMap = {};
-        aromaticIndices.forEach(function(origIdx, newIdx) { indexMap[origIdx] = newIdx; });
+    // Standard bridge-finding (Tarjan): an edge is a bridge iff removing it
+    // disconnects the graph, equivalently iff it lies on NO cycle. Used
+    // below to separate ring atoms (candidate conjugated system) from
+    // branch/substituent atoms (everything only reachable via a bridge) —
+    // this is a general graph-theory answer to part of "which atoms
+    // belong to the conjugated system," not a heuristic specific to any
+    // one molecule's shape.
+    function findBridgeBondIndices(numAtoms, bonds) {
+        var adj = [];
+        for (var i = 0; i < numAtoms; i++) adj.push([]);
+        bonds.forEach(function(b, idx) {
+            adj[b[0]].push({ to: b[1], idx: idx });
+            adj[b[1]].push({ to: b[0], idx: idx });
+        });
+        var visited = new Array(numAtoms).fill(false);
+        var disc = new Array(numAtoms).fill(-1);
+        var low = new Array(numAtoms).fill(-1);
+        var timer = 0;
+        var bridges = {};
+        function dfs(u, parentEdgeIdx) {
+            visited[u] = true;
+            disc[u] = low[u] = timer++;
+            adj[u].forEach(function(e) {
+                if (e.idx === parentEdgeIdx) return;
+                if (visited[e.to]) {
+                    low[u] = Math.min(low[u], disc[e.to]);
+                } else {
+                    dfs(e.to, e.idx);
+                    low[u] = Math.min(low[u], low[e.to]);
+                    if (low[e.to] > disc[u]) bridges[e.idx] = true;
+                }
+            });
+        }
+        for (var s = 0; s < numAtoms; s++) if (!visited[s]) dfs(s, -1);
+        return bridges;
+    }
 
-        var atoms = aromaticIndices.map(function(origIdx) {
-            var a = parsed.atoms[origIdx];
-            // Explicit H on a heteroatom (e.g. [nH]) marks a lone-pair
-            // donor (pyrrole/furan/thiophene-type); everything else
-            // aromatic is treated as needing a ring double bond.
-            var role = (a.explicitH && a.explicitH > 0) ? 'lonePairDonor' : 'needsDoubleBond';
-            return { symbol: a.symbol, role: role };
+    // Converts a parsed SMILES graph's ring subsystem into the
+    // {atoms, bonds} shape Aromaticity.analyze() consumes, deriving each
+    // atom's role instead of requiring it be hand-declared:
+    // - ring atoms are found via bridge-finding (works for any topology,
+    //   not just the lowercase-aromatic case);
+    // - a ring atom incident to an explicit double/triple bond, or marked
+    //   aromatic (lowercase), gets role 'needsDoubleBond';
+    // - a ring N/O/S/P atom with only single ring bonds and no explicit
+    //   multiple bond is treated as a lone-pair donor (the common
+    //   Kekulized-heteroaromatic pattern, e.g. pyrrole's N);
+    // - a ring carbon with only single bonds (e.g. cyclohexane) has no
+    //   plausible pi role and is excluded — being "in a ring" alone
+    //   doesn't make an atom conjugated.
+    // `planar` is NOT derived — it's a declared argument here, same
+    // limitation as everywhere else in this codebase; callers should only
+    // pass true for structures independently known to be planar.
+    function toAromaticSystem(parsed, planar) {
+        var n = parsed.atoms.length;
+        var bridges = findBridgeBondIndices(n, parsed.bonds);
+        var ringBonds = parsed.bonds.filter(function(b, idx) { return !bridges[idx]; });
+
+        // Two different questions, easy to conflate: "does this ring bond
+        // have any multiple/aromatic character at all" (used to decide
+        // which atoms are IN the conjugated system) vs. "is this atom
+        // incident to a strictly explicit = or # bond" (used to decide a
+        // Kekulized, non-lowercase atom's ROLE). Every bond in a
+        // lowercase-aromatic ring is order 'aromatic', including the ones
+        // touching a lone-pair-donor atom like pyrrole's [nH] — so the
+        // first, broader flag must NOT be used for role, or every aromatic
+        // atom looks "double-bonded" and [nH]'s signal gets masked.
+        var ringHasMultipleCharacter = new Array(n).fill(false);
+        var hasExplicitDoubleOrTriple = new Array(n).fill(false);
+        var inRing = new Array(n).fill(false);
+        ringBonds.forEach(function(b) {
+            inRing[b[0]] = inRing[b[1]] = true;
+            if (b[2] === 2 || b[2] === 3 || b[2] === 'aromatic') {
+                ringHasMultipleCharacter[b[0]] = ringHasMultipleCharacter[b[1]] = true;
+            }
+            if (b[2] === 2 || b[2] === 3) {
+                hasExplicitDoubleOrTriple[b[0]] = hasExplicitDoubleOrTriple[b[1]] = true;
+            }
         });
 
+        var HETEROATOM_DONORS = { N: true, O: true, S: true, P: true };
+        var included = new Array(n).fill(false);
+        for (var i = 0; i < n; i++) {
+            if (!inRing[i]) continue;
+            var a = parsed.atoms[i];
+            if (a.aromatic || ringHasMultipleCharacter[i]) included[i] = true;
+            else if (HETEROATOM_DONORS[a.symbol]) included[i] = true;
+        }
+
+        var indexMap = {};
+        var newIdx = 0;
+        for (i = 0; i < n; i++) if (included[i]) indexMap[i] = newIdx++;
+
+        var atoms = [];
+        for (i = 0; i < n; i++) {
+            if (!included[i]) continue;
+            var atom = parsed.atoms[i];
+            var role;
+            if (atom.aromatic) {
+                // Lowercase atom: explicit H (e.g. [nH]) is the donor
+                // signal; the bond order to its neighbors is uniformly
+                // 'aromatic' either way and carries no information here.
+                role = (atom.explicitH > 0) ? 'lonePairDonor' : 'needsDoubleBond';
+            } else if (hasExplicitDoubleOrTriple[i]) {
+                role = 'needsDoubleBond';
+            } else {
+                // A heteroatom with only single ring bonds and no
+                // lowercase marking (a bare Kekulized N, e.g.) — the
+                // inclusion rule above already excludes a plain carbon
+                // that would otherwise reach this branch.
+                role = 'lonePairDonor';
+            }
+            atoms.push({ symbol: atom.symbol, role: role });
+        }
+
         var bonds = [];
-        parsed.bonds.forEach(function(b) {
-            var i = b[0], j = b[1];
-            if (indexMap[i] !== undefined && indexMap[j] !== undefined) {
-                bonds.push([indexMap[i], indexMap[j]]);
+        ringBonds.forEach(function(b) {
+            if (indexMap[b[0]] !== undefined && indexMap[b[1]] !== undefined) {
+                bonds.push([indexMap[b[0]], indexMap[b[1]]]);
             }
         });
 
