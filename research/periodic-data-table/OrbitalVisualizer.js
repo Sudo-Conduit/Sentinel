@@ -47,7 +47,7 @@
         acceptor: 0xef4444,   // red
         amphoteric: 0x9c55e0  // purple
     };
-    var VACANT_COLOR = 0xdddddd;
+    var VACANT_COLOR = 0x00aaff; // matches the cloud's own cyan
 
     // A vacant-slot marker needs to read as an unmistakable hollow ring from
     // every angle, at any rotation — a 3D torus mesh looks like a ring only
@@ -56,13 +56,15 @@
     // both: sprites always billboard to the camera regardless of the group's
     // rotation, so it stays a clean circle no matter how the orbital spins.
     // Built once and cached — the texture is identical for every instance.
+    // Drawn in white and tinted via SpriteMaterial.color (not baked into the
+    // texture itself), so VACANT_COLOR renders at full, unmuddied strength.
     var ringTextureCache = null;
     function getRingTexture() {
         if (ringTextureCache) return ringTextureCache;
         var canvas = document.createElement('canvas');
         canvas.width = canvas.height = 64;
         var ctx = canvas.getContext('2d');
-        ctx.strokeStyle = '#dddddd';
+        ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 7;
         ctx.beginPath();
         ctx.arc(32, 32, 24, 0, Math.PI * 2);
@@ -125,6 +127,7 @@
         this.isPulsing = true;    // Pulse is ON by default
         this.isRotating = true;   // Auto-rotate is ON by default; pause freezes in place
         this.showElectrons = false; // Discrete electron markers are opt-in
+        this.cloudOpacity = 0.7;  // base opacity of the diffuse point cloud; Pulse modulates around this
         this.isDragging = false;
         this.previousMousePosition = { x: 0, y: 0 };
         this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
@@ -364,6 +367,14 @@
         this._createElectrons();
     };
 
+    // Sets the cloud's base opacity (0-1); Pulse, if on, still modulates
+    // around whatever this is set to. No rebuild needed — _animate reads
+    // cloudOpacity every frame — so this is safe to call continuously from
+    // a slider's input event.
+    OrbitalVisualizer.prototype.setCloudOpacity = function(v) {
+        this.cloudOpacity = clamp(Number(v), 0, 1);
+    };
+
     // ─── The Nucleus ────────────────────────────────────────────
     OrbitalVisualizer.prototype._createNucleus = function() {
         var nucleusGeometry = new root.THREE.SphereGeometry(0.1, 16, 16);
@@ -511,7 +522,7 @@
 
         this.electronsLabel = document.createElement('label');
         this.electronsLabel.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;';
-        this.electronsLabel.title = 'Filled = bonding color (yellow inert, green donor, red acceptor, purple amphoteric). Gray outline = vacant slot.';
+        this.electronsLabel.title = 'Filled = bonding color (yellow inert, green donor, red acceptor, purple amphoteric). Cyan ring outline = vacant slot.';
         this.electronsCheckbox = document.createElement('input');
         this.electronsCheckbox.type = 'checkbox';
         this.electronsCheckbox.checked = this.showElectrons;
@@ -520,6 +531,21 @@
         });
         this.electronsLabel.appendChild(this.electronsCheckbox);
         this.electronsLabel.appendChild(document.createTextNode('Show Electrons'));
+
+        this.opacityLabel = document.createElement('label');
+        this.opacityLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;';
+        this.opacitySlider = document.createElement('input');
+        this.opacitySlider.type = 'range';
+        this.opacitySlider.min = '0.05';
+        this.opacitySlider.max = '1';
+        this.opacitySlider.step = '0.05';
+        this.opacitySlider.value = String(this.cloudOpacity);
+        this.opacitySlider.style.cssText = 'flex:1;';
+        this.opacitySlider.addEventListener('input', function() {
+            self.setCloudOpacity(self.opacitySlider.value);
+        });
+        this.opacityLabel.appendChild(document.createTextNode('Cloud'));
+        this.opacityLabel.appendChild(this.opacitySlider);
 
         this.input = document.createElement('input');
         this.input.placeholder = 'Enter symbol (e.g., Fe)';
@@ -582,6 +608,7 @@
         this.uiPanel.appendChild(this.pulseBtn);
         this.uiPanel.appendChild(this.rotateBtn);
         this.uiPanel.appendChild(this.electronsLabel);
+        this.uiPanel.appendChild(this.opacityLabel);
         this.uiPanel.appendChild(this.input);
         this.uiPanel.appendChild(this.setBtn);
         this.uiPanel.appendChild(this.orbitalSelect);
@@ -631,11 +658,13 @@
             }
             self._updateCamera();
 
-            // PULSE: If pulse is ON, modulate opacity. Independent of Rotate.
+            // PULSE: modulates around the user-set base (cloudOpacity), not a
+            // fixed value, and scales down with it so a low base doesn't get
+            // swamped by a disproportionately large swing. Independent of Rotate.
             if (self.isPulsing) {
-                self.material.opacity = 0.7 + 0.3 * Math.sin(self._elapsed * 3.0);
+                self.material.opacity = clamp(self.cloudOpacity + self.cloudOpacity * 0.4 * Math.sin(self._elapsed * 3.0), 0, 1);
             } else {
-                self.material.opacity = 0.7;
+                self.material.opacity = self.cloudOpacity;
             }
 
             // Rotate (frozen in place, not reset, while isRotating is off)
