@@ -120,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. Ring-closure bonds (pink) are the one honest exception: a simple spanning-tree placement can't solve true ring/macrocycle closure, so that bond's real resulting length is reported and flagged rather than silently assumed correct &mdash; true ring 3D embedding needs real conformer generation, which is out of scope for this module. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -133,6 +133,7 @@
 <script src="./MolecularStructure.js"></script>
 <script src="./MolecularGeometry.js"></script>
 <script src="./MolecularElectrostatics.js"></script>
+<script src="./MolecularTPSA.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -199,7 +200,7 @@
     }).join('');
   }
 
-  function renderInfo(structure, geometry, electrostatics) {
+  function renderInfo(structure, geometry, electrostatics, tpsa) {
     var warnHtml = '';
     var allWarnings = (structure.warnings || []).concat(geometry.warnings || []);
     if (allWarnings.length) {
@@ -218,6 +219,10 @@
     if (electrostatics && electrostatics.applicable) {
       dipoleHtml = '<div class="info-row"><span class="k">Dipole moment</span><span class="v">' + esc(electrostatics.dipole.magnitudeDebye) + ' D</span></div>';
     }
+    var tpsaHtml = '';
+    if (tpsa && (tpsa.matchedAtoms.length || tpsa.unmatchedAtoms.length)) {
+      tpsaHtml = '<div class="info-row"><span class="k">Polar surface area' + (tpsa.isLowerBound ? ' (&ge;)' : '') + '</span><span class="v">' + esc(tpsa.psaAngstrom2) + ' &Aring;&sup2;</span></div>';
+    }
     infoPanel.innerHTML =
       '<h2>Quick Summary</h2>' +
       '<div class="info-row"><span class="k">Formula (Hill)</span><span class="v">' + esc(structure.formula.string) + '</span></div>' +
@@ -225,6 +230,7 @@
       '<div class="info-row"><span class="k">Heavy + implicit-H atom count</span><span class="v">' + esc(geometry.atoms.length) + '</span></div>' +
       '<div class="info-row"><span class="k">Bonds</span><span class="v">' + esc(geometry.bonds.length) + '</span></div>' +
       dipoleHtml +
+      tpsaHtml +
       aromHtml +
       '<div class="tag">' + esc(geometry.geometrySource) + '</div>' +
       warnHtml +
@@ -240,7 +246,7 @@
 
   var reportPanel = document.getElementById('reportPanel');
   var toggleReportBtn = document.getElementById('toggleReportBtn');
-  var current = { mol: null, structure: null, geometry: null, electrostatics: null, sourceSmiles: null };
+  var current = { mol: null, structure: null, geometry: null, electrostatics: null, tpsa: null, sourceSmiles: null };
 
   function badge(kind, label) { return '<span class="badge badge-' + kind + '">' + label + '</span>'; }
 
@@ -251,7 +257,8 @@
       sourceSmiles: current.sourceSmiles,
       structureResult: current.structure,
       geometryResult: current.geometry,
-      electrostaticsResult: current.electrostatics
+      electrostaticsResult: current.electrostatics,
+      tpsaResult: current.tpsa
     });
     if (report.error) { reportPanel.innerHTML = '<p>' + esc(report.error) + '</p>'; return; }
 
@@ -309,6 +316,20 @@
       }
     }
 
+    var tpsaHtml = '<p class="empty-note">No nitrogen or oxygen atoms in this molecule.</p>';
+    if (report.tpsa && (report.tpsa.matchedAtoms.length || report.tpsa.unmatchedAtoms.length)) {
+      tpsaHtml = '<div class="kv">' +
+        '<span class="k">Method</span><span class="v">' + esc(report.tpsa.method) + '</span>' +
+        '<span class="k">Polar surface area</span><span class="v">' + (report.tpsa.isLowerBound ? '&ge; ' : '') + esc(report.tpsa.psaAngstrom2) + ' &Aring;&sup2;</span>' +
+        '<span class="k">Matched atoms</span><span class="v">' + esc(report.tpsa.matchedAtoms.length) + '</span>' +
+        '</div>';
+      if (report.tpsa.unmatchedAtoms.length) {
+        tpsaHtml += '<ul style="margin-top:10px">' + report.tpsa.unmatchedAtoms.map(function(u) {
+          return '<li>atom ' + u.index + ' (' + esc(u.symbol) + '): ' + esc(u.reason) + '</li>';
+        }).join('') + '</ul>';
+      }
+    }
+
     var geomHtml = '<div class="kv">' +
       '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
       '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
@@ -344,6 +365,7 @@
         '<table><thead><tr><th>#</th><th>El.</th><th>Implicit H</th><th>Hybridization</th><th>Lone pairs</th><th>Geometry</th><th>&pi; role</th></tr></thead><tbody>' + bondingRows + '</tbody></table></section>' +
       '<section><h3>Aromaticity / Conjugation ' + badge('derived', 'derived') + '</h3>' + aromHtml + '</section>' +
       '<section><h3>Electrostatics / Polarity ' + badge('derived', 'derived') + badge('cited', 'PEOE parameters cited') + '</h3>' + elecHtml + '</section>' +
+      '<section><h3>Polar Surface Area ' + badge('derived', 'derived') + badge('cited', 'fragment values cited') + '</h3>' + tpsaHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
@@ -368,9 +390,10 @@
     var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
     if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
     var electrostatics = MolecularElectrostatics.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
-    renderInfo(structure, geometry, electrostatics);
+    var tpsa = MolecularTPSA.analyze(mol, Object.assign({ structureResult: structure }, opts));
+    renderInfo(structure, geometry, electrostatics, tpsa);
     renderElementLegend(geometry);
-    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.sourceSmiles = sourceSmiles || null;
+    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.tpsa = tpsa; current.sourceSmiles = sourceSmiles || null;
     if (!reportPanel.hidden) renderReport();
     if (viewer) viewer.setGeometry(geometry);
     else viewer = MolecularViewer.create(container, geometry);

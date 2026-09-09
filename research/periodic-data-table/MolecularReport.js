@@ -24,13 +24,13 @@
 //                  context beyond a matched reference-library entry.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry'], factory);
+        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry', './MolecularElectrostatics', './MolecularTPSA'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'));
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'), require('./MolecularTPSA.js'));
     } else {
-        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics);
+        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics, root.MolecularTPSA);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics, MolecularTPSA) {
     'use strict';
     if (!MolecularStructure) throw new Error('MolecularReport requires MolecularStructure');
     if (!MolecularGeometry) throw new Error('MolecularReport requires MolecularGeometry');
@@ -137,6 +137,14 @@
         return result;
     }
 
+    function buildTPSA(molecule, structure, options) {
+        if (options && options.tpsaResult) return options.tpsaResult;
+        if (!MolecularTPSA) return null;
+        var result = MolecularTPSA.analyze(molecule, Object.assign({ structureResult: structure }, options));
+        if (result.error) return null;
+        return result;
+    }
+
     // molecule/structureResult/geometryResult are the outputs of
     // MolecularStructure.fromSmiles|fromGraph, .analyze(), and
     // MolecularGeometry.generateIdealizedCoordinates() respectively -
@@ -150,12 +158,14 @@
         var geometry = options.geometryResult || MolecularGeometry.generateIdealizedCoordinates(molecule, Object.assign({ structureResult: structure }, options));
         if (geometry.error) return geometry;
         var electrostatics = buildElectrostatics(molecule, structure, geometry, options);
+        var tpsa = buildTPSA(molecule, structure, options);
 
         return {
             identity: buildIdentity(molecule, structure, options),
             bonding: buildBonding(structure),
             geometry: buildGeometrySection(geometry),
             electrostatics: electrostatics,
+            tpsa: tpsa,
             referenceContext: buildReferenceContext(structure),
             provenance: {
                 derived: [
@@ -163,12 +173,14 @@
                     'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and VSEPR geometry name',
                     'Aromaticity verdict, pi-electron count, delocalization energy, and HOMO/LUMO (real Huckel MO diagonalization - HOMO/LUMO only for conjugated systems)',
                     'Idealized VSEPR 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
-                    electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null
+                    electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null,
+                    tpsa ? 'Topological polar surface area (fragment classification from this project\'s own per-atom bonding data - the fragment contribution VALUES below are CITED)' : null
                 ].filter(Boolean),
                 cited: [
                     'Standard atomic weights (CIAAW/IUPAC 2021 table, MolecularStructure.js)',
                     'Reference covalent bond lengths (MolecularGeometry.js) - pairs not in the curated table fall back to an uncalibrated estimate, flagged per-bond via lengthSource',
                     electrostatics && electrostatics.applicable ? 'Gasteiger-Marsili PEOE electronegativity parameters (Tetrahedron 1980, 36, 3219) - MolecularElectrostatics.js' : null,
+                    tpsa ? 'Ertl/Rohde/Selzer TPSA fragment contribution values (J. Med. Chem. 2000, 43, 3714) - MolecularTPSA.js' : null,
                     structure.molarMass.warnings.length ? 'One or more elements in this formula have no stable isotope - see molarMassCitationWarnings' : null
                 ].filter(Boolean),
                 notComputed: NOT_COMPUTED
