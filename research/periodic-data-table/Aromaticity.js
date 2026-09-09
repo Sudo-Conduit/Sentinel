@@ -187,6 +187,44 @@
         return { totalEnergy: total, openShell: openShell };
     }
 
+    // HOMO/LUMO for the pi system: reads the fill boundary off the exact
+    // same MO eigenvalues + degenerate-level grouping fillElectrons()
+    // already computes above - no new diagonalization, just interpreting
+    // data this module already derives. Only meaningful for a conjugated
+    // system (see analyze() below - non-conjugated molecules have no pi
+    // MOs in this model at all, correctly absent rather than guessed).
+    // homoOpenShell mirrors fillElectrons' own openShell flag: true when
+    // the HOMO level is a degenerate level left half-filled (the same
+    // antiaromatic/diradical signal fillElectrons already reports).
+    function homoLumo(eigenvalues, piElectrons) {
+        var EPS = 1e-6;
+        var levels = [];
+        eigenvalues.forEach(function(e) {
+            var last = levels[levels.length - 1];
+            if (last && Math.abs(last.energy - e) < EPS) last.count++;
+            else levels.push({ energy: e, count: 1 });
+        });
+        var remaining = piElectrons;
+        var homoEnergy = null, lumoEnergy = null, homoOpenShell = false;
+        for (var i = 0; i < levels.length; i++) {
+            if (remaining <= 0) break;
+            var capacity = levels[i].count * 2;
+            homoEnergy = levels[i].energy;
+            if (remaining < capacity) homoOpenShell = true;
+            remaining -= capacity;
+            if (remaining <= 0) {
+                lumoEnergy = (i + 1 < levels.length) ? levels[i + 1].energy : null;
+                break;
+            }
+        }
+        return {
+            homoEnergyEv: homoEnergy === null ? null : Math.round(homoEnergy * 1000) / 1000,
+            lumoEnergyEv: lumoEnergy === null ? null : Math.round(lumoEnergy * 1000) / 1000,
+            gapEv: (homoEnergy !== null && lumoEnergy !== null) ? Math.round((lumoEnergy - homoEnergy) * 1000) / 1000 : null,
+            homoOpenShell: homoOpenShell
+        };
+    }
+
     // system = {
     //   atoms: [{ symbol, role }, ...],
     //   bonds: [[i, j], ...],  // arbitrary conjugated-system connectivity —
@@ -322,6 +360,7 @@
             fullyConjugated: fullyConjugated,
             huckelApplicable: huckelApplicable,
             eigenvaluesEv: eigenvalues.map(function(e) { return Math.round(e * 1000) / 1000; }),
+            homoLumo: homoLumo(eigenvalues, piElectrons),
             openShellHOMO: fill.openShell,
             totalPiEnergyEv: Math.round(fill.totalEnergy * 1000) / 1000,
             localizedReferenceEv: Math.round(referenceEnergy * 1000) / 1000,
@@ -373,6 +412,7 @@
         compareBetaModels: compareBetaModels,
         _findPerfectMatching: findPerfectMatching,
         _jacobiEigenvalues: jacobiEigenvalues,
+        _homoLumo: homoLumo,
         _computeBeta: computeBeta,
         BETA_EV: BETA_EV,
         version: '0.4'
