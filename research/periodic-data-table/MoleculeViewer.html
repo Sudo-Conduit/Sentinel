@@ -1,0 +1,545 @@
+<title>Molecule Viewer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
+    --ink:#e7edf5; --ink-muted:#7c8ba0;
+    --accent:#00aaff; --accent-2:#ff2fb0;
+    --font-display:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0;}
+  .page{max-width:1180px; margin:0 auto; padding:44px 28px 60px;}
+
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 12px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:clamp(30px,4.6vw,46px); line-height:1.05; margin:0 0 16px; text-wrap:balance;}
+  .thesis{font-size:15.5px; line-height:1.65; color:var(--ink-muted); margin:0 0 8px; max-width:80ch;}
+  .thesis b{color:var(--ink); font-weight:600;}
+  .controls-hint{font-family:var(--font-mono); font-size:12.5px; color:var(--ink-muted); margin:14px 0 0;}
+  .controls-hint kbd{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:11.5px;}
+
+  .config-bar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:18px 0 4px;}
+  .config-bar label{font-family:var(--font-mono); font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-muted);}
+  .config-bar select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; max-width:260px;}
+  .config-bar input[type=text]{font-family:var(--font-mono); font-size:12.5px; background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 10px; min-width:220px; flex:1 1 220px;}
+  .config-bar input[type=text]:focus{outline:none; border-color:var(--accent);}
+  .config-bar input[type=text].invalid{border-color:var(--accent-2);}
+  .cfg-btn{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  .cfg-btn:hover{border-color:var(--accent); color:var(--accent);}
+  .cfg-sep{width:1px; align-self:stretch; background:var(--line); margin:0 4px;}
+
+  .grid{display:grid; grid-template-columns:1fr; gap:20px; margin-top:20px;}
+  @media (min-width:860px){ .grid{grid-template-columns:1.4fr 1fr;} }
+
+  .scope{background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .element-legend{display:flex; flex-wrap:wrap; gap:4px 12px; padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted);}
+  .element-legend .chip{display:inline-flex; align-items:center; gap:5px;}
+  .element-legend .dot{width:11px; height:11px; border-radius:50%; display:inline-block; box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);}
+  .element-legend .sym{color:var(--ink); font-weight:700;}
+  .scope-canvas{position:relative; width:100%; aspect-ratio:4/3; background:var(--bg);}
+  .scope-canvas canvas{display:block;}
+
+  .info-panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; font-family:var(--font-mono); font-size:12.5px; line-height:1.7;}
+  .info-panel h2{font-family:var(--font-display); font-size:14px; margin:0 0 12px; color:var(--accent); text-transform:uppercase; letter-spacing:.06em;}
+  .info-row{display:flex; justify-content:space-between; gap:10px; border-bottom:1px solid var(--line); padding:5px 0;}
+  .info-row .k{color:var(--ink-muted);}
+  .info-row .v{color:var(--ink); text-align:right;}
+  .tag{display:inline-block; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid var(--accent); color:var(--accent); margin-top:8px;}
+  .warn-list{margin:10px 0 0; padding-left:16px; color:var(--accent-2); font-size:11.5px; line-height:1.6;}
+  .warn-list li{margin-bottom:4px;}
+  .legend{margin-top:14px; display:flex; flex-wrap:wrap; gap:8px 14px; font-size:11px; color:var(--ink-muted);}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:10px; height:10px; border-radius:50%; display:inline-block;}
+
+  .fieldnote{margin-top:30px; padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; font-size:13.5px; line-height:1.65; color:var(--ink-muted); max-width:80ch;}
+  .fieldnote b{color:var(--ink);}
+  .fieldnote code{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:1px 6px; color:var(--ink); font-size:12.5px;}
+
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between;}
+
+  .report{margin-top:20px; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:26px 28px;}
+  .report h2{font-family:var(--font-display); font-size:22px; margin:0 0 4px;}
+  .report .report-sub{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); margin:0 0 22px;}
+  .report section{margin-bottom:26px;}
+  .report section:last-child{margin-bottom:0;}
+  .report h3{font-family:var(--font-mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; margin:0 0 10px; padding-bottom:6px; border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px;}
+  .badge{font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em; text-transform:uppercase; padding:2px 7px; border-radius:4px;}
+  .badge-derived{background:rgba(0,170,255,.15); color:var(--accent); border:1px solid rgba(0,170,255,.4);}
+  .badge-cited{background:rgba(255,193,7,.12); color:#ffc107; border:1px solid rgba(255,193,7,.4);}
+  .badge-input{background:rgba(80,208,80,.12); color:#7ed67e; border:1px solid rgba(80,208,80,.4);}
+  .badge-notcomputed{background:rgba(255,47,176,.1); color:var(--accent-2); border:1px solid rgba(255,47,176,.35);}
+  .report table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:12px;}
+  .report th{text-align:left; color:var(--ink-muted); font-weight:500; padding:6px 8px; border-bottom:1px solid var(--line); font-size:10.5px; text-transform:uppercase; letter-spacing:.04em;}
+  .report td{padding:6px 8px; border-bottom:1px solid var(--surface-2); color:var(--ink);}
+  .report ul{margin:0; padding-left:18px; font-size:12.5px; line-height:1.7; color:var(--ink-muted);}
+  .report ul.notcomputed li{color:var(--ink-muted);}
+  .report .kv{display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-family:var(--font-mono); font-size:12.5px;}
+  .report .kv .k{color:var(--ink-muted);}
+  .report .kv .v{color:var(--ink);}
+  .report .refcard{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:14px 16px; font-size:13px; line-height:1.6; color:var(--ink-muted);}
+  .report .refcard b{color:var(--ink);}
+  .report .empty-note{font-size:12.5px; color:var(--ink-muted); font-style:italic;}
+  @media print{
+    body *{visibility:hidden;}
+    .report, .report *{visibility:visible;}
+    .report{position:absolute; left:0; top:0; width:100%; border:none;}
+  }
+</style>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Field Valence Theory &middot; Molecular Structure</p>
+    <h1>Molecule Viewer</h1>
+    <p class="thesis">Every structure here is built the same way: a molecule's graph &mdash; from the reference set below, or typed in as SMILES &mdash; run through <b>MolecularStructure.js</b> for real per-atom hybridization/lone-pair/formal-charge derivation, then <b>MolecularGeometry.js</b> for idealized VSEPR 3D coordinates &mdash; textbook electron-domain geometry, not a measured crystal or NMR structure.</p>
+    <p class="controls-hint">Drag to orbit &middot; <kbd>Cmd</kbd>+drag to pan &middot; scroll to zoom.</p>
+    <div class="config-bar">
+      <label for="moleculeSelect">Molecule</label>
+      <select id="moleculeSelect"></select>
+    </div>
+    <div class="config-bar">
+      <label for="smilesInput">SMILES</label>
+      <input type="text" id="smilesInput" placeholder="e.g. c1ccccc1, CC(=O)O, C1=CC=CC=C1..." autocomplete="off" spellcheck="false">
+      <button class="cfg-btn" id="loadSmilesBtn">Build</button>
+      <span class="cfg-sep"></span>
+      <button class="cfg-btn" id="toggleReportBtn">Full Report &#9662;</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div class="scope">
+      <div class="element-legend" id="elementLegend"></div>
+      <div class="scope-canvas" id="viewerContainer"></div>
+    </div>
+    <div class="info-panel" id="infoPanel"></div>
+  </div>
+
+  <div class="report" id="reportPanel" hidden></div>
+
+  <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. A simple, unfused ring (benzene, pyridine, pyrrole&hellip;) closes exactly via a closed-form circumscribed-polygon placement. A fused/bridged ring system (e.g. a porphyrin macrocycle) that has no closed-form solution is instead solved via real distance geometry - classical multidimensional scaling for a globally consistent starting shape, then a real bond-length constraint relaxation (the same idea as SHAKE) to exact bond lengths; local angles there are a good-faith result of that relaxation, not independently VSEPR-guaranteed. Ring-closure bonds (pink) are the rare, honest remainder: if even that relaxation can't converge for a bond, its real resulting length is reported and flagged rather than silently assumed correct. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
+
+  <footer>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>Author: Will Fobbs &middot; Pooled Impact</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="./PDT.js"></script>
+<script src="./Smiles.js"></script>
+<script src="./Aromaticity.js"></script>
+<script src="./CoordinationChemistry.js"></script>
+<script src="./MolecularStructure.js"></script>
+<script src="./MolecularGeometry.js"></script>
+<script src="./MolecularElectrostatics.js"></script>
+<script src="./MolecularTPSA.js"></script>
+<script src="./MolecularVanDerWaals.js"></script>
+<script src="./MolecularPolarizability.js"></script>
+<script src="./MolecularVibrations.js"></script>
+<script src="./MolecularReport.js"></script>
+<script src="./MolecularViewer.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // Built-in reference set - the SMILES text-entry path (Build/Add) is
+  // the next item; until then this page demonstrates the pipeline on a
+  // fixed, known-good set already validated in this project's own
+  // scratchpad test suites.
+  var MOLECULES = [
+    { label: 'Methane (CH4)', smiles: 'C' },
+    { label: 'Ammonia (NH3)', smiles: 'N' },
+    { label: 'Water (H2O)', smiles: 'O' },
+    { label: 'Ethylene (C2H4)', smiles: 'C=C' },
+    { label: 'Acetylene (C2H2)', smiles: 'C#C' },
+    { label: 'Formaldehyde (CH2O)', smiles: 'C=O' },
+    { label: 'Carbon dioxide (CO2)', smiles: 'O=C=O' },
+    { label: 'Benzene (C6H6)', smiles: 'c1ccccc1' },
+    { label: 'Pyrrole (C4H5N)', smiles: 'c1cc[nH]c1' },
+    { label: 'Heme b macrocycle + Fe (from CoordinationChemistry.buildPorphineMacrocycle)', special: 'heme' }
+  ];
+
+  function buildHemeGraphMolecule() {
+    var macrocycle = CoordinationChemistry.buildPorphineMacrocycle();
+    var atoms = macrocycle.atoms.map(function(a) { return { symbol: a.symbol, explicitH: null, charge: 0, aromatic: true }; });
+    atoms.push({ symbol: 'Fe', explicitH: 0, charge: 2 });
+    var feIdx = atoms.length - 1;
+    var bonds = macrocycle.bonds.map(function(b) { return [b[0], b[1], 'aromatic']; });
+    macrocycle.atoms.forEach(function(a, i) { if (a.symbol === 'N') bonds.push([feIdx, i, 1]); });
+    return MolecularStructure.fromGraph({ atoms: atoms, bonds: bonds });
+  }
+
+  var select = document.getElementById('moleculeSelect');
+  MOLECULES.forEach(function(m, i) {
+    var opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = m.label;
+    select.appendChild(opt);
+  });
+  select.value = 7; // benzene - shows off Kekulization + ring-closure flagging by default
+
+  var container = document.getElementById('viewerContainer');
+  var infoPanel = document.getElementById('infoPanel');
+  var elementLegend = document.getElementById('elementLegend');
+  var viewer = null;
+
+  function esc(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
+
+  function hexColor(n) { return '#' + n.toString(16).padStart(6, '0'); }
+
+  // Colors + symbols only (no names) - the point is a fast lookup while
+  // looking at the render, not a periodic-table reference; same CPK/Jmol
+  // palette MolecularViewer.js itself paints the atoms with, so the two
+  // never disagree.
+  function renderElementLegend(geometry) {
+    var seen = {};
+    var symbols = [];
+    geometry.atoms.forEach(function(a) { if (!seen[a.symbol]) { seen[a.symbol] = true; symbols.push(a.symbol); } });
+    symbols.sort();
+    elementLegend.innerHTML = symbols.map(function(sym) {
+      var hex = MolecularViewer.CPK_COLOR[sym] !== undefined ? MolecularViewer.CPK_COLOR[sym] : 0xcccccc;
+      return '<span class="chip"><span class="dot" style="background:' + hexColor(hex) + '"></span><span class="sym">' + esc(sym) + '</span></span>';
+    }).join('');
+  }
+
+  function renderInfo(structure, geometry, electrostatics, tpsa, vanDerWaals, polarizability) {
+    var warnHtml = '';
+    var allWarnings = (structure.warnings || []).concat(geometry.warnings || []);
+    if (allWarnings.length) {
+      warnHtml = '<ul class="warn-list">' + allWarnings.slice(0, 8).map(function(w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>';
+    }
+    var aromHtml = '';
+    if (structure.aromaticity && !structure.aromaticity.error) {
+      var hl = structure.aromaticity.homoLumo;
+      aromHtml =
+        '<div class="info-row"><span class="k">Aromaticity verdict</span><span class="v">' + esc(structure.aromaticity.verdict) + '</span></div>' +
+        '<div class="info-row"><span class="k">&pi; electrons</span><span class="v">' + esc(structure.aromaticity.piElectrons) + '</span></div>' +
+        '<div class="info-row"><span class="k">Delocalization energy</span><span class="v">' + esc(structure.aromaticity.delocalizationEnergyEv) + ' eV</span></div>' +
+        (hl && hl.gapEv !== null ? '<div class="info-row"><span class="k">HOMO&ndash;LUMO gap</span><span class="v">' + esc(hl.gapEv) + ' eV</span></div>' : '');
+    }
+    var dipoleHtml = '';
+    if (electrostatics && electrostatics.applicable) {
+      dipoleHtml = '<div class="info-row"><span class="k">Dipole moment</span><span class="v">' + esc(electrostatics.dipole.magnitudeDebye) + ' D</span></div>';
+    }
+    var tpsaHtml = '';
+    if (tpsa && (tpsa.matchedAtoms.length || tpsa.unmatchedAtoms.length)) {
+      tpsaHtml = '<div class="info-row"><span class="k">Polar surface area' + (tpsa.isLowerBound ? ' (&ge;)' : '') + '</span><span class="v">' + esc(tpsa.psaAngstrom2) + ' &Aring;&sup2;</span></div>';
+    }
+    var vdwHtml = '';
+    if (vanDerWaals) {
+      vdwHtml =
+        '<div class="info-row"><span class="k">Volume' + (vanDerWaals.volume.unmatchedElements.length ? ' (&ge;)' : '') + '</span><span class="v">' + esc(vanDerWaals.volume.volumeAngstrom3) + ' &Aring;&sup3;</span></div>' +
+        '<div class="info-row"><span class="k">Surface area' + (vanDerWaals.surfaceArea.unmatchedElements.length ? ' (&ge;)' : '') + '</span><span class="v">' + esc(vanDerWaals.surfaceArea.surfaceAreaAngstrom2) + ' &Aring;&sup2;</span></div>';
+    }
+    var polHtml = '';
+    if (polarizability && polarizability.matchedAtoms.length) {
+      polHtml = '<div class="info-row"><span class="k">Polarizability' + (polarizability.isLowerBound ? ' (&ge;)' : '') + '</span><span class="v">' + esc(polarizability.polarizabilityAngstrom3) + ' &Aring;&sup3;</span></div>';
+    }
+    infoPanel.innerHTML =
+      '<h2>Quick Summary</h2>' +
+      '<div class="info-row"><span class="k">Formula (Hill)</span><span class="v">' + esc(structure.formula.string) + '</span></div>' +
+      '<div class="info-row"><span class="k">Molar mass</span><span class="v">' + esc(structure.molarMass.value) + ' g/mol</span></div>' +
+      '<div class="info-row"><span class="k">Heavy + implicit-H atom count</span><span class="v">' + esc(geometry.atoms.length) + '</span></div>' +
+      '<div class="info-row"><span class="k">Bonds</span><span class="v">' + esc(geometry.bonds.length) + '</span></div>' +
+      dipoleHtml +
+      tpsaHtml +
+      vdwHtml +
+      polHtml +
+      aromHtml +
+      '<div class="tag">' + esc(geometry.geometrySource) + '</div>' +
+      warnHtml +
+      '<div class="legend">' +
+        '<span><span class="swatch" style="background:#8a97a8"></span>bond</span>' +
+        '<span><span class="swatch" style="background:#00aaff"></span>aromatic bond</span>' +
+        '<span><span class="swatch" style="background:#ff2fb0"></span>ring-closure (unsolved) bond</span>' +
+      '</div>';
+  }
+
+  var smilesInput = document.getElementById('smilesInput');
+  var loadSmilesBtn = document.getElementById('loadSmilesBtn');
+
+  var reportPanel = document.getElementById('reportPanel');
+  var toggleReportBtn = document.getElementById('toggleReportBtn');
+  var current = { mol: null, structure: null, geometry: null, electrostatics: null, tpsa: null, vanDerWaals: null, polarizability: null, sourceSmiles: null };
+
+  function badge(kind, label) { return '<span class="badge badge-' + kind + '">' + label + '</span>'; }
+
+  function renderReport() {
+    if (!current.structure) return;
+    var report = MolecularReport.build(current.mol, {
+      planar: true,
+      sourceSmiles: current.sourceSmiles,
+      structureResult: current.structure,
+      geometryResult: current.geometry,
+      electrostaticsResult: current.electrostatics,
+      tpsaResult: current.tpsa,
+      vanDerWaalsResult: current.vanDerWaals,
+      polarizabilityResult: current.polarizability
+    });
+    if (report.error) { reportPanel.innerHTML = '<p>' + esc(report.error) + '</p>'; return; }
+
+    var identityRows =
+      '<div class="kv">' +
+      '<span class="k">Formula (Hill)</span><span class="v">' + esc(report.identity.formula) + '</span>' +
+      '<span class="k">Molar mass</span><span class="v">' + esc(report.identity.molarMassGramsPerMol) + ' g/mol</span>' +
+      '<span class="k">Heavy atom count</span><span class="v">' + esc(report.identity.heavyAtomCount) + '</span>' +
+      (report.identity.sourceSmilesAsEntered ? '<span class="k">SMILES as entered</span><span class="v">' + esc(report.identity.sourceSmilesAsEntered) + '</span>' : '') +
+      '</div>';
+
+    var bondingRows = report.bonding.perAtom.map(function(a) {
+      if (a.error) return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td colspan="5">' + esc(a.error) + '</td></tr>';
+      // Fallback dashes are the literal HTML entity (ASCII source, decoded
+      // at innerHTML-assignment time) rather than a raw em-dash character
+      // routed through esc() - esc() escapes '&' too, so a raw non-ASCII
+      // character surviving that round-trip depends on the page's runtime
+      // charset handling. Pure-ASCII entity text sidesteps that entirely.
+      var hyb = a.hybridization ? esc(a.hybridization) : '&mdash;';
+      var lp = a.lonePairs === null ? '&mdash;' : esc(a.lonePairs);
+      var geom = Array.isArray(a.geometry) ? esc(a.geometry.join(' / ')) : (a.geometry ? esc(a.geometry) : '&mdash;');
+      var role = a.piSystemRole ? esc(a.piSystemRole) : '&mdash;';
+      return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td>' + esc(a.implicitH) + '</td><td>' +
+        hyb + '</td><td>' + lp + '</td><td>' + geom + '</td><td>' + role + '</td></tr>';
+    }).join('');
+
+    var aromHtml = '<p class="empty-note">No conjugated/aromatic system in this molecule.</p>';
+    if (report.bonding.aromaticity) {
+      var ar = report.bonding.aromaticity;
+      var hl = ar.homoLumo;
+      aromHtml = '<div class="kv">' +
+        '<span class="k">Verdict</span><span class="v">' + esc(ar.verdict) + '</span>' +
+        '<span class="k">&pi; electrons</span><span class="v">' + esc(ar.piElectrons) + '</span>' +
+        '<span class="k">Delocalization energy</span><span class="v">' + esc(ar.delocalizationEnergyEv) + ' eV</span>' +
+        '<span class="k">Kekule structure exists</span><span class="v">' + esc(ar.kekuleExists) + '</span>' +
+        '<span class="k">Planar (declared)</span><span class="v">' + esc(ar.planarDeclared) + '</span>' +
+        (hl && hl.homoEnergyEv !== null ? '<span class="k">HOMO energy</span><span class="v">' + esc(hl.homoEnergyEv) + ' eV</span>' : '') +
+        (hl && hl.lumoEnergyEv !== null ? '<span class="k">LUMO energy</span><span class="v">' + esc(hl.lumoEnergyEv) + ' eV</span>' : '') +
+        (hl && hl.gapEv !== null ? '<span class="k">HOMO&ndash;LUMO gap</span><span class="v">' + esc(hl.gapEv) + ' eV</span>' : '') +
+        (hl && hl.hardnessEv !== null ? '<span class="k">Chemical hardness (&eta;)</span><span class="v">' + esc(hl.hardnessEv) + ' eV</span>' : '') +
+        (hl && hl.softnessPerEv !== null ? '<span class="k">Chemical softness (S)</span><span class="v">' + esc(hl.softnessPerEv) + ' eV&#8315;&sup1;</span>' : '') +
+        (hl && hl.electronegativityEv !== null ? '<span class="k">Electronegativity (&chi;)</span><span class="v">' + esc(hl.electronegativityEv) + ' eV</span>' : '') +
+        (hl && hl.electrophilicityEv !== null ? '<span class="k">Electrophilicity index (&omega;)</span><span class="v">' + esc(hl.electrophilicityEv) + ' eV</span>' : '') +
+        (hl && hl.opticalGapNm !== null ? '<span class="k">Optical gap (onset)</span><span class="v">' + esc(hl.opticalGapNm) + ' nm</span>' : '') +
+        (hl && hl.conductivityClass ? '<span class="k">Conductivity class</span><span class="v">' + esc(hl.conductivityClass) + '</span>' : '') +
+        '</div>' + (ar.note ? '<p class="empty-note">' + esc(ar.note) + '</p>' : '');
+    }
+
+    var elecHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.electrostatics) {
+      if (report.electrostatics.applicable) {
+        var dip = report.electrostatics.dipole;
+        elecHtml = '<div class="kv">' +
+          '<span class="k">Method</span><span class="v">' + esc(report.electrostatics.method) + '</span>' +
+          '<span class="k">Dipole moment</span><span class="v">' + esc(dip.magnitudeDebye) + ' D</span>' +
+          '<span class="k">Dipole vector (x, y, z)</span><span class="v">' + esc(dip.vectorDebye.join(', ')) + ' D</span>' +
+          '<span class="k">Total charge check</span><span class="v">' + esc(report.electrostatics.totalChargeCheck) + '</span>' +
+          '</div><p class="empty-note">' + esc(dip.note) + '</p>';
+      } else {
+        elecHtml = '<p class="empty-note">' + esc(report.electrostatics.reason) + '</p>';
+      }
+    }
+
+    var tpsaHtml = '<p class="empty-note">No nitrogen or oxygen atoms in this molecule.</p>';
+    if (report.tpsa && (report.tpsa.matchedAtoms.length || report.tpsa.unmatchedAtoms.length)) {
+      tpsaHtml = '<div class="kv">' +
+        '<span class="k">Method</span><span class="v">' + esc(report.tpsa.method) + '</span>' +
+        '<span class="k">Polar surface area</span><span class="v">' + (report.tpsa.isLowerBound ? '&ge; ' : '') + esc(report.tpsa.psaAngstrom2) + ' &Aring;&sup2;</span>' +
+        '<span class="k">Matched atoms</span><span class="v">' + esc(report.tpsa.matchedAtoms.length) + '</span>' +
+        '</div>';
+      if (report.tpsa.unmatchedAtoms.length) {
+        tpsaHtml += '<ul style="margin-top:10px">' + report.tpsa.unmatchedAtoms.map(function(u) {
+          return '<li>atom ' + u.index + ' (' + esc(u.symbol) + '): ' + esc(u.reason) + '</li>';
+        }).join('') + '</ul>';
+      }
+    }
+
+    var vdwHtml = '<p class="empty-note">Not available.</p>';
+    if (report.vanDerWaals) {
+      var v = report.vanDerWaals;
+      vdwHtml = '<div class="kv">' +
+        '<span class="k">Volume</span><span class="v">' + (v.volume.unmatchedElements.length ? '&ge; ' : '') + esc(v.volume.volumeAngstrom3) + ' &plusmn; ' + esc(v.volume.standardErrorAngstrom3) + ' &Aring;&sup3;</span>' +
+        '<span class="k">Surface area</span><span class="v">' + (v.surfaceArea.unmatchedElements.length ? '&ge; ' : '') + esc(v.surfaceArea.surfaceAreaAngstrom2) + ' &Aring;&sup2;</span>' +
+        '<span class="k">Volume method</span><span class="v">' + esc(v.method.volume) + '</span>' +
+        '<span class="k">Surface method</span><span class="v">' + esc(v.method.surfaceArea) + '</span>' +
+        '</div>';
+      var vdwUnmatched = (v.volume.unmatchedElements || []).concat(v.surfaceArea.unmatchedElements || []).filter(function(s, i, arr) { return arr.indexOf(s) === i; });
+      if (vdwUnmatched.length) {
+        vdwHtml += '<p class="empty-note">No cited Van der Waals radius for: ' + esc(vdwUnmatched.join(', ')) + ' - those atoms are excluded, values above are a lower bound.</p>';
+      }
+    }
+
+    var polHtml = '<p class="empty-note">Not available.</p>';
+    if (report.polarizability) {
+      var pz = report.polarizability;
+      polHtml = '<div class="kv">' +
+        '<span class="k">Method</span><span class="v">' + esc(pz.method) + '</span>' +
+        '<span class="k">Polarizability</span><span class="v">' + (pz.isLowerBound ? '&ge; ' : '') + esc(pz.polarizabilityAngstrom3) + ' &Aring;&sup3;</span>' +
+        '<span class="k">Matched atoms</span><span class="v">' + esc(pz.matchedAtoms.length) + '</span>' +
+        '</div>';
+      if (pz.unmatchedAtoms.length) {
+        polHtml += '<ul style="margin-top:10px">' + pz.unmatchedAtoms.map(function(u) {
+          return '<li>atom ' + u.index + ' (' + esc(u.symbol) + '): ' + esc(u.reason) + '</li>';
+        }).join('') + '</ul>';
+      }
+    }
+
+    var piPolHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.piPolarizability) {
+      if (report.piPolarizability.applicable) {
+        var pp = report.piPolarizability;
+        piPolHtml = '<div class="kv">' +
+          '<span class="k">Method</span><span class="v">Sum-over-states (2nd-order perturbation theory)</span>' +
+          '<span class="k">&pi;-electron polarizability (isotropic)</span><span class="v">' + esc(pp.isotropicAngstrom3) + ' &Aring;&sup3;</span>' +
+          '<span class="k">Tensor (xx, yy, zz)</span><span class="v">' + esc(pp.tensorAngstrom3.xx) + ', ' + esc(pp.tensorAngstrom3.yy) + ', ' + esc(pp.tensorAngstrom3.zz) + ' &Aring;&sup3;</span>' +
+          '<span class="k">&pi; electrons included</span><span class="v">' + esc(pp.piElectronsIncluded) + '</span>' +
+          '<span class="k">Smallest occ&rarr;unocc excitation</span><span class="v">' + esc(pp.smallestExcitationEv) + ' eV</span>' +
+          '</div><p class="empty-note">' + esc(pp.note) + '</p>';
+      } else {
+        piPolHtml = '<p class="empty-note">' + esc(report.piPolarizability.reason) + '</p>';
+      }
+    }
+
+    var stiffHtml = '<p class="empty-note">Not available.</p>';
+    if (report.bondStiffness) {
+      var sf = report.bondStiffness;
+      if (sf.matchedBonds.length) {
+        stiffHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(sf.method) + '</p>' +
+          '<table><thead><tr><th>Bond</th><th>Order</th><th>Length (&Aring;)</th><th>Extra &pi; order</th><th>k&sigma; (eV/&Aring;&sup2;)</th></tr></thead><tbody>' +
+          sf.matchedBonds.map(function(b) {
+            return '<tr><td>' + b.a + '&ndash;' + b.b + ' (' + esc(b.symbols) + ')</td><td>' + esc(b.order) + '</td><td>' + esc(b.bondLengthAngstrom) + '</td><td>' + esc(b.extraPiBondOrder) + '</td><td>' + esc(b.kSigmaEvPerAngstrom2) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+        if (sf.unmatchedBonds.length) {
+          stiffHtml += '<ul style="margin-top:10px">' + sf.unmatchedBonds.map(function(u) {
+            return '<li>bond ' + u.a + '&ndash;' + u.b + ' (' + esc(u.symbols) + '): ' + esc(u.reason) + '</li>';
+          }).join('') + '</ul>';
+        }
+      } else if (sf.unmatchedBonds.length) {
+        stiffHtml = '<p class="empty-note">No cited Born-model parameters for any bond in this molecule.</p>';
+      }
+    }
+
+    var ramanHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.ramanActivity) {
+      if (report.ramanActivity.applicable) {
+        var ra = report.ramanActivity;
+        ramanHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(ra.method) + '</p>' +
+          '<table><thead><tr><th>Bond</th><th>Length (&Aring;)</th><th>d&alpha;/dd (&Aring;&sup2;/&Aring;)</th></tr></thead><tbody>' +
+          ra.bonds.map(function(b) {
+            return '<tr><td>' + b.a + '&ndash;' + b.b + ' (' + esc(b.symbols) + ')</td><td>' + esc(b.bondLengthAngstrom) + '</td><td>' + esc(b.dAlphaDdAngstrom2) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+        if (ra.skippedBonds.length) {
+          ramanHtml += '<ul style="margin-top:10px">' + ra.skippedBonds.map(function(u) {
+            return '<li>bond ' + u.a + '&ndash;' + u.b + ' (' + esc(u.symbols) + '): ' + esc(u.reason) + '</li>';
+          }).join('') + '</ul>';
+        }
+      } else {
+        ramanHtml = '<p class="empty-note">' + esc(report.ramanActivity.reason) + '</p>';
+      }
+    }
+
+    var geomHtml = '<div class="kv">' +
+      '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
+      '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
+      '<span class="k">Bonds</span><span class="v">' + esc(report.geometry.bondCount) + '</span>' +
+      '<span class="k">Ring-closure (unsolved) bonds</span><span class="v">' + esc(report.geometry.ringClosureBondCount) + '</span>' +
+      '<span class="k">Estimated (uncalibrated) bond lengths</span><span class="v">' + esc(report.geometry.estimatedBondLengthCount) + '</span>' +
+      '</div>';
+    if (report.geometry.ringClosureBonds.length) {
+      geomHtml += '<ul style="margin-top:10px">' + report.geometry.ringClosureBonds.map(function(rc) {
+        return '<li>atoms ' + rc.atoms[0] + '&ndash;' + rc.atoms[1] + ': ' + rc.actualLengthAngstrom + ' &Aring; actual vs ' + rc.idealLengthAngstrom + ' &Aring; ideal &mdash; ' + esc(rc.note) + '</li>';
+      }).join('') + '</ul>';
+    }
+
+    var refHtml = '<p class="empty-note">No matching entry in CoordinationChemistry.js\'s reference library for this formula.</p>';
+    if (report.referenceContext) {
+      var rc = report.referenceContext;
+      refHtml = '<div class="refcard"><b>' + esc(rc.name) + '</b><br>' +
+        (rc.metal ? 'Metal center: ' + esc(rc.metal) + '<br>' : '') +
+        (rc.geometryDescription ? esc(rc.geometryDescription) + '<br>' : '') +
+        (rc.notes ? '<br>' + esc(rc.notes) : '') +
+        '<br><br><i>' + esc(rc.source) + '</i></div>';
+    }
+
+    var warnHtml = report.warnings.length
+      ? '<ul>' + report.warnings.map(function(w) { return '<li>' + esc(w) + '</li>'; }).join('') + '</ul>'
+      : '<p class="empty-note">None.</p>';
+
+    reportPanel.innerHTML =
+      '<h2>Molecular Structure Report</h2>' +
+      '<p class="report-sub">' + esc(report.identity.formula) + ' &middot; generated by MolecularReport.js v' + esc(report.version) + '</p>' +
+      '<section><h3>Identity ' + badge('derived', 'derived') + (report.identity.sourceSmilesAsEntered ? badge('input', 'input') : '') + '</h3>' + identityRows + '</section>' +
+      '<section><h3>Per-Atom Bonding Analysis ' + badge('derived', 'derived') + '</h3>' +
+        '<table><thead><tr><th>#</th><th>El.</th><th>Implicit H</th><th>Hybridization</th><th>Lone pairs</th><th>Geometry</th><th>&pi; role</th></tr></thead><tbody>' + bondingRows + '</tbody></table></section>' +
+      '<section><h3>Aromaticity / Conjugation ' + badge('derived', 'derived') + '</h3>' + aromHtml + '</section>' +
+      '<section><h3>Electrostatics / Polarity ' + badge('derived', 'derived') + badge('cited', 'PEOE parameters cited') + '</h3>' + elecHtml + '</section>' +
+      '<section><h3>Polar Surface Area ' + badge('derived', 'derived') + badge('cited', 'fragment values cited') + '</h3>' + tpsaHtml + '</section>' +
+      '<section><h3>Volume &amp; Surface Area ' + badge('derived', 'derived') + badge('cited', 'VdW radii cited') + '</h3>' + vdwHtml + '</section>' +
+      '<section><h3>Polarizability ' + badge('derived', 'derived') + badge('cited', 'coefficients cited, approximate') + '</h3>' + polHtml + '</section>' +
+      '<section><h3>&pi;-Electron Polarizability (Sum-Over-States) ' + badge('derived', 'fully derived, no external table') + '</h3>' + piPolHtml + '</section>' +
+      '<section><h3>Bond Stiffness (Born Model) ' + badge('derived', 'derived') + badge('cited', 'repulsion exponent cited') + '</h3>' + stiffHtml + '</section>' +
+      '<section><h3>Raman Activity (d&alpha;/dd) ' + badge('derived', 'fully derived, no external table') + '</h3>' + ramanHtml + '</section>' +
+      '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
+      '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
+      '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
+        report.provenance.notComputed.map(function(s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ul></section>' +
+      '<section><h3>Warnings</h3>' + warnHtml + '</section>';
+  }
+
+  toggleReportBtn.addEventListener('click', function() {
+    var willShow = reportPanel.hidden;
+    reportPanel.hidden = !willShow;
+    if (willShow) renderReport();
+  });
+
+  // Shared core: everything downstream of "we already have a molecule
+  // graph" is identical regardless of whether it came from the preset
+  // list or from typed SMILES - same pipeline, same honesty about what's
+  // derived vs. an error.
+  function loadFromMolecule(mol, sourceSmiles) {
+    if (mol.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(mol.error) + '</p>'; return false; }
+    var opts = { planar: true };
+    var structure = MolecularStructure.analyze(mol, opts);
+    var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
+    if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
+    var electrostatics = MolecularElectrostatics.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
+    var tpsa = MolecularTPSA.analyze(mol, Object.assign({ structureResult: structure }, opts));
+    var vanDerWaals = MolecularVanDerWaals.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
+    var polarizability = MolecularPolarizability.analyze(mol, Object.assign({ structureResult: structure }, opts));
+    renderInfo(structure, geometry, electrostatics, tpsa, vanDerWaals, polarizability);
+    renderElementLegend(geometry);
+    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.tpsa = tpsa; current.vanDerWaals = vanDerWaals; current.polarizability = polarizability; current.sourceSmiles = sourceSmiles || null;
+    if (!reportPanel.hidden) renderReport();
+    if (viewer) viewer.setGeometry(geometry);
+    else viewer = MolecularViewer.create(container, geometry);
+    return true;
+  }
+
+  function loadPreset(idx) {
+    var m = MOLECULES[idx];
+    smilesInput.value = m.special ? '' : m.smiles;
+    smilesInput.classList.remove('invalid');
+    var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
+    loadFromMolecule(mol, m.special ? null : m.smiles);
+  }
+
+  // SMILES-style topology entry (Build/Add path) - the must-have input
+  // alongside the fixed preset list. Runs the exact same Smiles.js parser
+  // already validated in this project's own scratchpad suites (benzene,
+  // pyrrole, Kekulized rings, the porphine round-trip) - nothing new is
+  // trusted here, just wired to a text box.
+  function loadFromSmilesText() {
+    var text = smilesInput.value.trim();
+    if (!text) return;
+    var mol = MolecularStructure.fromSmiles(text);
+    var ok = loadFromMolecule(mol, text);
+    smilesInput.classList.toggle('invalid', !ok);
+  }
+
+  select.addEventListener('change', function() { loadPreset(parseInt(select.value, 10)); });
+  loadSmilesBtn.addEventListener('click', loadFromSmilesText);
+  smilesInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') loadFromSmilesText(); });
+  smilesInput.addEventListener('input', function() { smilesInput.classList.remove('invalid'); });
+
+  loadPreset(parseInt(select.value, 10));
+}());
+</script>
