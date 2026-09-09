@@ -26,17 +26,17 @@
     if (typeof define === 'function' && define.amd) {
         define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'));
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'));
     } else {
-        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry);
+        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics) {
     'use strict';
     if (!MolecularStructure) throw new Error('MolecularReport requires MolecularStructure');
     if (!MolecularGeometry) throw new Error('MolecularReport requires MolecularGeometry');
 
     var NOT_COMPUTED = [
-        'Dipole moment and other electric multipole moments',
+        'Higher-order electric multipole moments (quadrupole and beyond) - only the dipole moment is computed, and only for main-group organic elements (see Electrostatics/Polarity)',
         'Molecular point-group symmetry',
         'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is idealized VSEPR only, and ring/macrocycle closure bonds are explicitly flagged, not solved',
         'Vibrational frequencies and IR/Raman/NMR spectroscopic predictions',
@@ -103,6 +103,7 @@
                 delocalizationEnergyEv: structure.aromaticity.delocalizationEnergyEv,
                 kekuleExists: structure.aromaticity.kekuleExists,
                 planarDeclared: structure.aromaticity.planar,
+                homoLumo: structure.aromaticity.homoLumo || null,
                 note: structure.aromaticity.note || null
             };
         }
@@ -128,6 +129,14 @@
         };
     }
 
+    function buildElectrostatics(molecule, structure, geometry, options) {
+        if (options && options.electrostaticsResult) return options.electrostaticsResult;
+        if (!MolecularElectrostatics) return null;
+        var result = MolecularElectrostatics.analyze(molecule, Object.assign({ structureResult: structure, geometryResult: geometry }, options));
+        if (result.error) return null;
+        return result;
+    }
+
     // molecule/structureResult/geometryResult are the outputs of
     // MolecularStructure.fromSmiles|fromGraph, .analyze(), and
     // MolecularGeometry.generateIdealizedCoordinates() respectively -
@@ -140,22 +149,26 @@
         if (structure.error) return structure;
         var geometry = options.geometryResult || MolecularGeometry.generateIdealizedCoordinates(molecule, Object.assign({ structureResult: structure }, options));
         if (geometry.error) return geometry;
+        var electrostatics = buildElectrostatics(molecule, structure, geometry, options);
 
         return {
             identity: buildIdentity(molecule, structure, options),
             bonding: buildBonding(structure),
             geometry: buildGeometrySection(geometry),
+            electrostatics: electrostatics,
             referenceContext: buildReferenceContext(structure),
             provenance: {
                 derived: [
                     'Molecular formula and molar mass (atom counting + implicit-H inference; atomic weights themselves are CITED, see below)',
                     'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and VSEPR geometry name',
-                    'Aromaticity verdict, pi-electron count, and delocalization energy (real Huckel MO diagonalization)',
-                    'Idealized VSEPR 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)'
-                ],
+                    'Aromaticity verdict, pi-electron count, delocalization energy, and HOMO/LUMO (real Huckel MO diagonalization - HOMO/LUMO only for conjugated systems)',
+                    'Idealized VSEPR 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
+                    electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null
+                ].filter(Boolean),
                 cited: [
                     'Standard atomic weights (CIAAW/IUPAC 2021 table, MolecularStructure.js)',
                     'Reference covalent bond lengths (MolecularGeometry.js) - pairs not in the curated table fall back to an uncalibrated estimate, flagged per-bond via lengthSource',
+                    electrostatics && electrostatics.applicable ? 'Gasteiger-Marsili PEOE electronegativity parameters (Tetrahedron 1980, 36, 3219) - MolecularElectrostatics.js' : null,
                     structure.molarMass.warnings.length ? 'One or more elements in this formula have no stable isotope - see molarMassCitationWarnings' : null
                 ].filter(Boolean),
                 notComputed: NOT_COMPUTED

@@ -34,6 +34,10 @@
   @media (min-width:860px){ .grid{grid-template-columns:1.4fr 1fr;} }
 
   .scope{background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .element-legend{display:flex; flex-wrap:wrap; gap:4px 12px; padding:10px 14px; border-bottom:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted);}
+  .element-legend .chip{display:inline-flex; align-items:center; gap:5px;}
+  .element-legend .dot{width:11px; height:11px; border-radius:50%; display:inline-block; box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);}
+  .element-legend .sym{color:var(--ink); font-weight:700;}
   .scope-canvas{position:relative; width:100%; aspect-ratio:4/3; background:var(--bg);}
   .scope-canvas canvas{display:block;}
 
@@ -104,7 +108,10 @@
   </header>
 
   <div class="grid">
-    <div class="scope"><div class="scope-canvas" id="viewerContainer"></div></div>
+    <div class="scope">
+      <div class="element-legend" id="elementLegend"></div>
+      <div class="scope-canvas" id="viewerContainer"></div>
+    </div>
     <div class="info-panel" id="infoPanel"></div>
   </div>
 
@@ -113,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. Ring-closure bonds (pink) are the one honest exception: a simple spanning-tree placement can't solve true ring/macrocycle closure, so that bond's real resulting length is reported and flagged rather than silently assumed correct &mdash; true ring 3D embedding needs real conformer generation, which is out of scope for this module. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -125,6 +132,7 @@
 <script src="./CoordinationChemistry.js"></script>
 <script src="./MolecularStructure.js"></script>
 <script src="./MolecularGeometry.js"></script>
+<script src="./MolecularElectrostatics.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -169,11 +177,29 @@
 
   var container = document.getElementById('viewerContainer');
   var infoPanel = document.getElementById('infoPanel');
+  var elementLegend = document.getElementById('elementLegend');
   var viewer = null;
 
   function esc(s) { var d = document.createElement('div'); d.textContent = String(s); return d.innerHTML; }
 
-  function renderInfo(structure, geometry) {
+  function hexColor(n) { return '#' + n.toString(16).padStart(6, '0'); }
+
+  // Colors + symbols only (no names) - the point is a fast lookup while
+  // looking at the render, not a periodic-table reference; same CPK/Jmol
+  // palette MolecularViewer.js itself paints the atoms with, so the two
+  // never disagree.
+  function renderElementLegend(geometry) {
+    var seen = {};
+    var symbols = [];
+    geometry.atoms.forEach(function(a) { if (!seen[a.symbol]) { seen[a.symbol] = true; symbols.push(a.symbol); } });
+    symbols.sort();
+    elementLegend.innerHTML = symbols.map(function(sym) {
+      var hex = MolecularViewer.CPK_COLOR[sym] !== undefined ? MolecularViewer.CPK_COLOR[sym] : 0xcccccc;
+      return '<span class="chip"><span class="dot" style="background:' + hexColor(hex) + '"></span><span class="sym">' + esc(sym) + '</span></span>';
+    }).join('');
+  }
+
+  function renderInfo(structure, geometry, electrostatics) {
     var warnHtml = '';
     var allWarnings = (structure.warnings || []).concat(geometry.warnings || []);
     if (allWarnings.length) {
@@ -181,10 +207,16 @@
     }
     var aromHtml = '';
     if (structure.aromaticity && !structure.aromaticity.error) {
+      var hl = structure.aromaticity.homoLumo;
       aromHtml =
         '<div class="info-row"><span class="k">Aromaticity verdict</span><span class="v">' + esc(structure.aromaticity.verdict) + '</span></div>' +
         '<div class="info-row"><span class="k">&pi; electrons</span><span class="v">' + esc(structure.aromaticity.piElectrons) + '</span></div>' +
-        '<div class="info-row"><span class="k">Delocalization energy</span><span class="v">' + esc(structure.aromaticity.delocalizationEnergyEv) + ' eV</span></div>';
+        '<div class="info-row"><span class="k">Delocalization energy</span><span class="v">' + esc(structure.aromaticity.delocalizationEnergyEv) + ' eV</span></div>' +
+        (hl && hl.gapEv !== null ? '<div class="info-row"><span class="k">HOMO&ndash;LUMO gap</span><span class="v">' + esc(hl.gapEv) + ' eV</span></div>' : '');
+    }
+    var dipoleHtml = '';
+    if (electrostatics && electrostatics.applicable) {
+      dipoleHtml = '<div class="info-row"><span class="k">Dipole moment</span><span class="v">' + esc(electrostatics.dipole.magnitudeDebye) + ' D</span></div>';
     }
     infoPanel.innerHTML =
       '<h2>Quick Summary</h2>' +
@@ -192,6 +224,7 @@
       '<div class="info-row"><span class="k">Molar mass</span><span class="v">' + esc(structure.molarMass.value) + ' g/mol</span></div>' +
       '<div class="info-row"><span class="k">Heavy + implicit-H atom count</span><span class="v">' + esc(geometry.atoms.length) + '</span></div>' +
       '<div class="info-row"><span class="k">Bonds</span><span class="v">' + esc(geometry.bonds.length) + '</span></div>' +
+      dipoleHtml +
       aromHtml +
       '<div class="tag">' + esc(geometry.geometrySource) + '</div>' +
       warnHtml +
@@ -207,7 +240,7 @@
 
   var reportPanel = document.getElementById('reportPanel');
   var toggleReportBtn = document.getElementById('toggleReportBtn');
-  var current = { mol: null, structure: null, geometry: null, sourceSmiles: null };
+  var current = { mol: null, structure: null, geometry: null, electrostatics: null, sourceSmiles: null };
 
   function badge(kind, label) { return '<span class="badge badge-' + kind + '">' + label + '</span>'; }
 
@@ -217,7 +250,8 @@
       planar: true,
       sourceSmiles: current.sourceSmiles,
       structureResult: current.structure,
-      geometryResult: current.geometry
+      geometryResult: current.geometry,
+      electrostaticsResult: current.electrostatics
     });
     if (report.error) { reportPanel.innerHTML = '<p>' + esc(report.error) + '</p>'; return; }
 
@@ -231,22 +265,48 @@
 
     var bondingRows = report.bonding.perAtom.map(function(a) {
       if (a.error) return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td colspan="5">' + esc(a.error) + '</td></tr>';
+      // Fallback dashes are the literal HTML entity (ASCII source, decoded
+      // at innerHTML-assignment time) rather than a raw em-dash character
+      // routed through esc() - esc() escapes '&' too, so a raw non-ASCII
+      // character surviving that round-trip depends on the page's runtime
+      // charset handling. Pure-ASCII entity text sidesteps that entirely.
+      var hyb = a.hybridization ? esc(a.hybridization) : '&mdash;';
+      var lp = a.lonePairs === null ? '&mdash;' : esc(a.lonePairs);
+      var geom = Array.isArray(a.geometry) ? esc(a.geometry.join(' / ')) : (a.geometry ? esc(a.geometry) : '&mdash;');
+      var role = a.piSystemRole ? esc(a.piSystemRole) : '&mdash;';
       return '<tr><td>' + a.index + '</td><td>' + esc(a.symbol) + '</td><td>' + esc(a.implicitH) + '</td><td>' +
-        esc(a.hybridization || '—') + '</td><td>' + esc(a.lonePairs === null ? '—' : a.lonePairs) + '</td><td>' +
-        esc(Array.isArray(a.geometry) ? a.geometry.join(' / ') : (a.geometry || '—')) + '</td><td>' +
-        esc(a.piSystemRole || '—') + '</td></tr>';
+        hyb + '</td><td>' + lp + '</td><td>' + geom + '</td><td>' + role + '</td></tr>';
     }).join('');
 
     var aromHtml = '<p class="empty-note">No conjugated/aromatic system in this molecule.</p>';
     if (report.bonding.aromaticity) {
       var ar = report.bonding.aromaticity;
+      var hl = ar.homoLumo;
       aromHtml = '<div class="kv">' +
         '<span class="k">Verdict</span><span class="v">' + esc(ar.verdict) + '</span>' +
         '<span class="k">&pi; electrons</span><span class="v">' + esc(ar.piElectrons) + '</span>' +
         '<span class="k">Delocalization energy</span><span class="v">' + esc(ar.delocalizationEnergyEv) + ' eV</span>' +
         '<span class="k">Kekule structure exists</span><span class="v">' + esc(ar.kekuleExists) + '</span>' +
         '<span class="k">Planar (declared)</span><span class="v">' + esc(ar.planarDeclared) + '</span>' +
+        (hl && hl.homoEnergyEv !== null ? '<span class="k">HOMO energy</span><span class="v">' + esc(hl.homoEnergyEv) + ' eV</span>' : '') +
+        (hl && hl.lumoEnergyEv !== null ? '<span class="k">LUMO energy</span><span class="v">' + esc(hl.lumoEnergyEv) + ' eV</span>' : '') +
+        (hl && hl.gapEv !== null ? '<span class="k">HOMO&ndash;LUMO gap</span><span class="v">' + esc(hl.gapEv) + ' eV</span>' : '') +
         '</div>' + (ar.note ? '<p class="empty-note">' + esc(ar.note) + '</p>' : '');
+    }
+
+    var elecHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.electrostatics) {
+      if (report.electrostatics.applicable) {
+        var dip = report.electrostatics.dipole;
+        elecHtml = '<div class="kv">' +
+          '<span class="k">Method</span><span class="v">' + esc(report.electrostatics.method) + '</span>' +
+          '<span class="k">Dipole moment</span><span class="v">' + esc(dip.magnitudeDebye) + ' D</span>' +
+          '<span class="k">Dipole vector (x, y, z)</span><span class="v">' + esc(dip.vectorDebye.join(', ')) + ' D</span>' +
+          '<span class="k">Total charge check</span><span class="v">' + esc(report.electrostatics.totalChargeCheck) + '</span>' +
+          '</div><p class="empty-note">' + esc(dip.note) + '</p>';
+      } else {
+        elecHtml = '<p class="empty-note">' + esc(report.electrostatics.reason) + '</p>';
+      }
     }
 
     var geomHtml = '<div class="kv">' +
@@ -283,6 +343,7 @@
       '<section><h3>Per-Atom Bonding Analysis ' + badge('derived', 'derived') + '</h3>' +
         '<table><thead><tr><th>#</th><th>El.</th><th>Implicit H</th><th>Hybridization</th><th>Lone pairs</th><th>Geometry</th><th>&pi; role</th></tr></thead><tbody>' + bondingRows + '</tbody></table></section>' +
       '<section><h3>Aromaticity / Conjugation ' + badge('derived', 'derived') + '</h3>' + aromHtml + '</section>' +
+      '<section><h3>Electrostatics / Polarity ' + badge('derived', 'derived') + badge('cited', 'PEOE parameters cited') + '</h3>' + elecHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
@@ -306,8 +367,10 @@
     var structure = MolecularStructure.analyze(mol, opts);
     var geometry = MolecularGeometry.generateIdealizedCoordinates(mol, Object.assign({ structureResult: structure }, opts));
     if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
-    renderInfo(structure, geometry);
-    current.mol = mol; current.structure = structure; current.geometry = geometry; current.sourceSmiles = sourceSmiles || null;
+    var electrostatics = MolecularElectrostatics.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
+    renderInfo(structure, geometry, electrostatics);
+    renderElementLegend(geometry);
+    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.sourceSmiles = sourceSmiles || null;
     if (!reportPanel.hidden) renderReport();
     if (viewer) viewer.setGeometry(geometry);
     else viewer = MolecularViewer.create(container, geometry);
