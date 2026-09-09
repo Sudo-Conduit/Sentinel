@@ -262,6 +262,28 @@
             }
         });
 
+        // Total real sigma-bond count (ALL graph bonds touching the atom -
+        // ring and exocyclic alike, e.g. an N-substituted pyrrole's ring N
+        // has a branch bond this needs to count - PLUS explicit H, which
+        // for a bracket atom like [nH] is a real bond that never appears
+        // in parsed.bonds at all) - used below to tell pyridine-type
+        // aromatic N (2 sigma bonds total; its 3rd valence slot is a non-
+        // delocalized in-plane lone pair) from pyrrole-type (3 sigma bonds
+        // total; its remaining lone pair is what delocalizes instead), the
+        // real textbook distinction, rather than the H-count-only proxy
+        // this used to use (which happened to work for bracket [nH] but
+        // was wrong for furan/thiophene-type O/S - see ALWAYS_DONOR below).
+        var totalDegree = new Array(n).fill(0);
+        parsed.bonds.forEach(function(b) { totalDegree[b[0]]++; totalDegree[b[1]]++; });
+        for (i = 0; i < n; i++) totalDegree[i] += (parsed.atoms[i].explicitH || 0);
+
+        // O and S have no aromatic "pyridine-type" analog in ordinary
+        // neutral organic chemistry - furan/thiophene-type heteroatoms are
+        // always divalent (both bonds used by the ring) with a remaining
+        // lone pair that delocalizes, so they're always a donor when
+        // aromatic, regardless of H count (they never carry one) or degree.
+        var ALWAYS_DONOR = { O: true, S: true };
+
         var HETEROATOM_DONORS = { N: true, O: true, S: true, P: true };
         var included = new Array(n).fill(false);
         for (var i = 0; i < n; i++) {
@@ -281,10 +303,18 @@
             var atom = parsed.atoms[i];
             var role;
             if (atom.aromatic) {
-                // Lowercase atom: explicit H (e.g. [nH]) is the donor
-                // signal; the bond order to its neighbors is uniformly
-                // 'aromatic' either way and carries no information here.
-                role = (atom.explicitH > 0) ? 'lonePairDonor' : 'needsDoubleBond';
+                if (atom.symbol === 'C') {
+                    role = 'needsDoubleBond';
+                } else if (ALWAYS_DONOR[atom.symbol]) {
+                    role = 'lonePairDonor';
+                } else {
+                    // N (and P, treated the same way): a total of 3 real
+                    // sigma bonds (ring bonds + explicit H + any exocyclic
+                    // substituent) means the pyrrole-type case - the bond
+                    // order to ring neighbors is uniformly 'aromatic'
+                    // either way and carries no role information itself.
+                    role = (totalDegree[i] >= 3) ? 'lonePairDonor' : 'needsDoubleBond';
+                }
             } else if (hasExplicitDoubleOrTriple[i]) {
                 role = 'needsDoubleBond';
             } else {
