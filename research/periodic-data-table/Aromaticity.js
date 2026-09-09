@@ -113,11 +113,19 @@
         var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
         return Math.sqrt(elI.Z_eff * elJ.Z_eff) / Z_EFF_C_REFERENCE;
     }
-    function betaDistanceFactor(symbolI, symbolJ) {
+    // explicitDistanceAngstrom lets a caller override the Slater-radius-
+    // sum estimate with a real distance (e.g. a finite-difference-
+    // perturbed bond length) - used by MolecularVibrations.js to compute
+    // how the pi-electron polarizability changes with bond stretching.
+    // Omitted (the default, every existing caller), behavior is bit-for-
+    // bit unchanged.
+    function betaDistanceFactor(symbolI, symbolJ, explicitDistanceAngstrom) {
         var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
-        var dEstimate = (elI.slater_radius + elJ.slater_radius) * BOHR_TO_ANGSTROM;
+        var d = explicitDistanceAngstrom !== undefined
+            ? explicitDistanceAngstrom
+            : (elI.slater_radius + elJ.slater_radius) * BOHR_TO_ANGSTROM;
         var dReference = 2 * SLATER_RADIUS_C_ANGSTROM;
-        return Math.exp(-(dEstimate - dReference) / SLATER_RADIUS_C_ANGSTROM);
+        return Math.exp(-(d - dReference) / SLATER_RADIUS_C_ANGSTROM);
     }
 
     // Simple Huckel theory's one shared beta cannot simultaneously
@@ -135,13 +143,13 @@
     var BENZENE_LOWEST_ABSORPTION_NM = 255;
     var BETA_SPECTROSCOPIC_EV = -Math.round((1239.84 / BENZENE_LOWEST_ABSORPTION_NM / 2) * 100) / 100;
 
-    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0) {
+    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0, explicitDistanceAngstrom) {
         var base = beta0 !== undefined ? beta0 : BETA_EV;
         if (betaModel === 'ratio') {
             return base * Math.sqrt((alphaI / ALPHA_C_REFERENCE) * (alphaJ / ALPHA_C_REFERENCE));
         }
         if (betaModel === 'physical') {
-            return base * betaZeffFactor(symbolI, symbolJ) * betaDistanceFactor(symbolI, symbolJ);
+            return base * betaZeffFactor(symbolI, symbolJ) * betaDistanceFactor(symbolI, symbolJ, explicitDistanceAngstrom);
         }
         return base;
     }
@@ -470,8 +478,20 @@
             Hspec.push(new Array(n).fill(0));
             Hspec[si][si] = alphas[si];
         }
+        // bondDistanceOverrides: optional { 'i|j': distanceAngstrom } map
+        // (either atom order) letting a caller perturb ONE bond's real
+        // distance away from the Slater-radius-sum estimate - used by
+        // MolecularVibrations.js's finite-difference d(alpha)/d(bond
+        // length) calculation. Omitted (every existing caller), behavior
+        // is bit-for-bit unchanged.
+        var distanceOverrides = options.bondDistanceOverrides || null;
+        function overrideDistanceFor(i, j) {
+            if (!distanceOverrides) return undefined;
+            var v = distanceOverrides[i + '|' + j];
+            return v !== undefined ? v : distanceOverrides[j + '|' + i];
+        }
         bonds.forEach(function(e) {
-            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV);
+            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV, overrideDistanceFor(e[0], e[1]));
             Hspec[e[0]][e[1]] = bs;
             Hspec[e[1]][e[0]] = bs;
         });

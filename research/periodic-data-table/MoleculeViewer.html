@@ -136,6 +136,7 @@
 <script src="./MolecularTPSA.js"></script>
 <script src="./MolecularVanDerWaals.js"></script>
 <script src="./MolecularPolarizability.js"></script>
+<script src="./MolecularVibrations.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -398,6 +399,44 @@
       }
     }
 
+    var stiffHtml = '<p class="empty-note">Not available.</p>';
+    if (report.bondStiffness) {
+      var sf = report.bondStiffness;
+      if (sf.matchedBonds.length) {
+        stiffHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(sf.method) + '</p>' +
+          '<table><thead><tr><th>Bond</th><th>Order</th><th>Length (&Aring;)</th><th>Extra &pi; order</th><th>k&sigma; (eV/&Aring;&sup2;)</th></tr></thead><tbody>' +
+          sf.matchedBonds.map(function(b) {
+            return '<tr><td>' + b.a + '&ndash;' + b.b + ' (' + esc(b.symbols) + ')</td><td>' + esc(b.order) + '</td><td>' + esc(b.bondLengthAngstrom) + '</td><td>' + esc(b.extraPiBondOrder) + '</td><td>' + esc(b.kSigmaEvPerAngstrom2) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+        if (sf.unmatchedBonds.length) {
+          stiffHtml += '<ul style="margin-top:10px">' + sf.unmatchedBonds.map(function(u) {
+            return '<li>bond ' + u.a + '&ndash;' + u.b + ' (' + esc(u.symbols) + '): ' + esc(u.reason) + '</li>';
+          }).join('') + '</ul>';
+        }
+      } else if (sf.unmatchedBonds.length) {
+        stiffHtml = '<p class="empty-note">No cited Born-model parameters for any bond in this molecule.</p>';
+      }
+    }
+
+    var ramanHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.ramanActivity) {
+      if (report.ramanActivity.applicable) {
+        var ra = report.ramanActivity;
+        ramanHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(ra.method) + '</p>' +
+          '<table><thead><tr><th>Bond</th><th>Length (&Aring;)</th><th>d&alpha;/dd (&Aring;&sup2;/&Aring;)</th></tr></thead><tbody>' +
+          ra.bonds.map(function(b) {
+            return '<tr><td>' + b.a + '&ndash;' + b.b + ' (' + esc(b.symbols) + ')</td><td>' + esc(b.bondLengthAngstrom) + '</td><td>' + esc(b.dAlphaDdAngstrom2) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+        if (ra.skippedBonds.length) {
+          ramanHtml += '<ul style="margin-top:10px">' + ra.skippedBonds.map(function(u) {
+            return '<li>bond ' + u.a + '&ndash;' + u.b + ' (' + esc(u.symbols) + '): ' + esc(u.reason) + '</li>';
+          }).join('') + '</ul>';
+        }
+      } else {
+        ramanHtml = '<p class="empty-note">' + esc(report.ramanActivity.reason) + '</p>';
+      }
+    }
+
     var geomHtml = '<div class="kv">' +
       '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
       '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
@@ -437,6 +476,8 @@
       '<section><h3>Volume &amp; Surface Area ' + badge('derived', 'derived') + badge('cited', 'VdW radii cited') + '</h3>' + vdwHtml + '</section>' +
       '<section><h3>Polarizability ' + badge('derived', 'derived') + badge('cited', 'coefficients cited, approximate') + '</h3>' + polHtml + '</section>' +
       '<section><h3>&pi;-Electron Polarizability (Sum-Over-States) ' + badge('derived', 'fully derived, no external table') + '</h3>' + piPolHtml + '</section>' +
+      '<section><h3>Bond Stiffness (Born Model) ' + badge('derived', 'derived') + badge('cited', 'repulsion exponent cited') + '</h3>' + stiffHtml + '</section>' +
+      '<section><h3>Raman Activity (d&alpha;/dd) ' + badge('derived', 'fully derived, no external table') + '</h3>' + ramanHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +

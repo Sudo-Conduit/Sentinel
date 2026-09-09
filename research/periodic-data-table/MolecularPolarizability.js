@@ -209,6 +209,15 @@
             applicable: true,
             method: 'Sum-over-states (2nd-order perturbation theory): alpha = 2*sum_occ,unocc |<j|mu|i>|^2/(Ej-Ei), over this project\'s own Huckel pi-system MOs (Aromaticity.js spectroscopic-beta eigenbasis) and MolecularGeometry.js\'s idealized 3D coordinates. ZDO approximation for the position-operator matrix elements (standard at this level of theory).',
             isotropicAngstrom3: Math.round(isotropic * 1000) / 1000,
+            // Full precision, before the display rounding above - a
+            // finite-difference derivative (e.g. MolecularVibrations.js's
+            // d(alpha)/d(bond length) for Raman activity) needs this: the
+            // rounded field's 0.001 A^3 resolution is coarse enough to
+            // inject real noise into a derivative taken over a ~0.01-0.02
+            // A step (confirmed directly - using the rounded value gave a
+            // finite difference that drifted with step size instead of
+            // converging; this raw value converges cleanly).
+            isotropicAngstrom3Unrounded: isotropic,
             tensorAngstrom3: {
                 xx: Math.round(xxA3 * 1000) / 1000,
                 yy: Math.round(yyA3 * 1000) / 1000,
