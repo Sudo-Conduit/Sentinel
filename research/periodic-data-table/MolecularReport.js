@@ -161,6 +161,14 @@
         return result;
     }
 
+    function buildPiPolarizability(molecule, structure, geometry, options) {
+        if (options && options.piPolarizabilityResult) return options.piPolarizabilityResult;
+        if (!MolecularPolarizability || !MolecularPolarizability.analyzePiElectronic) return null;
+        var result = MolecularPolarizability.analyzePiElectronic(molecule, Object.assign({ structureResult: structure, geometryResult: geometry }, options));
+        if (result.error) return null;
+        return result;
+    }
+
     // molecule/structureResult/geometryResult are the outputs of
     // MolecularStructure.fromSmiles|fromGraph, .analyze(), and
     // MolecularGeometry.generateIdealizedCoordinates() respectively -
@@ -177,6 +185,7 @@
         var tpsa = buildTPSA(molecule, structure, options);
         var vanDerWaals = buildVanDerWaals(molecule, structure, geometry, options);
         var polarizability = buildPolarizability(molecule, structure, options);
+        var piPolarizability = buildPiPolarizability(molecule, structure, geometry, options);
 
         return {
             identity: buildIdentity(molecule, structure, options),
@@ -186,6 +195,7 @@
             tpsa: tpsa,
             vanDerWaals: vanDerWaals,
             polarizability: polarizability,
+            piPolarizability: piPolarizability,
             referenceContext: buildReferenceContext(structure),
             provenance: {
                 derived: [
@@ -196,7 +206,8 @@
                     electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null,
                     tpsa ? 'Topological polar surface area (fragment classification from this project\'s own per-atom bonding data - the fragment contribution VALUES below are CITED)' : null,
                     vanDerWaals ? 'Molecular volume and surface area (Monte Carlo union-of-spheres / Shrake-Rupley over idealized coordinates - Van der Waals radii below are CITED, the geometry algorithms themselves are DERIVED)' : null,
-                    polarizability ? 'Mean molecular polarizability (atomic hybrid component additivity - contribution VALUES below are CITED, with a documented accuracy caveat - see MolecularPolarizability.js)' : null
+                    polarizability ? 'Mean molecular polarizability (atomic hybrid component additivity - contribution VALUES below are CITED, with a documented accuracy caveat - see MolecularPolarizability.js)' : null,
+                    piPolarizability && piPolarizability.applicable ? 'Pi-electron polarizability (sum-over-states 2nd-order perturbation theory over this project\'s own Huckel MOs and idealized coordinates - fully DERIVED, no external table, see MolecularPolarizability.js analyzePiElectronic)' : null
                 ].filter(Boolean),
                 cited: [
                     'Standard atomic weights (CIAAW/IUPAC 2021 table, MolecularStructure.js)',

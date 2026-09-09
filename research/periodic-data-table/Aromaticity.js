@@ -179,15 +179,24 @@
     }
 
     // Classic cyclic Jacobi eigenvalue algorithm for real symmetric
-    // matrices. Returns eigenvalues only (ascending) — no eigenvectors
-    // needed here. Standard textbook rotation formulas; validated below in
-    // this module's own self-test against the closed-form uniform-ring
-    // Huckel eigenvalues (E_j = alpha + 2*beta*cos(2*pi*j/N)) before it's
-    // trusted for the heteroatom (non-uniform alpha) case, where no such
-    // closed form exists.
-    function jacobiEigenvalues(matrix, maxSweeps) {
+    // matrices, now also accumulating eigenVECTORS (V starts as identity;
+    // every Givens rotation applied to `a` is applied to V's columns too,
+    // the standard textbook way to get eigenvectors out of cyclic Jacobi
+    // "for free" alongside the eigenvalues). Needed for the sum-over-states
+    // polarizability formula below, which needs actual MO coefficients
+    // (phi_i = sum_mu c_mu,i * chi_mu), not just MO energies. Validated
+    // below in this module's own self-test against the closed-form
+    // uniform-ring Huckel eigenvalues (E_j = alpha + 2*beta*cos(2*pi*j/N))
+    // before it's trusted for the heteroatom (non-uniform alpha) case,
+    // where no such closed form exists.
+    function jacobiEigenDecomposition(matrix, maxSweeps) {
         var n = matrix.length;
         var a = matrix.map(function(row) { return row.slice(); });
+        var v = [];
+        for (var vi = 0; vi < n; vi++) {
+            v.push(new Array(n).fill(0));
+            v[vi][vi] = 1;
+        }
         maxSweeps = maxSweeps || 200;
         for (var sweep = 0; sweep < maxSweeps; sweep++) {
             var off = 0;
@@ -213,13 +222,25 @@
                             a[i][p] = a[p][i] = c * aip - s * aiq;
                             a[i][q] = a[q][i] = s * aip + c * aiq;
                         }
+                        var vip = v[i][p], viq = v[i][q];
+                        v[i][p] = c * vip - s * viq;
+                        v[i][q] = s * vip + c * viq;
                     }
                 }
             }
         }
-        var eig = [];
-        for (var k = 0; k < n; k++) eig.push(a[k][k]);
-        return eig.sort(function(x, y) { return x - y; });
+        var order = [];
+        for (var k = 0; k < n; k++) order.push(k);
+        order.sort(function(x, y) { return a[x][x] - a[y][y]; });
+        var values = order.map(function(k) { return a[k][k]; });
+        var vectors = order.map(function(k) { return v.map(function(row) { return row[k]; }); });
+        return { values: values, vectors: vectors };
+    }
+
+    // Thin wrapper kept for backward compatibility (existing callers/tests
+    // that only need eigenvalues, not the vectors alongside them).
+    function jacobiEigenvalues(matrix, maxSweeps) {
+        return jacobiEigenDecomposition(matrix, maxSweeps).values;
     }
 
     // Fills piElectrons into ascending MO energies (2 per level, respecting
@@ -454,7 +475,8 @@
             Hspec[e[0]][e[1]] = bs;
             Hspec[e[1]][e[0]] = bs;
         });
-        var eigenvaluesSpec = jacobiEigenvalues(Hspec);
+        var specDecomp = jacobiEigenDecomposition(Hspec);
+        var eigenvaluesSpec = specDecomp.values;
 
         // Localized reference: needsDoubleBond atoms pair up into isolated
         // 2-atom pi bonds (bonding MO = average-alpha + beta, 2 electrons
@@ -514,6 +536,20 @@
             localizedReferenceEv: Math.round(referenceEnergy * 1000) / 1000,
             delocalizationEnergyEv: Math.round(delocalizationEnergy * 1000) / 1000,
             verdict: verdict,
+            // Real MO data (spectroscopic-beta eigenbasis, same one
+            // homoLumo() above reads) for callers that need actual
+            // coefficients, not just derived scalars - e.g. a sum-over-
+            // states polarizability calculation, which needs both MO
+            // energies AND phi_i = sum_mu c_mu,i * chi_mu coefficients.
+            // coefficients[moIndex][atomLocalIndex]; atomLocalIndex maps
+            // to a caller's own larger atom list via originalIndex below
+            // (echoed straight from the input system - see
+            // Smiles.toAromaticSystem's own doc comment for what it means).
+            spectroscopicMO: {
+                eigenvaluesEv: eigenvaluesSpec.map(function(e) { return Math.round(e * 1000) / 1000; }),
+                coefficients: specDecomp.vectors
+            },
+            originalIndex: system.originalIndex || null,
             note: fill.openShell
                 ? 'Degenerate HOMO left half-filled — simple closed-shell Huckel filling cannot honestly report a single destabilization number here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is beyond this model.'
                 : (!isSimpleMonocycle ? 'Not a simple monocyclic ring — piElectrons/conventional4nPlus2Style are informational only; the verdict above comes from delocalizationEnergyEv and openShellHOMO, not electron-count parity.' : undefined)
@@ -564,6 +600,7 @@
         compareBetaModels: compareBetaModels,
         _findPerfectMatching: findPerfectMatching,
         _jacobiEigenvalues: jacobiEigenvalues,
+        _jacobiEigenDecomposition: jacobiEigenDecomposition,
         _homoLumo: homoLumo,
         _computeBeta: computeBeta,
         _betaZeffFactor: betaZeffFactor,

@@ -382,6 +382,22 @@
       }
     }
 
+    var piPolHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.piPolarizability) {
+      if (report.piPolarizability.applicable) {
+        var pp = report.piPolarizability;
+        piPolHtml = '<div class="kv">' +
+          '<span class="k">Method</span><span class="v">Sum-over-states (2nd-order perturbation theory)</span>' +
+          '<span class="k">&pi;-electron polarizability (isotropic)</span><span class="v">' + esc(pp.isotropicAngstrom3) + ' &Aring;&sup3;</span>' +
+          '<span class="k">Tensor (xx, yy, zz)</span><span class="v">' + esc(pp.tensorAngstrom3.xx) + ', ' + esc(pp.tensorAngstrom3.yy) + ', ' + esc(pp.tensorAngstrom3.zz) + ' &Aring;&sup3;</span>' +
+          '<span class="k">&pi; electrons included</span><span class="v">' + esc(pp.piElectronsIncluded) + '</span>' +
+          '<span class="k">Smallest occ&rarr;unocc excitation</span><span class="v">' + esc(pp.smallestExcitationEv) + ' eV</span>' +
+          '</div><p class="empty-note">' + esc(pp.note) + '</p>';
+      } else {
+        piPolHtml = '<p class="empty-note">' + esc(report.piPolarizability.reason) + '</p>';
+      }
+    }
+
     var geomHtml = '<div class="kv">' +
       '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
       '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
@@ -420,6 +436,7 @@
       '<section><h3>Polar Surface Area ' + badge('derived', 'derived') + badge('cited', 'fragment values cited') + '</h3>' + tpsaHtml + '</section>' +
       '<section><h3>Volume &amp; Surface Area ' + badge('derived', 'derived') + badge('cited', 'VdW radii cited') + '</h3>' + vdwHtml + '</section>' +
       '<section><h3>Polarizability ' + badge('derived', 'derived') + badge('cited', 'coefficients cited, approximate') + '</h3>' + polHtml + '</section>' +
+      '<section><h3>&pi;-Electron Polarizability (Sum-Over-States) ' + badge('derived', 'fully derived, no external table') + '</h3>' + piPolHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
