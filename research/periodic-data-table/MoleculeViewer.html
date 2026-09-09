@@ -120,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. Ring-closure bonds (pink) are the one honest exception: a simple spanning-tree placement can't solve true ring/macrocycle closure, so that bond's real resulting length is reported and flagged rather than silently assumed correct &mdash; true ring 3D embedding needs real conformer generation, which is out of scope for this module. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -134,6 +134,8 @@
 <script src="./MolecularGeometry.js"></script>
 <script src="./MolecularElectrostatics.js"></script>
 <script src="./MolecularTPSA.js"></script>
+<script src="./MolecularVanDerWaals.js"></script>
+<script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -200,7 +202,7 @@
     }).join('');
   }
 
-  function renderInfo(structure, geometry, electrostatics, tpsa) {
+  function renderInfo(structure, geometry, electrostatics, tpsa, vanDerWaals, polarizability) {
     var warnHtml = '';
     var allWarnings = (structure.warnings || []).concat(geometry.warnings || []);
     if (allWarnings.length) {
@@ -223,6 +225,16 @@
     if (tpsa && (tpsa.matchedAtoms.length || tpsa.unmatchedAtoms.length)) {
       tpsaHtml = '<div class="info-row"><span class="k">Polar surface area' + (tpsa.isLowerBound ? ' (&ge;)' : '') + '</span><span class="v">' + esc(tpsa.psaAngstrom2) + ' &Aring;&sup2;</span></div>';
     }
+    var vdwHtml = '';
+    if (vanDerWaals) {
+      vdwHtml =
+        '<div class="info-row"><span class="k">Volume' + (vanDerWaals.volume.unmatchedElements.length ? ' (&ge;)' : '') + '</span><span class="v">' + esc(vanDerWaals.volume.volumeAngstrom3) + ' &Aring;&sup3;</span></div>' +
+        '<div class="info-row"><span class="k">Surface area' + (vanDerWaals.surfaceArea.unmatchedElements.length ? ' (&ge;)' : '') + '</span><span class="v">' + esc(vanDerWaals.surfaceArea.surfaceAreaAngstrom2) + ' &Aring;&sup2;</span></div>';
+    }
+    var polHtml = '';
+    if (polarizability && polarizability.matchedAtoms.length) {
+      polHtml = '<div class="info-row"><span class="k">Polarizability' + (polarizability.isLowerBound ? ' (&ge;)' : '') + '</span><span class="v">' + esc(polarizability.polarizabilityAngstrom3) + ' &Aring;&sup3;</span></div>';
+    }
     infoPanel.innerHTML =
       '<h2>Quick Summary</h2>' +
       '<div class="info-row"><span class="k">Formula (Hill)</span><span class="v">' + esc(structure.formula.string) + '</span></div>' +
@@ -231,6 +243,8 @@
       '<div class="info-row"><span class="k">Bonds</span><span class="v">' + esc(geometry.bonds.length) + '</span></div>' +
       dipoleHtml +
       tpsaHtml +
+      vdwHtml +
+      polHtml +
       aromHtml +
       '<div class="tag">' + esc(geometry.geometrySource) + '</div>' +
       warnHtml +
@@ -246,7 +260,7 @@
 
   var reportPanel = document.getElementById('reportPanel');
   var toggleReportBtn = document.getElementById('toggleReportBtn');
-  var current = { mol: null, structure: null, geometry: null, electrostatics: null, tpsa: null, sourceSmiles: null };
+  var current = { mol: null, structure: null, geometry: null, electrostatics: null, tpsa: null, vanDerWaals: null, polarizability: null, sourceSmiles: null };
 
   function badge(kind, label) { return '<span class="badge badge-' + kind + '">' + label + '</span>'; }
 
@@ -258,7 +272,9 @@
       structureResult: current.structure,
       geometryResult: current.geometry,
       electrostaticsResult: current.electrostatics,
-      tpsaResult: current.tpsa
+      tpsaResult: current.tpsa,
+      vanDerWaalsResult: current.vanDerWaals,
+      polarizabilityResult: current.polarizability
     });
     if (report.error) { reportPanel.innerHTML = '<p>' + esc(report.error) + '</p>'; return; }
 
@@ -330,6 +346,36 @@
       }
     }
 
+    var vdwHtml = '<p class="empty-note">Not available.</p>';
+    if (report.vanDerWaals) {
+      var v = report.vanDerWaals;
+      vdwHtml = '<div class="kv">' +
+        '<span class="k">Volume</span><span class="v">' + (v.volume.unmatchedElements.length ? '&ge; ' : '') + esc(v.volume.volumeAngstrom3) + ' &plusmn; ' + esc(v.volume.standardErrorAngstrom3) + ' &Aring;&sup3;</span>' +
+        '<span class="k">Surface area</span><span class="v">' + (v.surfaceArea.unmatchedElements.length ? '&ge; ' : '') + esc(v.surfaceArea.surfaceAreaAngstrom2) + ' &Aring;&sup2;</span>' +
+        '<span class="k">Volume method</span><span class="v">' + esc(v.method.volume) + '</span>' +
+        '<span class="k">Surface method</span><span class="v">' + esc(v.method.surfaceArea) + '</span>' +
+        '</div>';
+      var vdwUnmatched = (v.volume.unmatchedElements || []).concat(v.surfaceArea.unmatchedElements || []).filter(function(s, i, arr) { return arr.indexOf(s) === i; });
+      if (vdwUnmatched.length) {
+        vdwHtml += '<p class="empty-note">No cited Van der Waals radius for: ' + esc(vdwUnmatched.join(', ')) + ' - those atoms are excluded, values above are a lower bound.</p>';
+      }
+    }
+
+    var polHtml = '<p class="empty-note">Not available.</p>';
+    if (report.polarizability) {
+      var pz = report.polarizability;
+      polHtml = '<div class="kv">' +
+        '<span class="k">Method</span><span class="v">' + esc(pz.method) + '</span>' +
+        '<span class="k">Polarizability</span><span class="v">' + (pz.isLowerBound ? '&ge; ' : '') + esc(pz.polarizabilityAngstrom3) + ' &Aring;&sup3;</span>' +
+        '<span class="k">Matched atoms</span><span class="v">' + esc(pz.matchedAtoms.length) + '</span>' +
+        '</div>';
+      if (pz.unmatchedAtoms.length) {
+        polHtml += '<ul style="margin-top:10px">' + pz.unmatchedAtoms.map(function(u) {
+          return '<li>atom ' + u.index + ' (' + esc(u.symbol) + '): ' + esc(u.reason) + '</li>';
+        }).join('') + '</ul>';
+      }
+    }
+
     var geomHtml = '<div class="kv">' +
       '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
       '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
@@ -366,6 +412,8 @@
       '<section><h3>Aromaticity / Conjugation ' + badge('derived', 'derived') + '</h3>' + aromHtml + '</section>' +
       '<section><h3>Electrostatics / Polarity ' + badge('derived', 'derived') + badge('cited', 'PEOE parameters cited') + '</h3>' + elecHtml + '</section>' +
       '<section><h3>Polar Surface Area ' + badge('derived', 'derived') + badge('cited', 'fragment values cited') + '</h3>' + tpsaHtml + '</section>' +
+      '<section><h3>Volume &amp; Surface Area ' + badge('derived', 'derived') + badge('cited', 'VdW radii cited') + '</h3>' + vdwHtml + '</section>' +
+      '<section><h3>Polarizability ' + badge('derived', 'derived') + badge('cited', 'coefficients cited, approximate') + '</h3>' + polHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
@@ -391,9 +439,11 @@
     if (geometry.error) { infoPanel.innerHTML = '<h2>Error</h2><p>' + esc(geometry.error) + '</p>'; return false; }
     var electrostatics = MolecularElectrostatics.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
     var tpsa = MolecularTPSA.analyze(mol, Object.assign({ structureResult: structure }, opts));
-    renderInfo(structure, geometry, electrostatics, tpsa);
+    var vanDerWaals = MolecularVanDerWaals.analyze(mol, Object.assign({ structureResult: structure, geometryResult: geometry }, opts));
+    var polarizability = MolecularPolarizability.analyze(mol, Object.assign({ structureResult: structure }, opts));
+    renderInfo(structure, geometry, electrostatics, tpsa, vanDerWaals, polarizability);
     renderElementLegend(geometry);
-    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.tpsa = tpsa; current.sourceSmiles = sourceSmiles || null;
+    current.mol = mol; current.structure = structure; current.geometry = geometry; current.electrostatics = electrostatics; current.tpsa = tpsa; current.vanDerWaals = vanDerWaals; current.polarizability = polarizability; current.sourceSmiles = sourceSmiles || null;
     if (!reportPanel.hidden) renderReport();
     if (viewer) viewer.setGeometry(geometry);
     else viewer = MolecularViewer.create(container, geometry);
