@@ -314,6 +314,12 @@
         (hl && hl.homoEnergyEv !== null ? '<span class="k">HOMO energy</span><span class="v">' + esc(hl.homoEnergyEv) + ' eV</span>' : '') +
         (hl && hl.lumoEnergyEv !== null ? '<span class="k">LUMO energy</span><span class="v">' + esc(hl.lumoEnergyEv) + ' eV</span>' : '') +
         (hl && hl.gapEv !== null ? '<span class="k">HOMO&ndash;LUMO gap</span><span class="v">' + esc(hl.gapEv) + ' eV</span>' : '') +
+        (hl && hl.hardnessEv !== null ? '<span class="k">Chemical hardness (&eta;)</span><span class="v">' + esc(hl.hardnessEv) + ' eV</span>' : '') +
+        (hl && hl.softnessPerEv !== null ? '<span class="k">Chemical softness (S)</span><span class="v">' + esc(hl.softnessPerEv) + ' eV&#8315;&sup1;</span>' : '') +
+        (hl && hl.electronegativityEv !== null ? '<span class="k">Electronegativity (&chi;)</span><span class="v">' + esc(hl.electronegativityEv) + ' eV</span>' : '') +
+        (hl && hl.electrophilicityEv !== null ? '<span class="k">Electrophilicity index (&omega;)</span><span class="v">' + esc(hl.electrophilicityEv) + ' eV</span>' : '') +
+        (hl && hl.opticalGapNm !== null ? '<span class="k">Optical gap (onset)</span><span class="v">' + esc(hl.opticalGapNm) + ' nm</span>' : '') +
+        (hl && hl.conductivityClass ? '<span class="k">Conductivity class</span><span class="v">' + esc(hl.conductivityClass) + '</span>' : '') +
         '</div>' + (ar.note ? '<p class="empty-note">' + esc(ar.note) + '</p>' : '');
     }
 

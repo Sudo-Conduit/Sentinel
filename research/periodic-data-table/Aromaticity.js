@@ -77,11 +77,73 @@
     // unlike the eigenvalue solver, there is no independent known-correct
     // number to validate it against.
     var ALPHA_C_REFERENCE = PDT.get('C').orbital_energy;
-    function computeBeta(alphaI, alphaJ, betaModel) {
+
+    // 'physical' — the real fix for 'ratio''s limitation: beta(bond) =
+    // beta0 * f(Z_eff) * g(d). Both factors are dimensionless and equal 1
+    // for a C-C bond by construction, so every all-carbon result (e.g.
+    // benzene) is unchanged from BETA_EV alone; only heteroatom bonds and
+    // bond-length differences move.
+    //
+    // f(Z_eff_i, Z_eff_j) = sqrt(Z_eff_i * Z_eff_j) / Z_eff_C — geometric
+    // mean of the two atoms' own PDT Z_eff, normalized to carbon. Unlike
+    // the failed Wolfsberg-Helmholz attempt (which multiplied the
+    // absolute, already-inflated orbital_energy and exploded to 214x
+    // BETA_EV), Z_eff itself is a modest, well-behaved number (C=3.25,
+    // N=3.9, O=4.55, S=5.45, Fe=3.75) and this ratio stays close to 1 for
+    // real conjugated-system atoms — no explosion, no new external
+    // citation, self-derived from data already in PDT.js.
+    //
+    // g(d) = exp(-(d_estimate - d_reference) / L) — exponential distance
+    // decay, the standard form for how orbital overlap (and hence
+    // resonance coupling) falls off with internuclear separation. d and L
+    // are self-derived from PDT's own slater_radius (Bohr, converted to
+    // Angstrom) rather than importing real bond-length tables:
+    // d_estimate = slater_radius_i + slater_radius_j (the same
+    // sum-of-radii bond-length estimate MolecularGeometry.js's own
+    // independent fallback already uses), d_reference = 2*slater_radius_C
+    // (the C-C case), L = slater_radius_C (a dimensionally-sensible decay
+    // length — an atomic radius is the natural length scale for how far a
+    // p-orbital extends). g(C-C) = 1 exactly by construction.
+    var BOHR_TO_ANGSTROM = 0.529177;
+    var CARBON_EL = PDT.get('C');
+    var Z_EFF_C_REFERENCE = CARBON_EL.Z_eff;
+    var SLATER_RADIUS_C_ANGSTROM = CARBON_EL.slater_radius * BOHR_TO_ANGSTROM;
+
+    function betaZeffFactor(symbolI, symbolJ) {
+        var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
+        return Math.sqrt(elI.Z_eff * elJ.Z_eff) / Z_EFF_C_REFERENCE;
+    }
+    function betaDistanceFactor(symbolI, symbolJ) {
+        var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
+        var dEstimate = (elI.slater_radius + elJ.slater_radius) * BOHR_TO_ANGSTROM;
+        var dReference = 2 * SLATER_RADIUS_C_ANGSTROM;
+        return Math.exp(-(dEstimate - dReference) / SLATER_RADIUS_C_ANGSTROM);
+    }
+
+    // Simple Huckel theory's one shared beta cannot simultaneously
+    // reproduce both real thermochemical resonance energy AND real
+    // spectroscopic (UV-Vis) transition energies for the same molecule —
+    // a well-known, real textbook limitation, not a bug. BETA_EV above is
+    // already calibrated to real benzene resonance energy (thermochemical)
+    // and continues to drive delocalizationEnergyEv/totalPiEnergyEv/
+    // verdict unchanged. BETA_SPECTROSCOPIC_EV is a second, separate
+    // calibration — derived from benzene's real lowest pi->pi* UV
+    // absorption band (~255 nm) via simple Huckel's own closed-form
+    // benzene HOMO-LUMO gap, gap = 2*|beta|: beta = -(1239.84/255)/2 eV.
+    // Used only for a second, parallel diagonalization (see analyze())
+    // feeding homoLumo()'s gap/hardness/opticalGapNm/conductivityClass.
+    var BENZENE_LOWEST_ABSORPTION_NM = 255;
+    var BETA_SPECTROSCOPIC_EV = -Math.round((1239.84 / BENZENE_LOWEST_ABSORPTION_NM / 2) * 100) / 100;
+
+    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0) {
+        var base = beta0 !== undefined ? beta0 : BETA_EV;
         if (betaModel === 'ratio') {
-            return BETA_EV * Math.sqrt((alphaI / ALPHA_C_REFERENCE) * (alphaJ / ALPHA_C_REFERENCE));
+            return base * Math.sqrt((alphaI / ALPHA_C_REFERENCE) * (alphaJ / ALPHA_C_REFERENCE));
         }
-        return BETA_EV;
+        if (betaModel === 'physical') {
+            return base * betaZeffFactor(symbolI, symbolJ) * betaDistanceFactor(symbolI, symbolJ);
+        }
+        return base;
     }
 
     // Exact perfect-matching search via backtracking, not Edmonds' Blossom
@@ -217,11 +279,75 @@
                 break;
             }
         }
+        var gapEv = (homoEnergy !== null && lumoEnergy !== null) ? (lumoEnergy - homoEnergy) : null;
+
+        // Real, textbook operational definitions built directly on the
+        // frontier orbital energies already computed above - no new
+        // physics, just the standard Parr-Pearson conceptual DFT reading
+        // of HOMO/LUMO (Koopmans'-theorem-style: -E_HOMO approximates
+        // ionization energy, -E_LUMO approximates electron affinity).
+        //   - hardness (Parr, R.G.; Pearson, R.G. J. Am. Chem. Soc. 1983,
+        //     105, 7512): eta = (LUMO - HOMO) / 2. Large = hard/stable/
+        //     unreactive; small = soft/reactive.
+        //   - softness: S = 1 / (2*eta).
+        //   - electronegativity (same Parr-Pearson operational form):
+        //     chi = -(HOMO + LUMO) / 2.
+        //   - electrophilicity index (Parr, R.G.; Szentpaly, L.v.; Liu, S.
+        //     J. Am. Chem. Soc. 1999, 121, 1922): omega = chi^2 / (2*eta) -
+        //     how much energy a species gains by accepting electron
+        //     density from an infinite electron reservoir.
+        // All null together whenever gapEv itself is null (no HOMO/LUMO -
+        // non-conjugated systems never reach this function at all, see
+        // analyze()'s own n<2/error guards above).
+        var hardnessEv = gapEv !== null ? gapEv / 2 : null;
+        var softnessPerEv = (hardnessEv !== null && hardnessEv !== 0) ? 1 / (2 * hardnessEv) : null;
+        var electronegativityEv = (homoEnergy !== null && lumoEnergy !== null) ? -(homoEnergy + lumoEnergy) / 2 : null;
+        var electrophilicityEv = (electronegativityEv !== null && hardnessEv) ? (electronegativityEv * electronegativityEv) / (2 * hardnessEv) : null;
+
+        // Optical gap: the wavelength of a photon whose energy exactly
+        // equals the HOMO-LUMO gap (hc = 1239.84 eV*nm, commonly rounded
+        // 1240) - a standard first approximation for the absorption onset,
+        // not a real UV-Vis spectrum (ignores oscillator strength,
+        // vibronic structure, symmetry-forbidden transitions, solvent
+        // shifts). conductivityClass borrows the same qualitative energy-
+        // scale language organic-electronics literature uses for
+        // molecular HOMO-LUMO gaps (by analogy with real bulk band gaps -
+        // Si ~1.1 eV semiconductor, diamond ~5.5 eV insulator) - this
+        // project models a discrete molecule, not a periodic solid with
+        // real Bloch bands, so treat this as a qualitative reading of the
+        // gap's energy scale, not a band-structure calculation.
+        var opticalGapNm = gapEv ? Math.round((1239.84 / gapEv) * 10) / 10 : null;
+        var conductivityClass = gapEv === null ? null : gapEv < 0.5 ? 'conductor-like (very small gap)' : gapEv <= 3 ? 'semiconductor-like' : 'insulator-like';
+
+        // gapEv/hardnessEv/opticalGapNm/conductivityClass are computed
+        // from eigenvalues built with BETA_SPECTROSCOPIC_EV (see
+        // analyze() - a second, parallel diagonalization from the one
+        // that drives delocalizationEnergyEv), calibrated to benzene's
+        // real lowest UV absorption band rather than to thermochemical
+        // resonance energy - see BETA_SPECTROSCOPIC_EV's own comment for
+        // why simple Huckel theory needs two separate beta calibrations
+        // for these two different purposes.
+        //
+        // electronegativityEv/electrophilicityEv sum HOMO+LUMO rather
+        // than difference them, so they track the atoms' own alpha
+        // (PDT's Z_eff-derived orbital_energy) far more than beta - which
+        // beta calibration is used barely moves them. Their absolute
+        // magnitude inherits whatever absolute-energy-scale character
+        // alpha itself has; a real fix for THEIR absolute scale (as
+        // opposed to gapEv's, fixed above) is a separate, not-yet-done
+        // project: calibrating PDT's alpha against real experimental
+        // ionization energies rather than the pure hydrogenic estimate.
         return {
             homoEnergyEv: homoEnergy === null ? null : Math.round(homoEnergy * 1000) / 1000,
             lumoEnergyEv: lumoEnergy === null ? null : Math.round(lumoEnergy * 1000) / 1000,
-            gapEv: (homoEnergy !== null && lumoEnergy !== null) ? Math.round((lumoEnergy - homoEnergy) * 1000) / 1000 : null,
-            homoOpenShell: homoOpenShell
+            gapEv: gapEv === null ? null : Math.round(gapEv * 1000) / 1000,
+            homoOpenShell: homoOpenShell,
+            hardnessEv: hardnessEv === null ? null : Math.round(hardnessEv * 1000) / 1000,
+            softnessPerEv: softnessPerEv === null ? null : Math.round(softnessPerEv * 1000) / 1000,
+            electronegativityEv: electronegativityEv === null ? null : Math.round(electronegativityEv * 1000) / 1000,
+            electrophilicityEv: electrophilicityEv === null ? null : Math.round(electrophilicityEv * 1000) / 1000,
+            opticalGapNm: opticalGapNm,
+            conductivityClass: conductivityClass
         };
     }
 
@@ -242,7 +368,7 @@
     //     pyrrole-type N, furan-type O, thiophene-type S.
     function analyze(system, options) {
         options = options || {};
-        var betaModel = options.betaModel === 'ratio' ? 'ratio' : 'constant';
+        var betaModel = (options.betaModel === 'ratio' || options.betaModel === 'physical') ? options.betaModel : 'constant';
         var atoms = system.atoms || [];
         var bonds = system.bonds || [];
         var n = atoms.length;
@@ -300,13 +426,35 @@
             H[i][i] = alphas[i];
         }
         bonds.forEach(function(e) {
-            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel);
+            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel, atoms[e[0]].symbol, atoms[e[1]].symbol);
             H[e[0]][e[1]] = b;
             H[e[1]][e[0]] = b;
         });
 
         var eigenvalues = jacobiEigenvalues(H);
         var fill = fillElectrons(eigenvalues, piElectrons);
+
+        // Second, parallel diagonalization used only for the frontier-
+        // orbital descriptors (HOMO/LUMO/gap/hardness/opticalGap/
+        // conductivityClass, via homoLumo() below) - built with the
+        // 'physical' beta(bond)=beta0*f(Z_eff)*g(d) model and the
+        // spectroscopically-calibrated BETA_SPECTROSCOPIC_EV, so
+        // heteroatom/bond-length differentiation actually reaches these
+        // descriptors regardless of which betaModel the caller chose for
+        // the thermochemical path above. Does not affect eigenvalues/
+        // fill/referenceEnergy/delocalizationEnergy/totalPiEnergyEv/
+        // verdict, which keep using betaModel + BETA_EV exactly as before.
+        var Hspec = [];
+        for (var si = 0; si < n; si++) {
+            Hspec.push(new Array(n).fill(0));
+            Hspec[si][si] = alphas[si];
+        }
+        bonds.forEach(function(e) {
+            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV);
+            Hspec[e[0]][e[1]] = bs;
+            Hspec[e[1]][e[0]] = bs;
+        });
+        var eigenvaluesSpec = jacobiEigenvalues(Hspec);
 
         // Localized reference: needsDoubleBond atoms pair up into isolated
         // 2-atom pi bonds (bonding MO = average-alpha + beta, 2 electrons
@@ -320,7 +468,7 @@
                 if (counted[v]) return;
                 var w = matching[v];
                 counted[v] = counted[w] = true;
-                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel));
+                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel, atoms[v].symbol, atoms[w].symbol));
             });
         }
         lonePairDonors.forEach(function(v) { referenceEnergy += 2 * alphas[v]; });
@@ -360,7 +508,7 @@
             fullyConjugated: fullyConjugated,
             huckelApplicable: huckelApplicable,
             eigenvaluesEv: eigenvalues.map(function(e) { return Math.round(e * 1000) / 1000; }),
-            homoLumo: homoLumo(eigenvalues, piElectrons),
+            homoLumo: homoLumo(eigenvaluesSpec, piElectrons),
             openShellHOMO: fill.openShell,
             totalPiEnergyEv: Math.round(fill.totalEnergy * 1000) / 1000,
             localizedReferenceEv: Math.round(referenceEnergy * 1000) / 1000,
@@ -401,10 +549,14 @@
     function compareBetaModels(system) {
         var constant = analyze(system, { betaModel: 'constant' });
         var ratio = analyze(system, { betaModel: 'ratio' });
+        var physical = analyze(system, { betaModel: 'physical' });
         var deltaEv = (!constant.error && !ratio.error)
             ? Math.round((ratio.delocalizationEnergyEv - constant.delocalizationEnergyEv) * 1000) / 1000
             : null;
-        return { constant: constant, ratio: ratio, deltaEv: deltaEv };
+        var physicalDeltaEv = (!constant.error && !physical.error)
+            ? Math.round((physical.delocalizationEnergyEv - constant.delocalizationEnergyEv) * 1000) / 1000
+            : null;
+        return { constant: constant, ratio: ratio, physical: physical, deltaEv: deltaEv, physicalDeltaEv: physicalDeltaEv };
     }
 
     return {
@@ -414,7 +566,10 @@
         _jacobiEigenvalues: jacobiEigenvalues,
         _homoLumo: homoLumo,
         _computeBeta: computeBeta,
+        _betaZeffFactor: betaZeffFactor,
+        _betaDistanceFactor: betaDistanceFactor,
         BETA_EV: BETA_EV,
-        version: '0.4'
+        BETA_SPECTROSCOPIC_EV: BETA_SPECTROSCOPIC_EV,
+        version: '0.5'
     };
 }));
