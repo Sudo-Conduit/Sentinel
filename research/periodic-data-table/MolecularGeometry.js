@@ -164,24 +164,32 @@
         ];
     }
 
+    // Returns a rotation FUNCTION (not just a rotated one-shot list) that
+    // rigidly rotates `from` onto `target` (both unit vectors) - the same
+    // single-rotation math alignTemplate needs, factored out so ring
+    // placement below can apply the identical rotation to an entire local
+    // polygon's worth of points, not just a fixed-size template array.
+    function buildRotation(from, target) {
+        var axis = vcross(from, target);
+        var axisLen = vlen(axis);
+        var cosA = vdot(from, target);
+        if (axisLen < 1e-9) {
+            if (cosA > 0) return function(v) { return v.slice(); };
+            var flipAxis = vnorm(vcross(from, Math.abs(from[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0]));
+            return function(v) { return rotateAroundAxis(v, flipAxis, Math.PI); };
+        }
+        axis = vnorm(axis);
+        var angle = Math.acos(Math.max(-1, Math.min(1, cosA)));
+        return function(v) { return rotateAroundAxis(v, axis, angle); };
+    }
+
     // Rigidly rotates the whole template so template[0] ends up pointing
     // along `target` (a unit vector) - preserves every angle between
     // template entries exactly, since it's a single rotation applied to
     // all of them.
     function alignTemplate(template, target) {
-        var from = template[0];
-        var axis = vcross(from, target);
-        var axisLen = vlen(axis);
-        var cosA = vdot(from, target);
-        if (axisLen < 1e-9) {
-            if (cosA > 0) return template.map(function(v) { return v.slice(); });
-            var perp = Math.abs(from[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-            axis = vnorm(vcross(from, perp));
-            return template.map(function(v) { return rotateAroundAxis(v, axis, Math.PI); });
-        }
-        axis = vnorm(axis);
-        var angle = Math.acos(Math.max(-1, Math.min(1, cosA)));
-        return template.map(function(v) { return rotateAroundAxis(v, axis, angle); });
+        var rotate = buildRotation(template[0], target);
+        return template.map(rotate);
     }
 
     // Materializes implicit hydrogens (from MolecularStructure's per-atom
@@ -216,6 +224,153 @@
         return best === -1 ? 0 : best;
     }
 
+    // ================================================================
+    // Exact ring closure for simple monocyclic rings - the real fix for
+    // this module's own long-standing, recurring "BFS tree placement
+    // doesn't close the ring" defect (documented above and in
+    // generateIdealizedCoordinates' warnings), rather than just flagging
+    // it again downstream every time a new calculation depends on real
+    // ring geometry (dipole moment, van der Waals volume, sum-over-states
+    // polarizability all inherited the same distortion).
+    //
+    // Standard bridge-finding (Tarjan): an edge is a bridge iff it lies on
+    // no cycle. Self-contained here (same algorithm Smiles.js's own
+    // findBridgeBondIndices uses for the same reason - identifying ring
+    // membership from pure graph structure) rather than a new cross-module
+    // dependency, since it operates on this module's OWN heavy-atom bond
+    // list (which may include non-conjugated rings, e.g. cyclohexane,
+    // that Smiles.js's aromatic-only version was never meant to see).
+    // ================================================================
+    function findBridgeFlags(numAtoms, bonds) {
+        var adj = [];
+        for (var i = 0; i < numAtoms; i++) adj.push([]);
+        bonds.forEach(function(b, idx) {
+            adj[b[0]].push({ to: b[1], idx: idx });
+            adj[b[1]].push({ to: b[0], idx: idx });
+        });
+        var visited = new Array(numAtoms).fill(false);
+        var disc = new Array(numAtoms).fill(-1);
+        var low = new Array(numAtoms).fill(-1);
+        var timer = 0;
+        var bridges = {};
+        function dfs(u, parentEdgeIdx) {
+            visited[u] = true;
+            disc[u] = low[u] = timer++;
+            adj[u].forEach(function(e) {
+                if (e.idx === parentEdgeIdx) return;
+                if (visited[e.to]) {
+                    low[u] = Math.min(low[u], disc[e.to]);
+                } else {
+                    dfs(e.to, e.idx);
+                    low[u] = Math.min(low[u], low[e.to]);
+                    if (low[e.to] > disc[u]) bridges[e.idx] = true;
+                }
+            });
+        }
+        for (var s = 0; s < numAtoms; s++) if (!visited[s]) dfs(s, -1);
+        return bridges;
+    }
+
+    // Finds SIMPLE monocyclic ring components only - every member atom's
+    // ring-bond-degree must be exactly 2 (a plain, unfused cycle). A fused,
+    // bridged, or spiro system (any shared atom between two rings, e.g.
+    // porphyrin's macrocycle) fails this check and is deliberately left
+    // alone: simultaneous multi-ring closure is a real constraint-solving
+    // problem (distance geometry / force-field relaxation), not a closed-
+    // form one - out of scope here, same as this module's own top-of-file
+    // scope note already says. Those rings keep today's BFS-tree fallback
+    // and its existing honest warning, completely unchanged.
+    function findSimpleRingComponents(numAtoms, bonds) {
+        var bridges = findBridgeFlags(numAtoms, bonds);
+        var ringAdj = {};
+        bonds.forEach(function(b, idx) {
+            if (bridges[idx]) return;
+            (ringAdj[b[0]] = ringAdj[b[0]] || []).push({ to: b[1], idx: idx });
+            (ringAdj[b[1]] = ringAdj[b[1]] || []).push({ to: b[0], idx: idx });
+        });
+        var seen = {};
+        var components = [];
+        Object.keys(ringAdj).forEach(function(startKey) {
+            var start = Number(startKey);
+            if (seen[start]) return;
+            var comp = [];
+            var stack = [start];
+            seen[start] = true;
+            while (stack.length) {
+                var v = stack.pop();
+                comp.push(v);
+                ringAdj[v].forEach(function(e) { if (!seen[e.to]) { seen[e.to] = true; stack.push(e.to); } });
+            }
+            components.push(comp);
+        });
+        var result = [];
+        components.forEach(function(comp) {
+            var ok = comp.every(function(a) { return ringAdj[a].length === 2; });
+            if (!ok) return;
+            var order = [comp[0]];
+            var bondIndices = [];
+            var prev = -1, cur = comp[0];
+            while (true) {
+                var edges = ringAdj[cur];
+                var stepEdge = edges[0].to === prev ? edges[1] : edges[0];
+                bondIndices.push(stepEdge.idx);
+                if (stepEdge.to === comp[0]) break;
+                order.push(stepEdge.to);
+                prev = cur; cur = stepEdge.to;
+            }
+            result.push({ order: order, bondIndices: bondIndices });
+        });
+        return result;
+    }
+
+    // Given a cyclic sequence of real edge lengths, finds the circumradius
+    // R of the (unique, for realistic bond-length spreads) CONVEX cyclic
+    // polygon those edges close into - i.e. every vertex lies on a common
+    // circle of radius R, so the polygon closes EXACTLY by construction
+    // regardless of the individual edge lengths being unequal (real
+    // heteroatom rings, e.g. pyridine's C-N vs C-C bonds, not just the
+    // equal-edge regular-polygon case). Solves the standard identity
+    // sum_k 2*asin(e_k / (2R)) = 2*pi via bisection (the sum is strictly
+    // decreasing in R, so a unique root exists whenever it's bracketed -
+    // always true for real, similarly-sized covalent bond lengths). Returns
+    // null (never a fabricated/guessed shape) if no such R exists in a
+    // generous bracket - the caller then leaves this ring to the existing
+    // BFS-tree fallback exactly as before.
+    function solveRingCircumradius(edgeLengths) {
+        var sumEdges = edgeLengths.reduce(function(s, e) { return s + e; }, 0);
+        var maxEdge = Math.max.apply(null, edgeLengths);
+        function angleSum(R) {
+            return edgeLengths.reduce(function(s, e) {
+                return s + 2 * Math.asin(Math.min(1, e / (2 * R)));
+            }, 0);
+        }
+        var lo = maxEdge / 2 + 1e-6;
+        var hi = sumEdges;
+        var target = 2 * Math.PI;
+        if (angleSum(lo) - target < 0 || angleSum(hi) - target > 0) return null;
+        for (var iter = 0; iter < 100; iter++) {
+            var mid = (lo + hi) / 2;
+            var f = angleSum(mid) - target;
+            if (Math.abs(f) < 1e-12 || (hi - lo) < 1e-12) return mid;
+            if (f > 0) lo = mid; else hi = mid;
+        }
+        return (lo + hi) / 2;
+    }
+
+    // Builds the ring's own local, exactly-closed planar coordinates (z=0,
+    // atom order[0] at angle 0) from its real per-bond lengths. Returns
+    // null (propagated from solveRingCircumradius) if no valid closure
+    // exists - never a distorted or guessed shape.
+    function buildRingPolygon(order, edgeLengths) {
+        var R = solveRingCircumradius(edgeLengths);
+        if (R === null) return null;
+        var n = order.length;
+        var centralAngles = edgeLengths.map(function(e) { return 2 * Math.asin(Math.min(1, e / (2 * R))); });
+        var cumulative = [0];
+        for (var k = 1; k < n; k++) cumulative.push(cumulative[k - 1] + centralAngles[k - 1]);
+        return cumulative.map(function(phi) { return [R * Math.cos(phi), R * Math.sin(phi), 0]; });
+    }
+
     // molecule -> { atoms:[{symbol,x,y,z,isImplicitH,charge}],
     //               bonds:[[i,j,order,lengthAngstrom,lengthSource,ringClosure]],
     //               warnings, geometrySource }
@@ -243,6 +398,82 @@
         var isTreeEdgeBond = new Array(expanded.bonds.length).fill(false); // set directly when a bond places a child - not reverse-engineered from positions afterward
         var warnings = [];
 
+        // Real ring closure (see the block of functions above) for every
+        // SIMPLE monocyclic ring whose atoms are all steric-3 (trigonal
+        // planar - aromatic and other all-sp2 rings; sp3/saturated rings
+        // and any fused/bridged system still fall back to the BFS-tree
+        // placement below, unchanged, with its existing honest warning).
+        // Built on the heavy-atom graph (molecule.atoms/molecule.bonds) -
+        // heavy-atom indices are identical between `molecule` and
+        // `expanded`/`positions` (expandImplicitHydrogens only APPENDS
+        // synthetic H atoms after them), so no index translation is needed.
+        var ringAtomToComponent = {};
+        var ringComponents = findSimpleRingComponents(molecule.atoms.length, molecule.bonds).map(function(comp) {
+            var qualifies = comp.order.every(function(a) { return expanded.stericByAtom[a] === 3; });
+            var polygon = null;
+            if (qualifies) {
+                var edgeLengths = comp.bondIndices.map(function(bi) {
+                    var b = molecule.bonds[bi];
+                    return bondLength(molecule.atoms[b[0]].symbol, molecule.atoms[b[1]].symbol, b[2]).value;
+                });
+                polygon = buildRingPolygon(comp.order, edgeLengths);
+            }
+            return { order: comp.order, bondIndices: comp.bondIndices, polygon: polygon };
+        }).filter(function(c) { return c.polygon !== null; });
+        ringComponents.forEach(function(c, ci) { c.order.forEach(function(a) { ringAtomToComponent[a] = ci; }); });
+        var ringPlaced = new Array(ringComponents.length).fill(false);
+        var ringOutwardDir = {}; // per ring atom: unit vector for its one remaining (non-ring) domain, if any
+
+        // Places every atom of ring component `ci` at once, given that
+        // `entryAtom` (one member of the ring) already has a real
+        // positions[]/incomingDir[] entry - either the whole-molecule root
+        // (incomingDir is null - no target direction, keep the polygon's
+        // own natural orientation) or a child just placed by its real
+        // parent bond (incomingDir set - rotate the ring so its outward-
+        // facing direction at entryAtom, the same "domain" a generic
+        // template's non-reserved slot would occupy, faces away from that
+        // parent, exactly the convention every other atom type already
+        // uses). Marks every OTHER ring atom visited + queued for its own
+        // exocyclic substituents, and marks every ring-internal bond as a
+        // real, solved tree edge (isTreeEdgeBond) - not "ring-closure
+        // (unsolved)" anymore, because it genuinely isn't: every bond
+        // length in this polygon is exactly its cited/estimated value by
+        // construction, not a leftover gap from independent tree paths.
+        function placeRing(ci, entryAtom) {
+            var comp = ringComponents[ci];
+            var order = comp.order, N = order.length;
+            var entryIdx = order.indexOf(entryAtom);
+            var shift = comp.polygon[entryIdx];
+            var shifted = comp.polygon.map(function(p) { return vsub(p, shift); });
+
+            var incoming = incomingDir[entryAtom];
+            var rotate;
+            if (incoming) {
+                var prevLocal = vnorm(shifted[(entryIdx - 1 + N) % N]);
+                var nextLocal = vnorm(shifted[(entryIdx + 1) % N]);
+                var localOutward = vnorm(vneg(vadd(prevLocal, nextLocal)));
+                rotate = buildRotation(localOutward, vneg(incoming));
+            } else {
+                rotate = function(v) { return v.slice(); };
+            }
+
+            order.forEach(function(atomIdx, k) {
+                if (atomIdx !== entryAtom) {
+                    positions[atomIdx] = vadd(positions[entryAtom], rotate(shifted[k]));
+                    visited[atomIdx] = true;
+                }
+            });
+            comp.bondIndices.forEach(function(bi) { isTreeEdgeBond[bi] = true; });
+
+            order.forEach(function(atomIdx, k) {
+                var prevIdx = order[(k - 1 + N) % N], nextIdx = order[(k + 1) % N];
+                var d1 = vnorm(vsub(positions[prevIdx], positions[atomIdx]));
+                var d2 = vnorm(vsub(positions[nextIdx], positions[atomIdx]));
+                ringOutwardDir[atomIdx] = vnorm(vneg(vadd(d1, d2)));
+                if (atomIdx !== entryAtom) queue.push(atomIdx);
+            });
+        }
+
         var root = chooseRoot(expanded);
         positions[root] = [0, 0, 0];
         visited[root] = true;
@@ -250,9 +481,24 @@
 
         while (queue.length) {
             var u = queue.shift();
+            if (ringAtomToComponent[u] !== undefined && !ringPlaced[ringAtomToComponent[u]]) {
+                placeRing(ringAtomToComponent[u], u);
+                ringPlaced[ringAtomToComponent[u]] = true;
+            }
             var steric = expanded.stericByAtom[u];
             var toPlace = adj[u].filter(function(e) { return !visited[e.to]; });
             if (toPlace.length === 0) continue;
+
+            if (ringOutwardDir[u] && toPlace.length === 1) {
+                var child0 = toPlace[0].to;
+                var lenInfo0 = bondLength(expanded.atoms[u].symbol, expanded.atoms[child0].symbol, expanded.bonds[toPlace[0].bi][2]);
+                positions[child0] = vadd(positions[u], vscale(ringOutwardDir[u], lenInfo0.value));
+                incomingDir[child0] = ringOutwardDir[u];
+                isTreeEdgeBond[toPlace[0].bi] = true;
+                visited[child0] = true;
+                queue.push(child0);
+                continue;
+            }
 
             var pa = structureResult.perAtom[u];
             var templateSteric = null, removalCount = 0;
