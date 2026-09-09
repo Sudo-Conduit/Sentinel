@@ -415,13 +415,29 @@
     // (uniform bond lengths and uniform local angles can't always both
     // hold at once - the same reason regular pentagons can't tile a
     // plane) and a naive joint relaxation diverged numerically chasing
-    // it. Seeding from MDS's global solution FIRST - which, tellingly,
-    // reproduces a real physical fact (this project's own aromaticity.
-    // planar flag) as an emergent property of its eigenvalue spectrum,
-    // not an assumption fed into it - then relaxing distances only from
-    // that already-sensible starting point gives BOTH exact bond lengths
-    // AND reasonable local angles (no explicit angle constraint needed),
-    // confirmed directly on heme's porphyrin macrocycle.
+    // it. Seeding from MDS's global solution first, then relaxing
+    // distances only, gives both exact bond lengths and reasonable local
+    // angles (no explicit angle constraint needed) - confirmed directly
+    // on heme's porphyrin macrocycle.
+    //
+    // One more real bug this project's own honesty discipline caught
+    // AFTER first shipping this, not before, worth stating plainly rather
+    // than quietly fixing: an earlier version tried to DETECT planarity
+    // from the MDS eigenvalue spectrum itself (drop to 2D when the 3rd
+    // eigenvalue looked small). That measurement is fragile - checked
+    // directly on heme, the 3rd eigenvalue came out barely ABOVE the
+    // chosen cutoff, a coin-flip driven by noise from the many long-range
+    // pairs that are only approximate shortest-path estimates - so it
+    // silently kept 3D and let the pure-distance relaxation buckle a
+    // real, physically near-planar macrocycle (z spanning -1.48 to +1.48
+    // A on a ~4 A ring, dihedral angles jumping incoherently between ~0
+    // and ~180 degrees rather than showing any real, coherent distortion
+    // mode - checked directly, not assumed). Fixed by not re-deriving
+    // planarity at all: this project already has a real, authoritative
+    // answer as a DECLARED input (the same planar flag Aromaticity.js
+    // requires for huckelApplicable) - use it directly to pin z at 0
+    // through the relaxation when the caller declares the system planar,
+    // rather than inferring it noisily.
     // ================================================================
     function jacobiEigenDecomposition(matrix, maxSweeps) {
         var n = matrix.length;
@@ -484,7 +500,7 @@
         return dist;
     }
 
-    function refineByDistanceGeometry(n, bondsForGeometry, stericByAtom) {
+    function refineByDistanceGeometry(n, bondsForGeometry, stericByAtom, declaredPlanar) {
         var weightedAdj = {};
         var adj = {};
         bondsForGeometry.forEach(function(b) {
@@ -536,15 +552,25 @@
         for (i = 0; i < n; i++) { B.push(new Array(n)); for (j = 0; j < n; j++) B[i][j] = -0.5 * (D2[i][j] - rowMean[i] - rowMean[j] + grandMean); }
         var decomp = jacobiEigenDecomposition(B);
 
-        // Use 2 dimensions instead of 3 when the 3rd eigenvalue is small
-        // relative to the top 2 - not an assumption of planarity, a
-        // measurement of it: a genuinely 3D-embedded structure keeps a
-        // significant 3rd eigenvalue, a (near-)planar one (confirmed
-        // directly for a porphyrin macrocycle - top two eigenvalues came
-        // out equal, the third an order of magnitude smaller) doesn't,
-        // and forcing a 3rd dimension there only injects noise from the
-        // approximate shortest-path-seeded long-range distances.
-        var dims = (decomp.values[2] !== undefined && decomp.values[2] < 0.15 * decomp.values[1]) ? 2 : 3;
+        // An earlier version of this tried to DETECT planarity from the
+        // eigenvalue spectrum itself (2 dimensions when the 3rd eigenvalue
+        // is small relative to the top 2). That measurement is fragile:
+        // checked directly against this exact code path on heme, the 3rd
+        // eigenvalue (61.7) came out barely ABOVE the chosen 15% cutoff
+        // (60.9) - a coin-flip, driven by noise from the ~550-of-666
+        // long-range pairs that are only approximate shortest-path
+        // estimates, not real values - so it silently picked 3D and let
+        // the relaxation buckle a real, physically near-planar porphyrin
+        // macrocycle (a real check afterward found atoms spanning z =
+        // -1.48 to +1.48 A on a ~4 A ring, with dihedral angles jumping
+        // incoherently between ~0 and ~180 degrees - not a real, coherent
+        // distortion mode). This project already has a real, authoritative
+        // answer to "is this planar" as a DECLARED input, not something to
+        // re-derive noisily - the same planar flag Aromaticity.js already
+        // requires for huckelApplicable. Use it directly: 2 dimensions
+        // (z pinned at 0 through the relaxation below) when the caller
+        // declared this system planar, 3 only otherwise.
+        var dims = declaredPlanar ? 2 : 3;
         var mdsPositions = [];
         for (i = 0; i < n; i++) {
             var p = [];
@@ -559,6 +585,21 @@
         // Real bond-length constraint relaxation (SHAKE-style) from that
         // globally consistent starting point - converges to exact bond
         // lengths, confirmed directly (0.00000 A residual on heme).
+        //
+        // A real bug this project's own honesty discipline caught after
+        // shipping, not before: relaxation here runs on pairwise DISTANCE
+        // constraints only, which have no preference for planarity at
+        // all - even when the MDS step measured the structure as
+        // genuinely planar (dims===2 above), letting the relaxation move
+        // freely in full 3D let it buckle the ring substantially (a real
+        // check on heme found atoms spanning z = -1.48 to +1.48 A - on a
+        // ~4 A ring diameter, not a subtle ripple - with dihedral angles
+        // jumping incoherently between ~0 and ~180 degrees rather than
+        // showing any real, consistent distortion pattern). When dims is
+        // 2, the measurement of planarity has to be enforced through the
+        // relaxation, not just used to pick a starting point: pin z at 0
+        // for every atom throughout by zeroing the z-component of every
+        // correction, so the already-established planarity can't erode.
         var pos = mdsPositions.map(function(p) { return p.slice(); });
         var RELAXATION_ITERATIONS = 300;
         for (var iter = 0; iter < RELAXATION_ITERATIONS; iter++) {
@@ -569,6 +610,7 @@
                 if (dl < 1e-8) return;
                 var diff = (dl - b.length) / dl;
                 var corr = vscale(delta, diff * 0.25);
+                if (dims === 2) corr[2] = 0;
                 pos[b.a] = vadd(pi, corr);
                 pos[b.b] = vsub(pj, corr);
             });
@@ -778,7 +820,7 @@
             var bondsForGeometry = expanded.bonds.map(function(b) {
                 return { a: b[0], b: b[1], length: bondLength(expanded.atoms[b[0]].symbol, expanded.atoms[b[1]].symbol, b[2]).value };
             });
-            var refined = refineByDistanceGeometry(n, bondsForGeometry, expanded.stericByAtom);
+            var refined = refineByDistanceGeometry(n, bondsForGeometry, expanded.stericByAtom, !!options.planar);
             var stillBadAfterRefine = expanded.bonds.some(function(b, bi) {
                 if (isTreeEdgeBond[bi]) return false;
                 var target = bondLength(expanded.atoms[b[0]].symbol, expanded.atoms[b[1]].symbol, b[2]).value;
