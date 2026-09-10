@@ -155,6 +155,7 @@
 <script src="./MolecularVibrationalModes.js"></script>
 <script src="./MolecularSymmetry.js"></script>
 <script src="./MolecularThermodynamics.js"></script>
+<script src="./MolecularDescriptors.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./ExtendX.js"></script>
 <script>
@@ -203,7 +204,11 @@
     { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } },
     { key: 'lowestVibMode', label: 'Lowest vibrational mode', unit: 'cm^-1', get: function(r) { return (r.vibrationalModes && r.vibrationalModes.modes.length) ? r.vibrationalModes.modes[0].wavenumberCm1 : null; } },
     { key: 'standardEntropy', label: 'Standard entropy (298K, sigma=1)', unit: 'J/mol/K', get: function(r) { return r.thermodynamics ? r.thermodynamics.entropyJPerMolK : null; } },
-    { key: 'heatCapacityCp', label: 'Heat capacity Cp (298K)', unit: 'J/mol/K', get: function(r) { return r.thermodynamics ? r.thermodynamics.heatCapacityCpJPerMolK : null; } }
+    { key: 'heatCapacityCp', label: 'Heat capacity Cp (298K)', unit: 'J/mol/K', get: function(r) { return r.thermodynamics ? r.thermodynamics.heatCapacityCpJPerMolK : null; } },
+    { key: 'molarRefractivity', label: 'Molar refractivity', unit: 'cm^3/mol', get: function(r) { return (r.descriptors && r.descriptors.molarRefractivity) ? r.descriptors.molarRefractivity.molarRefractivityCm3PerMol : null; } },
+    { key: 'hbd', label: 'H-bond donors', unit: '', get: function(r) { return (r.descriptors && r.descriptors.druglikeness) ? r.descriptors.druglikeness.hydrogenBondDonors : null; } },
+    { key: 'hba', label: 'H-bond acceptors', unit: '', get: function(r) { return (r.descriptors && r.descriptors.druglikeness) ? r.descriptors.druglikeness.hydrogenBondAcceptors : null; } },
+    { key: 'rotatableBonds', label: 'Rotatable bonds', unit: '', get: function(r) { return (r.descriptors && r.descriptors.druglikeness) ? r.descriptors.druglikeness.rotatableBonds : null; } }
   ];
 
   // Always-shown result columns -- every row displays all of these

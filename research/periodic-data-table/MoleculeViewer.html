@@ -120,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. A simple, unfused ring (benzene, pyridine, pyrrole&hellip;) closes exactly via a closed-form circumscribed-polygon placement. A fused/bridged ring system (e.g. a porphyrin macrocycle) that has no closed-form solution is instead solved via real distance geometry - classical multidimensional scaling for a globally consistent starting shape, then a real bond-length constraint relaxation (the same idea as SHAKE) to exact bond lengths; local angles there are a good-faith result of that relaxation, not independently VSEPR-guaranteed. Ring-closure bonds (pink) are the rare, honest remainder: if even that relaxation can't converge for a bond, its real resulting length is reported and flagged rather than silently assumed correct. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularThermodynamics.js + MolecularSymmetry.js + MolecularVibrationalModes.js + MolecularVibrations.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularDescriptors.js + MolecularThermodynamics.js + MolecularSymmetry.js + MolecularVibrationalModes.js + MolecularVibrations.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -140,6 +140,7 @@
 <script src="./MolecularVibrationalModes.js"></script>
 <script src="./MolecularSymmetry.js"></script>
 <script src="./MolecularThermodynamics.js"></script>
+<script src="./MolecularDescriptors.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -458,6 +459,24 @@
         }).join('') + '</ul>' : '');
     }
 
+    var descriptorsHtml = '<p class="empty-note">Not available.</p>';
+    if (report.descriptors) {
+      var desc = report.descriptors;
+      var rows = '';
+      if (desc.quadrupole && desc.quadrupole.applicable) {
+        var qt = desc.quadrupole.tensorBuckingham;
+        rows += '<span class="k">Quadrupole moment (Qxx,Qyy,Qzz)</span><span class="v">' + esc(qt.Qxx) + ', ' + esc(qt.Qyy) + ', ' + esc(qt.Qzz) + ' B</span>';
+      }
+      if (desc.molarRefractivity) {
+        rows += '<span class="k">Molar refractivity</span><span class="v">' + esc(desc.molarRefractivity.molarRefractivityCm3PerMol) + ' cm&sup3;/mol</span>';
+      }
+      if (desc.druglikeness) {
+        rows += '<span class="k">H-bond donors / acceptors</span><span class="v">' + esc(desc.druglikeness.hydrogenBondDonors) + ' / ' + esc(desc.druglikeness.hydrogenBondAcceptors) + '</span>' +
+          '<span class="k">Rotatable bonds</span><span class="v">' + esc(desc.druglikeness.rotatableBonds) + '</span>';
+      }
+      descriptorsHtml = rows ? '<div class="kv">' + rows + '</div>' : descriptorsHtml;
+    }
+
     var symmetryHtml = '<p class="empty-note">Not available.</p>';
     if (report.symmetry) {
       var sym = report.symmetry;
@@ -530,6 +549,7 @@
       '<section><h3>Raman Activity (d&alpha;/dd) ' + badge('derived', 'fully derived, no external table') + '</h3>' + ramanHtml + '</section>' +
       '<section><h3>Vibrational Normal Modes ' + badge('derived', 'derived') + badge('cited', 'UFF angle-bend term cited') + '</h3>' + vibHtml + '</section>' +
       '<section><h3>Point-Group Symmetry ' + badge('derived', 'derived') + '</h3>' + symmetryHtml + '</section>' +
+      '<section><h3>Additional Descriptors ' + badge('derived', 'derived') + '</h3>' + descriptorsHtml + '</section>' +
       '<section><h3>Thermodynamics (RRHO) ' + badge('derived', 'derived') + '</h3>' + thermoHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
