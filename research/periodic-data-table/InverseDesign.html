@@ -22,11 +22,13 @@
   .filter-head{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px;}
   .filter-head input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent);}
   .filter-unit{color:var(--ink-dim); font-size:11px;}
-  .range-row{display:flex; align-items:center; gap:8px; opacity:.4; transition:opacity .15s;}
+  .range-row{opacity:.4; transition:opacity .15s;}
   .filter.active .range-row{opacity:1;}
-  .range-row input[type=number]{width:82px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:5px 6px; font-family:var(--font-mono); font-size:12px;}
-  .range-row input[type=range]{flex:1; accent-color:var(--accent);}
-  .filter-dash{color:var(--ink-dim);}
+  .range-numbers{display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;}
+  .range-row input[type=number]{width:74px; min-width:0; background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:5px 6px; font-family:var(--font-mono); font-size:12px;}
+  .range-sliders{display:flex; align-items:center; gap:6px; width:100%;}
+  .range-row input[type=range]{flex:1; min-width:0; width:0; accent-color:var(--accent);}
+  .filter-dash{color:var(--ink-dim); flex:0 0 auto;}
   .results-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;}
   .results-count{font-family:var(--font-mono); font-size:13px; color:var(--accent);}
   table{width:100%; border-collapse:collapse; font-size:12.5px;}
@@ -209,12 +211,20 @@
         loSlider.addEventListener('input', function() { sync('loSlider'); });
         hiSlider.addEventListener('input', function() { sync('hiSlider'); });
 
-        row.appendChild(loInput);
-        row.appendChild(loSlider);
+        var numbersRow = document.createElement('div');
+        numbersRow.className = 'range-numbers';
+        numbersRow.appendChild(loInput);
+        numbersRow.appendChild(hiInput);
+        row.appendChild(numbersRow);
+
+        var slidersRow = document.createElement('div');
+        slidersRow.className = 'range-sliders';
+        slidersRow.appendChild(loSlider);
         var dash = document.createElement('span'); dash.className = 'filter-dash'; dash.textContent = '-';
-        row.appendChild(dash);
-        row.appendChild(hiSlider);
-        row.appendChild(hiInput);
+        slidersRow.appendChild(dash);
+        slidersRow.appendChild(hiSlider);
+        row.appendChild(slidersRow);
+
         div.appendChild(row);
       }
 
