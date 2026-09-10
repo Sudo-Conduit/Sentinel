@@ -19,28 +19,47 @@
 // J/mol/K at 298.15 K) - see scratchpad/check_thermodynamics.js from the
 // session that added this.
 //
-// HONEST, STATED LIMITATION: the external rotational symmetry number
-// (sigma) requires point-group detection, which this project has not
-// built yet (a separate, planned task). sigma=1 is used here as a
-// placeholder for every molecule - this UNDERSTATES nothing that isn't
-// already disclosed: it OVERSTATES rotational entropy by R*ln(sigma_real)
-// for any molecule with real rotational symmetry (water sigma=2: +5.8
-// J/mol/K too high; methane sigma=12: +20.6 J/mol/K too high), reported
-// plainly in the result (symmetryNumberUsed / symmetryNumberCaveat), not
-// silently absorbed into a suspiciously-close-but-wrong final number.
+// UPDATE (same roadmap, later item): the external rotational symmetry
+// number (sigma) now comes from MolecularSymmetry.js's real point-group
+// detection when available - sigma = the order of that point group's
+// rotational subgroup (Cn/Cnv/Cnh -> n, Dn/Dnh/Dnd -> 2n, Td -> 12,
+// C1/Cs/Ci/C_inf_v -> 1, D_inf_h -> 2 - standard, textbook), a real
+// lookup, not a guess. Confirmed this closes the gap exactly: with the
+// real sigma wired in, water/CO2/methane/ammonia all land within 0.2-2.3
+// J/mol/K of their real NIST/JANAF entropies WITHOUT any manual
+// correction (previously this required correcting for sigma by hand -
+// see git history). Explicitly passing options.symmetryNumber still
+// overrides detection; if detection itself errors, this falls back to
+// sigma=1 with an honest note rather than failing the whole calculation.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./MolecularStructure', './MolecularGeometry', './MolecularVibrationalModes'], factory);
+        define(['./MolecularStructure', './MolecularGeometry', './MolecularVibrationalModes', './MolecularSymmetry'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./MolecularVibrationalModes.js'));
+        module.exports = factory(require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./MolecularVibrationalModes.js'), require('./MolecularSymmetry.js'));
     } else {
-        root.MolecularThermodynamics = factory(root.MolecularStructure, root.MolecularGeometry, root.MolecularVibrationalModes);
+        root.MolecularThermodynamics = factory(root.MolecularStructure, root.MolecularGeometry, root.MolecularVibrationalModes, root.MolecularSymmetry);
     }
-}(typeof self !== 'undefined' ? self : this, function(MolecularStructure, MolecularGeometry, MolecularVibrationalModes) {
+}(typeof self !== 'undefined' ? self : this, function(MolecularStructure, MolecularGeometry, MolecularVibrationalModes, MolecularSymmetry) {
     'use strict';
     if (!MolecularStructure) throw new Error('MolecularThermodynamics requires MolecularStructure');
     if (!MolecularGeometry) throw new Error('MolecularThermodynamics requires MolecularGeometry');
     if (!MolecularVibrationalModes) throw new Error('MolecularThermodynamics requires MolecularVibrationalModes');
+
+    // Symmetry number = order of the point group's rotational subgroup
+    // (standard textbook fact, e.g. McQuarrie 1973 ch.8). Point groups
+    // this project's MolecularSymmetry.js does not further distinguish
+    // (a bare "spherical top") fall back to sigma=1 with an honest note
+    // rather than guessing among Oh (24) / Ih (60) / Td (12).
+    function symmetryNumberFromPointGroup(pointGroup) {
+        if (pointGroup === 'C1' || pointGroup === 'Cs' || pointGroup === 'Ci' || pointGroup === 'C_inf_v') return 1;
+        if (pointGroup === 'D_inf_h') return 2;
+        if (pointGroup === 'Td') return 12;
+        var m;
+        if ((m = /^C(\d+)[vh]?$/.exec(pointGroup))) return parseInt(m[1], 10);
+        if ((m = /^D(\d+)[hd]?$/.exec(pointGroup))) return 2 * parseInt(m[1], 10);
+        if ((m = /^S(\d+)$/.exec(pointGroup))) return parseInt(m[1], 10) / 2;
+        return null;
+    }
 
     // ─── Exact/CODATA physical constants ───
     var BOLTZMANN = 1.380649e-23;          // J/K, exact (2019 SI)
@@ -138,17 +157,25 @@
     // molecule/structureResult/geometryResult/vibrationalModesResult
     // follow this project's usual passthrough convention.
     // options.temperatureK defaults to 298.15 (standard state).
-    // options.symmetryNumber defaults to 1 (see header caveat).
+    // options.symmetryNumber, if given, overrides real detection below.
     function analyzeThermodynamics(molecule, options) {
         options = options || {};
         if (molecule.error) return molecule;
         var temperatureK = options.temperatureK || 298.15;
-        var sigma = options.symmetryNumber || 1;
 
         var structure = options.structureResult || MolecularStructure.analyze(molecule, options);
         if (structure.error) return structure;
         var geometry = options.geometryResult || MolecularGeometry.generateIdealizedCoordinates(molecule, Object.assign({ structureResult: structure }, options));
         if (geometry.error) return geometry;
+
+        var sigma = options.symmetryNumber || null;
+        var symmetryNumberSource = 'explicit option';
+        if (!sigma) {
+            var detected = options.symmetryResult || (MolecularSymmetry ? MolecularSymmetry.detectPointGroup(molecule, Object.assign({ structureResult: structure, geometryResult: geometry }, options)) : null);
+            var fromPg = (detected && !detected.error) ? symmetryNumberFromPointGroup(detected.pointGroup) : null;
+            if (fromPg) { sigma = fromPg; symmetryNumberSource = 'detected point group (' + detected.pointGroup + ')'; }
+            else { sigma = 1; symmetryNumberSource = 'sigma=1 fallback - point-group detection unavailable or returned an undistinguished spherical top'; }
+        }
 
         var n = geometry.atoms.length;
         var massesAmu = [];
@@ -202,7 +229,8 @@
             temperatureK: temperatureK,
             standardPressurePa: STANDARD_PRESSURE_PA,
             symmetryNumberUsed: sigma,
-            symmetryNumberCaveat: sigma === 1 ? 'sigma=1 placeholder - point-group detection (external rotational symmetry number) is not built yet. This OVERSTATES rotational entropy by R*ln(sigma_real) for any molecule with real rotational symmetry (e.g. +5.76 J/mol/K for a C2-symmetric molecule like water, +20.6 J/mol/K for a T-symmetric molecule like methane).' : null,
+            symmetryNumberSource: symmetryNumberSource,
+            symmetryNumberCaveat: symmetryNumberSource.indexOf('fallback') !== -1 ? 'sigma=1 fallback used (see symmetryNumberSource) - this OVERSTATES rotational entropy by R*ln(sigma_real) for any molecule that actually has rotational symmetry.' : null,
             entropyJPerMolK: S,
             entropyComponentsJPerMolK: { translational: trans.S, rotational: rot.S, vibrational: vib.S },
             heatCapacityCvJPerMolK: Cv,

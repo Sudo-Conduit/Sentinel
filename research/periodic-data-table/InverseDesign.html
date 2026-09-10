@@ -153,6 +153,7 @@
 <script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularVibrations.js"></script>
 <script src="./MolecularVibrationalModes.js"></script>
+<script src="./MolecularSymmetry.js"></script>
 <script src="./MolecularThermodynamics.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./ExtendX.js"></script>
@@ -215,7 +216,8 @@
   // reuses its FILTERS getter so there is exactly one definition of each.
   var INFO_FIELDS = [
     { key: 'formula', label: 'Formula', unit: '', get: function(r) { return r.identity.formula; } },
-    { key: 'aromaticity', label: 'Aromaticity', unit: '', get: function(r) { return r.bonding.aromaticity ? r.bonding.aromaticity.verdict : null; } }
+    { key: 'aromaticity', label: 'Aromaticity', unit: '', get: function(r) { return r.bonding.aromaticity ? r.bonding.aromaticity.verdict : null; } },
+    { key: 'pointGroup', label: 'Point group', unit: '', get: function(r) { return r.symmetry ? r.symmetry.pointGroup : null; } }
   ].concat(FILTERS);
 
   function buildLibraryReports() {

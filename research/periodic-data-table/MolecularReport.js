@@ -24,20 +24,19 @@
 //                  context beyond a matched reference-library entry.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry', './MolecularElectrostatics', './MolecularTPSA', './MolecularVanDerWaals', './MolecularPolarizability', './MolecularVibrations', './MolecularVibrationalModes', './MolecularThermodynamics'], factory);
+        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry', './MolecularElectrostatics', './MolecularTPSA', './MolecularVanDerWaals', './MolecularPolarizability', './MolecularVibrations', './MolecularVibrationalModes', './MolecularThermodynamics', './MolecularSymmetry'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'), require('./MolecularTPSA.js'), require('./MolecularVanDerWaals.js'), require('./MolecularPolarizability.js'), require('./MolecularVibrations.js'), require('./MolecularVibrationalModes.js'), require('./MolecularThermodynamics.js'));
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'), require('./MolecularTPSA.js'), require('./MolecularVanDerWaals.js'), require('./MolecularPolarizability.js'), require('./MolecularVibrations.js'), require('./MolecularVibrationalModes.js'), require('./MolecularThermodynamics.js'), require('./MolecularSymmetry.js'));
     } else {
-        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics, root.MolecularTPSA, root.MolecularVanDerWaals, root.MolecularPolarizability, root.MolecularVibrations, root.MolecularVibrationalModes, root.MolecularThermodynamics);
+        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics, root.MolecularTPSA, root.MolecularVanDerWaals, root.MolecularPolarizability, root.MolecularVibrations, root.MolecularVibrationalModes, root.MolecularThermodynamics, root.MolecularSymmetry);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics, MolecularTPSA, MolecularVanDerWaals, MolecularPolarizability, MolecularVibrations, MolecularVibrationalModes, MolecularThermodynamics) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics, MolecularTPSA, MolecularVanDerWaals, MolecularPolarizability, MolecularVibrations, MolecularVibrationalModes, MolecularThermodynamics, MolecularSymmetry) {
     'use strict';
     if (!MolecularStructure) throw new Error('MolecularReport requires MolecularStructure');
     if (!MolecularGeometry) throw new Error('MolecularReport requires MolecularGeometry');
 
     var NOT_COMPUTED = [
         'Higher-order electric multipole moments (quadrupole and beyond) - only the dipole moment is computed, and only for main-group organic elements (see Electrostatics/Polarity)',
-        'Molecular point-group symmetry',
         'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is idealized VSEPR only, and ring/macrocycle closure bonds are explicitly flagged, not solved',
         'Full IR/Raman intensity spectra (per-mode Raman/IR intensity needs the Raman activity and dipole-derivative terms projected onto each real normal mode below, not yet done) and NMR spectroscopic predictions (not computed at all).',
         'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - Thermodynamics below gives real absolute entropy/heat-capacity/thermal-energy-content (RRHO statistical mechanics), not heat of formation, which needs a separate group-additivity or atomization-energy method',
@@ -193,10 +192,18 @@
         return result;
     }
 
-    function buildThermodynamics(molecule, structure, geometry, vibrationalModes, options) {
+    function buildThermodynamics(molecule, structure, geometry, vibrationalModes, symmetry, options) {
         if (options && options.thermodynamicsResult) return options.thermodynamicsResult;
         if (!MolecularThermodynamics) return null;
-        var result = MolecularThermodynamics.analyzeThermodynamics(molecule, Object.assign({ structureResult: structure, geometryResult: geometry, vibrationalModesResult: vibrationalModes || undefined }, options));
+        var result = MolecularThermodynamics.analyzeThermodynamics(molecule, Object.assign({ structureResult: structure, geometryResult: geometry, vibrationalModesResult: vibrationalModes || undefined, symmetryResult: symmetry || undefined }, options));
+        if (result.error) return null;
+        return result;
+    }
+
+    function buildSymmetry(molecule, structure, geometry, options) {
+        if (options && options.symmetryResult) return options.symmetryResult;
+        if (!MolecularSymmetry) return null;
+        var result = MolecularSymmetry.detectPointGroup(molecule, Object.assign({ structureResult: structure, geometryResult: geometry }, options));
         if (result.error) return null;
         return result;
     }
@@ -221,7 +228,8 @@
         var bondStiffness = buildBondStiffness(molecule, structure, options);
         var ramanActivity = buildRamanActivity(molecule, structure, geometry, options);
         var vibrationalModes = buildVibrationalModes(molecule, structure, geometry, options);
-        var thermodynamics = buildThermodynamics(molecule, structure, geometry, vibrationalModes, options);
+        var symmetry = buildSymmetry(molecule, structure, geometry, options);
+        var thermodynamics = buildThermodynamics(molecule, structure, geometry, vibrationalModes, symmetry, options);
 
         return {
             identity: buildIdentity(molecule, structure, options),
@@ -235,6 +243,7 @@
             bondStiffness: bondStiffness,
             ramanActivity: ramanActivity,
             vibrationalModes: vibrationalModes,
+            symmetry: symmetry,
             thermodynamics: thermodynamics,
             referenceContext: buildReferenceContext(structure),
             provenance: {
@@ -251,7 +260,8 @@
                     bondStiffness ? 'Per-bond mechanical stiffness (Born-model force constant: real repulsion exponent n is CITED per element pair, everything else - Z_eff, bond length, this project\'s own Coulson pi bond order - is DERIVED; see MolecularVibrations.js)' : null,
                     ramanActivity && ramanActivity.applicable ? 'Per-bond pi-electron Raman activity (d(alpha)/d(bond length), finite difference on this project\'s own sum-over-states polarizability - fully DERIVED, see MolecularVibrations.js analyzeRamanActivity)' : null,
                     vibrationalModes ? 'Real mass-weighted 3N-6 (3N-5 if linear) vibrational normal-mode frequencies (cm^-1) - a diagonal valence force field (this project\'s own Born-model bond stretch + a new UFF angle-bend term) projected through a real Wilson B-matrix onto the mass-weighted Cartesian Hessian and diagonalized (real Jacobi eigenvalue solver, self-checked); NO torsion/dihedral or out-of-plane-bending term exists yet, so a genuine torsional/out-of-plane degree of freedom this internal-coordinate set can\'t restrain reports as an honest extra zero rather than a fabricated number - see nonVibrationalModes/extraZeroModesBeyondRigidBody and MolecularVibrationalModes.js' : null,
-                    thermodynamics ? 'Ideal-gas standard-state entropy, heat capacity (Cv/Cp), zero-point energy, and thermal enthalpy content via Rigid-Rotor Harmonic-Oscillator statistical mechanics (translational Sackur-Tetrode + classical rigid-rotor + harmonic-oscillator sum over the real vibrational modes above) - fully DERIVED (re-derived from first principles, validated against real NIST/JANAF values for water/CO2/methane/ammonia, see MolecularThermodynamics.js). NOT heat of formation - see Thermodynamics.note. Uses a sigma=1 rotational symmetry number placeholder (point-group detection not built yet) which OVERSTATES entropy for any symmetric molecule - see Thermodynamics.symmetryNumberCaveat.' : null
+                    symmetry ? 'Molecular point-group symmetry (Cn/Cnv/Cnh/Dn/Dnh/Dnd/Td/C_inf_v/D_inf_h/Ci/Cs/C1) via real numerical symmetry-element detection over the idealized geometry above (candidate axes from the principal-axis theorem, each candidate operation actually tested against every atom, not assumed) - fully DERIVED, validated against the textbook point group of every molecule in this project\'s own library (water C2v, methane Td, benzene D6h, etc.), see MolecularSymmetry.js.' : null,
+                    thermodynamics ? 'Ideal-gas standard-state entropy, heat capacity (Cv/Cp), zero-point energy, and thermal enthalpy content via Rigid-Rotor Harmonic-Oscillator statistical mechanics (translational Sackur-Tetrode + classical rigid-rotor + harmonic-oscillator sum over the real vibrational modes above) - fully DERIVED (re-derived from first principles, validated against real NIST/JANAF values for water/CO2/methane/ammonia, see MolecularThermodynamics.js). NOT heat of formation - see Thermodynamics.note. The rotational symmetry number (sigma) now comes from the real point-group detection above (see Thermodynamics.symmetryNumberSource) rather than a placeholder.' : null
                 ].filter(Boolean),
                 cited: [
                     'Standard atomic weights (CIAAW/IUPAC 2021 table, MolecularStructure.js)',
@@ -262,6 +272,7 @@
                     polarizability ? 'Miller atomic hybrid polarizability components (J. Am. Chem. Soc. 1990, 112, 8533) - MolecularPolarizability.js' : null,
                     bondStiffness && bondStiffness.matchedBonds.length ? 'Herschbach, D.R.; Laurie, V.W. "Table of Vibrational Force Constants." UCRL-9694, 1961 - real per-pair force constants used to calibrate the Born-model repulsion exponent, MolecularVibrations.js' : null,
                     vibrationalModes ? 'Rappe, A.K.; Casewit, C.J.; Colwell, K.S.; Goddard, W.A. III; Skiff, W.M. "UFF, a Full Periodic Table Force Field..." J. Am. Chem. Soc. 1992, 114, 10024 (equation 13 angle-bend force constant, Table I effective charges) - MolecularVibrationalModes.js; Wilson, E.B.; Decius, J.C.; Cross, P.C. "Molecular Vibrations" McGraw-Hill, 1955 (B-matrix/GF method)' : null,
+                    symmetry ? 'Pilati, T.; Forni, A. "SYMMOL: a program to find the maximum symmetry group in an atom cluster." J. Appl. Cryst. 1998, 31, 503 (structure of the numeric symmetry-detection approach) - MolecularSymmetry.js' : null,
                     thermodynamics ? 'McQuarrie, D.A. "Statistical Mechanics" Harper & Row, 1973, ch. 8 (RRHO partition-function decomposition) - MolecularThermodynamics.js' : null,
                     structure.molarMass.warnings.length ? 'One or more elements in this formula have no stable isotope - see molarMassCitationWarnings' : null
                 ].filter(Boolean),
