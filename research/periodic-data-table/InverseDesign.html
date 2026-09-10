@@ -16,7 +16,7 @@
   h1{font-size:20px; margin:0 0 4px;}
   .sub{color:var(--ink-dim); font-size:13px; margin:0 0 20px; max-width:760px; line-height:1.5;}
   .layout{display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start;}
-  .panel{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px;}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0;}
   .filter{border-bottom:1px solid var(--line); padding:12px 0;}
   .filter:last-child{border-bottom:none;}
   .filter-head{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px;}
@@ -37,6 +37,10 @@
   tr.no-match{opacity:.3;}
   td.num{font-family:var(--font-mono);}
   td.na{color:var(--ink-dim); font-style:italic;}
+  td.bad{color:var(--bad);}
+  td.smiles{white-space:nowrap; user-select:all; font-size:11.5px;}
+  #resultsTable, #advancedResultsTable{overflow-x:auto;}
+  #resultsTable table, #advancedResultsTable table{min-width:max-content;}
   .empty-state{color:var(--ink-dim); padding:24px; text-align:center; font-size:13px;}
   .reset-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; margin-top:8px;}
   .reset-btn:hover{border-color:var(--accent);}
@@ -196,13 +200,26 @@
     { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } }
   ];
 
+  // Always-shown result columns -- every row displays all of these
+  // regardless of which FILTERS are enabled, so a comparison table is
+  // never just a bare list of names (formula/aromaticity/eV/polarity were
+  // requested directly; the rest is the same underlying report data, kept
+  // visible because a chemist/pharmacist/biologist/materials engineer each
+  // reads a different subset of it at a glance). Qualitative fields
+  // (formula, aromaticity verdict) are new here; every numeric field
+  // reuses its FILTERS getter so there is exactly one definition of each.
+  var INFO_FIELDS = [
+    { key: 'formula', label: 'Formula', unit: '', get: function(r) { return r.identity.formula; } },
+    { key: 'aromaticity', label: 'Aromaticity', unit: '', get: function(r) { return r.bonding.aromaticity ? r.bonding.aromaticity.verdict : null; } }
+  ].concat(FILTERS);
+
   function buildLibraryReports() {
     return MOLECULES.map(function(m) {
       var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
-      if (mol.error) return { label: m.label, error: mol.error };
+      if (mol.error) return { label: m.label, smiles: m.smiles || null, error: mol.error };
       var report = MolecularReport.build(mol, { planar: true, sourceSmiles: m.special ? null : m.smiles });
-      if (report.error) return { label: m.label, error: report.error };
-      return { label: m.label, report: report };
+      if (report.error) return { label: m.label, smiles: m.smiles || null, error: report.error };
+      return { label: m.label, smiles: m.smiles || null, report: report };
     });
   }
 
@@ -320,16 +337,16 @@
       return { key: f.key, label: f.label, unit: f.unit, get: f.get, lo: state[f.key].lo, hi: state[f.key].hi };
     });
     var rows = library.map(function(entry) {
-      if (entry.error) return { label: entry.label, error: entry.error, matches: false, values: {} };
+      if (entry.error) return { label: entry.label, smiles: entry.smiles, error: entry.error, matches: false, values: {} };
       var values = {};
+      INFO_FIELDS.forEach(function(f) { values[f.key] = f.get(entry.report); });
       var matches = true;
       activeFilters.forEach(function(f) {
-        var v = f.get(entry.report);
-        values[f.key] = v;
+        var v = values[f.key];
         if (v === null || v === undefined || isNaN(v)) { matches = false; return; }
         if (v < f.lo || v > f.hi) matches = false;
       });
-      return { label: entry.label, matches: matches, values: values };
+      return { label: entry.label, smiles: entry.smiles, matches: matches, values: values };
     });
     renderMatchTable(document.getElementById('resultsTable'), document.getElementById('resultsCount'), rows, activeFilters, library.length,
       'The library is empty.');
@@ -351,19 +368,24 @@
 
     var table = document.createElement('table');
     var thead = document.createElement('tr');
-    thead.innerHTML = '<th>Molecule</th>' + activeFilters.map(function(f) { return '<th>' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</th>'; }).join('');
+    thead.innerHTML = '<th>Molecule</th><th>SMILES</th>' + INFO_FIELDS.map(function(f) { return '<th>' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</th>'; }).join('');
     table.appendChild(thead);
 
     rows.forEach(function(r) {
       var tr = document.createElement('tr');
       if (!r.matches) tr.className = 'no-match';
       var cells = '<td>' + r.label + '</td>';
-      activeFilters.forEach(function(f) {
+      cells += r.smiles ? ('<td class="num smiles">' + r.smiles + '</td>') : '<td class="num na">n/a</td>';
+      INFO_FIELDS.forEach(function(f) {
         var v = r.values[f.key];
-        if (v === null || v === undefined || isNaN(v)) {
+        if (v === null || v === undefined || (typeof v === 'number' && isNaN(v))) {
           cells += '<td class="num na">n/a</td>';
+        } else if (typeof v === 'string') {
+          cells += '<td>' + v + '</td>';
         } else {
-          cells += '<td class="num">' + round(v) + '</td>';
+          var active = activeFilters.filter(function(af) { return af.key === f.key; })[0];
+          var bad = active && (v < active.lo || v > active.hi);
+          cells += '<td class="num' + (bad ? ' bad' : '') + '">' + round(v) + '</td>';
         }
       });
       tr.innerHTML = cells;
@@ -372,6 +394,91 @@
 
     tableContainer.innerHTML = '';
     tableContainer.appendChild(table);
+  }
+
+  // Serializes one of THIS module's own generated candidate graphs
+  // ({atoms:[{symbol,aromatic,explicitH,charge}], bonds:[[i,j,order]]})
+  // into a SMILES string, so a generated candidate can be copied out and
+  // searched against a real database or another tool -- not a general
+  // SMILES writer (Smiles.js's own serialize() is purpose-built for an
+  // already-extracted aromatic ring subsystem: it always lowercases every
+  // aromatic-capable atom regardless of whether that specific graph is
+  // actually aromatic, and never emits a bond-order symbol, both fine for
+  // its one caller but wrong for a general graph). This one instead uses
+  // each atom's own already-known `aromatic` flag -- propagated from the
+  // seed SMILES parse, or explicitly absent/false for a plain chain --
+  // never guessed here. Verified by round-tripping every shape this
+  // module actually generates (chain, heteroatom swap, substituent
+  // addition, a bracket-atom seed like pyrrole's [nH]) back through
+  // MolecularStructure.fromSmiles and comparing formulas; see
+  // scratchpad/check_smiles_roundtrip.js from the session that added this.
+  var AROMATIC_SMILES_SYMBOL = { C: 'c', N: 'n', O: 'o', S: 's', P: 'p' };
+  function candidateToSmiles(candidate) {
+    var atoms = candidate.atoms, bonds = candidate.bonds;
+    var n = atoms.length;
+    if (n === 0) return '';
+    var adj = [];
+    for (var i = 0; i < n; i++) adj.push([]);
+    bonds.forEach(function(b) { adj[b[0]].push([b[1], b[2]]); adj[b[1]].push([b[0], b[2]]); });
+
+    function edgeKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+    var visited = new Array(n).fill(false);
+    var parent = new Array(n).fill(-1);
+    var treeEdge = {};
+    function buildTree(u) {
+      visited[u] = true;
+      adj[u].forEach(function(pair) {
+        var v = pair[0];
+        if (!visited[v]) { parent[v] = u; treeEdge[edgeKey(u, v)] = true; buildTree(v); }
+      });
+    }
+    for (i = 0; i < n; i++) if (!visited[i]) buildTree(i);
+
+    var closureDigit = {}, nextDigit = 1;
+    bonds.forEach(function(b) {
+      var key = edgeKey(b[0], b[1]);
+      if (!treeEdge[key]) closureDigit[key] = nextDigit++;
+    });
+    var ringDigitsAt = [];
+    for (i = 0; i < n; i++) ringDigitsAt.push([]);
+    bonds.forEach(function(b) {
+      var key = edgeKey(b[0], b[1]);
+      if (closureDigit[key] !== undefined) {
+        ringDigitsAt[b[0]].push(closureDigit[key]);
+        ringDigitsAt[b[1]].push(closureDigit[key]);
+      }
+    });
+
+    function bondSymbol(order) {
+      if (order === 2) return '=';
+      if (order === 3) return '#';
+      return ''; // 1, or 'aromatic' between two already-lowercase atoms
+    }
+    function atomToken(atom) {
+      var lowerSym = AROMATIC_SMILES_SYMBOL[atom.symbol];
+      var aromaticWritable = atom.aromatic && lowerSym;
+      var needsBracket = atom.charge !== 0 || (atom.explicitH !== null && atom.explicitH !== undefined);
+      var core = aromaticWritable ? lowerSym : atom.symbol;
+      if (!needsBracket) return core;
+      var hPart = (atom.explicitH > 0) ? ('H' + (atom.explicitH > 1 ? atom.explicitH : '')) : '';
+      var chargePart = atom.charge > 0 ? ('+' + (atom.charge > 1 ? atom.charge : '')) : (atom.charge < 0 ? ('-' + (-atom.charge > 1 ? -atom.charge : '')) : '');
+      return '[' + core + hPart + chargePart + ']';
+    }
+
+    function emit(u, parentNode, incomingOrder) {
+      var s = (parentNode === -1 ? '' : bondSymbol(incomingOrder)) + atomToken(atoms[u]);
+      ringDigitsAt[u].forEach(function(d) { s += d; });
+      var children = adj[u].filter(function(pair) { return pair[0] !== parentNode && parent[pair[0]] === u; });
+      children.forEach(function(pair, idx) {
+        var sub = emit(pair[0], u, pair[1]);
+        s += (idx < children.length - 1) ? '(' + sub + ')' : sub;
+      });
+      return s;
+    }
+
+    var pieces = [];
+    for (i = 0; i < n; i++) if (parent[i] === -1) pieces.push(emit(i, -1, null));
+    return pieces.join('.');
   }
 
   // ─── Advanced: candidate generation (deterministic, bounded, no ML) ──────
@@ -411,7 +518,7 @@
         bondOptions.forEach(function(bondOrders) {
           var atoms = atomSyms.map(function(sym) { return { symbol: sym, explicitH: null, charge: 0 }; });
           var bonds = bondOrders.map(function(order, i) { return [i, i + 1, order]; });
-          out.push({ atoms: atoms, bonds: bonds, label: atomSyms.join('-') + (bonds.length ? ' (' + bondOrders.join(',') + ')' : '') });
+          out.push({ atoms: atoms, bonds: bonds, smiles: candidateToSmiles({ atoms: atoms, bonds: bonds }), label: atomSyms.join('-') + (bonds.length ? ' (' + bondOrders.join(',') + ')' : '') });
         });
       });
     }
@@ -445,7 +552,7 @@
             return i === idx ? { symbol: newEl, explicitH: a.explicitH, charge: a.charge, aromatic: a.aromatic } : { symbol: a.symbol, explicitH: a.explicitH, charge: a.charge, aromatic: a.aromatic };
           });
           var bonds = seedGraph.bonds.map(function(b) { return b.slice(); });
-          out.push({ atoms: atoms, bonds: bonds, label: 'heteroatom: position ' + idx + ' (' + atom.symbol + ') -> ' + newEl });
+          out.push({ atoms: atoms, bonds: bonds, smiles: candidateToSmiles({ atoms: atoms, bonds: bonds }), label: 'heteroatom: position ' + idx + ' (' + atom.symbol + ') -> ' + newEl });
         });
       });
     }
@@ -458,7 +565,7 @@
           atoms.push({ symbol: subEl, explicitH: null, charge: 0 });
           var bonds = seedGraph.bonds.map(function(b) { return b.slice(); });
           bonds.push([idx, atoms.length - 1, 1]);
-          out.push({ atoms: atoms, bonds: bonds, label: 'substituent: position ' + idx + ' (' + pa.symbol + ') + ' + subEl });
+          out.push({ atoms: atoms, bonds: bonds, smiles: candidateToSmiles({ atoms: atoms, bonds: bonds }), label: 'substituent: position ' + idx + ' (' + pa.symbol + ') + ' + subEl });
         });
       });
     }
@@ -473,7 +580,7 @@
     mixinId: 'inverseDesign.validity',
     evaluateOne: function(candidate, next) {
       var structure = MolecularStructure.analyze(candidate, { planar: true });
-      if (structure.error) return { label: candidate.label, matches: false, values: {}, error: structure.error };
+      if (structure.error) return { label: candidate.label, smiles: candidate.smiles || null, matches: false, values: {}, error: structure.error };
       this._structure = structure;
       return next(candidate);
     }
@@ -483,9 +590,9 @@
     evaluateOne: function(candidate, next) {
       var structure = this._structure;
       var geometry = MolecularGeometry.generateIdealizedCoordinates(candidate, { planar: true, structureResult: structure });
-      if (geometry.error) return { label: candidate.label, matches: false, values: {}, error: geometry.error };
+      if (geometry.error) return { label: candidate.label, smiles: candidate.smiles || null, matches: false, values: {}, error: geometry.error };
       var report = MolecularReport.build(candidate, { planar: true, structureResult: structure, geometryResult: geometry });
-      if (report.error) return { label: candidate.label, matches: false, values: {}, error: report.error };
+      if (report.error) return { label: candidate.label, smiles: candidate.smiles || null, matches: false, values: {}, error: report.error };
       this._report = report;
       return next(candidate);
     }
@@ -496,15 +603,15 @@
       var report = this._report;
       var activeFilters = this._activeFilters || [];
       var values = {};
+      INFO_FIELDS.forEach(function(f) { values[f.key] = f.get(report); });
       var matches = true;
       activeFilters.forEach(function(f) {
-        var v = f.get(report);
-        values[f.key] = v;
+        var v = values[f.key];
         if (v === null || v === undefined || isNaN(v)) { matches = false; return; }
         if (v < f.lo || v > f.hi) matches = false;
       });
       var label = candidate.label + ' (' + report.identity.formula + ')';
-      return { label: label, matches: matches, values: values };
+      return { label: label, smiles: candidate.smiles || null, matches: matches, values: values };
     }
   };
   // Left-to-right (default order): Validity runs first, then Report, then
