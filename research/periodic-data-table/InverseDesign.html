@@ -152,6 +152,7 @@
 <script src="./MolecularVanDerWaals.js"></script>
 <script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularVibrations.js"></script>
+<script src="./MolecularVibrationalModes.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./ExtendX.js"></script>
 <script>
@@ -197,7 +198,8 @@
     { key: 'vdwVolume', label: 'Van der Waals volume', unit: 'A^3', get: function(r) { return (r.vanDerWaals && r.vanDerWaals.volume) ? r.vanDerWaals.volume.volumeAngstrom3 : null; } },
     { key: 'vdwSurface', label: 'Van der Waals surface area', unit: 'A^2', get: function(r) { return (r.vanDerWaals && r.vanDerWaals.surfaceArea) ? r.vanDerWaals.surfaceArea.surfaceAreaAngstrom2 : null; } },
     { key: 'polarizability', label: 'Mean polarizability', unit: 'A^3', get: function(r) { return r.polarizability ? r.polarizability.polarizabilityAngstrom3 : null; } },
-    { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } }
+    { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } },
+    { key: 'lowestVibMode', label: 'Lowest vibrational mode', unit: 'cm^-1', get: function(r) { return (r.vibrationalModes && r.vibrationalModes.modes.length) ? r.vibrationalModes.modes[0].wavenumberCm1 : null; } }
   ];
 
   // Always-shown result columns -- every row displays all of these

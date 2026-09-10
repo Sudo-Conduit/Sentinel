@@ -120,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. A simple, unfused ring (benzene, pyridine, pyrrole&hellip;) closes exactly via a closed-form circumscribed-polygon placement. A fused/bridged ring system (e.g. a porphyrin macrocycle) that has no closed-form solution is instead solved via real distance geometry - classical multidimensional scaling for a globally consistent starting shape, then a real bond-length constraint relaxation (the same idea as SHAKE) to exact bond lengths; local angles there are a good-faith result of that relaxation, not independently VSEPR-guaranteed. Ring-closure bonds (pink) are the rare, honest remainder: if even that relaxation can't converge for a bond, its real resulting length is reported and flagged rather than silently assumed correct. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularVibrationalModes.js + MolecularVibrations.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -137,6 +137,7 @@
 <script src="./MolecularVanDerWaals.js"></script>
 <script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularVibrations.js"></script>
+<script src="./MolecularVibrationalModes.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./MolecularViewer.js"></script>
 <script>
@@ -437,6 +438,24 @@
       }
     }
 
+    var vibHtml = '<p class="empty-note">Not available.</p>';
+    if (report.vibrationalModes) {
+      var vm = report.vibrationalModes;
+      vibHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(vm.method) + '</p>' +
+        '<table><thead><tr><th>#</th><th>Wavenumber (cm&#8315;&sup1;)</th></tr></thead><tbody>' +
+        vm.modes.map(function(m, i) {
+          return '<tr><td>' + (i + 1) + '</td><td' + (m.imaginary ? ' style="color:#c0392b"' : '') + '>' + esc(m.wavenumberCm1.toFixed(1)) + (m.imaginary ? ' (imaginary)' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>' +
+        '<div class="kv" style="margin-top:10px">' +
+        '<span class="k">Rigid-body (translation/rotation) modes</span><span class="v">' + esc(vm.expectedRigidBodyModeCount) + '</span>' +
+        '<span class="k">Extra unconstrained-zero modes</span><span class="v">' + esc(vm.extraZeroModesBeyondRigidBody) + '</span>' +
+        '</div>' +
+        (vm.extraZeroModesBeyondRigidBody > 0 ? '<p class="empty-note" style="margin-top:6px">' + esc(vm.extraZeroModesBeyondRigidBody) + ' torsional/out-of-plane degree(s) of freedom this diagonal force field has no term for - reported as an honest zero, not a fabricated frequency.</p>' : '') +
+        (vm.unmatchedInternalCoordinates.length ? '<ul style="margin-top:10px">' + vm.unmatchedInternalCoordinates.map(function(u) {
+          return '<li>' + esc(u.type) + ' ' + u.atoms.join('-') + ': ' + esc(u.reason) + '</li>';
+        }).join('') + '</ul>' : '');
+    }
+
     var geomHtml = '<div class="kv">' +
       '<span class="k">Source</span><span class="v">' + esc(report.geometry.source) + '</span>' +
       '<span class="k">Atoms (incl. implicit H)</span><span class="v">' + esc(report.geometry.atomCount) + '</span>' +
@@ -478,6 +497,7 @@
       '<section><h3>&pi;-Electron Polarizability (Sum-Over-States) ' + badge('derived', 'fully derived, no external table') + '</h3>' + piPolHtml + '</section>' +
       '<section><h3>Bond Stiffness (Born Model) ' + badge('derived', 'derived') + badge('cited', 'repulsion exponent cited') + '</h3>' + stiffHtml + '</section>' +
       '<section><h3>Raman Activity (d&alpha;/dd) ' + badge('derived', 'fully derived, no external table') + '</h3>' + ramanHtml + '</section>' +
+      '<section><h3>Vibrational Normal Modes ' + badge('derived', 'derived') + badge('cited', 'UFF angle-bend term cited') + '</h3>' + vibHtml + '</section>' +
       '<section><h3>Idealized 3D Geometry ' + badge('derived', 'derived') + badge('cited', 'bond lengths cited') + '</h3>' + geomHtml + '</section>' +
       '<section><h3>Reference / Biological Context ' + badge('cited', 'cited') + '</h3>' + refHtml + '</section>' +
       '<section><h3>Not Computed ' + badge('notcomputed', 'explicitly out of scope') + '</h3><ul class="notcomputed">' +
