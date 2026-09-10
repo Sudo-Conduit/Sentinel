@@ -40,6 +40,24 @@
   .empty-state{color:var(--ink-dim); padding:24px; text-align:center; font-size:13px;}
   .reset-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; margin-top:8px;}
   .reset-btn:hover{border-color:var(--accent);}
+  .advanced{margin-top:28px;}
+  .advanced-head{display:flex; align-items:baseline; gap:10px; margin-bottom:6px;}
+  .advanced-sub{color:var(--ink-dim); font-size:13px; max-width:900px; line-height:1.5; margin:0 0 16px;}
+  .mode-toggle{display:flex; gap:0; border:1px solid var(--line); border-radius:8px; overflow:hidden; width:fit-content; margin-bottom:16px;}
+  .mode-toggle button{background:var(--surface-2); color:var(--ink-dim); border:none; padding:8px 16px; font-size:13px; cursor:pointer;}
+  .mode-toggle button.selected{background:var(--accent); color:#001622; font-weight:600;}
+  .mode-panel{display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; margin-bottom:16px;}
+  .field{display:flex; flex-direction:column; gap:6px;}
+  .field label{font-size:11px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.03em;}
+  .element-list{display:flex; flex-wrap:wrap; gap:10px; max-width:420px;}
+  .element-chip{display:flex; align-items:center; gap:5px; background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:5px 10px; font-family:var(--font-mono); font-size:12px; cursor:pointer; user-select:none;}
+  .element-chip input{accent-color:var(--accent);}
+  .field input[type=number],.field input[type=text]{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:7px 9px; font-family:var(--font-mono); font-size:13px; width:220px;}
+  .go-btn{background:var(--accent); color:#001622; border:none; border-radius:8px; padding:9px 20px; font-size:13px; font-weight:600; cursor:pointer;}
+  .go-btn:disabled{opacity:.5; cursor:default;}
+  .go-btn:hover:not(:disabled){filter:brightness(1.1);}
+  .advanced-status{color:var(--ink-dim); font-size:12.5px; margin-bottom:10px; min-height:18px;}
+  .advanced-note{color:var(--ink-dim); font-size:11.5px; margin-top:10px; line-height:1.5;}
 </style>
 </head>
 <body>
@@ -66,6 +84,59 @@
   </div>
 </div>
 
+<div class="advanced panel">
+  <div class="advanced-head"><strong>Advanced: generate, don't hard-code</strong></div>
+  <p class="advanced-sub">
+    The filters above only ever check membership in the same fixed ten
+    molecules. This generates real candidates instead -- deterministically
+    (a bounded, exhaustive enumeration, never a trained model or a
+    statistical search) -- and evaluates every one through the exact same
+    <code>MolecularReport.js</code> pipeline, checked against whichever
+    filters above are enabled. Generation and evaluation aren't instant the
+    way filtering ten cached rows is, so this runs on demand rather than
+    live: set the mode and bounds, then hit Go.
+  </p>
+
+  <div class="mode-toggle">
+    <button id="modeExactBtn" class="selected">Exact (element-bounded)</button>
+    <button id="modeVariationsBtn">Variations (SMILES-anchored)</button>
+  </div>
+
+  <div id="exactPanel" class="mode-panel">
+    <div class="field">
+      <label>Allowed elements</label>
+      <div class="element-list" id="elementList"></div>
+    </div>
+    <div class="field">
+      <label>Max heavy atoms</label>
+      <input type="number" id="maxHeavyAtoms" value="4" min="1" max="6" step="1">
+    </div>
+  </div>
+
+  <div id="variationsPanel" class="mode-panel" hidden>
+    <div class="field">
+      <label>Seed SMILES</label>
+      <input type="text" id="seedSmiles" value="c1ccccc1" placeholder="e.g. c1ccccc1">
+    </div>
+    <div class="field">
+      <label>Operators</label>
+      <div class="element-list">
+        <label class="element-chip"><input type="checkbox" id="opHeteroatom" checked> Heteroatom substitution</label>
+        <label class="element-chip"><input type="checkbox" id="opSubstituent" checked> Substituent swap</label>
+      </div>
+    </div>
+  </div>
+
+  <button class="go-btn" id="goBtn">Go</button>
+  <div class="advanced-status" id="advancedStatus"></div>
+  <div class="results-head">
+    <strong>Generated matches</strong>
+    <span class="results-count" id="advancedResultsCount"></span>
+  </div>
+  <div id="advancedResultsTable"></div>
+  <p class="advanced-note" id="advancedNote"></p>
+</div>
+
 <script src="./PDT.js"></script>
 <script src="./Smiles.js"></script>
 <script src="./Aromaticity.js"></script>
@@ -78,6 +149,7 @@
 <script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularVibrations.js"></script>
 <script src="./MolecularReport.js"></script>
+<script src="./ExtendX.js"></script>
 <script>
 (function() {
   'use strict';
@@ -244,7 +316,9 @@
   }
 
   function renderResults() {
-    var activeFilters = FILTERS.filter(function(f) { return state[f.key].enabled; });
+    var activeFilters = FILTERS.filter(function(f) { return state[f.key].enabled; }).map(function(f) {
+      return { key: f.key, label: f.label, unit: f.unit, get: f.get, lo: state[f.key].lo, hi: state[f.key].hi };
+    });
     var rows = library.map(function(entry) {
       if (entry.error) return { label: entry.label, error: entry.error, matches: false, values: {} };
       var values = {};
@@ -253,18 +327,26 @@
         var v = f.get(entry.report);
         values[f.key] = v;
         if (v === null || v === undefined || isNaN(v)) { matches = false; return; }
-        var s = state[f.key];
-        if (v < s.lo || v > s.hi) matches = false;
+        if (v < f.lo || v > f.hi) matches = false;
       });
       return { label: entry.label, matches: matches, values: values };
     });
+    renderMatchTable(document.getElementById('resultsTable'), document.getElementById('resultsCount'), rows, activeFilters, library.length,
+      'The library is empty.');
+  }
 
+  // ─── Shared table rendering (library filter results + advanced results) ──
+  // With no active filters, every row is shown (matches:true for all, by
+  // construction) rather than hiding the table behind an empty-state
+  // message -- "no constraint" means "nothing excluded", not "nothing to
+  // show".
+  function renderMatchTable(tableContainer, countEl, rows, activeFilters, totalCount, noRowsMessage) {
     var matchCount = rows.filter(function(r) { return r.matches; }).length;
-    document.getElementById('resultsCount').textContent = matchCount + ' / ' + library.length + ' molecules match';
+    countEl.textContent = matchCount + ' / ' + totalCount + (totalCount === 1 ? ' candidate matches' : ' candidates match');
 
-    var container = document.getElementById('resultsTable');
-    if (activeFilters.length === 0) {
-      container.innerHTML = '<div class="empty-state">No filters enabled -- showing the full library. Enable a filter on the left to constrain it.</div>';
+    if (rows.length === 0) {
+      tableContainer.innerHTML = '<div class="empty-state">' + noRowsMessage + '</div>';
+      return;
     }
 
     var table = document.createElement('table');
@@ -274,7 +356,7 @@
 
     rows.forEach(function(r) {
       var tr = document.createElement('tr');
-      if (!r.matches && activeFilters.length > 0) tr.className = 'no-match';
+      if (!r.matches) tr.className = 'no-match';
       var cells = '<td>' + r.label + '</td>';
       activeFilters.forEach(function(f) {
         var v = r.values[f.key];
@@ -288,20 +370,248 @@
       table.appendChild(tr);
     });
 
-    if (activeFilters.length > 0) {
-      container.innerHTML = '';
-      container.appendChild(table);
-    } else {
-      var full = document.createElement('table');
-      var h = document.createElement('tr'); h.innerHTML = '<th>Molecule</th>'; full.appendChild(h);
-      library.forEach(function(entry) {
-        var tr = document.createElement('tr');
-        tr.innerHTML = '<td>' + entry.label + (entry.error ? ' - error: ' + entry.error : '') + '</td>';
-        full.appendChild(tr);
-      });
-      container.appendChild(full);
-    }
+    tableContainer.innerHTML = '';
+    tableContainer.appendChild(table);
   }
+
+  // ─── Advanced: candidate generation (deterministic, bounded, no ML) ──────
+
+  // EXACT mode: every simple unbranched chain of length 1..maxLen buildable
+  // from allowedElements, with each of the (len-1) bonds independently
+  // single/double/triple. Deliberately narrow (chains only, no rings or
+  // branching yet) and NOT deduplicated for symmetric relabelings (C-N and
+  // N-C both appear) -- an honest, stated limitation, not hidden. Built
+  // directly as graph objects (MolecularStructure's own {atoms,bonds}
+  // shape) and validated by actually running analyze() on each one; an
+  // invalid valence combination is skipped, not guessed around.
+  function enumerateChains(allowedElements, maxLen) {
+    var out = [];
+    function atomSeqs(len) {
+      if (len === 0) return [[]];
+      var shorter = atomSeqs(len - 1);
+      var result = [];
+      shorter.forEach(function(seq) {
+        allowedElements.forEach(function(el) { result.push(seq.concat([el])); });
+      });
+      return result;
+    }
+    function bondSeqs(nBonds) {
+      if (nBonds === 0) return [[]];
+      var shorter = bondSeqs(nBonds - 1);
+      var result = [];
+      shorter.forEach(function(seq) {
+        [1, 2, 3].forEach(function(order) { result.push(seq.concat([order])); });
+      });
+      return result;
+    }
+    for (var len = 1; len <= maxLen; len++) {
+      var atomOptions = atomSeqs(len);
+      var bondOptions = bondSeqs(Math.max(0, len - 1));
+      atomOptions.forEach(function(atomSyms) {
+        bondOptions.forEach(function(bondOrders) {
+          var atoms = atomSyms.map(function(sym) { return { symbol: sym, explicitH: null, charge: 0 }; });
+          var bonds = bondOrders.map(function(order, i) { return [i, i + 1, order]; });
+          out.push({ atoms: atoms, bonds: bonds, label: atomSyms.join('-') + (bonds.length ? ' (' + bondOrders.join(',') + ')' : '') });
+        });
+      });
+    }
+    return out;
+  }
+
+  // VARIATIONS mode: systematic edits of one seed structure. Two operators,
+  // each independently toggleable; ring expansion/contraction is NOT
+  // implemented yet and is stated as such in the UI rather than faked.
+  function generateVariations(seedGraph, seedStructure, options) {
+    var out = [];
+    // 'O' was in this set originally and is deliberately removed: checked
+    // directly (see scratchpad/check_hetero_bug.js) that substituting a
+    // ring position's C for O produces an inconsistent result -- every
+    // OTHER ring carbon's implicit-H count silently changes from the
+    // correct aromatic 1 to 2 (formula comes out C5H10O instead of a real
+    // structure), because a neutral all-aromatic 6-ring with one O isn't
+    // actually a well-defined structure the way pyridine's N-for-C swap is
+    // (real aromatic O-rings like furan are 5-membered, not 6). N is kept
+    // because it was checked and gives the correct pyridine formula
+    // (C5H5N). Not re-adding O here until that's actually fixed, not
+    // guessed around.
+    var HETERO_SET = ['N'];
+    var SUBSTITUENT_SET = ['F', 'Cl', 'N', 'O'];
+
+    if (options.heteroatom) {
+      seedGraph.atoms.forEach(function(atom, idx) {
+        HETERO_SET.forEach(function(newEl) {
+          if (newEl === atom.symbol) return;
+          var atoms = seedGraph.atoms.map(function(a, i) {
+            return i === idx ? { symbol: newEl, explicitH: a.explicitH, charge: a.charge, aromatic: a.aromatic } : { symbol: a.symbol, explicitH: a.explicitH, charge: a.charge, aromatic: a.aromatic };
+          });
+          var bonds = seedGraph.bonds.map(function(b) { return b.slice(); });
+          out.push({ atoms: atoms, bonds: bonds, label: 'heteroatom: position ' + idx + ' (' + atom.symbol + ') -> ' + newEl });
+        });
+      });
+    }
+
+    if (options.substituent) {
+      seedStructure.perAtom.forEach(function(pa, idx) {
+        if (pa.error || !(pa.implicitH > 0)) return;
+        SUBSTITUENT_SET.forEach(function(subEl) {
+          var atoms = seedGraph.atoms.map(function(a) { return { symbol: a.symbol, explicitH: a.explicitH, charge: a.charge, aromatic: a.aromatic }; });
+          atoms.push({ symbol: subEl, explicitH: null, charge: 0 });
+          var bonds = seedGraph.bonds.map(function(b) { return b.slice(); });
+          bonds.push([idx, atoms.length - 1, 1]);
+          out.push({ atoms: atoms, bonds: bonds, label: 'substituent: position ' + idx + ' (' + pa.symbol + ') + ' + subEl });
+        });
+      });
+    }
+
+    return out;
+  }
+
+  // ─── Advanced: evaluation, composed via ExtendX so each stage (validity,
+  // report, range-match) is an independently swappable/toggleable layer,
+  // not one monolithic function. ────────────────────────────────────────
+  var ValidityMixin = {
+    mixinId: 'inverseDesign.validity',
+    evaluateOne: function(candidate, next) {
+      var structure = MolecularStructure.analyze(candidate, { planar: true });
+      if (structure.error) return { label: candidate.label, matches: false, values: {}, error: structure.error };
+      this._structure = structure;
+      return next(candidate);
+    }
+  };
+  var ReportMixin = {
+    mixinId: 'inverseDesign.report',
+    evaluateOne: function(candidate, next) {
+      var structure = this._structure;
+      var geometry = MolecularGeometry.generateIdealizedCoordinates(candidate, { planar: true, structureResult: structure });
+      if (geometry.error) return { label: candidate.label, matches: false, values: {}, error: geometry.error };
+      var report = MolecularReport.build(candidate, { planar: true, structureResult: structure, geometryResult: geometry });
+      if (report.error) return { label: candidate.label, matches: false, values: {}, error: report.error };
+      this._report = report;
+      return next(candidate);
+    }
+  };
+  var MatchMixin = {
+    mixinId: 'inverseDesign.match',
+    evaluateOne: function(candidate) {
+      var report = this._report;
+      var activeFilters = this._activeFilters || [];
+      var values = {};
+      var matches = true;
+      activeFilters.forEach(function(f) {
+        var v = f.get(report);
+        values[f.key] = v;
+        if (v === null || v === undefined || isNaN(v)) { matches = false; return; }
+        if (v < f.lo || v > f.hi) matches = false;
+      });
+      var label = candidate.label + ' (' + report.identity.formula + ')';
+      return { label: label, matches: matches, values: values };
+    }
+  };
+  // Left-to-right (default order): Validity runs first, then Report, then
+  // Match -- each calls next() to hand off, Match is the innermost layer
+  // and just returns the final result.
+  var EvaluationEngine = ExtendX.extend(Object, ValidityMixin, ReportMixin, MatchMixin);
+
+  // Parallel fan-out over evaluateOne, per ExtendX's own design note: the
+  // dispatch cursor is an index, never a destructive pop, specifically so
+  // a chain can be invoked more than once concurrently without one call
+  // draining another's chain. Structured as Promise.all/async today even
+  // though every current layer is synchronous (MolecularReport.build()
+  // never awaits) -- an honest note, not a claim of real parallelism yet --
+  // so a future layer that genuinely needs to await (e.g. a Web-Worker-
+  // offloaded evaluation) plugs into the same search() shape unchanged.
+  function search(candidates, activeFiltersWithRange) {
+    return Promise.all(candidates.map(function(candidate) {
+      var engine = new EvaluationEngine();
+      engine._activeFilters = activeFiltersWithRange;
+      return Promise.resolve(engine.evaluateOne(candidate));
+    }));
+  }
+
+  // ─── Advanced UI wiring ───────────────────────────────────────────────
+  var ELEMENT_CHOICES = ['C', 'N', 'O', 'F', 'Cl', 'S'];
+  var DEFAULT_ELEMENTS = ['C', 'N', 'O'];
+  var advancedMode = 'exact';
+
+  var elementListEl = document.getElementById('elementList');
+  ELEMENT_CHOICES.forEach(function(el) {
+    var label = document.createElement('label');
+    label.className = 'element-chip';
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.value = el;
+    cb.checked = DEFAULT_ELEMENTS.indexOf(el) !== -1;
+    label.appendChild(cb);
+    label.appendChild(document.createTextNode(' ' + el));
+    elementListEl.appendChild(label);
+  });
+
+  var modeExactBtn = document.getElementById('modeExactBtn');
+  var modeVariationsBtn = document.getElementById('modeVariationsBtn');
+  var exactPanel = document.getElementById('exactPanel');
+  var variationsPanel = document.getElementById('variationsPanel');
+  modeExactBtn.addEventListener('click', function() {
+    advancedMode = 'exact';
+    modeExactBtn.classList.add('selected'); modeVariationsBtn.classList.remove('selected');
+    exactPanel.hidden = false; variationsPanel.hidden = true;
+  });
+  modeVariationsBtn.addEventListener('click', function() {
+    advancedMode = 'variations';
+    modeVariationsBtn.classList.add('selected'); modeExactBtn.classList.remove('selected');
+    exactPanel.hidden = true; variationsPanel.hidden = false;
+  });
+
+  var goBtn = document.getElementById('goBtn');
+  var advancedStatus = document.getElementById('advancedStatus');
+  var advancedNote = document.getElementById('advancedNote');
+
+  goBtn.addEventListener('click', function() {
+    var activeFilters = FILTERS.filter(function(f) { return state[f.key].enabled; }).map(function(f) {
+      return { key: f.key, label: f.label, unit: f.unit, get: f.get, lo: state[f.key].lo, hi: state[f.key].hi };
+    });
+
+    var candidates;
+    var note;
+    if (advancedMode === 'exact') {
+      var allowed = Array.prototype.slice.call(elementListEl.querySelectorAll('input:checked')).map(function(cb) { return cb.value; });
+      var maxLen = Math.max(1, Math.min(6, parseInt(document.getElementById('maxHeavyAtoms').value, 10) || 4));
+      if (allowed.length === 0) { advancedStatus.textContent = 'Select at least one element.'; return; }
+      candidates = enumerateChains(allowed, maxLen);
+      note = 'Exact mode limitation: simple unbranched chains only (no rings, no branching), and symmetric relabelings are not deduplicated (e.g. C-N and N-C both appear as distinct candidates).';
+    } else {
+      var seedSmiles = document.getElementById('seedSmiles').value.trim();
+      if (!seedSmiles) { advancedStatus.textContent = 'Enter a seed SMILES.'; return; }
+      var seedGraph = MolecularStructure.fromSmiles(seedSmiles);
+      if (seedGraph.error) { advancedStatus.textContent = 'Seed SMILES error: ' + seedGraph.error; return; }
+      var seedStructure = MolecularStructure.analyze(seedGraph, { planar: true });
+      if (seedStructure.error) { advancedStatus.textContent = 'Seed structure error: ' + seedStructure.error; return; }
+      candidates = generateVariations(seedGraph, seedStructure, {
+        heteroatom: document.getElementById('opHeteroatom').checked,
+        substituent: document.getElementById('opSubstituent').checked
+      });
+      note = 'Variations mode limitation: heteroatom substitution and substituent swap only (ring expansion/contraction is not implemented yet). Heteroatom substitution is currently limited to N only -- O was checked directly and found to produce an inconsistent result when substituted into an existing aromatic ring position, so it is withheld rather than shipped silently wrong.';
+    }
+
+    advancedStatus.textContent = 'Generating and evaluating ' + candidates.length + ' candidate' + (candidates.length === 1 ? '' : 's') + '...';
+    advancedNote.textContent = '';
+    goBtn.disabled = true;
+
+    search(candidates, activeFilters).then(function(results) {
+      renderMatchTable(
+        document.getElementById('advancedResultsTable'),
+        document.getElementById('advancedResultsCount'),
+        results, activeFilters, results.length,
+        activeFilters.length === 0 ? 'No filters enabled above -- every generated candidate is shown, none excluded.' : 'No candidates generated.'
+      );
+      var errored = results.filter(function(r) { return r.error; }).length;
+      advancedStatus.textContent = 'Done: ' + results.length + ' candidates generated, ' + errored + ' invalid (skipped from matching, not guessed around).';
+      advancedNote.textContent = note;
+      goBtn.disabled = false;
+    }).catch(function(err) {
+      advancedStatus.textContent = 'Error: ' + err.message;
+      goBtn.disabled = false;
+    });
+  });
 
   renderFilters();
   renderResults();
