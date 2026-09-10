@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Inverse Design</title>
+<style>
+  :root{
+    --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
+    --ink:#e6edf3; --ink-dim:#8a97a8; --accent:#00aaff; --good:#7ed67e; --bad:#ff6b6b;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-mono: "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0; padding:24px;}
+  h1{font-size:20px; margin:0 0 4px;}
+  .sub{color:var(--ink-dim); font-size:13px; margin:0 0 20px; max-width:760px; line-height:1.5;}
+  .layout{display:grid; grid-template-columns:340px 1fr; gap:20px; align-items:start;}
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px;}
+  .filter{border-bottom:1px solid var(--line); padding:12px 0;}
+  .filter:last-child{border-bottom:none;}
+  .filter-head{display:flex; align-items:center; gap:8px; font-size:13px; margin-bottom:8px;}
+  .filter-head input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent);}
+  .filter-unit{color:var(--ink-dim); font-size:11px;}
+  .range-row{display:flex; align-items:center; gap:8px; opacity:.4; transition:opacity .15s;}
+  .filter.active .range-row{opacity:1;}
+  .range-row input[type=number]{width:82px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:5px 6px; font-family:var(--font-mono); font-size:12px;}
+  .range-row input[type=range]{flex:1; accent-color:var(--accent);}
+  .filter-dash{color:var(--ink-dim);}
+  .results-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;}
+  .results-count{font-family:var(--font-mono); font-size:13px; color:var(--accent);}
+  table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  th,td{text-align:left; padding:7px 10px; border-bottom:1px solid var(--line);}
+  th{color:var(--ink-dim); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:.03em;}
+  tr.no-match{opacity:.3;}
+  td.num{font-family:var(--font-mono);}
+  td.na{color:var(--ink-dim); font-style:italic;}
+  .empty-state{color:var(--ink-dim); padding:24px; text-align:center; font-size:13px;}
+  .reset-btn{background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:6px; padding:6px 12px; font-size:12px; cursor:pointer; margin-top:8px;}
+  .reset-btn:hover{border-color:var(--accent);}
+</style>
+</head>
+<body>
+
+<h1>Inverse Design</h1>
+<p class="sub">
+  Set property ranges, not candidate molecules. Every filter below is a real,
+  already-derived quantity from this project's own modules (see
+  <code>MolecularReport.js</code>) run once over the fixed molecule library --
+  nothing here is generated or screened, it's the existing library filtered
+  by combinable range constraints. A molecule for which a property is not
+  applicable (no conjugated pi-system for a pi-electron property, for
+  example) is excluded from that filter rather than silently scored zero.
+</p>
+
+<div class="layout">
+  <div class="panel" id="filterPanel"></div>
+  <div class="panel">
+    <div class="results-head">
+      <strong>Matches</strong>
+      <span class="results-count" id="resultsCount"></span>
+    </div>
+    <div id="resultsTable"></div>
+  </div>
+</div>
+
+<script src="./PDT.js"></script>
+<script src="./Smiles.js"></script>
+<script src="./Aromaticity.js"></script>
+<script src="./CoordinationChemistry.js"></script>
+<script src="./MolecularStructure.js"></script>
+<script src="./MolecularGeometry.js"></script>
+<script src="./MolecularElectrostatics.js"></script>
+<script src="./MolecularTPSA.js"></script>
+<script src="./MolecularVanDerWaals.js"></script>
+<script src="./MolecularPolarizability.js"></script>
+<script src="./MolecularVibrations.js"></script>
+<script src="./MolecularReport.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  // Same fixed library and heme special-case as MoleculeViewer.html --
+  // duplicated deliberately (this tool has no reason to load the 3D
+  // viewer/three.js to get the same ten molecules).
+  var MOLECULES = [
+    { label: 'Methane (CH4)', smiles: 'C' },
+    { label: 'Ammonia (NH3)', smiles: 'N' },
+    { label: 'Water (H2O)', smiles: 'O' },
+    { label: 'Ethylene (C2H4)', smiles: 'C=C' },
+    { label: 'Acetylene (C2H2)', smiles: 'C#C' },
+    { label: 'Formaldehyde (CH2O)', smiles: 'C=O' },
+    { label: 'Carbon dioxide (CO2)', smiles: 'O=C=O' },
+    { label: 'Benzene (C6H6)', smiles: 'c1ccccc1' },
+    { label: 'Pyrrole (C4H5N)', smiles: 'c1cc[nH]c1' },
+    { label: 'Heme b macrocycle + Fe', special: 'heme' }
+  ];
+
+  function buildHemeGraphMolecule() {
+    var macrocycle = CoordinationChemistry.buildPorphineMacrocycle();
+    var atoms = macrocycle.atoms.map(function(a) { return { symbol: a.symbol, explicitH: null, charge: 0, aromatic: true }; });
+    atoms.push({ symbol: 'Fe', explicitH: 0, charge: 2 });
+    var feIdx = atoms.length - 1;
+    var bonds = macrocycle.bonds.map(function(b) { return [b[0], b[1], 'aromatic']; });
+    macrocycle.atoms.forEach(function(a, i) { if (a.symbol === 'N') bonds.push([feIdx, i, 1]); });
+    return MolecularStructure.fromGraph({ atoms: atoms, bonds: bonds });
+  }
+
+  // Each getter returns a number or null (not applicable / not computed
+  // for this molecule) - never 0 as a stand-in for "no value".
+  var FILTERS = [
+    { key: 'molarMass', label: 'Molar mass', unit: 'g/mol', get: function(r) { return r.identity.molarMassGramsPerMol; } },
+    { key: 'heavyAtoms', label: 'Heavy atom count', unit: '', get: function(r) { return r.identity.heavyAtomCount; } },
+    { key: 'piElectrons', label: 'Pi-electron count', unit: 'e-', get: function(r) { return r.bonding.aromaticity ? r.bonding.aromaticity.piElectrons : null; } },
+    { key: 'delocEnergy', label: 'Delocalization energy', unit: 'eV', get: function(r) { return r.bonding.aromaticity ? r.bonding.aromaticity.delocalizationEnergyEv : null; } },
+    { key: 'homoLumoGap', label: 'HOMO-LUMO gap', unit: 'eV', get: function(r) { return (r.bonding.aromaticity && r.bonding.aromaticity.homoLumo) ? r.bonding.aromaticity.homoLumo.gapEv : null; } },
+    { key: 'dipole', label: 'Dipole moment', unit: 'D', get: function(r) { return (r.electrostatics && r.electrostatics.applicable) ? r.electrostatics.dipole.magnitudeDebye : null; } },
+    { key: 'tpsa', label: 'Polar surface area', unit: 'A^2', get: function(r) { return r.tpsa ? r.tpsa.psaAngstrom2 : null; } },
+    { key: 'vdwVolume', label: 'Van der Waals volume', unit: 'A^3', get: function(r) { return (r.vanDerWaals && r.vanDerWaals.volume) ? r.vanDerWaals.volume.volumeAngstrom3 : null; } },
+    { key: 'vdwSurface', label: 'Van der Waals surface area', unit: 'A^2', get: function(r) { return (r.vanDerWaals && r.vanDerWaals.surfaceArea) ? r.vanDerWaals.surfaceArea.surfaceAreaAngstrom2 : null; } },
+    { key: 'polarizability', label: 'Mean polarizability', unit: 'A^3', get: function(r) { return r.polarizability ? r.polarizability.polarizabilityAngstrom3 : null; } },
+    { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } }
+  ];
+
+  function buildLibraryReports() {
+    return MOLECULES.map(function(m) {
+      var mol = m.special === 'heme' ? buildHemeGraphMolecule() : MolecularStructure.fromSmiles(m.smiles);
+      if (mol.error) return { label: m.label, error: mol.error };
+      var report = MolecularReport.build(mol, { planar: true, sourceSmiles: m.special ? null : m.smiles });
+      if (report.error) return { label: m.label, error: report.error };
+      return { label: m.label, report: report };
+    });
+  }
+
+  var library = buildLibraryReports();
+
+  // Real, observed min/max per filter across the actual library - sliders
+  // are scoped to real data, not an arbitrary fixed range.
+  function computeBounds(filter) {
+    var values = library.map(function(entry) {
+      return entry.report ? filter.get(entry.report) : null;
+    }).filter(function(v) { return v !== null && v !== undefined && !isNaN(v); });
+    if (values.length === 0) return null;
+    var min = Math.min.apply(null, values), max = Math.max.apply(null, values);
+    if (min === max) { min -= 1; max += 1; } // keep the slider usable for a degenerate single-value range
+    return { min: min, max: max };
+  }
+
+  var state = {}; // key -> { enabled, lo, hi }
+  FILTERS.forEach(function(f) {
+    var bounds = computeBounds(f);
+    f.bounds = bounds;
+    state[f.key] = bounds ? { enabled: false, lo: bounds.min, hi: bounds.max } : { enabled: false, lo: null, hi: null };
+  });
+
+  function round(v) { return Math.round(v * 1000) / 1000; }
+
+  function renderFilters() {
+    var panel = document.getElementById('filterPanel');
+    panel.innerHTML = '';
+    FILTERS.forEach(function(f) {
+      var s = state[f.key];
+      var div = document.createElement('div');
+      div.className = 'filter' + (s.enabled ? ' active' : '');
+
+      var head = document.createElement('div');
+      head.className = 'filter-head';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = s.enabled;
+      cb.disabled = !f.bounds;
+      cb.addEventListener('change', function() { s.enabled = cb.checked; renderFilters(); renderResults(); });
+      head.appendChild(cb);
+      var label = document.createElement('span');
+      label.textContent = f.label + (f.bounds ? '' : ' (not applicable to any library molecule)');
+      head.appendChild(label);
+      if (f.unit) {
+        var unit = document.createElement('span');
+        unit.className = 'filter-unit';
+        unit.textContent = f.unit;
+        head.appendChild(unit);
+      }
+      div.appendChild(head);
+
+      if (f.bounds) {
+        var row = document.createElement('div');
+        row.className = 'range-row';
+        var loInput = document.createElement('input');
+        loInput.type = 'number'; loInput.step = 'any'; loInput.value = round(s.lo); loInput.disabled = !s.enabled;
+        var hiInput = document.createElement('input');
+        hiInput.type = 'number'; hiInput.step = 'any'; hiInput.value = round(s.hi); hiInput.disabled = !s.enabled;
+        var loSlider = document.createElement('input');
+        loSlider.type = 'range'; loSlider.min = f.bounds.min; loSlider.max = f.bounds.max; loSlider.step = (f.bounds.max - f.bounds.min) / 200 || 0.01; loSlider.value = s.lo; loSlider.disabled = !s.enabled;
+        var hiSlider = document.createElement('input');
+        hiSlider.type = 'range'; hiSlider.min = f.bounds.min; hiSlider.max = f.bounds.max; hiSlider.step = (f.bounds.max - f.bounds.min) / 200 || 0.01; hiSlider.value = s.hi; hiSlider.disabled = !s.enabled;
+
+        function sync(from) {
+          if (from === 'loInput') s.lo = parseFloat(loInput.value);
+          if (from === 'hiInput') s.hi = parseFloat(hiInput.value);
+          if (from === 'loSlider') s.lo = parseFloat(loSlider.value);
+          if (from === 'hiSlider') s.hi = parseFloat(hiSlider.value);
+          if (s.lo > s.hi) { var t = s.lo; s.lo = s.hi; s.hi = t; }
+          loInput.value = round(s.lo); hiInput.value = round(s.hi);
+          loSlider.value = s.lo; hiSlider.value = s.hi;
+          renderResults();
+        }
+        loInput.addEventListener('input', function() { sync('loInput'); });
+        hiInput.addEventListener('input', function() { sync('hiInput'); });
+        loSlider.addEventListener('input', function() { sync('loSlider'); });
+        hiSlider.addEventListener('input', function() { sync('hiSlider'); });
+
+        row.appendChild(loInput);
+        row.appendChild(loSlider);
+        var dash = document.createElement('span'); dash.className = 'filter-dash'; dash.textContent = '-';
+        row.appendChild(dash);
+        row.appendChild(hiSlider);
+        row.appendChild(hiInput);
+        div.appendChild(row);
+      }
+
+      panel.appendChild(div);
+    });
+
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'reset-btn';
+    resetBtn.textContent = 'Reset all filters';
+    resetBtn.addEventListener('click', function() {
+      FILTERS.forEach(function(f) {
+        if (f.bounds) state[f.key] = { enabled: false, lo: f.bounds.min, hi: f.bounds.max };
+      });
+      renderFilters(); renderResults();
+    });
+    panel.appendChild(resetBtn);
+  }
+
+  function renderResults() {
+    var activeFilters = FILTERS.filter(function(f) { return state[f.key].enabled; });
+    var rows = library.map(function(entry) {
+      if (entry.error) return { label: entry.label, error: entry.error, matches: false, values: {} };
+      var values = {};
+      var matches = true;
+      activeFilters.forEach(function(f) {
+        var v = f.get(entry.report);
+        values[f.key] = v;
+        if (v === null || v === undefined || isNaN(v)) { matches = false; return; }
+        var s = state[f.key];
+        if (v < s.lo || v > s.hi) matches = false;
+      });
+      return { label: entry.label, matches: matches, values: values };
+    });
+
+    var matchCount = rows.filter(function(r) { return r.matches; }).length;
+    document.getElementById('resultsCount').textContent = matchCount + ' / ' + library.length + ' molecules match';
+
+    var container = document.getElementById('resultsTable');
+    if (activeFilters.length === 0) {
+      container.innerHTML = '<div class="empty-state">No filters enabled -- showing the full library. Enable a filter on the left to constrain it.</div>';
+    }
+
+    var table = document.createElement('table');
+    var thead = document.createElement('tr');
+    thead.innerHTML = '<th>Molecule</th>' + activeFilters.map(function(f) { return '<th>' + f.label + (f.unit ? ' (' + f.unit + ')' : '') + '</th>'; }).join('');
+    table.appendChild(thead);
+
+    rows.forEach(function(r) {
+      var tr = document.createElement('tr');
+      if (!r.matches && activeFilters.length > 0) tr.className = 'no-match';
+      var cells = '<td>' + r.label + '</td>';
+      activeFilters.forEach(function(f) {
+        var v = r.values[f.key];
+        if (v === null || v === undefined || isNaN(v)) {
+          cells += '<td class="num na">n/a</td>';
+        } else {
+          cells += '<td class="num">' + round(v) + '</td>';
+        }
+      });
+      tr.innerHTML = cells;
+      table.appendChild(tr);
+    });
+
+    if (activeFilters.length > 0) {
+      container.innerHTML = '';
+      container.appendChild(table);
+    } else {
+      var full = document.createElement('table');
+      var h = document.createElement('tr'); h.innerHTML = '<th>Molecule</th>'; full.appendChild(h);
+      library.forEach(function(entry) {
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + entry.label + (entry.error ? ' - error: ' + entry.error : '') + '</td>';
+        full.appendChild(tr);
+      });
+      container.appendChild(full);
+    }
+  }
+
+  renderFilters();
+  renderResults();
+})();
+</script>
+</body>
+</html>
