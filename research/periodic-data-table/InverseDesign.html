@@ -153,6 +153,7 @@
 <script src="./MolecularPolarizability.js"></script>
 <script src="./MolecularVibrations.js"></script>
 <script src="./MolecularVibrationalModes.js"></script>
+<script src="./MolecularThermodynamics.js"></script>
 <script src="./MolecularReport.js"></script>
 <script src="./ExtendX.js"></script>
 <script>
@@ -199,7 +200,9 @@
     { key: 'vdwSurface', label: 'Van der Waals surface area', unit: 'A^2', get: function(r) { return (r.vanDerWaals && r.vanDerWaals.surfaceArea) ? r.vanDerWaals.surfaceArea.surfaceAreaAngstrom2 : null; } },
     { key: 'polarizability', label: 'Mean polarizability', unit: 'A^3', get: function(r) { return r.polarizability ? r.polarizability.polarizabilityAngstrom3 : null; } },
     { key: 'piPolarizability', label: 'Pi-electron polarizability', unit: 'A^3', get: function(r) { return (r.piPolarizability && r.piPolarizability.applicable) ? r.piPolarizability.isotropicAngstrom3 : null; } },
-    { key: 'lowestVibMode', label: 'Lowest vibrational mode', unit: 'cm^-1', get: function(r) { return (r.vibrationalModes && r.vibrationalModes.modes.length) ? r.vibrationalModes.modes[0].wavenumberCm1 : null; } }
+    { key: 'lowestVibMode', label: 'Lowest vibrational mode', unit: 'cm^-1', get: function(r) { return (r.vibrationalModes && r.vibrationalModes.modes.length) ? r.vibrationalModes.modes[0].wavenumberCm1 : null; } },
+    { key: 'standardEntropy', label: 'Standard entropy (298K, sigma=1)', unit: 'J/mol/K', get: function(r) { return r.thermodynamics ? r.thermodynamics.entropyJPerMolK : null; } },
+    { key: 'heatCapacityCp', label: 'Heat capacity Cp (298K)', unit: 'J/mol/K', get: function(r) { return r.thermodynamics ? r.thermodynamics.heatCapacityCpJPerMolK : null; } }
   ];
 
   // Always-shown result columns -- every row displays all of these
