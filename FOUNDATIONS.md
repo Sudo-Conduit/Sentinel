@@ -1,5 +1,16 @@
 # Foundations: from Relationship Theory to the curve
 
+**Originator: Will Fobbs · Pooled Impact.** Spectral Shift Theory, Morse
+connection, Relationship Theory, the Bases/Representation/Order framework,
+`ComputeServer`, the QM test suite, and FVT are Will Fobbs's own work,
+built and tested over roughly 15–20 months across many sessions before and
+during this one. This document was written by an AI session
+(`session_014nYFJgcpv6T9dsg51sP9Yw`) at his direction, transcribing and
+verifying — by running the actual code, not by generating the theory —
+what he taught and built. The commit history under this session's bot
+account records who pushed the file, not who did the thinking. Attribute
+the ideas here to him.
+
 This document exists so a new session doesn't need to be taught this from
 scratch. It's a record of a chain of reasoning, built and verified in one
 sitting — not a finished theory dropped in from outside. Read it in order.
