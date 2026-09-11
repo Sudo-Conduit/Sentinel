@@ -4,9 +4,25 @@
 // Status: REAL, VALIDATED CONCLUSIONS — NOT YET SHIPPABLE AS A FEATURE
 // Purpose: a durable "lab notebook" entry so this investigation survives
 // context compaction. Every number below is either directly computed here
-// (re-runnable, node De_investigation_FINDINGS.js) or cited from a real,
-// named source. Nothing here is guessed.
-// ═══════════════════════════════════════════════════════════════════════
+// (re-runnable, node De_investigation_FINDINGS.js, or paste the whole file
+// into a browser DevTools console) or cited from a real, named source.
+// Nothing here is guessed.
+//
+// TEST DISCIPLINE: this file is a UMD IIFE with NO require() of the
+// Sentinel repo's own modules (PDT.js / MolecularVibrations.js /
+// MolecularGeometry.js). The handful of values this file needs FROM
+// those modules (Z_eff per element, the Born-model n per bond-family row,
+// a few cited d0 bond lengths) are captured below as dated snapshot
+// constants instead of looked up live. That is deliberate: a file that
+// requires the live source can silently change its own printed numbers
+// if that source changes later - it stops being a snapshot and becomes a
+// moving target. Pinning the inputs is what makes the numbers in this
+// file a real, fixed record of what was found on SNAPSHOT_DATE, runnable
+// anywhere (Node, browser DevTools, another repo entirely) with no path
+// dependency on where Sentinel happens to be checked out.
+// SNAPSHOT_DATE: 2026-09-11 (values below were read directly out of
+// Sentinel's PDT.js/MolecularVibrations.js/MolecularGeometry.js on this
+// date, at the commit this repo's chemistry/ directory was seeded from).
 //
 // THE QUESTION: can MolecularVibrations.js's Born-model bond-stretch force
 // constant (k, already shipped and validated against Herschbach & Laurie
@@ -41,14 +57,18 @@
 // & Laurie row-pair method already in MolecularVibrations.js's header
 // (verified to reproduce all 9 existing BORN_N_TABLE entries to <0.01%
 // before trusting it on new pairs).
+// [pair, order, extraPiOrder p, real D_e **kJ/mol** (CITED, CRC Handbook),
+//  n (SNAPSHOT of MolecularVibrations.js's Born-model row-pair value -
+//  C-F/C-Cl DERIVED via the Herschbach & Laurie method, everything else
+//  read directly from BORN_N_TABLE), d0 in Angstrom (SNAPSHOT of
+//  MolecularGeometry.js's bondLength(), as of SNAPSHOT_DATE above)]
 var ROWS_CRC = [
-  // [pair, order, extraPiOrder p, real D_e **kJ/mol**, n override or null]
-  ['C-C',1,0,347,null], ['C-C',2,1,611,null], ['C-C',3,2,837,null],
-  ['C-N',1,0,305,null], ['C-O',1,0,358,null], ['C-H',1,0,414,null],
-  ['H-N',1,0,389,null], ['H-O',1,0,464,null],
-  ['N-N',1,0,161,null], ['N-N',2,1,456,null], ['N-N',3,2,946,null],
-  ['N-O',1,0,230,null], ['C-S',1,0,272,null],
-  ['C-F',1,0,439,1.4060], ['C-Cl',1,0,330,1.3592],
+  ['C-C',1,0,347,1.3801,1.54], ['C-C',2,1,611,1.3801,1.34], ['C-C',3,2,837,1.3801,1.20],
+  ['C-N',1,0,305,1.3883,1.47], ['C-O',1,0,358,1.3727,1.43], ['C-H',1,0,414,1.8720,1.09],
+  ['H-N',1,0,389,1.7709,1.01], ['H-O',1,0,464,1.6792,0.96],
+  ['N-N',1,0,161,1.3426,1.45], ['N-N',2,1,456,1.3426,1.25], ['N-N',3,2,946,1.3426,1.10],
+  ['N-O',1,0,230,1.3376,1.40], ['C-S',1,0,272,1.3517,1.82],
+  ['C-F',1,0,439,1.4060,1.35], ['C-Cl',1,0,330,1.3592,1.77],
 ];
 //
 // FINDING 3a: ratio(FVT/real) correlates with Z_eff_A*Z_eff_B (r=0.81 all
@@ -304,36 +324,42 @@ var ROWS_CRC = [
 // nested structure, not noise around one universal line.
 // ═══════════════════════════════════════════════════════════════════════
 
-var PDT = require('/home/user/Sentinel/research/periodic-data-table/PDT.js');
-var MolecularVibrations = require('/home/user/Sentinel/research/periodic-data-table/MolecularVibrations.js');
-var MolecularGeometry = require('/home/user/Sentinel/research/periodic-data-table/MolecularGeometry.js');
+(function(root, factory) {
+  if (typeof module === 'object' && module.exports) {
+    module.exports = factory();
+  } else {
+    root.DeInvestigationFindings = factory();
+  }
+}(typeof self !== 'undefined' ? self : this, function() {
+  'use strict';
+
+// SNAPSHOT of PDT.js's Z_eff (Slater's rules), as of SNAPSHOT_DATE - only
+// the elements this file's own bond-family rows actually use.
+var ZEFF_SNAPSHOT = { H: 1, C: 3.25, N: 3.9, O: 4.55, F: 5.2, S: 5.45, Cl: 6.1 };
 var BOHR = 0.529177, HART = 27.211386, KCALMOL_TO_EV = 1 / 23.0609, KJMOL_TO_EV = 1 / 96.485;
 
-function De_FVT(a, b, d0, p, nOverride) {
-  var n = nOverride || MolecularVibrations._bornN(a, b);
-  var elA = PDT.get(a), elB = PDT.get(b);
-  var A = elA.Z_eff * elB.Z_eff * (1 + (p || 0));
+function De_FVT(a, b, d0, p, n) {
+  var A = ZEFF_SNAPSHOT[a] * ZEFF_SNAPSHOT[b] * (1 + (p || 0));
   return (A * (n - 1) / (n * (d0 / BOHR))) * HART;
 }
 
 console.log('=== Step 3: bond-family tensor (real CRC data) ===');
 ROWS_CRC.forEach(function(r) {
-  var pr = r[0].split('-'), a = pr[0], b = pr[1], order = r[1], p = r[2], realKJ = r[3], nOverride = r[4];
-  var d0 = MolecularGeometry.bondLength(a, b, order).value;
-  var deFvt = De_FVT(a, b, d0, p, nOverride);
+  var pr = r[0].split('-'), a = pr[0], b = pr[1], order = r[1], p = r[2], realKJ = r[3], n = r[4], d0 = r[5];
+  var deFvt = De_FVT(a, b, d0, p, n);
   var deReal = realKJ * KJMOL_TO_EV;
   console.log(' ', (r[0] + '/' + order).padEnd(8), 'd0=' + d0.toFixed(3), 'ratio=' + (deFvt / deReal).toFixed(2));
 });
 
 console.log('\n=== Step 4: held-out O-O test (proves non-extrapolation) ===');
 [['H2O2', 1.475, 55.16], ['benzoyl peroxide', 1.4237, 31.02]].forEach(function(t) {
-  var n = MolecularVibrations ? (function() {
+  var n = (function() {
     var F2 = Math.pow(10, (1.73 - t[1]) / 0.47);
     var kTarget = F2 * 6.2415;
-    var elO = PDT.get('O'), A = elO.Z_eff * elO.Z_eff;
+    var A = ZEFF_SNAPSHOT.O * ZEFF_SNAPSHOT.O;
     var d0Bohr = t[1] / BOHR;
     return 1 + kTarget * d0Bohr * d0Bohr * d0Bohr * BOHR * BOHR / (A * HART);
-  })() : null;
+  })();
   var deFvt = De_FVT('O', 'O', t[1], 0, n);
   var deReal = t[2] * KCALMOL_TO_EV;
   console.log(' ', t[0].padEnd(18), 'd0=' + t[1], 'De_real=' + deReal.toFixed(3) + 'eV', 'ratio=' + (deFvt / deReal).toFixed(2));
@@ -416,3 +442,13 @@ console.log('  naive alpha-H-count-averaged prediction (DERIVED HERE):', naivePr
 console.log('  residual:', (100 * (naivePrediction - deMixedEv) / deMixedEv).toFixed(1),
   '% (real value weaker than predicted - plausibly the benzylic C-H is a BETTER donor than a plain alkyl C-H,');
 console.log('  a second, real, un-separated effect - this anchor is reported as suggestive, NOT as confirmation).');
+
+  return {
+    snapshotDate: '2026-09-11',
+    De_FVT: De_FVT,
+    zEffSnapshot: ZEFF_SNAPSHOT,
+    rowsCrc: ROWS_CRC,
+    rowsOOExtended: ROWS_OO_EXTENDED,
+    dihedral: dihedral
+  };
+}));
