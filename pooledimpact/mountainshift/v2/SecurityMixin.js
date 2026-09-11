@@ -12,17 +12,31 @@
  * turn gating off, or call dispose() -- which collapses ExtendX's own mask
  * to [0,[]], emptying the mixin pipeline entirely, so a "disposed"
  * instance's methods silently fall through to the raw, unguarded base
- * implementation instead of being blocked. seal() closes both: it
- * overwrites those four names on a specific instance with functions that
- * throw, using configurable:false/writable:false -- a language-level
- * guarantee, not a flag, so no code anywhere (not even this instance's own
- * methods) can ever redefine or delete them afterward. This is the same
- * freeze/no-reversal-on-the-same-object philosophy discussed for the
- * outer closure factory, scoped narrowly here to just these four names
- * instead of the whole instance (freezing the whole object would also
- * block CPU's own register writes). Sealing is permanent for that
- * instance; "unsealing" is never reversing it -- it's constructing a
- * fresh, unsealed instance when that capability is needed again.
+ * implementation instead of being blocked. seal() closes both, permanently,
+ * for one instance; "unsealing" is never reversing it -- it's constructing
+ * a fresh, unsealed instance when that capability is needed again.
+ *
+ * v2: seal() no longer locks properties via configurable:false/
+ * writable:false. That broke on any BaseClassX-derived target: BaseClassX's
+ * own `get` trap always returns `rawValue.bind(receiver)`, and a Proxy's
+ * `get` trap is REQUIRED by spec to return the exact same value (SameValue)
+ * for a non-configurable, non-writable data property -- .bind() returns a
+ * new function object every time, so the engine itself threw a native
+ * invariant-violation TypeError instead of this file's own clear error.
+ * That invariant only constrains non-configurable DATA properties, so the
+ * fix is to stop relying on non-configurability for enforcement at all:
+ * enableLayer/disableLayer are now real mixin methods that ride ExtendX's
+ * already-working per-call dispatch chain (the same mechanism every other
+ * gated method already uses successfully through a Proxy) -- they check a
+ * closure-private sealed flag and, if clear, call straight through to
+ * ExtendX.prototype's own implementation (the literal "call super" this
+ * needed, since hand-declaring these names on the mixin means ExtendX no
+ * longer auto-attaches its own -- there's nothing left for `this.super` to
+ * reach, so the real behavior has to be invoked directly). dispose/
+ * disposeAsync can't ride that same chain (ExtendX's own NON_DISPATCH
+ * excludes them from normal dispatch), so seal() still overrides them
+ * directly on the instance -- but as an ordinary configurable:true,
+ * writable:true function, which carries no Proxy invariant at all.
  *
  * @author Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)
  */
@@ -67,6 +81,22 @@
 
     function recordViolation(extId) {
         VIOLATIONS.set(extId, (VIOLATIONS.get(extId) || 0) + 1);
+    }
+
+    // ─── Sealed state ───────────────────────────────────────────────────
+    // Keyed by extId like TOKENS -- a closure-private flag, not a property
+    // on the instance, so nothing about "is this sealed" is reachable or
+    // reflectable from outside this file.
+    const SEALED = new Set();
+
+    function sealedError(name) {
+        return new Error(
+            'SecurityMixin: "' + name + '" is sealed on this instance. ' +
+            'enableLayer/disableLayer/dispose/disposeAsync are locked once ' +
+            'seal() has been called -- permanently, for this instance. A ' +
+            'fresh, unsealed instance is the only way to get this capability ' +
+            'back; there is no unseal().'
+        );
     }
 
     /**
@@ -139,6 +169,26 @@
             revoke(this._extId);
         };
 
+        // enableLayer/disableLayer, hand-declared rather than introspected:
+        // BaseClass never defines these itself (ExtendX attaches its own
+        // generic versions per-instance, only when the base doesn't already
+        // have one), so they never appear in BaseClass.prototype and the
+        // introspection loop above never sees them. Declaring them here
+        // means ExtendX's own per-instance attach is skipped instead (an
+        // instance already inheriting a real function via Subclass.prototype
+        // no longer needs one) -- which also means there is no more "base"
+        // implementation left for this.super to reach, so the sealed check
+        // calls ExtendX.prototype's real implementation directly (the
+        // literal "call super") rather than through the chain.
+        mixin.enableLayer = function(m) {
+            if (SEALED.has(this._extId)) throw sealedError('enableLayer');
+            return ExtendX.prototype.enableLayer.call(this, m);
+        };
+        mixin.disableLayer = function(m) {
+            if (SEALED.has(this._extId)) throw sealedError('disableLayer');
+            return ExtendX.prototype.disableLayer.call(this, m);
+        };
+
         // ─── Isolated-proof introspection (not part of the Gen 2 surface) ──
         mixin._securityArmed = function() { return isArmed(this._extId); };
         mixin._securityViolations = function() { return VIOLATIONS.get(this._extId) || 0; };
@@ -147,41 +197,38 @@
     }
 
     // ─── Seal ─────────────────────────────────────────────────────────
-    // The four names ExtendX's own Subclass constructor can turn a
-    // composed instance's security off through: enableLayer/disableLayer
-    // (directly), dispose/disposeAsync (indirectly, via the mask collapse
-    // described above). All four are attached to each instance as own,
-    // configurable, writable properties by ExtendX -- exactly the shape
-    // seal() needs in order to overwrite them with a real, permanent lock.
-    const SEALED_NAMES = ['enableLayer', 'disableLayer', 'dispose', 'disposeAsync'];
-
+    // enableLayer/disableLayer are handled above, as real mixin methods
+    // riding ExtendX's normal per-call dispatch chain -- no property
+    // surgery needed for those two at all, since they already check SEALED
+    // on every call regardless of how they were reached.
+    //
+    // dispose/disposeAsync can't ride that chain: ExtendX's own
+    // NON_DISPATCH set excludes both from normal per-property dispatch
+    // (they're lifecycle hooks, invoked directly, not chained), so there is
+    // no dispatch-chain path to hook a check into. seal() overrides them
+    // directly on the instance instead -- as an ordinary configurable:true,
+    // writable:true function. That's deliberately NOT the non-configurable
+    // lock the first version of this file used: this instance permanently
+    // stops offering working dispose/disposeAsync once sealed (nothing
+    // legitimate ever needs to call through to the original afterward), but
+    // the override itself carries no Proxy invariant, so it behaves
+    // identically whether the instance is a plain object or a BaseClassX
+    // Proxy.
     function seal(instance) {
-        SEALED_NAMES.forEach(function(name) {
-            const desc = Object.getOwnPropertyDescriptor(instance, name);
-            if (desc && desc.configurable === false) return; // already sealed
+        SEALED.add(instance._extId);
+        ['dispose', 'disposeAsync'].forEach(function(name) {
             Object.defineProperty(instance, name, {
-                value: function() {
-                    throw new Error(
-                        'SecurityMixin: "' + name + '" is sealed on this instance. ' +
-                        'enableLayer/disableLayer/dispose/disposeAsync are locked once ' +
-                        'seal() has been called -- permanently, for this instance. A ' +
-                        'fresh, unsealed instance is the only way to get this capability ' +
-                        'back; there is no unseal().'
-                    );
-                },
+                value: function() { throw sealedError(name); },
                 enumerable: false,
-                configurable: false,
-                writable: false
+                configurable: true,
+                writable: true
             });
         });
         return instance;
     }
 
     function isSealed(instance) {
-        return SEALED_NAMES.every(function(name) {
-            const desc = Object.getOwnPropertyDescriptor(instance, name);
-            return !!desc && desc.configurable === false;
-        });
+        return SEALED.has(instance._extId);
     }
 
     return {
