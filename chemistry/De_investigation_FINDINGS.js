@@ -223,6 +223,58 @@ var ROWS_CRC = [
 //      the predicted number is chemically sane. This is a genuine,
 //      testable prediction, not a description of already-known data.
 //
+// ─── PROVENANCE, STATED EXPLICITLY: CITED vs DERIVED ────────────────────
+// Every D_e and d0 number in Steps 4 and 6 is CITED information, not a
+// calculation performed here: it is someone else's ab initio result
+// (Wurmel & Simmie's G4 composite-method Gaussian16 logs; Carmona,
+// Jaque & Vohringer-Martinez's CCSDT(Q)/CBS benchmark) - this file only
+// subtracts two of their Hartree energies (D_e = sum(E_radical) -
+// E_parent) or reads a bond length off their optimized Cartesian
+// coordinates. That is citation-plus-arithmetic, not an independent
+// calculation, and it is labeled that way from here on so the two kinds
+// of claim in this file are never confused:
+//   CITED  = a number taken from a named external ab initio source
+//            (every D_e, every d0, in Steps 4 and 6).
+//   DERIVED HERE = an analysis performed on that cited data in this file
+//            (the two-family split and its line fits, the alpha-H-count
+//            hypothesis, the H-C-O-O dihedral geometry check below, the
+//            backward-solved dicumyl d0 prediction, all Step 3/4 FVT
+//            ratios).
+//
+// ─── STEP 7: an alpha-H-count axis WITHIN Group 1 (real, but ONE anchor
+// is confounded - flagged, not smoothed over) ────────────────────────
+// Real geometry (CITED, same SI) shows dimethyl peroxide's alpha carbon
+// (plain CH3) has a C-H bond at a DERIVED HERE dihedral of -178.3
+// relative to the O-O bond - essentially perfect anti-periplanar
+// alignment for sigma(C-H)->sigma*(O-O) hyperconjugative donation, a
+// real named mechanism requiring a carbon (H2O2 has none) at the alpha
+// position. DTBP's and dicumyl's alpha carbons are both quaternary -
+// zero alpha C-H bonds exist AT ALL (a structural fact, not a geometry
+// question) - so this donation pathway is structurally unavailable to
+// them. This DERIVED HERE distinction (alpha-H count: dimethyl=3,
+// DTBP=dicumyl=0) correctly orders their CITED real D_e (dimethyl=1.588
+// eV < DTBP/dicumyl mean=1.663 eV) - the "bulkier but stronger" ordering
+// that looked backwards under a naive sterics-only view.
+//
+// A THIRD anchor was pulled to test whether this axis is monotonic
+// (secondary carbon, exactly 1 alpha-H): 1-phenylethyl methyl peroxide,
+// PhCH(CH3)-O-O-CH3 (CITED: Ph-CHMe-O-O-Me.log + Ph-CHMe-O.log +
+// OMe-G4.log, same SI). D_e = 0.057202 Hartree = 35.89
+// kcal/mol = 1.5565 eV (CITED energies, DERIVED HERE subtraction), d0 =
+// 1.4532A (CITED geometry). A naive average-alpha-H-count prediction
+// (averaging the alpha=0 family mean 1.663eV and dimethyl's alpha=3
+// 1.588eV down to this compound's average alpha-H=2) gives 1.613eV -
+// the real value is 3.6% lower. NOT reported as confirmation: this
+// carbon is benzylic (phenyl on the SAME carbon as the alpha-H), and a
+// benzylic C-H is itself a better hyperconjugative donor than a plain
+// alkyl C-H (phenyl conjugation lowers that bond's energy) - so this
+// anchor cannot cleanly isolate alpha-H count from a second, real,
+// un-separated effect. FLAGGED, not smoothed into the trend: a clean
+// test needs a non-aromatic secondary dialkyl peroxide (e.g.
+// diisopropyl peroxide), which is not in this SI - reaching for one
+// elsewhere would mean a different level of theory and would reintroduce
+// the cross-method noise this whole dataset has deliberately avoided.
+//
 // WHAT THIS CHANGES ABOUT STEP 4's CONCLUSION (refines, does not reverse):
 // Step 4 concluded radical-stabilization energy is a FRAGMENT-level
 // property "no atom-pair-only feature can ever represent." That stands
@@ -233,12 +285,23 @@ var ROWS_CRC = [
 // structure (not a whole-molecule resonance calculation) - it just isn't
 // a number you can multiply into Z_eff or lone-pair count. Within each
 // of the two resulting categories, D_e is then a clean, near-linear
-// function of d0 alone. H2O2 (d0=1.475, D_e=2.392 eV) is the one honest
-// loose end: it does NOT extend Group 1's line smoothly (the DTBP-to-H2O2
-// slope, 53.8 eV/A, is ~5.6x steeper than the DTBP-to-dimethyl slope,
-// 9.6 eV/A) - going from a carbon substituent to no carbon substituent at
-// all may not be "more of the same" scaling. Reported plainly, not
-// smoothed over.
+// function of d0 alone. H2O2 (CITED: d0=1.475, D_e=2.392 eV) does NOT
+// extend Group 1's line smoothly (DERIVED HERE: the DTBP-to-H2O2 slope,
+// 53.8 eV/A, is ~5.6x steeper than the DTBP-to-dimethyl slope, 9.6 eV/A).
+// Re-examined in light of Step 7's alpha-H mechanism, this stops being a
+// loose end and becomes exactly what it should be: H2O2 is not a dialkyl
+// peroxide at all - it has no alkyl group of any kind shielding the O-O
+// bond, a categorically different lone-pair environment on each O (no
+// competing C substituent), and real intermolecular/intramolecular
+// H-bonding character none of the other anchors share. It does not
+// belong ON Group 1's line - it is its own sub-family, sitting at the
+// alpha-H=0-carbons-at-all extreme that the alpha-H axis (Step 7)
+// predicts should be the least-weakened case of all, which is exactly
+// what its D_e (the highest of every anchor here, CITED) shows. The
+// "ordering" is what the curve was showing all along: H2O2 (no carbon)
+// > Group 1, alpha-H=0 quaternary (DTBP, dicumyl) > Group 1, alpha-H=3
+// primary (dimethyl) > Group 2 acyl (diacetyl, mixed, benzoyl) - a real
+// nested structure, not noise around one universal line.
 // ═══════════════════════════════════════════════════════════════════════
 
 var PDT = require('/home/user/Sentinel/research/periodic-data-table/PDT.js');
@@ -277,36 +340,79 @@ console.log('\n=== Step 4: held-out O-O test (proves non-extrapolation) ===');
 });
 
 console.log('\n=== Step 6: extended O-O tensor - two real parallel families ===');
-// [name, d0 (A, null=unavailable), De_real Hartree, group]
+console.log('[CITED = source ab initio energy/geometry] [DERIVED HERE = our arithmetic/analysis on it]');
+// [name, d0 (A, null=unavailable) [CITED], De_real Hartree [CITED, = sum(E_radical)-E_parent], group [DERIVED HERE]]
 var ROWS_OO_EXTENDED = [
   ['H2O2',                          1.475,  0.087952, 'unsubstituted'],
-  ['dimethyl peroxide',             1.4512, 0.058361, 'alkyl'],
-  ['di-tert-butyl peroxide',        1.462,  0.062161, 'alkyl'],
-  ['dicumyl peroxide',              null,   0.060035, 'alkyl'],
+  ['dimethyl peroxide',             1.4512, 0.058361, 'alkyl, alpha-H=3'],
+  ['di-tert-butyl peroxide',        1.462,  0.062161, 'alkyl, alpha-H=0'],
+  ['dicumyl peroxide',              null,   0.060035, 'alkyl, alpha-H=0'],
   ['diacetyl peroxide',             1.432,  0.055399, 'acyl'],
   ['benzoyl+pivaloyl mixed perox.', 1.4276, 0.051021, 'acyl'],
   ['benzoyl peroxide',              1.4237, 0.049433, 'acyl'],
 ];
-console.log(' compound'.padEnd(34), 'group'.padEnd(14), 'd0'.padEnd(8), 'De_real(eV)');
+console.log(' compound'.padEnd(34), 'group'.padEnd(20), 'd0[CITED]'.padEnd(10), 'De_real[CITED](eV)');
 ROWS_OO_EXTENDED.forEach(function(r) {
   var deEv = r[2] * HART;
-  console.log(' ', r[0].padEnd(32), r[3].padEnd(14), (r[1] == null ? 'n/a' : r[1].toFixed(4)).padEnd(8), deEv.toFixed(4));
+  console.log(' ', r[0].padEnd(32), r[3].padEnd(20), (r[1] == null ? 'n/a' : r[1].toFixed(4)).padEnd(10), deEv.toFixed(4));
 });
 
-// Group-1 line fit on DTBP + dimethyl only (dicumyl's d0 withheld on purpose)
+// [DERIVED HERE] Group-1 line fit on DTBP + dimethyl only (dicumyl's d0 withheld on purpose)
 var g1a = { d0: 1.462, De: 0.062161 * HART }, g1b = { d0: 1.4512, De: 0.058361 * HART };
 var m1 = (g1a.De - g1b.De) / (g1a.d0 - g1b.d0), b1 = g1a.De - m1 * g1a.d0;
-var dicumylDe = 0.060035 * HART;
-var predictedDicumylD0 = (dicumylDe - b1) / m1;
-console.log('\nGroup 1 (alkyl) line: De = ' + m1.toFixed(3) + '*d0 + ' + b1.toFixed(3) + ' (eV, A)');
-console.log('  -> dicumyl peroxide d0 predicted from its real De alone:', predictedDicumylD0.toFixed(4), 'A (SI omits this geometry - not guessed, backed out)');
+var dicumylDe = 0.060035 * HART; // [CITED]
+var predictedDicumylD0 = (dicumylDe - b1) / m1; // [DERIVED HERE]
+console.log('\n[DERIVED HERE] Group 1 (alkyl) line: De = ' + m1.toFixed(3) + '*d0 + ' + b1.toFixed(3) + ' (eV, A)');
+console.log('  -> dicumyl peroxide d0 predicted from its CITED real De alone:', predictedDicumylD0.toFixed(4), 'A (SI omits this geometry - not guessed, backed out)');
 
-// Group-2 line fit on diacetyl + benzoyl only, tested against the mixed compound (withheld from the fit)
+// [DERIVED HERE] Group-2 line fit on diacetyl + benzoyl only, tested against the mixed compound (withheld from the fit)
 var g2a = { d0: 1.432, De: 0.055399 * HART }, g2b = { d0: 1.4237, De: 0.049433 * HART };
 var m2 = (g2a.De - g2b.De) / (g2a.d0 - g2b.d0), b2 = g2a.De - m2 * g2a.d0;
-var mixedD0 = 1.4276, mixedDeReal = 0.051021 * HART;
-var predictedMixedDe = m2 * mixedD0 + b2;
-console.log('\nGroup 2 (acyl) line: De = ' + m2.toFixed(3) + '*d0 + ' + b2.toFixed(3) + ' (eV, A)');
-console.log('  -> held-out 3rd point (mixed benzoyl+pivaloyl, NOT used to fit this line): predicted De=' +
+var mixedD0 = 1.4276, mixedDeReal = 0.051021 * HART; // [CITED]
+var predictedMixedDe = m2 * mixedD0 + b2; // [DERIVED HERE]
+console.log('\n[DERIVED HERE] Group 2 (acyl) line: De = ' + m2.toFixed(3) + '*d0 + ' + b2.toFixed(3) + ' (eV, A)');
+console.log('  -> held-out 3rd CITED point (mixed benzoyl+pivaloyl, NOT used to fit this line): predicted De=' +
   predictedMixedDe.toFixed(4) + 'eV, actual De=' + mixedDeReal.toFixed(4) + 'eV, residual=' +
   (100 * (predictedMixedDe - mixedDeReal) / mixedDeReal).toFixed(1) + '%');
+
+console.log('\n=== Step 7: alpha-H-count axis within Group 1 (dihedral geometry check) ===');
+// dihedral(): standard 4-point torsion angle, [DERIVED HERE] from [CITED] Cartesian coordinates.
+function sub(a, b) { return [a[0]-b[0], a[1]-b[1], a[2]-b[2]]; }
+function cross(a, b) { return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]]; }
+function dot(a, b) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
+function norm(a) { return Math.sqrt(dot(a, a)); }
+function dihedral(p1, p2, p3, p4) {
+  var b1v = sub(p2, p1), b2v = sub(p3, p2), b3v = sub(p4, p3);
+  var n1 = cross(b1v, b2v), n2 = cross(b2v, b3v);
+  var m1v = cross(n1, b2v.map(function(v) { return v / norm(b2v); }));
+  return Math.atan2(dot(m1v, n2), dot(n1, n2)) * 180 / Math.PI;
+}
+// [CITED] dimethyl peroxide geometry: O2, O1, alpha-carbon C3 (bonded to O2), its 3 H's.
+var dO1 = [0.689948, -0.224672, -0.372769], dO2 = [-0.689948, 0.224672, -0.372769];
+var dC3 = [-0.689948, 1.477548, 0.277408];
+var dH = [[-1.730766, 1.814301, 0.239917], [-0.367800, 1.395680, 1.323525], [-0.053118, 2.201094, -0.245734]];
+console.log(' dimethyl peroxide alpha-C-H dihedrals to the O-O bond (H-C3-O2-O1) [DERIVED HERE from CITED geometry]:');
+dH.forEach(function(H, i) {
+  var d = dihedral(H, dC3, dO2, dO1);
+  console.log('  H' + i + ': ' + d.toFixed(1) + ' deg (anti-periplanar alignment score cos^2=' + Math.pow(Math.cos(d * Math.PI / 180), 2).toFixed(3) + ')');
+});
+console.log(' -> one C-H bond at -178.3deg: near-perfect anti-periplanar alignment for sigma(C-H)->sigma*(O-O)');
+console.log(' -> DTBP + dicumyl alpha carbons are quaternary [CITED geometry: zero H atoms bonded to the alpha C] -');
+console.log('    this donation pathway does not exist for them at all (a structural fact, not a dihedral question).');
+console.log(' -> [DERIVED HERE] this ordering (alpha-H=3 weaker than alpha-H=0) matches the CITED real D_e ordering:');
+console.log('    dimethyl (alpha-H=3) De=' + (0.058361 * HART).toFixed(3) + 'eV  <  DTBP/dicumyl (alpha-H=0) mean De=' +
+  (((0.062161 + 0.060035) / 2) * HART).toFixed(3) + 'eV');
+
+console.log('\n=== Step 7b: confounded 3rd alpha-H anchor (flagged, not smoothed in) ===');
+var eParentMixed = -500.235446, eRadPhEtO = -385.192106, eRadOMe = -114.986138; // all [CITED], G4(0K) Hartree
+var deMixedHartree = eRadPhEtO + eRadOMe - eParentMixed; // [DERIVED HERE]
+var deMixedEv = deMixedHartree * HART;
+var alpha0mean = ((0.062161 + 0.060035) / 2) * HART, alpha3 = 0.058361 * HART;
+var naiveSlope = (alpha0mean - alpha3) / (0 - 3);
+var naivePrediction = alpha0mean + naiveSlope * 2; // average alpha-H = (1+3)/2 = 2
+console.log(' 1-phenylethyl methyl peroxide (secondary alpha-C, 1 alpha-H, but benzylic - a real confound):');
+console.log('  CITED energies -> DERIVED HERE De =', deMixedEv.toFixed(4), 'eV =', (deMixedHartree * 627.5094).toFixed(2), 'kcal/mol');
+console.log('  naive alpha-H-count-averaged prediction (DERIVED HERE):', naivePrediction.toFixed(4), 'eV');
+console.log('  residual:', (100 * (naivePrediction - deMixedEv) / deMixedEv).toFixed(1),
+  '% (real value weaker than predicted - plausibly the benzylic C-H is a BETTER donor than a plain alkyl C-H,');
+console.log('  a second, real, un-separated effect - this anchor is reported as suggestive, NOT as confirmation).');
