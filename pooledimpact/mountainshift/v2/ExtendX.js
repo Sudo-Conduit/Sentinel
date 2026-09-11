@@ -817,7 +817,24 @@
             Subclass._resolvePipeline = function(currentMask) {
                 const mask = currentMask || classDefaultMaskState;
                 const [globalOverride, bitArray] = mask;
-                if (globalOverride === 0) return [];
+
+                // A locked mixin (see enableLayer/disableLayer above) is
+                // refused at the per-bit level, but the global override is
+                // a SEPARATE kill switch -- dispose()'s own setMask(this,
+                // [0,[]]) sets exactly this to 0, and toggleAllLayers(false)
+                // does too. Without this check, disposing (or globally
+                // toggling off) an instance would silently exclude a locked
+                // mixin from every future call's chain despite it never
+                // having agreed to be individually disabled -- the same
+                // "turned off by a door it never consented to" gap
+                // mixin.locked exists to close, just reached through the
+                // global bit instead of the per-mixin one. Locked mixins are
+                // therefore immune to the global override entirely, not
+                // just to their own bit.
+                if (globalOverride === 0) {
+                    const locked = Subclass._rawMixins.filter(function(m) { return !!m.locked; });
+                    return locked.length ? locked.map(current) : [];
+                }
 
                 const token = tokenFor(mask) + ':' + REGISTRY_GENERATION;
                 let cache = PIPELINE_CACHE.get(Subclass);
