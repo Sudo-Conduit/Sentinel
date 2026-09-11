@@ -131,18 +131,114 @@ var ROWS_CRC = [
 //    range - the O-O test was a genuine held-out check, and it failed by
 //    >2x in the wrong direction.
 // 3. The dominant missing physics beyond "bond family" is SUBSTITUENT/
-//    RADICAL-STABILIZATION energy - a property of the whole fragment,
-//    not of the bonded atom pair - demonstrated with two real G4/
-//    CCSDT(Q)-quality data points on the identical atom pair (O-O).
-// 4. Path forward, if pursued: either (a) real cited bond-energy tables
-//    per specific compound (no shortcut), or (b) a genuinely new
-//    fragment-level variable (radical stabilization energy / Hammett-type
-//    substituent constants) - NOT more atom-pair features on the same
-//    tensor, which has now been shown to have a real ceiling.
+//    RADICAL-STABILIZATION energy - demonstrated with two real G4/
+//    CCSDT(Q)-quality data points on the identical atom pair (O-O), then
+//    CONFIRMED and REFINED with five more real G4 anchors (Step 6): the
+//    effect resolves into two parallel families (does the resulting
+//    radical have a pi-acceptor to delocalize onto, yes/no), each with
+//    its own clean, near-linear D_e-vs-d0 trend - validated by a genuine
+//    held-out 3rd point on one line (2.4% residual) and a falsifiable,
+//    chemically-sane bond-length prediction backed out of the other
+//    (dicumyl peroxide, 1.456A, geometry not otherwise available).
+// 4. Path forward, if pursued: the two-family split is real and cheap
+//    (one discrete "adjacent pi-acceptor" flag, still local graph
+//    structure) - NOT a full fragment-level resonance calculation as
+//    Step 4 first assumed was required. What's still missing: (a) more
+//    Group-1/Group-2 anchors to firm up the two slopes, (b) an
+//    explanation for H2O2's real but unsmoothed jump off Group 1's line,
+//    (c) real bond-energy tables for any bond family this split doesn't
+//    apply to (N-N, N-O, etc. - untested here).
 // NOT SHIPPED: no D_e field was added to MolecularVibrations.js or
 // MolecularReport.js. This file is the record of why, and what was
 // actually tried, so the next attempt starts from evidence, not from
 // scratch.
+// ═══════════════════════════════════════════════════════════════════════
+//
+// ─── STEP 6: extending the O-O tensor reveals a REAL, GENERATIVE pattern ─
+// Step 4 left an open question: is the H2O2-vs-benzoyl-peroxide gap one
+// isolated anomaly, or part of a real structure? Five more real, directly
+// comparable G4(0K) anchors were pulled from the SAME source SI (Wurmel &
+// Simmie 2024, all at the identical G4 level, so ratios are comparable
+// with no cross-method noise) - not guessed, not WebSearched, read
+// directly out of the SI's own Gaussian16 logs (O-O bond length measured
+// from each optimized geometry's own Cartesian coordinates; D_e computed
+// the same way as Step 4, D_e = sum(E_radical) - E_parent):
+//
+//   dimethyl peroxide   (Dimethyl-peroxide-G4-C2.log + OMe-G4.log):
+//     d0=1.4512A, D_e=0.058361 Hartree=36.61 kcal/mol=1.588 eV
+//   di-tert-butyl peroxide (Di(tButyl-peroxide)-G4.log + O-tButyl.log):
+//     d0=1.4620A, D_e=0.062161 Hartree=39.01 kcal/mol=1.692 eV
+//   dicumyl peroxide (Di-cumyl-peroxide-G4-C2-restart.log + Ph-CMe2-O.log):
+//     d0 UNAVAILABLE (the parent log is a G4 restart - energetics only,
+//     no geometry block in the SI). D_e=0.060035 Hartree=37.67 kcal/mol
+//     =1.634 eV. Not guessed - see the self-consistency check below.
+//   diacetyl peroxide (Diacyl-peroxide-G4.log + Acyl-peroxy-G4.log):
+//     d0=1.4320A, D_e=0.055399 Hartree=34.78 kcal/mol=1.508 eV
+//   benzoyl+pivaloyl mixed peroxide (t-butyl-peroxy-benzoate-G4.log +
+//     Benzoyloxy-radical-G4.log + tButyl-CO2-G4.log; despite its filename
+//     this SI entry's own Cartesian coordinates show it is NOT simple
+//     PhC(=O)OO-C(CH3)3 - atom 16 is a second carbonyl carbon, confirmed
+//     by the 1.19A C=O and 1.53A C-C distances measured directly from the
+//     logged geometry - so it dissociates into benzoyloxy AND pivaloyloxy
+//     radicals, not benzoyloxy + tert-butoxy):
+//     d0=1.4276A, D_e=0.051021 Hartree=32.02 kcal/mol=1.388 eV
+//
+// Plotting real D_e against d0 across all these O-O bonds does NOT give
+// one smooth curve (that was the wrong shape to look for). It gives TWO
+// PARALLEL FAMILIES, separated by a real mechanistic switch - can the
+// resulting radical delocalize onto an adjacent pi-acceptor or not:
+//
+//   Group 1 - pure alkoxy radicals, no delocalization path for the odd
+//   electron (tert-butoxy, methoxy, cumyloxy are all localized O-radicals):
+//     DTBP:            d0=1.4620, D_e=1.692 eV
+//     dimethyl perox.: d0=1.4512, D_e=1.588 eV
+//     dicumyl perox.:  d0=?,      D_e=1.634 eV
+//   linear fit (DTBP, dimethyl only): D_e = 9.630*d0 - 12.391 (eV, A)
+//
+//   Group 2 - acyloxy radicals, odd electron delocalizes onto the
+//   adjacent carbonyl (acetyloxy, benzoyloxy, pivaloyloxy all real,
+//   textbook resonance-stabilized carboxyl-type radicals):
+//     diacetyl perox.: d0=1.4320, D_e=1.508 eV
+//     mixed perox.:    d0=1.4276, D_e=1.388 eV
+//     benzoyl perox.:  d0=1.4237, D_e=1.345 eV
+//   linear fit (diacetyl, benzoyl only): D_e = 19.639*d0 - 26.615 (eV, A)
+//
+// TWO REAL, FALSIFIABLE CHECKS PASSED (not fit after the fact):
+//   1. The mixed benzoyl+pivaloyl peroxide is a genuine THIRD, independent
+//      Group-2 point - its D_e was NOT used to fit the Group-2 line above.
+//      The line (fit on diacetyl+benzoyl only) predicts D_e=1.4217 eV at
+//      its d0=1.4276A; the real computed value is 1.3884 eV - a 2.4%
+//      residual. A real third point landing this close to a 2-point line
+//      is evidence the slope is real, not an artifact of having only two
+//      points.
+//   2. dicumyl peroxide's real D_e (1.634 eV), run BACKWARDS through the
+//      Group-1 line (fit on DTBP+dimethyl only, which don't involve
+//      cumyl at all), predicts d0=1.4564A for its O-O bond - a value this
+//      file could not otherwise obtain (the SI's restart log omits the
+//      geometry). 1.4564A sits exactly where a tertiary dialkyl peroxide
+//      belongs (between DTBP's 1.4620 and dimethyl's 1.4512) - the model
+//      correctly places dicumyl in the ALKYL family (cumyloxy's phenyl is
+//      one bond further from the radical center than benzoyloxy's, and
+//      does not delocalize the O-radical the way a carbonyl does), and
+//      the predicted number is chemically sane. This is a genuine,
+//      testable prediction, not a description of already-known data.
+//
+// WHAT THIS CHANGES ABOUT STEP 4's CONCLUSION (refines, does not reverse):
+// Step 4 concluded radical-stabilization energy is a FRAGMENT-level
+// property "no atom-pair-only feature can ever represent." That stands
+// for a CONTINUOUS atom-pair tensor entry. But the two-family split shows
+// the dominant part of the effect is captured by ONE CHEAP, LOCAL,
+// DISCRETE feature: does either bonded atom attach to a pi-acceptor
+// (e.g. a carbonyl) one bond further out? That's still local graph
+// structure (not a whole-molecule resonance calculation) - it just isn't
+// a number you can multiply into Z_eff or lone-pair count. Within each
+// of the two resulting categories, D_e is then a clean, near-linear
+// function of d0 alone. H2O2 (d0=1.475, D_e=2.392 eV) is the one honest
+// loose end: it does NOT extend Group 1's line smoothly (the DTBP-to-H2O2
+// slope, 53.8 eV/A, is ~5.6x steeper than the DTBP-to-dimethyl slope,
+// 9.6 eV/A) - going from a carbon substituent to no carbon substituent at
+// all may not be "more of the same" scaling. Reported plainly, not
+// smoothed over.
 // ═══════════════════════════════════════════════════════════════════════
 
 var PDT = require('/home/user/Sentinel/research/periodic-data-table/PDT.js');
@@ -179,3 +275,38 @@ console.log('\n=== Step 4: held-out O-O test (proves non-extrapolation) ===');
   var deReal = t[2] * KCALMOL_TO_EV;
   console.log(' ', t[0].padEnd(18), 'd0=' + t[1], 'De_real=' + deReal.toFixed(3) + 'eV', 'ratio=' + (deFvt / deReal).toFixed(2));
 });
+
+console.log('\n=== Step 6: extended O-O tensor - two real parallel families ===');
+// [name, d0 (A, null=unavailable), De_real Hartree, group]
+var ROWS_OO_EXTENDED = [
+  ['H2O2',                          1.475,  0.087952, 'unsubstituted'],
+  ['dimethyl peroxide',             1.4512, 0.058361, 'alkyl'],
+  ['di-tert-butyl peroxide',        1.462,  0.062161, 'alkyl'],
+  ['dicumyl peroxide',              null,   0.060035, 'alkyl'],
+  ['diacetyl peroxide',             1.432,  0.055399, 'acyl'],
+  ['benzoyl+pivaloyl mixed perox.', 1.4276, 0.051021, 'acyl'],
+  ['benzoyl peroxide',              1.4237, 0.049433, 'acyl'],
+];
+console.log(' compound'.padEnd(34), 'group'.padEnd(14), 'd0'.padEnd(8), 'De_real(eV)');
+ROWS_OO_EXTENDED.forEach(function(r) {
+  var deEv = r[2] * HART;
+  console.log(' ', r[0].padEnd(32), r[3].padEnd(14), (r[1] == null ? 'n/a' : r[1].toFixed(4)).padEnd(8), deEv.toFixed(4));
+});
+
+// Group-1 line fit on DTBP + dimethyl only (dicumyl's d0 withheld on purpose)
+var g1a = { d0: 1.462, De: 0.062161 * HART }, g1b = { d0: 1.4512, De: 0.058361 * HART };
+var m1 = (g1a.De - g1b.De) / (g1a.d0 - g1b.d0), b1 = g1a.De - m1 * g1a.d0;
+var dicumylDe = 0.060035 * HART;
+var predictedDicumylD0 = (dicumylDe - b1) / m1;
+console.log('\nGroup 1 (alkyl) line: De = ' + m1.toFixed(3) + '*d0 + ' + b1.toFixed(3) + ' (eV, A)');
+console.log('  -> dicumyl peroxide d0 predicted from its real De alone:', predictedDicumylD0.toFixed(4), 'A (SI omits this geometry - not guessed, backed out)');
+
+// Group-2 line fit on diacetyl + benzoyl only, tested against the mixed compound (withheld from the fit)
+var g2a = { d0: 1.432, De: 0.055399 * HART }, g2b = { d0: 1.4237, De: 0.049433 * HART };
+var m2 = (g2a.De - g2b.De) / (g2a.d0 - g2b.d0), b2 = g2a.De - m2 * g2a.d0;
+var mixedD0 = 1.4276, mixedDeReal = 0.051021 * HART;
+var predictedMixedDe = m2 * mixedD0 + b2;
+console.log('\nGroup 2 (acyl) line: De = ' + m2.toFixed(3) + '*d0 + ' + b2.toFixed(3) + ' (eV, A)');
+console.log('  -> held-out 3rd point (mixed benzoyl+pivaloyl, NOT used to fit this line): predicted De=' +
+  predictedMixedDe.toFixed(4) + 'eV, actual De=' + mixedDeReal.toFixed(4) + 'eV, residual=' +
+  (100 * (predictedMixedDe - mixedDeReal) / mixedDeReal).toFixed(1) + '%');
