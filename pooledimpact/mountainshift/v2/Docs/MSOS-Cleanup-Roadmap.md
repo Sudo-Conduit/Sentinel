@@ -29,12 +29,21 @@ doc's Category D 'network' boot work).
 
 Pasted directly from `node test/run-all.js`'s own output, not hand-typed
 — the point of this section is that it can go stale in an obvious,
-checkable way (the commit hash below stops matching HEAD) rather than a
-silent, unverifiable way. Re-run and re-paste whenever a Category A/B
-item lands; a roadmap claiming shipped work that the test suite doesn't
-back up is worse than no roadmap.
+checkable way (the pinned commit stops matching that repo's HEAD) rather
+than a silent, unverifiable way. Re-run and re-paste whenever a Category
+A/B item lands; a roadmap claiming shipped work that the test suite
+doesn't back up is worse than no roadmap.
 
-**Commit:** `31af0c8` — 2026-09-11T16:53:11Z
+The commit below is pinned to whichever remote is canonical for this code
+*right now*, not assumed. As of this pin, pushes for this branch go to
+Gitea only (`git.pooledimpact.com/Claude/Romans` — a mirror of this same
+repo under a different name/owner, not a typo) — GitHub
+(`github.com/Sudo-Conduit/Sentinel`) still holds this same commit today
+but is being deprecated and may fall behind or be removed without further
+notice here. Verify against Gitea first if the two ever disagree.
+
+**Commit:** `31af0c8` (git.pooledimpact.com/Claude/Romans, branch
+`claude/devtools-overrides-robustness-8we96z`) — 2026-09-11T16:53:11Z
 
 | Suite | Result |
 |---|---|
