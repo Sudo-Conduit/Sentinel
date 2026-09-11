@@ -693,8 +693,7 @@
                 // plain assignment of anything new.
                 const methods = ['enableLayer', 'disableLayer', 'toggleAllLayers',
                     'mixins', 'activeMixins', 'explain', 'hasMixin',
-                    'compute', 'main', 'render', 'flushQueue', 'schedule',
-                    'dispose', 'disposeAsync'];
+                    'compute', 'main', 'render', 'flushQueue', 'schedule'];
                 methods.forEach(fn => {
                     if (typeof instance[fn] !== 'function') {
                         Object.defineProperty(instance, fn, {
@@ -704,6 +703,42 @@
                             writable: true
                         });
                     }
+                });
+
+                // dispose/disposeAsync: ALWAYS wrapped, never conditional on
+                // "does the base already have one" the way the methods above
+                // are. That conditional is exactly what made mixin dispose
+                // hooks silently dead for every BaseClassX subclass: BaseClassX
+                // already defines dispose(), so `typeof instance.dispose !==
+                // 'function'` was always false, and ExtendX's own hook-running
+                // dispose() (the one that calls each mixin's own dispose, per
+                // current() so an override() replacement still fires) never
+                // got attached at all. The fix preserves whatever the base
+                // already provided (BaseClassX's real schema/trace disposal,
+                // or nothing for a plain class) by capturing it BEFORE
+                // overriding, then always running ExtendX's own mixin-hook
+                // logic first and chaining to the original afterward -- so a
+                // BaseClassX subclass gets both: its own real disposal AND
+                // every composed mixin's dispose hook actually running.
+                const originalDispose = typeof instance.dispose === 'function' ? instance.dispose.bind(instance) : null;
+                const originalDisposeAsync = typeof instance.disposeAsync === 'function' ? instance.disposeAsync.bind(instance) : null;
+                Object.defineProperty(instance, 'dispose', {
+                    value: function() {
+                        ExtendX.prototype.dispose.call(this);
+                        if (originalDispose) originalDispose();
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
+                });
+                Object.defineProperty(instance, 'disposeAsync', {
+                    value: async function() {
+                        await ExtendX.prototype.disposeAsync.call(this);
+                        if (originalDisposeAsync) await originalDisposeAsync();
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
                 });
 
                 // Authorship getters live on ExtendX.prototype, so an instance
