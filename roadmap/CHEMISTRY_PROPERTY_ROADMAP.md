@@ -1,6 +1,6 @@
 # Sentinel Chemistry Engine — Property Roadmap & Prioritization Rubric
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last updated:** 2026-09-11
 
 Source: the six-category punch list drafted this session (Optical,
@@ -14,6 +14,45 @@ measurement — it is meant to be revised as items are actually attempted
 (the Bond Dissociation Energy row already was: see the Confidence
 dimension's rationale, which exists specifically because of what BDE
 turned out to teach).
+
+## Last test run
+
+Pasted directly from `node test/run-all.js`'s own output in the
+`Sudo-Conduit/Sentinel` repo (`research/periodic-data-table/test/`,
+branch `claude/entropy-chain-fix-nlrgeb`) — not hand-typed. The commit
+hash is Sentinel's, not this document's own repo (this roadmap lives in
+`Claude/Romans` on Gitea; the code and its tests live in Sentinel on
+GitHub) — that mismatch is intentional and is exactly the point: the
+hash below is what actually ran, wherever it lives, and it can go stale
+in an obvious, checkable way (stops matching Sentinel's HEAD) rather
+than a silent, unverifiable way. Re-run and re-paste whenever a Status
+column changes or a new Category 1-6 item ships; a roadmap claiming
+shipped work that the test suite doesn't back up is worse than no
+roadmap. No such suite existed before this run — it did not exist prior
+to v1.2.0 of this document.
+
+Commit: `b6eb0ab` (Sudo-Conduit/Sentinel) — 2026-09-11T17:14:09+00:00
+
+| Suite | Result |
+|---|---|
+| MolecularSymmetry.test.js | ALL 6 CHECKS PASSED |
+| MolecularThermodynamics.test.js | ALL 6 CHECKS PASSED |
+| MolecularVibrationalModes.test.js | ALL 6 CHECKS PASSED |
+| MolecularDescriptors.test.js | ALL 7 CHECKS PASSED |
+
+Total: 25/25 checks passing, 4/4 suites green.
+
+One real finding surfaced while writing this suite, not previously
+documented anywhere: `MolecularVibrationalModes.js` builds its Hessian
+from internal coordinates (bond stretches + valence-angle bends only —
+no torsions/dihedrals). Mode count matches the textbook 3N-6 only when
+a molecule has no torsional degrees of freedom to miss — true for water
+(3 modes, exact), **not** true for benzene's ring (24 modes, not the
+full 30). This is checked explicitly in the suite as a documented,
+expected count, not silently passed with a wrong assertion or hidden.
+It does not change any row's Status in the table below, but it is
+exactly the kind of gap this section exists to keep from going stale
+and unstated.
 
 ## Status legend
 
@@ -181,6 +220,19 @@ This document is meant to stand on its own, the same way
 `chemistry/De_investigation_FINDINGS.js` does — versioned and dated so a
 reader can tell what changed and why without diffing git history.
 
+- **1.2.0** — 2026-09-11 — Added a "Last test run" section: built the
+  first real regression test suite for the four shipped modules
+  (`research/periodic-data-table/test/`, Sentinel repo, commit
+  `b6eb0ab`, 25/25 checks passing) since none existed before this
+  version, and pasted its verbatim output with a commit hash rather than
+  restating Status by hand — a stale roadmap claim is now checkable
+  (hash stops matching HEAD) instead of trusted. Surfaced one real,
+  previously-undocumented finding while writing it:
+  `MolecularVibrationalModes.js`'s internal-coordinate Hessian (bond
+  stretches + angle bends only, no torsions) matches the textbook 3N-6
+  mode count for water but not for benzene's ring (24 modes, not 30) -
+  checked explicitly as documented, expected behavior rather than a
+  silently-wrong assertion or a hidden gap.
 - **1.1.0** — 2026-09-11 — Corrected 5.2 Electrophilicity/Nucleophilicity
   Indices from ⬜ to ✅ shipped (`Aromaticity.js`'s `homoLumo()` already
   computes it) after checking the actual code rather than trusting the
