@@ -9,7 +9,8 @@ const path = require('path');
 const files = [
     'CPU.security.test.js',
     'Physical.security.test.js',
-    'PreMixed.hazard.test.js'
+    'PreMixed.hazard.test.js',
+    'StructureMixin.test.js'
 ];
 
 let anyFailed = false;
