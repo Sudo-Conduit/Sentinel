@@ -1,6 +1,6 @@
 # Sentinel Chemistry Engine — Property Roadmap & Prioritization Rubric
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Last updated:** 2026-09-11
 
 Source: the six-category punch list drafted this session (Optical,
@@ -17,21 +17,18 @@ turned out to teach).
 
 ## Last test run
 
-Pasted directly from `node test/run-all.js`'s own output in the
-`Sudo-Conduit/Sentinel` repo (`research/periodic-data-table/test/`,
-branch `claude/entropy-chain-fix-nlrgeb`) — not hand-typed. The commit
-hash is Sentinel's, not this document's own repo (this roadmap lives in
-`Claude/Romans` on Gitea; the code and its tests live in Sentinel on
-GitHub) — that mismatch is intentional and is exactly the point: the
-hash below is what actually ran, wherever it lives, and it can go stale
-in an obvious, checkable way (stops matching Sentinel's HEAD) rather
-than a silent, unverifiable way. Re-run and re-paste whenever a Status
-column changes or a new Category 1-6 item ships; a roadmap claiming
-shipped work that the test suite doesn't back up is worse than no
-roadmap. No such suite existed before this run — it did not exist prior
-to v1.2.0 of this document.
+Pasted directly from `node test/run-all.js`'s own output
+(`research/periodic-data-table/test/`) — not hand-typed. GitHub
+(`Sudo-Conduit/Sentinel`) is deprecated; this repo (`Claude/Romans` on
+Gitea) is now the sole home for both the code and this roadmap, so the
+commit hash below is this repo's own HEAD, not a cross-repo reference
+anymore. It can still go stale in an obvious, checkable way (stops
+matching HEAD) rather than a silent one. Re-run and re-paste whenever a
+Status column changes or a new Category 1-6 item ships; a roadmap
+claiming shipped work that the test suite doesn't back up is worse than
+no roadmap.
 
-Commit: `b6eb0ab` (Sudo-Conduit/Sentinel) — 2026-09-11T17:14:09+00:00
+Commit: `8f56141` — 2026-09-11T21:38:54+00:00
 
 | Suite | Result |
 |---|---|
@@ -39,8 +36,15 @@ Commit: `b6eb0ab` (Sudo-Conduit/Sentinel) — 2026-09-11T17:14:09+00:00
 | MolecularThermodynamics.test.js | ALL 6 CHECKS PASSED |
 | MolecularVibrationalModes.test.js | ALL 6 CHECKS PASSED |
 | MolecularDescriptors.test.js | ALL 7 CHECKS PASSED |
+| Aromaticity.test.js | ALL 7 CHECKS PASSED |
+| PDT.test.js | ALL 8 CHECKS PASSED |
 
-Total: 25/25 checks passing, 4/4 suites green.
+Total: 40/40 checks passing, 6/6 suites green. Coverage gap closed on
+Band Gap, Magnetic Moment, and Electrophilicity/Nucleophilicity Indices
+— all three shipped items previously had zero regression coverage;
+Electrophilicity specifically was the one row already found wrong once
+before (v1.1.0), so it was the one most worth not trusting further
+without a test.
 
 One real finding surfaced while writing this suite, not previously
 documented anywhere: `MolecularVibrationalModes.js` builds its Hessian
@@ -220,6 +224,14 @@ This document is meant to stand on its own, the same way
 `chemistry/De_investigation_FINDINGS.js` does — versioned and dated so a
 reader can tell what changed and why without diffing git history.
 
+- **1.3.0** — 2026-09-11 — GitHub deprecated; code and roadmap now live
+  together in this repo, so the "Last test run" section's commit hash
+  is this repo's own HEAD instead of a cross-repo reference. Closed the
+  coverage gap flagged in review: added `PDT.test.js` (Magnetic Moment)
+  and `Aromaticity.test.js` (Band Gap, Electrophilicity/Nucleophilicity)
+  — the three shipped items that had zero regression coverage, one of
+  them (Electrophilicity) the exact row already found wrong once
+  before. 40/40 checks passing, 6/6 suites green, up from 25/25, 4/4.
 - **1.2.0** — 2026-09-11 — Added a "Last test run" section: built the
   first real regression test suite for the four shipped modules
   (`research/periodic-data-table/test/`, Sentinel repo, commit
