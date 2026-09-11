@@ -5,38 +5,46 @@
  * reimplemented as a reusable, base-class-agnostic mixin instead of
  * hand-written per class.
  *
- * enableLayer/disableLayer/dispose/disposeAsync default ON -- ExtendX's
- * normal, dev-friendly behavior: toggle layers, dispose freely, iterate
- * fast. That is also exactly the gap that matters for production: any
- * caller holding the instance could call disableLayer(securityMixin) to
- * turn gating off, or call dispose() -- which collapses ExtendX's own mask
- * to [0,[]], emptying the mixin pipeline entirely, so a "disposed"
- * instance's methods silently fall through to the raw, unguarded base
- * implementation instead of being blocked. seal() closes both, permanently,
- * for one instance; "unsealing" is never reversing it -- it's constructing
- * a fresh, unsealed instance when that capability is needed again.
+ * v3: enableLayer/disableLayer are handled by ExtendX itself now
+ * (ExtendX.js v1.2.0's `mixin.locked` check), not by this file. Two earlier
+ * attempts both failed for reasons worth keeping on record:
  *
- * v2: seal() no longer locks properties via configurable:false/
- * writable:false. That broke on any BaseClassX-derived target: BaseClassX's
- * own `get` trap always returns `rawValue.bind(receiver)`, and a Proxy's
- * `get` trap is REQUIRED by spec to return the exact same value (SameValue)
- * for a non-configurable, non-writable data property -- .bind() returns a
- * new function object every time, so the engine itself threw a native
- * invariant-violation TypeError instead of this file's own clear error.
- * That invariant only constrains non-configurable DATA properties, so the
- * fix is to stop relying on non-configurability for enforcement at all:
- * enableLayer/disableLayer are now real mixin methods that ride ExtendX's
- * already-working per-call dispatch chain (the same mechanism every other
- * gated method already uses successfully through a Proxy) -- they check a
- * closure-private sealed flag and, if clear, call straight through to
- * ExtendX.prototype's own implementation (the literal "call super" this
- * needed, since hand-declaring these names on the mixin means ExtendX no
- * longer auto-attaches its own -- there's nothing left for `this.super` to
- * reach, so the real behavior has to be invoked directly). dispose/
- * disposeAsync can't ride that same chain (ExtendX's own NON_DISPATCH
- * excludes them from normal dispatch), so seal() still overrides them
- * directly on the instance -- but as an ordinary configurable:true,
- * writable:true function, which carries no Proxy invariant at all.
+ *   v1 sealed enableLayer/disableLayer via Object.defineProperty with
+ *   configurable:false/writable:false. That broke on any BaseClassX-derived
+ *   target: BaseClassX's `get` trap always returns `rawValue.bind(receiver)`,
+ *   and the Proxy spec requires a non-configurable, non-writable data
+ *   property's get trap to return the exact SameValue -- .bind() returns a
+ *   new function every time, so the engine itself threw a native invariant
+ *   violation instead of this file's own error.
+ *
+ *   v2 fixed that by hand-declaring enableLayer/disableLayer as real mixin
+ *   methods riding ExtendX's normal per-call dispatch chain, checking a
+ *   sealed flag and calling ExtendX.prototype's implementation directly.
+ *   That introduced a worse, silent bug: disableLayer(securityMixin) sets
+ *   the security mixin's OWN bit to 0, and _resolvePipeline then excludes
+ *   the mixin from every subsequent call's chain -- including the very
+ *   enableLayer call meant to turn it back on. That call silently no-ops
+ *   (empty chain, no throw), and the mixin is permanently excluded from
+ *   dispatch from then on. A mixin gating its own on/off switch through
+ *   that same switch is self-defeating by construction.
+ *
+ * The actual fix: this is a composition-time property, not a per-instance,
+ * post-hoc lock. createSecurityMixin() sets `locked: true` on the returned
+ * mixin; ExtendX.prototype.enableLayer/disableLayer both refuse outright
+ * (for every instance, from construction, always) whenever the mixin
+ * argument is locked -- general mixins (Logger, Cache, anything not
+ * security-shaped) are completely unaffected, since `locked` defaults to
+ * unset/false. A security mixin's presence is a decision made once, when
+ * extend() composes it in; it was never meant to be something a live
+ * instance's holder can flip off and back on, the way a feature layer is.
+ *
+ * dispose/disposeAsync are a separate problem: ExtendX's own NON_DISPATCH
+ * excludes both from normal per-property dispatch entirely (lifecycle
+ * hooks, invoked directly, never chained), so there's no dispatch path to
+ * hook a check into at all, locked mixin or not. seal() still overrides
+ * both directly on the instance -- as an ordinary configurable:true,
+ * writable:true function (no Proxy invariant either way, since the
+ * property is never made non-configurable).
  *
  * @author Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)
  */
@@ -86,16 +94,17 @@
     // ─── Sealed state ───────────────────────────────────────────────────
     // Keyed by extId like TOKENS -- a closure-private flag, not a property
     // on the instance, so nothing about "is this sealed" is reachable or
-    // reflectable from outside this file.
+    // reflectable from outside this file. Only gates dispose/disposeAsync
+    // now -- enableLayer/disableLayer are refused unconditionally by
+    // ExtendX itself (mixin.locked), not something seal() needs to touch.
     const SEALED = new Set();
 
     function sealedError(name) {
         return new Error(
             'SecurityMixin: "' + name + '" is sealed on this instance. ' +
-            'enableLayer/disableLayer/dispose/disposeAsync are locked once ' +
-            'seal() has been called -- permanently, for this instance. A ' +
-            'fresh, unsealed instance is the only way to get this capability ' +
-            'back; there is no unseal().'
+            'dispose/disposeAsync are locked once seal() has been called -- ' +
+            'permanently, for this instance. A fresh, unsealed instance is ' +
+            'the only way to get this capability back; there is no unseal().'
         );
     }
 
@@ -142,7 +151,14 @@
             return typeof BaseClass.prototype[name] === 'function';
         });
 
-        const mixin = { mixinId: mixinId };
+        // locked (ExtendX.js v1.2.0+): refuses enableLayer/disableLayer for
+        // THIS mixin on every instance, unconditionally, from construction
+        // onward. Not a per-instance seal -- a property of the mixin's
+        // identity, checked by ExtendX.prototype.enableLayer/disableLayer
+        // themselves before touching the bit. See the file header for why
+        // gating a mixin's own on/off switch through that same switch
+        // (the earlier approach) was a self-defeating dead end.
+        const mixin = { mixinId: mixinId, locked: true };
 
         methodNames.forEach(function(name) {
             mixin[name] = function() {
@@ -169,25 +185,11 @@
             revoke(this._extId);
         };
 
-        // enableLayer/disableLayer, hand-declared rather than introspected:
-        // BaseClass never defines these itself (ExtendX attaches its own
-        // generic versions per-instance, only when the base doesn't already
-        // have one), so they never appear in BaseClass.prototype and the
-        // introspection loop above never sees them. Declaring them here
-        // means ExtendX's own per-instance attach is skipped instead (an
-        // instance already inheriting a real function via Subclass.prototype
-        // no longer needs one) -- which also means there is no more "base"
-        // implementation left for this.super to reach, so the sealed check
-        // calls ExtendX.prototype's real implementation directly (the
-        // literal "call super") rather than through the chain.
-        mixin.enableLayer = function(m) {
-            if (SEALED.has(this._extId)) throw sealedError('enableLayer');
-            return ExtendX.prototype.enableLayer.call(this, m);
-        };
-        mixin.disableLayer = function(m) {
-            if (SEALED.has(this._extId)) throw sealedError('disableLayer');
-            return ExtendX.prototype.disableLayer.call(this, m);
-        };
+        // enableLayer/disableLayer are NOT declared here at all -- `locked:
+        // true` above (checked by ExtendX.prototype.enableLayer/
+        // disableLayer directly) is what refuses them, so this mixin never
+        // needs its own versions of either, and ExtendX's normal
+        // per-instance attach-if-missing behavior is left untouched.
 
         // ─── Isolated-proof introspection (not part of the Gen 2 surface) ──
         mixin._securityArmed = function() { return isArmed(this._extId); };
@@ -197,12 +199,12 @@
     }
 
     // ─── Seal ─────────────────────────────────────────────────────────
-    // enableLayer/disableLayer are handled above, as real mixin methods
-    // riding ExtendX's normal per-call dispatch chain -- no property
-    // surgery needed for those two at all, since they already check SEALED
-    // on every call regardless of how they were reached.
+    // enableLayer/disableLayer need nothing here at all -- `locked: true`
+    // on the mixin (above) makes ExtendX itself refuse them unconditionally,
+    // for every instance, from construction. seal() exists only for
+    // dispose/disposeAsync, which are a different problem entirely.
     //
-    // dispose/disposeAsync can't ride that chain: ExtendX's own
+    // dispose/disposeAsync can't ride the normal dispatch chain: ExtendX's own
     // NON_DISPATCH set excludes both from normal per-property dispatch
     // (they're lifecycle hooks, invoked directly, not chained), so there is
     // no dispatch-chain path to hook a check into. seal() overrides them

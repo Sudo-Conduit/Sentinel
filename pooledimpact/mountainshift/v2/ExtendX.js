@@ -406,8 +406,29 @@
         }
 
         // ─── Instance Bitmask Control ───────────────────────────
+        //
+        // mixin.locked (v1.2.0): a mixin declaring `locked: true` on itself
+        // opts OUT of ever being toggled through enableLayer/disableLayer,
+        // for every instance, permanently, from construction onward -- not
+        // a per-instance seal, a property of the mixin's identity. Default
+        // is unset/false, so every existing mixin's behavior is unchanged;
+        // this is opt-in, for mixins where "toggle it off at runtime" is
+        // categorically the wrong operation to expose at all (a security
+        // mixin's presence should be a composition-time decision -- whether
+        // extend() is called with it in the first place -- not something
+        // togglable while the instance is already live). This also closes
+        // a real deadlock a naive per-instance lock discovered: a mixin
+        // that gates its OWN enableLayer/disableLayer through its OWN bit
+        // can disable itself and then can never re-enable itself, because
+        // the call that would flip the bit back on is itself excluded from
+        // dispatch once the bit is off. Locking at the mixin-identity level
+        // sidesteps that entirely -- the bit for a locked mixin never moves
+        // through this API in the first place.
 
         enableLayer(mixin) {
+            if (mixin && mixin.locked) {
+                throw new Error('ExtendX.enableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
             if (mixin._bitIndex === undefined) return this;
             const bits = getMask(this)[1];
             for (let i = bits.length; i < mixin._bitIndex; i++) bits[i] = 1;
@@ -416,6 +437,9 @@
         }
 
         disableLayer(mixin) {
+            if (mixin && mixin.locked) {
+                throw new Error('ExtendX.disableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
             if (mixin._bitIndex === undefined) return this;
             const bits = getMask(this)[1];
             // Assigning past the end extends the array; the holes it creates
