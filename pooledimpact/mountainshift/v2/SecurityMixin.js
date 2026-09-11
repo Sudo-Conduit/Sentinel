@@ -5,16 +5,24 @@
  * reimplemented as a reusable, base-class-agnostic mixin instead of
  * hand-written per class.
  *
- * ISOLATED PROOF ONLY at this step. enableLayer/disableLayer are still
- * directly callable on a bare composed instance -- that's ExtendX's normal
- * per-instance API -- so this mixin alone does NOT yet make an instance's
- * security unbypassable: anyone holding the instance could call
- * instance.disableLayer(securityMixin) and turn gating off. Closing that
- * gap is the outer closure factory's job (the Gen 2 MountainShift() pattern
- * discussed alongside this file): only that closure will ever be allowed
- * to touch enableLayer/disableLayer/dispose, and nothing else will ever
- * see a reference to the raw instance at all. This file proves the gating
- * logic itself works before that final wrapping exists.
+ * enableLayer/disableLayer/dispose/disposeAsync default ON -- ExtendX's
+ * normal, dev-friendly behavior: toggle layers, dispose freely, iterate
+ * fast. That is also exactly the gap that matters for production: any
+ * caller holding the instance could call disableLayer(securityMixin) to
+ * turn gating off, or call dispose() -- which collapses ExtendX's own mask
+ * to [0,[]], emptying the mixin pipeline entirely, so a "disposed"
+ * instance's methods silently fall through to the raw, unguarded base
+ * implementation instead of being blocked. seal() closes both: it
+ * overwrites those four names on a specific instance with functions that
+ * throw, using configurable:false/writable:false -- a language-level
+ * guarantee, not a flag, so no code anywhere (not even this instance's own
+ * methods) can ever redefine or delete them afterward. This is the same
+ * freeze/no-reversal-on-the-same-object philosophy discussed for the
+ * outer closure factory, scoped narrowly here to just these four names
+ * instead of the whole instance (freezing the whole object would also
+ * block CPU's own register writes). Sealing is permanent for that
+ * instance; "unsealing" is never reversing it -- it's constructing a
+ * fresh, unsealed instance when that capability is needed again.
  *
  * @author Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)
  */
@@ -138,8 +146,48 @@
         return mixin;
     }
 
+    // ─── Seal ─────────────────────────────────────────────────────────
+    // The four names ExtendX's own Subclass constructor can turn a
+    // composed instance's security off through: enableLayer/disableLayer
+    // (directly), dispose/disposeAsync (indirectly, via the mask collapse
+    // described above). All four are attached to each instance as own,
+    // configurable, writable properties by ExtendX -- exactly the shape
+    // seal() needs in order to overwrite them with a real, permanent lock.
+    const SEALED_NAMES = ['enableLayer', 'disableLayer', 'dispose', 'disposeAsync'];
+
+    function seal(instance) {
+        SEALED_NAMES.forEach(function(name) {
+            const desc = Object.getOwnPropertyDescriptor(instance, name);
+            if (desc && desc.configurable === false) return; // already sealed
+            Object.defineProperty(instance, name, {
+                value: function() {
+                    throw new Error(
+                        'SecurityMixin: "' + name + '" is sealed on this instance. ' +
+                        'enableLayer/disableLayer/dispose/disposeAsync are locked once ' +
+                        'seal() has been called -- permanently, for this instance. A ' +
+                        'fresh, unsealed instance is the only way to get this capability ' +
+                        'back; there is no unseal().'
+                    );
+                },
+                enumerable: false,
+                configurable: false,
+                writable: false
+            });
+        });
+        return instance;
+    }
+
+    function isSealed(instance) {
+        return SEALED_NAMES.every(function(name) {
+            const desc = Object.getOwnPropertyDescriptor(instance, name);
+            return !!desc && desc.configurable === false;
+        });
+    }
+
     return {
         createSecurityMixin: createSecurityMixin,
+        seal: seal,
+        isSealed: isSealed,
         // Exposed for the isolated proof/tests only -- a real deployment
         // has no reason to reach these from outside a composed instance's
         // own init/dispose lifecycle.
