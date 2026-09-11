@@ -10,7 +10,10 @@ const files = [
     'CPU.security.test.js',
     'Physical.security.test.js',
     'PreMixed.hazard.test.js',
-    'StructureMixin.test.js'
+    'StructureMixin.test.js',
+    'Kernel.security.test.js',
+    'BIOS.security.test.js',
+    'FullBootChain.lifecycle.test.js'
 ];
 
 let anyFailed = false;
