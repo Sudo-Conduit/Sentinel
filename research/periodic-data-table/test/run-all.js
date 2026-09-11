@@ -8,7 +8,9 @@ var suites = [
   require('./MolecularSymmetry.test.js'),
   require('./MolecularThermodynamics.test.js'),
   require('./MolecularVibrationalModes.test.js'),
-  require('./MolecularDescriptors.test.js')
+  require('./MolecularDescriptors.test.js'),
+  require('./Aromaticity.test.js'),
+  require('./PDT.test.js')
 ];
 
 var totalChecks = 0, totalFailed = 0, greenSuites = 0;
