@@ -25,6 +25,29 @@ roadmap's Category C items close gaps in), and
 references between BaseClassX trees — the conceptual ancestor of this
 doc's Category D 'network' boot work).
 
+## Last test run
+
+Pasted directly from `node test/run-all.js`'s own output, not hand-typed
+— the point of this section is that it can go stale in an obvious,
+checkable way (the commit hash below stops matching HEAD) rather than a
+silent, unverifiable way. Re-run and re-paste whenever a Category A/B
+item lands; a roadmap claiming shipped work that the test suite doesn't
+back up is worse than no roadmap.
+
+**Commit:** `31af0c8` — 2026-09-11T16:53:11Z
+
+| Suite | Result |
+|---|---|
+| CPU.security.test.js | ALL 15 CHECKS PASSED |
+| Physical.security.test.js | ALL 15 CHECKS PASSED |
+| PreMixed.hazard.test.js | ALL 9 CHECKS PASSED |
+| StructureMixin.test.js | ALL 23 CHECKS PASSED |
+| Kernel.security.test.js | ALL 15 CHECKS PASSED |
+| BIOS.security.test.js | ALL 12 CHECKS PASSED |
+| FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
+
+**Total: 105/105 checks passing, 7/7 suites green.**
+
 ## Status legend
 
 | Symbol | Meaning |
