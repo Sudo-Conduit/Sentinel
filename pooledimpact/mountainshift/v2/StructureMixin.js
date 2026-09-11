@@ -17,6 +17,12 @@
  *                    and toggles behavior via mode alone).
  *   'graph'      -- parent/child/sibling tree only.
  *   'relational' -- arbitrary linkTo/unlinkFrom edges only (no hierarchy).
+ *                    Exposes BOTH halves of "a connected graph view":
+ *                    getConnected() is one hop (direct edges, an adjacency
+ *                    list), getConnectedGraph() is a real BFS traversal
+ *                    returning every extId transitively reachable from this
+ *                    instance -- the actual connected component, not just
+ *                    its immediate neighbors.
  *   'both'       -- tree AND arbitrary edges, coexisting, exactly like
  *                    BaseClassX already does internally.
  *
@@ -221,19 +227,37 @@
         }
 
         if (wantsRelational) {
+            // NOTE on the `label` parameter: ExtendX's dispatcher always
+            // appends its own `next` callback as the trailing argument to
+            // EVERY dispatched call (its (req,res,next)-style middleware
+            // convention), regardless of how many arguments the caller
+            // actually passed. A caller doing linkTo(targetId) -- omitting
+            // label -- does NOT get label === undefined here; it gets
+            // label === (ExtendX's injected next function). Comparing
+            // against undefined is therefore unreliable for ANY dispatched
+            // mixin method with an optional trailing parameter. The fix:
+            // never trust "is it undefined", only trust "is it a string" --
+            // a real label is documented as a string, and the injected
+            // `next` is always a function, so `typeof label === 'string'`
+            // cannot be confused with it.
             mixin.linkTo = function(targetExtId, label) {
-                edgeSetOut(this._extId).add({ target: targetExtId, label: label || null });
-                edgeSetIn(targetExtId).add({ source: this._extId, label: label || null });
+                const safeLabel = typeof label === 'string' ? label : null;
+                edgeSetOut(this._extId).add({ target: targetExtId, label: safeLabel });
+                edgeSetIn(targetExtId).add({ source: this._extId, label: safeLabel });
                 return this;
             };
             mixin.unlinkFrom = function(targetExtId, label) {
+                // Not a string -> no filter was actually supplied (whether
+                // truly omitted, or clobbered by the injected `next`) ->
+                // match any label.
+                const hasFilter = typeof label === 'string';
                 const out = edgeSetOut(this._extId);
                 out.forEach(function(edge) {
-                    if (edge.target === targetExtId && (label === undefined || edge.label === label)) out.delete(edge);
+                    if (edge.target === targetExtId && (!hasFilter || edge.label === label)) out.delete(edge);
                 });
                 const inSet = edgeSetIn(targetExtId);
                 inSet.forEach(function(edge) {
-                    if (edge.source === this._extId && (label === undefined || edge.label === label)) inSet.delete(edge);
+                    if (edge.source === this._extId && (!hasFilter || edge.label === label)) inSet.delete(edge);
                 }.bind(this));
                 return this;
             };
@@ -241,6 +265,29 @@
                 const out = Array.from(edgeSetOut(this._extId)).map(function(e) { return e.target; });
                 const inn = Array.from(edgeSetIn(this._extId)).map(function(e) { return e.source; });
                 return Array.from(new Set(out.concat(inn)));
+            };
+            // The other half of "parent/child/sibling view AND a connected
+            // graph view": getConnected() above is one hop only (direct
+            // edges), which is an adjacency list, not a graph view. This is
+            // a real graph traversal (BFS, edges treated as undirected for
+            // reachability -- linkTo() already records both directions via
+            // EDGES_OUT/EDGES_IN, so this simply follows both) returning
+            // every extId transitively reachable from this instance, not
+            // just its direct neighbors.
+            mixin.getConnectedGraph = function() {
+                const startId = this._extId;
+                const visited = new Set([startId]);
+                const queue = [startId];
+                while (queue.length > 0) {
+                    const id = queue.shift();
+                    const neighbors = Array.from(edgeSetOut(id)).map(function(e) { return e.target; })
+                        .concat(Array.from(edgeSetIn(id)).map(function(e) { return e.source; }));
+                    neighbors.forEach(function(n) {
+                        if (!visited.has(n)) { visited.add(n); queue.push(n); }
+                    });
+                }
+                visited.delete(startId);
+                return Array.from(visited);
             };
         }
 

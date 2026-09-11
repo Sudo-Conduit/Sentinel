@@ -152,6 +152,65 @@ check('unlinkFrom(): removes exactly the targeted edge', () => {
     if (linkA.getConnected().includes(linkB._extId)) throw new Error('edge to linkB should be gone');
     if (!linkA.getConnected().includes(linkC._extId)) throw new Error('unrelated edge to linkC should survive');
 });
+check('ExtendX next()-collision hazard: unlinkFrom(target) with NO label arg still removes the edge (dispatcher injects a trailing next() callback into that slot -- label must never be compared against undefined)', () => {
+    const x = new Linked({ name: 'x' });
+    const y = new Linked({ name: 'y' });
+    x.linkTo(y._extId);
+    if (!x.getConnected().includes(y._extId)) throw new Error('setup: link did not take');
+    x.unlinkFrom(y._extId); // deliberately no label -- this is the exact call shape that used to silently no-op
+    if (x.getConnected().includes(y._extId)) throw new Error('unlinkFrom() with omitted label silently failed to remove the edge');
+});
+
+// --- getConnectedGraph(): the real BFS traversal, not just one hop ---
+// Chain: D - E - F - G (each link only to its immediate neighbor). A plain
+// adjacency list (getConnected()) sees only the next node; the connected
+// GRAPH view must see the whole component regardless of hop count.
+const linkD = new Linked({ name: 'D' });
+const linkE = new Linked({ name: 'E' });
+const linkF = new Linked({ name: 'F' });
+const linkG = new Linked({ name: 'G' });
+linkD.linkTo(linkE._extId);
+linkE.linkTo(linkF._extId);
+linkF.linkTo(linkG._extId);
+// A disconnected, unrelated pair -- must NOT show up in D's reachable set.
+const linkH = new Linked({ name: 'H' });
+const linkI = new Linked({ name: 'I' });
+linkH.linkTo(linkI._extId);
+
+check('getConnected(): one hop only -- D does not see F or G directly', () => {
+    const oneHop = linkD.getConnected();
+    if (!oneHop.includes(linkE._extId)) throw new Error('D should be directly linked to E');
+    if (oneHop.includes(linkF._extId) || oneHop.includes(linkG._extId)) {
+        throw new Error('getConnected() should NOT see multi-hop nodes -- that is getConnectedGraph()\'s job');
+    }
+});
+check('getConnectedGraph(): D transitively reaches E, F, and G across 3 hops', () => {
+    const reachable = linkD.getConnectedGraph();
+    [linkE, linkF, linkG].forEach((n) => {
+        if (!reachable.includes(n._extId)) throw new Error('D should transitively reach ' + n.name);
+    });
+});
+check('getConnectedGraph(): traversal is symmetric -- G (the far end) reaches back to D', () => {
+    const reachable = linkG.getConnectedGraph();
+    if (!reachable.includes(linkD._extId)) throw new Error('G should transitively reach D back through the chain');
+});
+check('getConnectedGraph(): never includes the calling instance itself', () => {
+    if (linkD.getConnectedGraph().includes(linkD._extId)) throw new Error('self should not appear in its own reachable set');
+});
+check('getConnectedGraph(): disconnected components stay disconnected', () => {
+    const reachable = linkD.getConnectedGraph();
+    if (reachable.includes(linkH._extId) || reachable.includes(linkI._extId)) {
+        throw new Error('D should not reach the unrelated H/I component');
+    }
+});
+check('getConnectedGraph(): unlinkFrom() severing a link shrinks the reachable set', () => {
+    linkE.unlinkFrom(linkF._extId);
+    const reachable = linkD.getConnectedGraph();
+    if (reachable.includes(linkF._extId) || reachable.includes(linkG._extId)) {
+        throw new Error('severing E-F should disconnect D from F and G');
+    }
+    if (!reachable.includes(linkE._extId)) throw new Error('D should still reach E (that link is untouched)');
+});
 
 // ─── mode 'both': tree AND arbitrary edges coexist ────────────────────
 const Both = ExtendX.extend(Node, createStructureMixin(Node, { mode: 'both' }));
