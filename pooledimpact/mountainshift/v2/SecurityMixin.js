@@ -86,8 +86,21 @@
         }
         const mixinId = 'security:' + (BaseClass.name || 'anonymous');
 
+        // True ES private methods (#foo) never appear in
+        // getOwnPropertyNames at all -- invisible by spec, not by
+        // convention, and unreachable through the prototype/dispatch
+        // mechanism entirely, so a class's own internal self-calls to one
+        // (e.g. from its own constructor) are never affected by this mixin
+        // in the first place. That's the correct fix for a method a
+        // constructor calls on itself before any instance exists to arm.
+        //
+        // Underscore-prefixed names are a softer, convention-only
+        // exemption for existing code not yet using real private methods --
+        // skipped here defensively, but unlike '#foo' this is enforced by
+        // agreement, not by the language.
         const methodNames = Object.getOwnPropertyNames(BaseClass.prototype).filter(function(name) {
             if (name === 'constructor') return false;
+            if (name.charAt(0) === '_') return false;
             return typeof BaseClass.prototype[name] === 'function';
         });
 

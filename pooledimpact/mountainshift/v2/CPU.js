@@ -14,8 +14,19 @@
  * every instruction handler. An ES6 class body includes its methods in
  * toString(), so this file is now reflectable the same way BaseClassX is.
  *
+ * v1.0.3: registerInstructions() -> #registerInstructions(), a true
+ * private method. Composing CPU via ExtendX.extend() (see
+ * SecurityMixin.js) wraps every name Object.getOwnPropertyNames finds on
+ * the prototype in an activation-token check -- but this constructor
+ * calls registerInstructions() on itself before any composed instance
+ * could possibly be armed, so a public method of that name broke
+ * construction outright under composition. A #private method is invisible
+ * to getOwnPropertyNames and unreachable through the prototype chain by
+ * spec, not by convention, so it's simply never part of that reflectable
+ * surface -- the correct fix, not a workaround.
+ *
  * @author Will Fobbs
- * @version 1.0.2
+ * @version 1.0.3
  */
 (function(root, factory) {
   'use strict';
@@ -68,11 +79,17 @@
       this.config = { realMode: true, protectedMode: false, longMode: false, paging: false, caching: false, interrupts: false, halted: false };
 
       this.instructions = {};
-      this.registerInstructions();
+      this.#registerInstructions();
       return this;
     }
 
-    registerInstructions() {
+    // True private method (v1.0.3): called only from this constructor.
+    // Invisible to Object.getOwnPropertyNames and unreachable through the
+    // prototype chain by spec, so composing CPU via ExtendX.extend() (see
+    // SecurityMixin.js) can never wrap or gate this call -- it isn't part
+    // of the reflectable surface at all, which is exactly right for a
+    // method that runs before any composed instance could be armed.
+    #registerInstructions() {
       const self = this;
       this.instructions['MOV'] = function(dest, src) {
         if (dest.charAt(0) === 'E') {
@@ -287,7 +304,7 @@
     reset() { return this.boot(); }
   }
 
-  CPU.version = '1.0.2';
+  CPU.version = '1.0.3';
   CPU.author = 'Will Fobbs';
   CPU.description = 'Mechanical CPU Emulator';
 
