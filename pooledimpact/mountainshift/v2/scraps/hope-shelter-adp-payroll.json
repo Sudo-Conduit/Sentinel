@@ -1,0 +1,436 @@
+[
+  {
+    "date": "2026-01-05",
+    "category": "Payroll (ADP)",
+    "amount": 197.15,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Payroll (ADP)",
+    "amount": 7535.72,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Payroll (ADP)",
+    "amount": 25687.9,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-01-08",
+    "category": "Payroll (ADP)",
+    "amount": 966.36,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-01-16",
+    "category": "Payroll (ADP)",
+    "amount": 197.15,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-01-22",
+    "category": "Payroll (ADP)",
+    "amount": 23987.61,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-01-22",
+    "category": "Payroll (ADP)",
+    "amount": 907.17,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-01-22",
+    "category": "Payroll (ADP)",
+    "amount": 6792.56,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-01-30",
+    "category": "Payroll (ADP)",
+    "amount": 190.46,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-01-30",
+    "category": "Payroll (ADP)",
+    "amount": 99.92,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-02-04",
+    "category": "Payroll (ADP)",
+    "amount": 666.15,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-02-05",
+    "category": "Payroll (ADP)",
+    "amount": 7122.28,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-02-05",
+    "category": "Payroll (ADP)",
+    "amount": 23953.89,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-02-05",
+    "category": "Payroll (ADP)",
+    "amount": 787.41,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-02-13",
+    "category": "Payroll (ADP)",
+    "amount": 187.11,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-02-19",
+    "category": "Payroll (ADP)",
+    "amount": 6859.08,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-02-19",
+    "category": "Payroll (ADP)",
+    "amount": 22801.37,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-02-19",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-02-27",
+    "category": "Payroll (ADP)",
+    "amount": 180.42,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-02-27",
+    "category": "Payroll (ADP)",
+    "amount": 97.71,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-03-06",
+    "category": "Payroll (ADP)",
+    "amount": 25735.43,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-03-06",
+    "category": "Payroll (ADP)",
+    "amount": 7642.96,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-03-06",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-03-13",
+    "category": "Payroll (ADP)",
+    "amount": 197.15,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-03-19",
+    "category": "Payroll (ADP)",
+    "amount": 7795.58,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-03-19",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-03-19",
+    "category": "Payroll (ADP)",
+    "amount": 26372.36,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-03-27",
+    "category": "Payroll (ADP)",
+    "amount": 211.99,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-04-01",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-04-01",
+    "category": "Payroll (ADP)",
+    "amount": 7774.41,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-04-01",
+    "category": "Payroll (ADP)",
+    "amount": 26115.51,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-04-03",
+    "category": "Payroll (ADP)",
+    "amount": 99.92,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-04-10",
+    "category": "Payroll (ADP)",
+    "amount": 215.58,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-04-22",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-04-22",
+    "category": "Payroll (ADP)",
+    "amount": 8650.41,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-04-22",
+    "category": "Payroll (ADP)",
+    "amount": 29095.44,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Payroll (ADP)",
+    "amount": 760.23,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Payroll (ADP)",
+    "amount": 8287.09,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-04-30",
+    "category": "Payroll (ADP)",
+    "amount": 28618.83,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-05-01",
+    "category": "Payroll (ADP)",
+    "amount": 113.18,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-05-01",
+    "category": "Payroll (ADP)",
+    "amount": 211.99,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-05-08",
+    "category": "Payroll (ADP)",
+    "amount": 222.78,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-05-14",
+    "category": "Payroll (ADP)",
+    "amount": 702.9,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-05-14",
+    "category": "Payroll (ADP)",
+    "amount": 8136.08,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-05-14",
+    "category": "Payroll (ADP)",
+    "amount": 28330.8,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-05-22",
+    "category": "Payroll (ADP)",
+    "amount": 222.78,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-05-28",
+    "category": "Payroll (ADP)",
+    "amount": 26117.71,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-05-28",
+    "category": "Payroll (ADP)",
+    "amount": 702.9,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-05-28",
+    "category": "Payroll (ADP)",
+    "amount": 7526.13,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-05-29",
+    "category": "Payroll (ADP)",
+    "amount": 253.01,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-06-05",
+    "category": "Payroll (ADP)",
+    "amount": 219.18,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-06-11",
+    "category": "Payroll (ADP)",
+    "amount": 449.89,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-06-11",
+    "category": "Payroll (ADP)",
+    "amount": 27308.16,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-06-12",
+    "category": "Payroll (ADP)",
+    "amount": 449.89,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-06-22",
+    "category": "Payroll (ADP)",
+    "amount": 301.62,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Payroll (ADP)",
+    "amount": 93.56,
+    "vendor": "ADP Wage Garnishment",
+    "type": "ADP Wage Garnishment"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Payroll (ADP)",
+    "amount": 7577.9,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-06-25",
+    "category": "Payroll (ADP)",
+    "amount": 26476.06,
+    "vendor": "ADP Wages",
+    "type": "ADP Wages"
+  },
+  {
+    "date": "2026-06-29",
+    "category": "Payroll (ADP)",
+    "amount": 2645.29,
+    "vendor": "Karen Plants Severance",
+    "type": "Karen Plants Severance"
+  },
+  {
+    "date": "2026-07-01",
+    "category": "Payroll (ADP)",
+    "amount": 1122.46,
+    "vendor": "ADP Taxes",
+    "type": "ADP Taxes"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Payroll (ADP)",
+    "amount": 122.02,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  },
+  {
+    "date": "2026-07-03",
+    "category": "Payroll (ADP)",
+    "amount": 208.39,
+    "vendor": "ADP Fees",
+    "type": "ADP Fees"
+  }
+]

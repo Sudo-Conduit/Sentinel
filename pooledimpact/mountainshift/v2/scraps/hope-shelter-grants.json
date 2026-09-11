@@ -1,0 +1,620 @@
+[
+  {
+    "source": "Donation",
+    "amount": 700,
+    "receivedDate": "2026-01-02",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2450,
+    "receivedDate": "2026-01-06",
+    "restricted": false
+  },
+  {
+    "source": "Samuel Westerman Foundation",
+    "amount": 1000,
+    "receivedDate": "2026-01-06",
+    "restricted": true
+  },
+  {
+    "source": "Donation",
+    "amount": 500,
+    "receivedDate": "2026-01-06",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1550,
+    "receivedDate": "2026-01-09",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 4075,
+    "receivedDate": "2026-01-13",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 3300,
+    "receivedDate": "2026-01-21",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1416,
+    "receivedDate": "2026-01-26",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2545,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Elizabeth Kelly personal payment CC",
+    "amount": 199,
+    "receivedDate": "2026-02-02",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1050,
+    "receivedDate": "2026-02-04",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1350,
+    "receivedDate": "2026-02-09",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2200,
+    "receivedDate": "2026-02-11",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1580,
+    "receivedDate": "2026-02-13",
+    "restricted": false
+  },
+  {
+    "source": "Village Club Foundation Grant",
+    "amount": 5000,
+    "receivedDate": "2026-02-13",
+    "restricted": true
+  },
+  {
+    "source": "Donation",
+    "amount": 500,
+    "receivedDate": "2026-02-17",
+    "restricted": false
+  },
+  {
+    "source": "Grant Shared Mission Foundation",
+    "amount": 10000,
+    "receivedDate": "2026-02-17",
+    "restricted": true
+  },
+  {
+    "source": "Donation",
+    "amount": 50,
+    "receivedDate": "2026-02-18",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2800,
+    "receivedDate": "2026-02-19",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 125,
+    "receivedDate": "2026-02-24",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1250,
+    "receivedDate": "2026-03-02",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 700,
+    "receivedDate": "2026-03-04",
+    "restricted": false
+  },
+  {
+    "source": "Kroger Rewards",
+    "amount": 69.67,
+    "receivedDate": "2026-03-04",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 600,
+    "receivedDate": "2026-03-06",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 705,
+    "receivedDate": "2026-03-09",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 857.74,
+    "receivedDate": "2026-03-17",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1125,
+    "receivedDate": "2026-03-25",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 100,
+    "receivedDate": "2026-03-31",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 200,
+    "receivedDate": "2026-03-31",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 350,
+    "receivedDate": "2026-04-03",
+    "restricted": false
+  },
+  {
+    "source": "HR Reimbursement",
+    "amount": 35,
+    "receivedDate": "2026-04-03",
+    "restricted": false
+  },
+  {
+    "source": "Reimbursement Salvation Army",
+    "amount": 44309.94,
+    "receivedDate": "2026-04-03",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 500,
+    "receivedDate": "2026-04-06",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 650,
+    "receivedDate": "2026-04-07",
+    "restricted": false
+  },
+  {
+    "source": "Refund Rose Pest Control",
+    "amount": 64,
+    "receivedDate": "2026-04-07",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 470,
+    "receivedDate": "2026-04-17",
+    "restricted": false
+  },
+  {
+    "source": "Reimbursement Corewell Health",
+    "amount": 50000,
+    "receivedDate": "2026-04-20",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 325,
+    "receivedDate": "2026-04-21",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 125,
+    "receivedDate": "2026-04-22",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 200,
+    "receivedDate": "2026-04-23",
+    "restricted": false
+  },
+  {
+    "source": "Reimbursement  Trinity Health",
+    "amount": 50000,
+    "receivedDate": "2026-04-27",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 550,
+    "receivedDate": "2026-04-29",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2200,
+    "receivedDate": "2026-05-01",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 750,
+    "receivedDate": "2026-05-05",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 530,
+    "receivedDate": "2026-05-07",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 2025,
+    "receivedDate": "2026-05-13",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 1950,
+    "receivedDate": "2026-05-15",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 100,
+    "receivedDate": "2026-05-19",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 75.66,
+    "receivedDate": "2026-05-20",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 55.3,
+    "receivedDate": "2026-05-22",
+    "restricted": false
+  },
+  {
+    "source": "Donation",
+    "amount": 297.05,
+    "receivedDate": "2026-05-29",
+    "restricted": false
+  },
+  {
+    "source": "Donation Grant Individual",
+    "amount": 500,
+    "receivedDate": "2026-05-30",
+    "restricted": true
+  },
+  {
+    "source": "Stripe",
+    "amount": 11.82,
+    "receivedDate": "2026-06-01",
+    "restricted": false
+  },
+  {
+    "source": "PayPal",
+    "amount": 9.31,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Corewell Health Street Medicine Grant",
+    "amount": 1500,
+    "receivedDate": "2026-06-02",
+    "restricted": true
+  },
+  {
+    "source": "Stripe",
+    "amount": 235.83,
+    "receivedDate": "2026-06-03",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 70.36,
+    "receivedDate": "2026-06-04",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 210.82,
+    "receivedDate": "2026-06-05",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 90.47,
+    "receivedDate": "2026-06-09",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 20.16,
+    "receivedDate": "2026-06-10",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 163.95,
+    "receivedDate": "2026-06-11",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 20.1,
+    "receivedDate": "2026-06-12",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 5.03,
+    "receivedDate": "2026-06-15",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 106.83,
+    "receivedDate": "2026-06-17",
+    "restricted": false
+  },
+  {
+    "source": "Alliance for Housing Oakland County",
+    "amount": 14629,
+    "receivedDate": "2026-06-18",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 75.11,
+    "receivedDate": "2026-06-22",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 20.25,
+    "receivedDate": "2026-06-23",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 106.11,
+    "receivedDate": "2026-06-24",
+    "restricted": false
+  },
+  {
+    "source": "American Giving Benevity AOGF Causes",
+    "amount": 767.95,
+    "receivedDate": "2026-06-25",
+    "restricted": false
+  },
+  {
+    "source": "Alliance for Housing Oakland County",
+    "amount": 4083,
+    "receivedDate": "2026-06-25",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 32.17,
+    "receivedDate": "2026-06-26",
+    "restricted": false
+  },
+  {
+    "source": "Poker Run Carolyn Fundraiser",
+    "amount": 2158,
+    "receivedDate": "2026-06-29",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 19.85,
+    "receivedDate": "2026-06-30",
+    "restricted": false
+  },
+  {
+    "source": "Interest Bank of Ann Arbor",
+    "amount": 75.38,
+    "receivedDate": "2026-06-30",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 6.03,
+    "receivedDate": "2026-07-01",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 72.25,
+    "receivedDate": "2026-07-02",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 170.45,
+    "receivedDate": "2026-07-03",
+    "restricted": false
+  },
+  {
+    "source": "Stripe",
+    "amount": 68.82,
+    "receivedDate": "2026-07-06",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 96.8,
+    "receivedDate": "2026-05-19",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 1355.19,
+    "receivedDate": "2026-05-20",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 260.67,
+    "receivedDate": "2026-05-21",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 700.67,
+    "receivedDate": "2026-05-22",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 339.25,
+    "receivedDate": "2026-05-26",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 1299.41,
+    "receivedDate": "2026-05-26",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 96.8,
+    "receivedDate": "2026-05-28",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 557.42,
+    "receivedDate": "2026-05-29",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 387.8,
+    "receivedDate": "2026-06-01",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 290.4,
+    "receivedDate": "2026-06-02",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 48.25,
+    "receivedDate": "2026-06-03",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 478.24,
+    "receivedDate": "2026-06-04",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 605.07,
+    "receivedDate": "2026-06-09",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 48.25,
+    "receivedDate": "2026-06-10",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 1404.95,
+    "receivedDate": "2026-06-11",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 2707.34,
+    "receivedDate": "2026-06-12",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 411.17,
+    "receivedDate": "2026-06-15",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 473.75,
+    "receivedDate": "2026-06-15",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 565.26,
+    "receivedDate": "2026-06-17",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 1503.05,
+    "receivedDate": "2026-06-22",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 551.67,
+    "receivedDate": "2026-06-22",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 792.97,
+    "receivedDate": "2026-06-23",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 11.35,
+    "receivedDate": "2026-06-24",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 72.52,
+    "receivedDate": "2026-06-25",
+    "restricted": false
+  },
+  {
+    "source": "Ryan GoFundMe",
+    "amount": 48.25,
+    "receivedDate": "2026-06-30",
+    "restricted": false
+  }
+]

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>body { margin:0; }</style>
+</helmet>
+<div style="min-height:100vh;background:#0b0f14;color:#e8ecf1;font-family:'Segoe UI',-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;padding:32px;box-sizing:border-box;">
+  <div style="width:100%;max-width:560px;background:#131922;border:1px solid #232b38;border-radius:16px;padding:28px;">
+
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
+      <div style="width:10px;height:10px;border-radius:50%;background:{{ statusColor }};"></div>
+      <h1 style="margin:0;font-size:19px;font-weight:700;">Text to Voice</h1>
+    </div>
+    <div style="font-size:12.5px;color:#8b95a5;margin-bottom:20px;">{{ statusLabel }}</div>
+
+    <sc-if value="{{ unsupported }}" hint-placeholder-val="{{ false }}">
+      <div role="alert" style="background:#3a1f22;border:1px solid #6b2c31;color:#f3b4b9;border-radius:10px;padding:14px;font-size:13px;line-height:1.5;">
+        This browser doesn't support speech synthesis.
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ showMain }}" hint-placeholder-val="{{ true }}">
+      <label for="ttv-text" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Text (8–500 characters)</label>
+      <textarea
+        id="ttv-text"
+        value="{{ text }}"
+        onInput="{{ onTextChange }}"
+        rows="5"
+        maxlength="500"
+        placeholder="Type something to speak aloud…"
+        style="width:100%;box-sizing:border-box;background:#0e131a;border:1px solid #2a3242;color:#e8ecf1;border-radius:10px;padding:12px;font-size:14px;line-height:1.5;font-family:inherit;resize:vertical;margin-bottom:6px;"
+      ></textarea>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;color:{{ charCountColor }};margin-bottom:16px;">
+        <span>{{ validationMsg }}</span>
+        <span>{{ charCount }}/500</span>
+      </div>
+
+      <label for="ttv-voice" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Voice</label>
+      <select id="ttv-voice" onChange="{{ onVoiceChange }}" value="{{ voiceKey }}" style="width:100%;box-sizing:border-box;background:#0e131a;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:9px 10px;font-size:13.5px;margin-bottom:12px;">
+        <option value="">— None —</option>
+        <sc-for list="{{ voiceOptions }}" as="v" hint-placeholder-count="4">
+          <option value="{{ v.key }}">{{ v.label }}</option>
+        </sc-for>
+      </select>
+
+      <label for="ttv-lang" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Language (lang-only routing, ignores Voice above)</label>
+      <select id="ttv-lang" onChange="{{ onLangChange }}" value="{{ langCode }}" style="width:100%;box-sizing:border-box;background:#0e131a;border:1px solid #2a3242;color:#e8ecf1;border-radius:8px;padding:9px 10px;font-size:13.5px;margin-bottom:12px;">
+        <option value="">— Use Voice selection —</option>
+        <sc-for list="{{ langOptions }}" as="l" hint-placeholder-count="6">
+          <option value="{{ l.code }}">{{ l.label }}</option>
+        </sc-for>
+      </select>
+
+      <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#c7ceda;margin-bottom:18px;cursor:pointer;">
+        <input type="checkbox" checked="{{ translateFirst }}" onChange="{{ onToggleTranslate }}" />
+        Translate before speaking (via AST Translator)
+        <sc-if value="{{ translateUnavailable }}" hint-placeholder-val="{{ false }}">
+          <span style="color:#e6a23c;">— open AST Translator once first</span>
+        </sc-if>
+      </label>
+
+      <div style="display:flex;gap:16px;margin-bottom:20px;">
+        <div style="flex:1;">
+          <label for="ttv-rate" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Speed: {{ rateLabel }}</label>
+          <input id="ttv-rate" type="range" min="0.5" max="2" step="0.01" value="{{ rate }}" onInput="{{ onRateChange }}" style="width:100%;" />
+        </div>
+        <div style="flex:1;">
+          <label for="ttv-pitch" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Pitch: {{ pitchLabel }}</label>
+          <input id="ttv-pitch" type="range" min="0" max="2" step="0.01" value="{{ pitch }}" onInput="{{ onPitchChange }}" style="width:100%;" />
+        </div>
+        <div style="flex:1;">
+          <label for="ttv-volume" style="display:block;font-size:12px;color:#8b95a5;margin-bottom:6px;">Volume: {{ volumeLabel }}</label>
+          <input id="ttv-volume" type="range" min="0" max="1" step="0.05" value="{{ volume }}" onInput="{{ onVolumeChange }}" style="width:100%;" />
+        </div>
+      </div>
+
+      <button
+        aria-label="{{ speakButtonLabel }}"
+        onClick="{{ onSpeak }}"
+        disabled="{{ speakDisabled }}"
+        style="width:100%;padding:13px;border-radius:10px;border:none;font-size:14.5px;font-weight:600;cursor:{{ speakCursor }};background:{{ speakBg }};color:#fff;opacity:{{ speakOpacity }};">
+        {{ speakButtonText }}
+      </button>
+
+      <sc-if value="{{ errorMsg }}" hint-placeholder-val="{{ false }}">
+        <div role="alert" style="margin-top:12px;background:#3a1f22;border:1px solid #6b2c31;color:#f3b4b9;border-radius:8px;padding:10px 12px;font-size:12.5px;">{{ errorMsg }}</div>
+      </sc-if>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    text: 'What time is it?',
+    voices: [],
+    voiceKey: '',
+    rate: 1,
+    pitch: 1,
+    volume: 1,
+    speaking: false,
+    errorMsg: '',
+    unsupported: false,
+    translateFirst: false,
+    translating: false,
+    langCode: '',
+  };
+
+  voiceKeyOf(v) { return v.voiceURI || (v.name + '|' + v.lang); }
+
+  componentDidMount() {
+    if (!window.speechSynthesis) {
+      this.setState({ unsupported: true });
+      console.error('[TextToVoice] speechSynthesis unavailable in this browser');
+      return;
+    }
+    // Voice identity is stored by name+lang, not array index — Chrome
+    // reorders/replaces the voices array on onvoiceschanged, so an index
+    // silently pointed at a different (often default) voice after reload.
+    const load = () => {
+      const voices = window.speechSynthesis.getVoices();
+      if (!voices.length) return;
+      this.setState(s => {
+        if (this._userPickedVoice) return { voices };
+        // Default to no voice selected (engine default) rather than
+        // silently auto-picking voices[0] — the dropdown should show
+        // "— None —" until the user deliberately chooses one.
+        return { voices };
+      });
+    };
+    load();
+    window.speechSynthesis.onvoiceschanged = load;
+  }
+
+  componentWillUnmount() {
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+  }
+
+  onTextChange = (e) => this.setState({ text: e.target.value.slice(0, 500), errorMsg: '' });
+  onVoiceChange = (e) => { this._userPickedVoice = true; this.setState({ voiceKey: e.target.value }); };
+  onLangChange = (e) => this.setState({ langCode: e.target.value });
+  onRateChange = (e) => this.setState({ rate: Number(e.target.value) });
+  onPitchChange = (e) => this.setState({ pitch: Number(e.target.value) });
+  onVolumeChange = (e) => this.setState({ volume: Number(e.target.value) });
+  onToggleTranslate = (e) => this.setState({ translateFirst: e.target.checked });
+
+  getTranslator() {
+    try {
+      const t = window.parent && window.parent.__meshSharedDocs && window.parent.__meshSharedDocs.translator;
+      return (t && typeof t.translate === 'function') ? t : null;
+    } catch (e) { return null; }
+  }
+
+  speakText(text, voiceKey, langCode) {
+    const s = this.state;
+    const utter = new SpeechSynthesisUtterance(text);
+    const freshVoices = window.speechSynthesis.getVoices();
+
+    if (langCode) {
+      // Lang-only routing: don't set utter.voice at all — let the engine
+      // pick whichever voice it internally maps to this BCP-47 code.
+      // This sidesteps Chrome's per-named-voice bridge bug entirely.
+      utter.lang = langCode;
+      console.log('[TextToVoice] lang-only routing, utter.lang =', langCode, '(no explicit voice set)');
+    } else {
+      const v = freshVoices.find(v => this.voiceKeyOf(v) === voiceKey);
+      if (v) {
+        utter.voice = v;
+        utter.lang = v.lang;
+        console.log('[TextToVoice] resolved voice ->', v.name, v.lang, 'localService=', v.localService, 'default=', v.default);
+        console.log('[TextToVoice] utter.voice set to:', utter.voice && utter.voice.name);
+      } else {
+        const byName = freshVoices.filter(fv => voiceKey.includes(fv.name) || fv.name === (this._lastResolvedName || ''));
+        console.warn('[TextToVoice] selected voice not found (key=' + voiceKey + ') among ' + freshVoices.length + ' fresh voices, using engine default');
+        console.warn('[TextToVoice] near-matches by name:', byName.map(fv => ({ name: fv.name, uri: fv.voiceURI, lang: fv.lang })));
+      }
+      if (v) this._lastResolvedName = v.name;
+    }
+    utter.rate = s.rate;
+    utter.pitch = s.pitch;
+    utter.volume = s.volume;
+
+    window.speechSynthesis.cancel();
+
+    utter.onstart = () => {
+      console.log('[TextToVoice] onstart fired — actual speaking voice was:', utter.voice && utter.voice.name);
+      this.setState({ speaking: true });
+    };
+    utter.onend = () => this.setState({ speaking: false });
+    utter.onerror = (e) => {
+      console.error('[TextToVoice] synthesis error', e.error);
+      this.setState({ speaking: false, errorMsg: 'Speech error: ' + e.error });
+    };
+
+    try {
+      window.speechSynthesis.speak(utter);
+      console.log('[TextToVoice] speak() called, rate=', s.rate, 'pitch=', s.pitch);
+    } catch (e) {
+      console.error('[TextToVoice] failed to speak', e);
+      this.setState({ speaking: false, errorMsg: 'Could not speak: ' + e.message });
+    }
+  }
+
+  onSpeak = async () => {
+    const s = this.state;
+    const trimmed = s.text.trim();
+    if (trimmed.length < 8) {
+      this.setState({ errorMsg: 'Enter at least 8 characters.' });
+      return;
+    }
+    if (s.speaking) {
+      window.speechSynthesis.cancel();
+      this.setState({ speaking: false });
+      console.log('[TextToVoice] cancelled speech');
+      return;
+    }
+    this.setState({ errorMsg: '' });
+
+    if (!s.translateFirst) {
+      this.speakText(trimmed, s.voiceKey, s.langCode);
+      return;
+    }
+
+    const translator = this.getTranslator();
+    if (!translator) {
+      console.warn('[TextToVoice] AST Translator not available — open AST-Translator.dc.html once so it registers its shared translate() hook.');
+      this.setState({ errorMsg: 'AST Translator not loaded yet — open the AST Translator app once, then retry.' });
+      return;
+    }
+    this.setState({ translating: true });
+    try {
+      const out = await translator.translate(trimmed);
+      const spoken = (out && (out.text || out.translated || out.output)) || (typeof out === 'string' ? out : null);
+      if (!spoken) throw new Error('translator returned no text');
+      console.log('[TextToVoice] translated:', trimmed, '->', spoken);
+      this.setState({ translating: false });
+      this.speakText(spoken, s.voiceKey, s.langCode);
+    } catch (e) {
+      console.error('[TextToVoice] translation failed', e);
+      this.setState({ translating: false, errorMsg: 'Translation failed: ' + e.message });
+    }
+  };
+
+  renderVals() {
+    const s = this.state;
+    const len = s.text.length;
+    const trimmedLen = s.text.trim().length;
+    const tooShort = trimmedLen > 0 && trimmedLen < 8;
+    const voiceOptions = s.voices.map(v => ({ key: this.voiceKeyOf(v), label: `${v.name} (${v.lang})` }));
+    const LANG_CODES = [
+      { code: 'en-US', label: 'English (US)' },
+      { code: 'es-ES', label: 'Spanish' },
+      { code: 'fr-FR', label: 'French' },
+      { code: 'de-DE', label: 'German' },
+      { code: 'ro-RO', label: 'Romanian' },
+      { code: 'nb-NO', label: 'Norwegian' },
+      { code: 'bg-BG', label: 'Bulgarian' },
+      { code: 'zh-CN', label: 'Chinese (Mandarin)' },
+    ];
+    return {
+      langCode: s.langCode,
+      langOptions: LANG_CODES,
+      onLangChange: this.onLangChange,
+      translateFirst: s.translateFirst,
+      onToggleTranslate: this.onToggleTranslate,
+      translateUnavailable: s.translateFirst && !this.getTranslator(),
+      unsupported: s.unsupported,
+      showMain: !s.unsupported,
+      text: s.text,
+      charCount: len,
+      charCountColor: len > 480 ? '#e6a23c' : '#4d5666',
+      validationMsg: tooShort ? 'Need at least 8 characters' : '',
+      onTextChange: this.onTextChange,
+      voiceKey: s.voiceKey,
+      voiceOptions,
+      onVoiceChange: this.onVoiceChange,
+      rate: s.rate,
+      rateLabel: s.rate.toFixed(2) + 'x',
+      onRateChange: this.onRateChange,
+      pitch: s.pitch,
+      pitchLabel: s.pitch.toFixed(2),
+      onPitchChange: this.onPitchChange,
+      volume: s.volume,
+      volumeLabel: Math.round(s.volume * 100) + '%',
+      onVolumeChange: this.onVolumeChange,
+      onSpeak: this.onSpeak,
+      speakDisabled: trimmedLen < 8 || s.translating,
+      speakOpacity: (trimmedLen < 8 || s.translating) ? 0.5 : 1,
+      speakCursor: (trimmedLen < 8 || s.translating) ? 'not-allowed' : 'pointer',
+      speakBg: s.speaking ? '#c0392b' : '#2d5bff',
+      speakButtonText: s.translating ? '⟳ Translating…' : (s.speaking ? '■ Stop' : '▶ Speak'),
+      speakButtonLabel: s.speaking ? 'Stop speaking' : 'Speak text',
+      errorMsg: s.errorMsg,
+      statusColor: s.unsupported ? '#c0392b' : (s.speaking ? '#2ecc71' : '#8b95a5'),
+      statusLabel: s.unsupported ? 'Unsupported' : (s.speaking ? 'Speaking…' : (s.translating ? 'Translating…' : 'Ready — local, on-device speech synthesis')),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

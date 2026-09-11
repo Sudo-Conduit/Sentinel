@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebVM · Mountain Shift OS</title>
+<style>
+:root {
+  --bg:#060d1a;--bg-mid:#0b1426;--bg-light:#111d35;--border:#1a2a45;
+  --gold:#c9a84c;--gold-dim:rgba(201,168,76,0.1);--slate:#6a7a95;
+  --fg:#c8d8f0;--text:#8a99b3;--green:#00ff88;--red:#ff4444;
+  --blue:#44aaff;--mono:'DM Mono','Courier New',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--fg);font-family:var(--mono);min-height:100vh;font-size:13px;}
+header{background:var(--bg-mid);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:10px;}
+.badge{font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:3px 10px;border-radius:2px;border:1px solid var(--green);color:var(--green);background:rgba(0,255,136,0.08);}
+h1{font-size:14px;font-weight:400;color:var(--fg);letter-spacing:1px;}
+.sub{font-size:8px;color:var(--slate);letter-spacing:1.5px;text-transform:uppercase;}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:9px;color:var(--slate);}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+/* VM Layout */
+.vm-layout{display:grid;grid-template-columns:1fr 300px;height:calc(100vh - 49px);}
+/* Terminal */
+.terminal-wrap{display:flex;flex-direction:column;border-right:1px solid var(--border);}
+.terminal-header{background:var(--bg-mid);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.term-btn{width:11px;height:11px;border-radius:50%;cursor:pointer;}
+.term-btn.close{background:#ff5f57;}
+.term-btn.min{background:#ffbd2e;}
+.term-btn.max{background:#28c940;}
+.term-title{font-size:10px;color:var(--slate);letter-spacing:1px;margin:0 auto;}
+.terminal{flex:1;background:var(--bg);padding:14px 16px;overflow-y:auto;font-size:12px;line-height:1.6;}
+.terminal::-webkit-scrollbar{width:3px;}
+.terminal::-webkit-scrollbar-thumb{background:var(--border);}
+.line{margin-bottom:1px;}
+.line .prompt{color:var(--green);}
+.line .cmd{color:var(--fg);}
+.line .out{color:var(--text);}
+.line .err{color:var(--red);}
+.line .sys{color:var(--gold);}
+.line .comment{color:var(--slate);font-style:italic;}
+.cursor{display:inline-block;width:8px;height:13px;background:var(--green);opacity:1;animation:blink .8s step-end infinite;vertical-align:text-bottom;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+/* Input line */
+.input-line{display:flex;align-items:center;padding:8px 16px;background:var(--bg-mid);border-top:1px solid var(--border);gap:8px;flex-shrink:0;}
+.input-prompt{color:var(--green);font-size:12px;white-space:nowrap;}
+.term-input{flex:1;background:transparent;border:none;outline:none;color:var(--fg);font-family:var(--mono);font-size:12px;}
+/* Info panel */
+.info-panel{background:var(--bg-mid);overflow-y:auto;padding:16px;}
+.panel-section{margin-bottom:18px;}
+.section-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(26,42,69,0.5);font-size:11px;}
+.info-key{color:var(--slate);}
+.info-val{color:var(--fg);font-size:11px;}
+.info-val.green{color:var(--green);}
+.info-val.gold{color:var(--gold);}
+.info-val.red{color:var(--red);}
+/* Resource bars */
+.resource-row{margin-bottom:8px;}
+.resource-label{display:flex;justify-content:space-between;font-size:10px;color:var(--slate);margin-bottom:3px;}
+.resource-track{height:3px;background:var(--border);border-radius:2px;overflow:hidden;}
+.resource-fill{height:100%;border-radius:2px;transition:width .8s;}
+/* Process table */
+.proc-table{width:100%;border-collapse:collapse;font-size:10px;}
+.proc-table th{color:var(--slate);text-align:left;padding:3px 4px;border-bottom:1px solid var(--border);font-weight:400;font-size:9px;letter-spacing:1px;}
+.proc-table td{padding:4px 4px;border-bottom:1px solid rgba(26,42,69,0.4);color:var(--text);}
+.proc-table td:first-child{color:var(--fg);}
+/* Chips */
+.chip{display:inline-block;font-size:8px;padding:2px 7px;border-radius:2px;border:1px solid;margin-right:4px;margin-bottom:3px;cursor:pointer;}
+.chip.active{border-color:var(--green);color:var(--green);}
+.chip.idle{border-color:var(--border);color:var(--slate);}
+.chip:hover{border-color:var(--gold);color:var(--gold);}
+</style>
+</head>
+<body>
+<header>
+  <div class="badge">WebVM</div>
+  <div>
+    <div style="display:flex;align-items:baseline;gap:8px;">
+      <h1>WebVM</h1>
+      <div class="sub">CheerpX · x86 Linux · browser-native</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="uptime-display">uptime: 0s</span>
+    <span>Ubuntu 24 LTS</span>
+    <div class="dot"></div>
+  </div>
+</header>
+
+<div class="vm-layout">
+  <!-- Terminal -->
+  <div class="terminal-wrap">
+    <div class="terminal-header">
+      <div class="term-btn close"></div>
+      <div class="term-btn min"></div>
+      <div class="term-btn max"></div>
+      <div class="term-title">mountainshift@webvm:~</div>
+    </div>
+    <div class="terminal" id="terminal"></div>
+    <div class="input-line">
+      <div class="input-prompt" id="prompt-display">mountainshift@webvm:~$ </div>
+      <input class="term-input" id="term-input" autocomplete="off" autocorrect="off" spellcheck="false" placeholder="type a command..." autofocus>
+    </div>
+  </div>
+
+  <!-- Info Panel -->
+  <div class="info-panel">
+    <div class="panel-section">
+      <div class="section-label">System</div>
+      <div class="info-row"><span class="info-key">Host</span><span class="info-val green">webvm</span></div>
+      <div class="info-row"><span class="info-key">OS</span><span class="info-val">Ubuntu 24 LTS</span></div>
+      <div class="info-row"><span class="info-key">Engine</span><span class="info-val gold">CheerpX v1.0</span></div>
+      <div class="info-row"><span class="info-key">Runtime</span><span class="info-val">Wasm JIT · x86</span></div>
+      <div class="info-row"><span class="info-key">Network</span><span class="info-val green">Local (no egress)</span></div>
+      <div class="info-row"><span class="info-key">Storage</span><span class="info-val">pglite + IndexedDB</span></div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Resources</div>
+      <div class="resource-row">
+        <div class="resource-label"><span>CPU</span><span id="cpu-val">12%</span></div>
+        <div class="resource-track"><div class="resource-fill" id="cpu-fill" style="width:12%;background:var(--green)"></div></div>
+      </div>
+      <div class="resource-row">
+        <div class="resource-label"><span>Memory</span><span id="mem-val">247 MB / 1024 MB</span></div>
+        <div class="resource-track"><div class="resource-fill" id="mem-fill" style="width:24%;background:var(--blue)"></div></div>
+      </div>
+      <div class="resource-row">
+        <div class="resource-label"><span>Disk</span><span id="disk-val">1.2 GB / 10 GB</span></div>
+        <div class="resource-track"><div class="resource-fill" id="disk-fill" style="width:12%;background:var(--gold)"></div></div>
+      </div>
+      <div class="resource-row">
+        <div class="resource-label"><span>GPU (WebGPU)</span><span id="gpu-val">0%</span></div>
+        <div class="resource-track"><div class="resource-fill" id="gpu-fill" style="width:0%;background:var(--purple, #bb8fce)"></div></div>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Active Processes</div>
+      <table class="proc-table">
+        <thead><tr><th>Process</th><th>PID</th><th>CPU%</th><th>MEM</th></tr></thead>
+        <tbody id="proc-table">
+          <tr><td>php-fpm</td><td>1</td><td>0.1</td><td>24MB</td></tr>
+          <tr><td>nginx</td><td>2</td><td>0.0</td><td>8MB</td></tr>
+          <tr><td>pglite</td><td>3</td><td>0.2</td><td>64MB</td></tr>
+          <tr><td>manifoldai</td><td>4</td><td>0.0</td><td>48MB</td></tr>
+          <tr><td>cheerpx-jit</td><td>5</td><td>0.8</td><td>96MB</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">ManifoldAI Services</div>
+      <div>
+        <span class="chip active">manifold-core</span>
+        <span class="chip active">php-kernel</span>
+        <span class="chip active">pglite-db</span>
+        <span class="chip idle">webllm</span>
+        <span class="chip idle">lm-studio</span>
+        <span class="chip active">laravel</span>
+        <span class="chip active">livewire</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <div class="section-label">Quick Commands</div>
+      <div>
+        <span class="chip idle" onclick="runCmd('ls -la')">ls -la</span>
+        <span class="chip idle" onclick="runCmd('php -v')">php -v</span>
+        <span class="chip idle" onclick="runCmd('cat /etc/os-release')">os-release</span>
+        <span class="chip idle" onclick="runCmd('free -h')">free -h</span>
+        <span class="chip idle" onclick="runCmd('ps aux')">ps aux</span>
+        <span class="chip idle" onclick="runCmd('manifold status')">manifold status</span>
+        <span class="chip idle" onclick="runCmd('manifold kappa')">manifold kappa</span>
+        <span class="chip idle" onclick="runCmd('git log --oneline -5')">git log</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Terminal simulation ────────────────────────────────────────────────
+const term = document.getElementById('terminal');
+const input = document.getElementById('term-input');
+let history = [];
+let histIdx = -1;
+let cwd = '~';
+let startTime = Date.now();
+
+// Boot sequence
+const bootLines = [
+  { type:'sys', text:'WebVM v1.0 · CheerpX x86 Linux · Mountain Shift OS' },
+  { type:'sys', text:'Copyright © 2026 Pooled Impact Corporation · Trade Secret DTSA 2016' },
+  { type:'out', text:'' },
+  { type:'out', text:'Initializing Wasm JIT compiler...' },
+  { type:'out', text:'Loading Ubuntu 24 system call interface...' },
+  { type:'out', text:'Mounting pglite filesystem...' },
+  { type:'out', text:'Starting PHP 8.3 FPM...' },
+  { type:'out', text:'Starting nginx reverse proxy...' },
+  { type:'out', text:'Loading ManifoldAI v2.0...' },
+  { type:'out', text:'Loading Laravel 12 + Livewire...' },
+  { type:'out', text:'' },
+  { type:'sys', text:'Boot complete. ManifoldAI ready. Love anchor: ACTIVE.' },
+  { type:'out', text:'' },
+  { type:'comment', text:'# Type help for available commands' },
+  { type:'out', text:'' },
+];
+
+async function boot() {
+  for (const line of bootLines) {
+    await delay(60);
+    addLine(line.type, line.text);
+  }
+  showPrompt();
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function addLine(type, text) {
+  const div = document.createElement('div');
+  div.className = 'line';
+  if (type === 'prompt') {
+    div.innerHTML = `<span class="prompt">mountainshift@webvm:${cwd}$</span> <span class="cmd">${esc(text)}</span>`;
+  } else {
+    div.innerHTML = `<span class="${type}">${esc(text)}</span>`;
+  }
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function showPrompt() {
+  document.getElementById('prompt-display').textContent = `mountainshift@webvm:${cwd}$ `;
+}
+
+// ── Command processor ─────────────────────────────────────────────────
+const commands = {
+  help: () => [
+    'Available commands:',
+    '  ls [-la]          List directory contents',
+    '  cd <dir>          Change directory',
+    '  pwd               Print working directory',
+    '  cat <file>        Print file contents',
+    '  php -v            PHP version',
+    '  php -r "<code>"   Run PHP code',
+    '  free -h           Memory usage',
+    '  ps aux            Process list',
+    '  uname -a          System info',
+    '  git log --oneline Git history',
+    '  manifold <cmd>    ManifoldAI controls',
+    '  clear             Clear terminal',
+  ],
+
+  ls: (args) => {
+    const la = args.includes('-la') || args.includes('-l');
+    const files = [
+      { name:'app/',        size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'bootstrap/', size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'config/',    size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'database/',  size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'public/',    size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'routes/',    size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'storage/',   size:'4.0K', date:'Mar 25', perms:'drwxr-xr-x', owner:'root' },
+      { name:'.env',       size:' 512', date:'Mar 25', perms:'-rw-r--r--', owner:'root' },
+      { name:'artisan',    size:'1.8K', date:'Mar 25', perms:'-rwxr-xr-x', owner:'root' },
+      { name:'composer.json',size:'2.1K',date:'Mar 25',perms:'-rw-r--r--',owner:'root' },
+    ];
+    if (la) return ['total 48', ...files.map(f => `${f.perms} root root ${f.size} ${f.date} ${f.name}`)];
+    return [files.map(f => f.name).join('  ')];
+  },
+
+  pwd: () => [cwd === '~' ? '/home/mountainshift' : cwd],
+
+  cd: (args) => { cwd = args[0] || '~'; showPrompt(); return []; },
+
+  'php -v': () => [
+    'PHP 8.3.0 (cli) (built: Mar 25 2026)',
+    'Copyright (c) The PHP Group',
+    'WebAssembly WASM Enabled · Mountain Shift OS Build',
+  ],
+
+  'free -h': () => [
+    '               total        used        free      shared',
+    'Mem:           1.0Gi       247Mi       777Mi        12Mi',
+    'Swap:          512Mi         0Bi       512Mi',
+  ],
+
+  'uname -a': () => ['Linux webvm 6.5.0-webvm #1 SMP WASM x86_64 GNU/Linux'],
+
+  'ps aux': () => {
+    const upSec = Math.floor((Date.now() - startTime) / 1000);
+    return [
+      'USER       PID %CPU %MEM COMMAND',
+      `root         1  0.1  2.4 php-fpm: master process`,
+      `root         2  0.0  0.8 nginx: master process`,
+      `root         3  0.2  6.3 pglite-server`,
+      `root         4  0.0  4.7 manifoldai: v2.0`,
+      `root         5  0.8  9.4 cheerpx-jit`,
+      `root         6  0.1  3.1 laravel-queue-worker`,
+      `www-data  ${100+Math.floor(Math.random()*10)}  0.0  1.2 php-fpm: pool www`,
+    ];
+  },
+
+  'git log --oneline -5': () => [
+    'a3f2b8c feat: ManifoldAI v2.0 · Sacrifice Node · Love anchor',
+    'b7d4e1a feat: SYSTEMIC_TRANSITION_PATCH · 5-point webbing',
+    'c9a6f3d feat: UndefinedStateError · Pinch detection',
+    'd2e8b5f feat: conduitflow.db schema · Fund I seeded',
+    'e4c7a9b feat: SCOUT birth · terrain mapped',
+  ],
+
+  'cat /etc/os-release': () => [
+    'PRETTY_NAME="Ubuntu 24.04 LTS (WebVM)"',
+    'NAME="Ubuntu"',
+    'VERSION_ID="24.04"',
+    'VERSION="24.04 LTS (Noble Numbat)"',
+    'VARIANT="Mountain Shift OS Build"',
+  ],
+
+  'manifold status': () => [
+    '=== ManifoldAI v2.0 · Topological Governance Engine ===',
+    'Status:        ACTIVE',
+    'Primary anchor: Love (1 John 4:8) · weight: ∞',
+    'PHYS_FLOOR:    ACTIVE · weight: 10.0',
+    'PHYS_TRUTH:    ACTIVE · weight: 9.9',
+    'IRR_TENSION:   18-24% · type: GlobalTension',
+    'Domains loaded: Finance · Law · Agriculture · Health · Crypto',
+    'κ threshold:   LOW=0.15 · MODERATE=0.35 · HIGH=0.65',
+    'Current κ:     0.12 · Status: AUTONOMOUS',
+    'Pinch count:   0 this session',
+    'Resolution Requests: 0 pending',
+  ],
+
+  'manifold kappa': () => {
+    const k = (0.08 + Math.random() * 0.15).toFixed(4);
+    const status = k > 0.65 ? 'PINCH' : k > 0.35 ? 'MODERATE' : 'LOW';
+    return [
+      `Current curvature κ: ${k}`,
+      `Status: ${status}`,
+      `Autonomy: ${k < 0.35 ? 'AI autonomous' : k < 0.65 ? 'Human approval recommended' : 'PINCH — human required'}`,
+    ];
+  },
+
+  clear: () => { term.innerHTML = ''; return []; },
+};
+
+function processCommand(raw) {
+  const trimmed = raw.trim();
+  if (!trimmed) return;
+
+  history.unshift(trimmed);
+  histIdx = -1;
+  addLine('prompt', trimmed);
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0];
+  const args = parts.slice(1);
+
+  // Special: php -r "..."
+  if (cmd === 'php' && args[0] === '-r') {
+    const code = trimmed.replace(/^php\s+-r\s+["']?/,'').replace(/["']?$/,'');
+    addLine('out', `[PHP] ${code}`);
+    addLine('out', '=> Executed via PHP WASM · output: OK');
+    return;
+  }
+
+  const fullCmd = [cmd, ...args].join(' ');
+  const handler = commands[fullCmd] || commands[cmd];
+
+  if (handler) {
+    const output = handler(args);
+    output.forEach(line => addLine('out', line));
+  } else {
+    addLine('err', `bash: ${cmd}: command not found`);
+    addLine('out', `Type 'help' for available commands`);
+  }
+}
+
+window.runCmd = function(cmd) {
+  input.value = cmd;
+  processCommand(cmd);
+  input.value = '';
+};
+
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const val = input.value;
+    input.value = '';
+    processCommand(val);
+  } else if (e.key === 'ArrowUp') {
+    histIdx = Math.min(histIdx + 1, history.length - 1);
+    input.value = history[histIdx] || '';
+    e.preventDefault();
+  } else if (e.key === 'ArrowDown') {
+    histIdx = Math.max(histIdx - 1, -1);
+    input.value = histIdx >= 0 ? history[histIdx] : '';
+    e.preventDefault();
+  }
+});
+
+// ── Live resource simulation ──────────────────────────────────────────
+function updateResources() {
+  const cpu = 5 + Math.random() * 20;
+  const mem = 220 + Math.random() * 60;
+  const gpu = Math.random() * 5;
+  const upSec = Math.floor((Date.now() - startTime) / 1000);
+  const upStr = upSec < 60 ? `${upSec}s` : upSec < 3600 ? `${Math.floor(upSec/60)}m ${upSec%60}s` : `${Math.floor(upSec/3600)}h ${Math.floor((upSec%3600)/60)}m`;
+
+  document.getElementById('cpu-val').textContent = cpu.toFixed(1) + '%';
+  document.getElementById('cpu-fill').style.width = cpu + '%';
+  document.getElementById('cpu-fill').style.background = cpu > 70 ? 'var(--red)' : cpu > 40 ? 'var(--gold)' : 'var(--green)';
+  document.getElementById('mem-val').textContent = mem.toFixed(0) + ' MB / 1024 MB';
+  document.getElementById('mem-fill').style.width = (mem/1024*100) + '%';
+  document.getElementById('gpu-val').textContent = gpu.toFixed(1) + '%';
+  document.getElementById('gpu-fill').style.width = gpu + '%';
+  document.getElementById('uptime-display').textContent = 'uptime: ' + upStr;
+}
+
+setInterval(updateResources, 2000);
+boot();
+</script>
+</body>
+</html>

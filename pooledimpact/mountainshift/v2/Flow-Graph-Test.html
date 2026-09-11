@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Flow Graph — ONOMO RealEstateProperty Proof</title>
+<script src="./BaseClassX.js"></script>
+<script src="./FieldACL.js"></script>
+<script src="./FlowTypeRegistry.js"></script>
+<script src="./FlowEntity.js"></script>
+<script src="./FlowEdge.js"></script>
+<script src="./Investor.js"></script>
+<script src="./Lender.js"></script>
+<script src="./Instrument.js"></script>
+<script src="./Scenario.js"></script>
+<script src="./Schedule.js"></script>
+<script src="./Advisor.js"></script>
+<script src="./RevenueAttachment.js"></script>
+<script src="./Deal.js"></script>
+<script src="./Fund.js"></script>
+<style>
+  body { font:13px/1.5 'Courier New',monospace; background:#1e1e1e; color:#d4d4d4; padding:16px; }
+  h1 { color:#6b9; font-size:15px; }
+  h2 { color:#8ab4f8; font-size:13px; margin-top:22px; }
+  pre { background:#141414; border:1px solid #333; border-radius:4px; padding:10px; overflow-x:auto; white-space:pre-wrap; }
+  .ok { color:#1f9d55; } .err { color:#e05555; } .note { color:#8e99a8; }
+  .gap { color:#e0a866; }
+</style>
+<template id="__bundler_thumbnail"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56"><rect width="80" height="56" fill="#1e2327"/><text x="40" y="32" font-size="12" fill="#6b9" text-anchor="middle" font-family="monospace">FLOW</text></svg></template>
+</head>
+<body>
+<h1>Flow Graph — Proving the Generic entity/edge Shape Against ONOMO (Real Estate, Non-Hedge Investment)</h1>
+<div class="ok">Same underlying data and math as ONOMO-Bulawayo-Schema-Test.html, now represented as FlowEntity/FlowEdge (generic graph nodes with entityType='RealEstateProperty' as a DATA value from FlowTypeRegistry, not a hardcoded class) instead of a bespoke shape. Proves data/shape/math survives genericization before adding SolarSite/FuelClient node types.</div>
+<div id="out"></div>
+<script>
+const out = document.getElementById('out');
+function section(title, fn) {
+  const h = document.createElement('h2'); h.textContent = title; out.appendChild(h);
+  const pre = document.createElement('pre'); out.appendChild(pre);
+  try { pre.textContent = JSON.stringify(fn(), null, 2); }
+  catch (e) { pre.innerHTML = '<span class="err">ERROR: ' + e.message + '</span>'; }
+}
+function note(html) { const d = document.createElement('div'); d.className = 'note'; d.innerHTML = html; out.appendChild(d); }
+function gapNote(html) { const d = document.createElement('div'); d.className = 'gap'; d.innerHTML = '⚠ ' + html; out.appendChild(d); }
+
+// ─── Same real deal, still using the proven Fund/Deal/Instrument/Advisor/
+// Scenario/Schedule classes for their MATH (fee formulas, DSCR series,
+// dueDiligenceFlags) — Flow's job is not to reinvent that math, only to
+// let the deal's TYPE be a graph node whose kind is data, not a class. ───
+const fund = new Fund({ name: 'ONOMO Bulawayo SPV', entityTypeName: 'SPV', vintageDate: '2026-01-01', fundSize: 13255000, reportingCurrency: 'USD' });
+
+const deal = fund.addDeal(new Deal({
+  name: 'ONOMO Allure Bulawayo — 80-Key Modular Hotel Development', fundId: fund.id, dealType: 'hotel-development',
+  holdPeriodYears: 10, status: 'active', createdBy: 'system-seed',
+  keyMetrics: {
+    totalDevelopmentCostUSD: 13255000, seniorDebtUSD: 7953000, equityRequiredUSD: 5302000,
+    y1TotalRevenueUSD: 3010621, y1GOPUSD: 1383380, y1FeesUSD: 617977, stabFeePercentOfRevenue: 0.14096,
+    y1NOItoOwnerUSD: 705191, projectIRR: 0.1212504097741546, equityIRR: 0.1098108609724011,
+    npvAt12PercentUSD: 110635, equityMultiple: 2.9196451845285321,
+    minDSCRYear1: 0.59498139109821979, year5DSCR: 1.152185978403437, terminalValueUSD: 19365547
+  }
+}));
+
+deal.addAdvisor(new Advisor({ name: 'ONOMO Brand Fee', feeType: 'brand', feeStructureType: 'flat_percent', feePercent: 2.5, dealSizeBasis: 3010621, currency: 'USD', role: 'brand-licensor', createdBy: 'system-seed' }));
+deal.addAdvisor(new Advisor({ name: 'Aleph Base Mgt', feeType: 'management', feeStructureType: 'flat_percent', feePercent: 2.0, dealSizeBasis: 3010621, currency: 'USD', role: 'operator', createdBy: 'system-seed' }));
+
+const scenarioA = deal.addScenario(new Scenario({
+  name: 'Fee Scenario A (LOI v3 as-is)', scenarioType: 'fee-structure', isBaseline: true,
+  keyMetrics: deal.keyMetrics, createdBy: 'system-seed'
+}));
+
+const debtSchedule = deal.addSchedule(new Schedule({ name: 'Debt Service & Returns — Scenario A, 60:40', scenarioId: scenarioA.id, periodType: 'annual', startPeriod: 1, createdBy: 'system-seed' }));
+const noiA = [705191,1052622,1200534,1300578,1365607,1433887,1505582,1580861,1659904,1742899];
+const dsA = [1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232,1185232];
+const dscrA = [0.595,0.888,1.013,1.097,1.152,1.210,1.270,1.334,1.400,1.471];
+for (let y = 0; y < 10; y++) debtSchedule.addPoint(y + 1, { noi: noiA[y], debtService: dsA[y], dscr: dscrA[y] });
+
+// ─── The actual Flow graph layer: the same real-world hotel asset is ALSO
+// a FlowEntity of entityType 'RealEstateProperty' \u2014 explicitly isHedge:
+// false, because per the user's correction this is a direct investment
+// (the deal itself), not a Sleeve C risk-offsetting hedge property. This
+// is the concrete test of "1:M real estate grouping that is not a hedge
+// but an investment." ───────────────────────────────────────────────────
+const fundNode = new FlowEntity({ entityType: 'Fund', name: fund.name, source: 'onomo-schema-test', sourceId: fund.id, properties: { fundSize: fund.fundSize, reportingCurrency: fund.reportingCurrency } });
+
+const dealNode = new FlowEntity({ entityType: 'Deal', name: deal.name, source: 'onomo-schema-test', sourceId: deal.id, isHedge: false, properties: deal.keyMetrics });
+
+const realEstatePropertyNode = new FlowEntity({
+  entityType: 'RealEstateProperty', name: 'ONOMO Allure Bulawayo — 80-Key Hotel', source: 'onomo-schema-test', sourceId: deal.id,
+  isHedge: false, // <-- explicit: this is a non-hedge investment, unlike Sleeve C's industrial/residential hedge properties
+  properties: {
+    propertyType: 'hotel-development', purchasePriceUSD: 13255000, annualNetRentUSD: null,
+    geography: 'Bulawayo, Zimbabwe', keys: 80, holdPeriodYears: 10
+  }
+});
+
+fundNode.linkTo(dealNode, 'invests_in');
+const investsEdge = FlowEdge.connect(fundNode, dealNode, 'invests_in', { weight: fund.fundSize, provenance: { assertedBy: 'system-seed', assertedAt: new Date().toISOString(), confidence: 1, reasoning: 'Fund.addDeal() relationship' } });
+
+dealNode.linkTo(realEstatePropertyNode, 'is_asset');
+const isAssetEdge = FlowEdge.connect(dealNode, realEstatePropertyNode, 'is_asset', { weight: 1, provenance: { assertedBy: 'system-seed', assertedAt: new Date().toISOString(), confidence: 1, reasoning: 'Deal IS a RealEstateProperty for this hotel-development deal type' } });
+
+// ─── Output — proving shape AND math survive genericization ─────────────
+section('FlowTypeRegistry — RealEstateProperty type definition (data, not a class)', () => FlowTypeRegistry.getType('RealEstateProperty'));
+
+section('FlowEntity — Fund node', () => fundNode.toJSON());
+section('FlowEntity — Deal node (isHedge explicit)', () => ({ entityType: dealNode.entityType, isHedge: dealNode.isHedge, name: dealNode.name }));
+section('FlowEntity — RealEstateProperty node (isHedge: false, non-hedge investment)', () => realEstatePropertyNode.toJSON());
+
+section('FlowEdge — Fund \u2192 Deal (invests_in)', () => investsEdge.toJSON());
+section('FlowEdge — Deal \u2192 RealEstateProperty (is_asset)', () => isAssetEdge.toJSON());
+
+section('Graph traversal via BaseClassX RelationalProjection — outEdges from Fund node', () => {
+  const proj = fundNode.relational ? fundNode.relational() : null;
+  return proj ? proj.outEdges() : (fundNode.outEdges || []);
+});
+
+section('MATH PARITY CHECK \u2014 Deal.dueDiligenceFlags() unchanged after being wrapped in the graph', () => deal.dueDiligenceFlags());
+section('MATH PARITY CHECK \u2014 Advisor.feeAmount() unchanged', () => deal.advisors.map(a => ({ name: a.name, computedFeeAmount: a.feeAmount() })));
+section('MATH PARITY CHECK \u2014 Schedule.minMetric(dscr) unchanged', () => debtSchedule.minMetric('dscr'));
+
+note('Result: entityType (\'RealEstateProperty\', \'Deal\', \'Fund\') came entirely from FlowTypeRegistry data lookups, not hardcoded subclasses \u2014 adding SolarSite / ComputeNodeDeployment / FuelClient next means adding rows to FlowTypeRegistry.TYPES, not writing new class files. isHedge is set per-instance (false here, matching the user\'s correction that this real estate grouping is a direct investment, not a Sleeve C hedge) \u2014 the same FlowEntity/FlowTypeRegistry pair will represent a genuinely hedge-classified Industrial/Residential property with isHedge: true.');
+gapNote('relational() / RelationalProjection is BaseClassX\'s existing graph-read API (see BaseClassX.js changelog v2.2.00) \u2014 if this section errors, it means the specific projection accessor name differs from what\'s assumed here; the raw linkTo()-populated outEdges/inEdges arrays are the guaranteed-present fallback either way.');
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ROOT SCHEMA="MSGv1.3.XML">
+  <MSG ID="" FROM="WITNESS" TS="">
+    <TO ID="1" UUID="4b802c74-2601-4e4d-b295-e99c75d3af5e" NAME="WITNESS" EMAIL="wfobbs.youthvillage@gmail.com"/>
+  </MSG>
+</ROOT>

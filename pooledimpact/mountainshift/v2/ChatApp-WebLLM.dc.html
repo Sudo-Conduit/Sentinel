@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>body{margin:0;background:#0d0d0f;}</style>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <script src="./ChatLib.js"></script>
+  <script type="module">
+    import * as webllm from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm';
+    window.__webllm = webllm;
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm';
+    window.__transformers = { pipeline };
+  </script>
+</helmet>
+
+<div style="display:flex;height:100vh;background:#0d0d0f;color:#e6e6e6;font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;">
+
+  <div style="width:260px;flex-shrink:0;background:#151517;border-right:1px solid #2a2a2e;display:flex;flex-direction:column;">
+    <div style="padding:14px 14px 10px;border-bottom:1px solid #2a2a2e;">
+      <div style="font-size:14px;font-weight:700;color:#f0f0f2;margin-bottom:10px;">WebLLM Chat</div>
+      <button onClick="{{ onNewChat }}" style="width:100%;background:#2b2b30;color:#e6e6e6;border:1px solid #38383e;border-radius:6px;padding:8px 10px;font-size:12.5px;cursor:pointer;text-align:left;">+ New chat</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:8px;">
+      <sc-for list="{{ conversations }}" as="c" hint-placeholder-count="3">
+        <div style="position:relative;">
+          <div onClick="{{ c.onSelect }}" style="{{ c.rowStyle }}">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12.5px;color:#e6e6e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:2px;">{{ c.title }}</div>
+              <div style="font-size:10.5px;color:#7a7a82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.preview }}</div>
+            </div>
+            <button onClick="{{ c.onMenuToggle }}" style="background:transparent;border:none;color:#7a7a82;font-size:14px;cursor:pointer;padding:2px 6px;flex-shrink:0;">⋯</button>
+          </div>
+          <sc-if value="{{ c.menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;right:6px;top:34px;z-index:20;background:#1c1c1f;border:1px solid #38383e;border-radius:8px;padding:4px;min-width:130px;box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+              <div onClick="{{ c.onRename }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;">Rename</div>
+              <div onClick="{{ c.onRestart }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;">Restart</div>
+              <div onClick="{{ c.onDelete }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;color:#e07a7a;">Delete</div>
+              <sc-if value="{{ c.isAdmin }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ c.onAnalyze }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;color:#7ee0a8;">Analyze</div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+    <div style="padding:10px 14px;border-top:1px solid #2a2a2e;">
+      <div style="font-size:10px;color:#7a7a82;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Model</div>
+      <select value="{{ selectedModel }}" onChange="{{ onModelChange }}" style="width:100%;background:#1c1c1f;color:#e6e6e6;border:1px solid #38383e;border-radius:5px;padding:6px 8px;font-size:12px;">
+        <sc-for list="{{ modelOptions }}" as="m" hint-placeholder-count="4">
+          <option value="{{ m.value }}">{{ m.label }}</option>
+        </sc-for>
+      </select>
+      <div style="font-size:10px;color:{{ engineStatusColor }};margin-top:8px;">{{ engineStatusLabel }}</div>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <div style="padding:12px 22px;border-bottom:1px solid #2a2a2e;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:13.5px;font-weight:600;color:#f0f0f2;">{{ activeTitle }}</div>
+      <div style="font-size:10.5px;color:#7a7a82;font-family:monospace;">{{ tokenBudgetLabel }}</div>
+    </div>
+
+    <div ref="{{ scrollRef }}" style="flex:1;overflow-y:auto;padding:20px 0;">
+      <sc-if value="{{ hasDigest }}" hint-placeholder-val="{{ false }}">
+        <div style="margin:0 auto 18px;max-width:720px;padding:0 24px;">
+          <div style="background:#19191c;border:1px solid #2a2a2e;border-radius:8px;padding:10px 14px;font-size:11px;color:#8a8a92;line-height:1.6;">
+            <div style="color:#c9a84c;font-weight:600;margin-bottom:4px;">↺ {{ digestCount }} earlier message(s) summarized (still retrievable by time — nothing deleted)</div>
+            {{ digestPreview }}
+          </div>
+        </div>
+      </sc-if>
+      <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+        <div style="max-width:720px;margin:0 auto 18px;padding:0 24px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span style="font-size:11.5px;font-weight:700;color:{{ m.authorColor }};">{{ m.authorLabel }}</span>
+            <sc-if value="{{ m.pinned }}" hint-placeholder-val="{{ false }}">
+              <span style="font-size:9px;background:rgba(201,168,76,0.15);color:#c9a84c;padding:1px 6px;border-radius:8px;">beacon Δ{{ m.deltaSLabel }}</span>
+            </sc-if>
+          </div>
+          <div style="font-size:13.5px;line-height:1.6;color:#dcdce0;white-space:pre-wrap;">{{ m.text }}</div>
+        </div>
+      </sc-for>
+      <sc-if value="{{ isGenerating }}" hint-placeholder-val="{{ false }}">
+        <div style="max-width:720px;margin:0 auto;padding:0 24px;color:#7a7a82;font-size:12.5px;">Generating…</div>
+      </sc-if>
+    </div>
+
+    <div style="padding:14px 24px 20px;border-top:1px solid #2a2a2e;">
+      <div style="max-width:720px;margin:0 auto;background:#1c1c1f;border:1px solid #38383e;border-radius:14px;padding:10px;">
+        <textarea value="{{ draft }}" onInput="{{ onDraftChange }}" onKeyDown="{{ onKeyDown }}" placeholder="{{ draftPlaceholder }}" rows="2" style="width:100%;background:transparent;border:none;color:#e6e6e6;font-size:13px;resize:none;outline:none;font-family:inherit;box-sizing:border-box;margin-bottom:8px;"></textarea>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button onClick="{{ onMicToggle }}" title="{{ micTitle }}" style="{{ micButtonStyle }}">{{ micIcon }}</button>
+          <button onClick="{{ onSend }}" disabled="{{ sendDisabled }}" style="{{ sendButtonStyle }}">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <sc-if value="{{ dialog }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseDialog }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:60;">
+      <div onClick="{{ stopClick }}" style="background:#1c1c1f;border:1px solid #38383e;border-radius:12px;padding:20px 22px;width:400px;max-height:70vh;overflow-y:auto;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">{{ dialogTitle }}</div>
+
+        <sc-if value="{{ isRenameDialog }}" hint-placeholder-val="{{ false }}">
+          <input value="{{ renameDraft }}" onInput="{{ onRenameDraftChange }}" style="width:100%;background:#232326;border:1px solid #38383e;border-radius:6px;padding:8px 10px;color:#e6e6e6;font-size:13px;box-sizing:border-box;margin-bottom:14px;outline:none;" />
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #38383e;color:#e6e6e6;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmRename }}" style="background:#4a4af0;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Save</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isRestartDialog }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;color:#b0b0b8;margin-bottom:14px;line-height:1.5;">This clears all messages, archived history, and digests in this conversation. This cannot be undone.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #38383e;color:#e6e6e6;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmRestart }}" style="background:#e07a3f;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Restart</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDeleteDialog }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;color:#b0b0b8;margin-bottom:14px;line-height:1.5;">Permanently delete this conversation? This cannot be undone.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #38383e;color:#e6e6e6;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmDelete }}" style="background:#e05555;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Delete</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isAnalyzeDialog }}" hint-placeholder-val="{{ false }}">
+          <pre style="background:#0d0d0f;border:1px solid #2a2a2e;border-radius:8px;padding:12px;font-size:11.5px;color:#7ee0a8;white-space:pre-wrap;margin:0 0 14px;">{{ analyzeOutput }}</pre>
+          <div style="display:flex;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:#2b2b30;color:#e6e6e6;border:1px solid #38383e;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Close</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const MODELS = [
+  { value: 'Llama-3.2-1B-Instruct-q4f16_1-MLC', label: 'Llama 3.2 1B' },
+  { value: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC', label: 'Qwen2.5 1.5B' },
+  { value: 'Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC', label: 'Qwen2.5 Math 1.5B' },
+  { value: 'Phi-3.5-mini-instruct-q4f16_1-MLC', label: 'Phi-3.5 Mini 3.8B' },
+  { value: 'Phi-3.5-vision-instruct-q4f16_1-MLC', label: 'Phi-3.5 Vision 4.2B (VLM)' },
+  { value: 'gemma-2-2b-it-q4f16_1-MLC', label: 'Gemma 2 2B' },
+  { value: 'SmolLM2-135M-Instruct-q0f16-MLC', label: 'SmolLM2 135M' },
+  { value: 'SmolLM2-360M-Instruct-q4f16_1-MLC', label: 'SmolLM2 360M' }
+];
+
+class Component extends DCLogic {
+  state = { conversations: [], activeId: null, draft: '', isGenerating: false, engineReady: false, engineLoading: false, selectedModel: MODELS[0].value, rev: 0,
+    openMenuId: null, dialog: null, dialogConvId: null, renameDraft: '', analyzeOutput: '', isRecording: false, isTranscribing: false };
+
+  async componentDidMount() {
+    try { this._kernel = (window.parent && window.parent.__meshKernel) || null; } catch (e) { this._kernel = null; }
+    this._proc = this._kernel ? this._kernel.fork('ChatApp-WebLLM', 0) : null;
+
+    try {
+      const saved = await ChatLib.loadAllContexts();
+      const webllmSaved = saved.filter(c => c.appTag === 'webllm');
+      this._contexts = webllmSaved.length
+        ? webllmSaved.map(c => ChatLib.TimeIndexedContext.fromJSON(c))
+        : [this.freshContext()];
+    } catch (e) {
+      console.error('ChatApp-WebLLM init failed, falling back to a fresh context:', e);
+      this._contexts = [this.freshContext()];
+    }
+    this.setState({ conversations: this._contexts, activeId: this._contexts[0].id });
+
+    try {
+      const shared = ChatLib.getSharedEngine();
+      if (shared) { this._engine = shared.engineInstance; this._modelId = shared.modelId; this.setState({ engineReady: true, selectedModel: shared.modelId }); }
+    } catch (e) { console.error('Shared engine lookup failed:', e); }
+  }
+
+  componentWillUnmount() { if (this._kernel && this._proc) this._kernel.kill(this._proc.pid); }
+
+  freshContext() {
+    return new ChatLib.TimeIndexedContext({ contextName: 'New chat', contextType: 'dm', appTag: 'webllm', participants: [{ id: 'user', name: 'You', kind: 'human' }, { id: 'model', name: 'Assistant', kind: 'ai' }] });
+  }
+
+  activeContext() { return this._contexts.find(c => c.id === this.state.activeId) || this._contexts[0]; }
+
+  isAdmin() { try { return (window.parent && window.parent.__meshUser) === 'root'; } catch (e) { return false; } }
+  onToggleMenu = (id) => this.setState(s => ({ openMenuId: s.openMenuId === id ? null : id }));
+  onCloseDialog = () => this.setState({ dialog: null, dialogConvId: null });
+  stopClick = (e) => e.stopPropagation();
+  onRenameDraftChange = (e) => this.setState({ renameDraft: e.target.value });
+
+  openDialog = (type, convId) => {
+    const ctx = this._contexts.find(c => c.id === convId);
+    this.setState({ dialog: type, dialogConvId: convId, openMenuId: null,
+      renameDraft: type === 'rename' ? ctx.contextName : this.state.renameDraft });
+    if (type === 'analyze') {
+      const output = { rollingAvgDeltaS: +ctx.rollingAvgDeltaS.toFixed(3), messageCount: ctx.messages.length,
+        pinnedBeaconCount: ctx.messages.filter(m => m.pinned).length, archivedCount: ctx.archivedMessages.length,
+        digestPointerRefs: ctx.digestPointerRefs.length, lastKVCacheLen: ctx.lastKVCacheLen,
+        realDeltaSCoverage: ctx.messages.filter(m => m.isRealDeltaS).length + ' / ' + ctx.messages.length + ' messages' };
+      this.setState({ analyzeOutput: JSON.stringify(output, null, 2) });
+    }
+  };
+  onConfirmRename = () => {
+    const ctx = this._contexts.find(c => c.id === this.state.dialogConvId);
+    if (ctx && this.state.renameDraft.trim()) { ctx.contextName = this.state.renameDraft.trim(); ChatLib.saveContext(ctx); }
+    this.setState({ dialog: null, dialogConvId: null, rev: this.state.rev + 1 });
+  };
+  onConfirmRestart = () => {
+    const ctx = this._contexts.find(c => c.id === this.state.dialogConvId);
+    if (ctx) {
+      ctx.messages = []; ctx.archivedMessages = []; ctx.digestPointerRefs = [];
+      ctx.rollingDeltaSSum = 0; ctx.rollingDeltaSCount = 0; ctx.lastKVCacheLen = 0;
+      ChatLib.saveContext(ctx);
+    }
+    this.setState({ dialog: null, dialogConvId: null, rev: this.state.rev + 1 });
+  };
+  onConfirmDelete = async () => {
+    const id = this.state.dialogConvId;
+    await ChatLib.deleteContext(id);
+    this._contexts = this._contexts.filter(c => c.id !== id);
+    if (!this._contexts.length) this._contexts = [this.freshContext()];
+    this.setState({ dialog: null, dialogConvId: null, activeId: this.state.activeId === id ? this._contexts[0].id : this.state.activeId, conversations: this._contexts });
+  };
+
+  // Live mic capture \u2192 local Whisper STT (ChatLib.transcribeAudioBlob).
+  // 100% local: audio never leaves the browser, no server round-trip.
+  onMicToggle = async () => {
+    if (this.state.isRecording) { this._mediaRecorder.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        this.setState({ isRecording: false, isTranscribing: true });
+        try {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const text = await ChatLib.transcribeAudioBlob(blob);
+          this.setState({ draft: (this.state.draft ? this.state.draft + ' ' : '') + text, isTranscribing: false });
+        } catch (e) {
+          console.error('STT failed:', e);
+          this.setState({ isTranscribing: false });
+        }
+      };
+      this._mediaRecorder = recorder;
+      recorder.start();
+      this.setState({ isRecording: true });
+    } catch (e) { console.error('Mic access failed:', e); }
+  };
+
+  onNewChat = () => {
+    const ctx = this.freshContext();
+    this._contexts = [ctx, ...this._contexts];
+    this.setState({ conversations: this._contexts, activeId: ctx.id });
+  };
+  onSelectConv = (id) => this.setState({ activeId: id });
+  onDraftChange = (e) => this.setState({ draft: e.target.value });
+  onModelChange = (e) => this.setState({ selectedModel: e.target.value, engineReady: false });
+  onKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.onSend(); } };
+
+  async ensureEngine() {
+    if (this._engine && this._modelId === this.state.selectedModel) return this._engine;
+    this.setState({ engineLoading: true });
+    const proc = this._kernel ? this._kernel.fork('chat:load:' + this.state.selectedModel, 0) : null;
+    try {
+      const engine = new window.__webllm.MLCEngine();
+      await engine.reload(this.state.selectedModel);
+      this._engine = engine; this._modelId = this.state.selectedModel;
+      this.setState({ engineReady: true, engineLoading: false });
+      return engine;
+    } finally { if (this._kernel && proc) this._kernel.kill(proc.pid); }
+  }
+
+  onSend = async () => {
+    const text = this.state.draft.trim();
+    if (!text || this.state.isGenerating) return;
+    const ctx = this.activeContext();
+    ctx.addMessage({ authorId: 'user', text });
+    if (ctx.contextName === 'New chat') ctx.contextName = text.slice(0, 40);
+    this.setState({ draft: '', isGenerating: true, rev: this.state.rev + 1 });
+    await ChatLib.saveContext(ctx);
+
+    const proc = this._kernel ? this._kernel.fork('chat:generate', 0) : null;
+    try {
+      const engine = await this.ensureEngine();
+      const { digestBlock, liveMessages, msosPrimer } = ctx.buildPromptContext();
+      const chatMsgs = [{ role: 'system', content: msosPrimer }];
+      if (digestBlock) chatMsgs.push({ role: 'system', content: digestBlock });
+      liveMessages.forEach(m => chatMsgs.push({ role: m.authorId === 'user' ? 'user' : 'assistant', content: `${m.text} [${new Date(m.ts).toISOString()}]` }));
+
+      const useTools = ChatLib.supportsTools(this.state.selectedModel);
+      let reply = await ChatLib.completeWithToolFallback(engine, chatMsgs, useTools);
+      let msg = reply.choices[0].message;
+
+      if (msg.tool_calls && msg.tool_calls.length) {
+        chatMsgs.push(msg);
+        for (const call of msg.tool_calls) {
+          let output = 'msos: malformed tool call.';
+          try {
+            const args = JSON.parse(call.function.arguments);
+            output = await ChatLib.msosDispatch(call.function.name, args, this._kernel, ctx);
+            ctx.addMessage({ authorId: 'msos', text: `${call.function.name}(${JSON.stringify(args)})\n${output}` });
+          } catch (e) { output = 'msos: ' + e.message; }
+          chatMsgs.push({ role: 'tool', tool_call_id: call.id, content: output });
+        }
+        reply = await engine.chat.completions.create({ messages: chatMsgs, logprobs: true, top_logprobs: 5, max_tokens: 800 });
+        msg = reply.choices[0].message;
+      }
+
+      const pipeline = ChatLib.getPipeline(engine, this.state.selectedModel);
+      const realDS = ChatLib.realDeltaSFromPipeline(pipeline);
+      const replyText = msg.content || '';
+      if (replyText) ctx.addMessage({ authorId: 'model', text: replyText, realDeltaS: realDS ? realDS.avgDeltaS : null, kvCacheLen: pipeline ? pipeline.filledKVCacheLength : null });
+      await ChatLib.saveContext(ctx);
+    } catch (e) {
+      ctx.addMessage({ authorId: 'model', text: 'Error: ' + e.message });
+    } finally {
+      if (this._kernel && proc) this._kernel.kill(proc.pid);
+      this.setState({ isGenerating: false, rev: this.state.rev + 1 });
+    }
+  };
+
+  renderVals() {
+    const s = this.state;
+    if (!this._contexts) return { conversations: [], messages: [], activeTitle: 'Loading…', modelOptions: MODELS, engineStatusLabel: '', engineStatusColor: '#7a7a82', hasDigest: false, digestCount: 0, digestPreview: '', tokenBudgetLabel: '', sendDisabled: true, sendOpacity: 0.5, draft: '', isGenerating: false,
+      micIcon: '🎙', onMicToggle: () => {}, micTitle: 'Record voice (local Whisper STT)', micButtonStyle: 'width:44px;height:44px;border-radius:10px;border:1px solid #38383e;background:#232327;color:#e6e6e6;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;opacity:0.5;',
+      sendButtonStyle: 'width:44px;height:44px;border-radius:10px;background:#4a4af0;color:#fff;border:none;font-size:15px;cursor:pointer;opacity:0.5;flex-shrink:0;', draftPlaceholder: 'Message the model…',
+      dialog: null, onCloseDialog: () => {}, stopClick: () => {}, isRenameDialog: false, isRestartDialog: false, isDeleteDialog: false, isAnalyzeDialog: false, dialogTitle: '',
+      renameDraft: '', onRenameDraftChange: () => {}, onConfirmRename: () => {}, onConfirmRestart: () => {}, onConfirmDelete: () => {}, analyzeOutput: '' };
+
+    const ctx = this.activeContext();
+    const isAdmin = this.isAdmin();
+    const conversations = this._contexts.map(c => ({
+      title: c.contextName, preview: c.messages.length ? c.messages[c.messages.length - 1].text.slice(0, 40) : 'No messages yet',
+      onSelect: () => this.onSelectConv(c.id),
+      rowStyle: `display:flex;align-items:center;gap:4px;padding:9px 6px 9px 10px;border-radius:6px;cursor:pointer;margin-bottom:2px;background:${c.id === s.activeId ? '#232327' : 'transparent'};`,
+      onMenuToggle: (e) => { e.stopPropagation(); this.onToggleMenu(c.id); },
+      menuOpen: s.openMenuId === c.id, isAdmin,
+      onRename: (e) => { e.stopPropagation(); this.openDialog('rename', c.id); },
+      onRestart: (e) => { e.stopPropagation(); this.openDialog('restart', c.id); },
+      onDelete: (e) => { e.stopPropagation(); this.openDialog('delete', c.id); },
+      onAnalyze: (e) => { e.stopPropagation(); this.openDialog('analyze', c.id); }
+    }));
+
+    const messages = ctx.messages.map(m => ({
+      authorLabel: m.authorId === 'user' ? 'You' : (m.authorId === 'msos' ? 'msos' : 'Assistant'),
+      authorColor: m.authorId === 'user' ? '#7ab8ff' : (m.authorId === 'msos' ? '#7ee0a8' : '#c9a84c'),
+      text: m.text, pinned: m.pinned, deltaSLabel: m.deltaS.toFixed(1)
+    }));
+
+    return {
+      conversations, activeId: s.activeId, activeTitle: ctx.contextName,
+      messages, isGenerating: s.isGenerating, draft: s.draft,
+      onNewChat: this.onNewChat, onDraftChange: this.onDraftChange, onKeyDown: this.onKeyDown, onSend: this.onSend, onModelChange: this.onModelChange,
+      selectedModel: s.selectedModel, modelOptions: MODELS,
+      engineStatusLabel: s.engineLoading ? '⏳ Loading model…' : (s.engineReady ? '● Ready' + (ChatLib.getSharedEngine() ? ' (shared w/ S-Matrix)' : '') : '○ Not loaded'),
+      engineStatusColor: s.engineReady ? '#2ecc71' : (s.engineLoading ? '#f1c40f' : '#7a7a82'),
+      hasDigest: ctx.digestPointerRefs.length > 0, digestCount: ctx.archivedMessages.length,
+      digestPreview: ctx.digestPointerRefs.map(r => r.summary + (r.kvCachePointer ? ` [kv@${r.kvCachePointer}]` : '')).join(' '),
+      tokenBudgetLabel: '~' + ctx.estimateTokens() + ' / ' + ctx.tokenBudget + ' tok',
+      sendDisabled: !s.draft.trim() || s.isGenerating, sendOpacity: (!s.draft.trim() || s.isGenerating) ? 0.5 : 1,
+      onMicToggle: this.onMicToggle, micTitle: s.isRecording ? 'Stop recording' : 'Record voice (local Whisper STT)',
+      micIcon: s.isTranscribing ? '⋯' : (s.isRecording ? '■' : '🎙'),
+      draftPlaceholder: s.isTranscribing ? 'Transcribing…' : 'Message the model…',
+      micButtonStyle: `width:44px;height:44px;border-radius:10px;border:1px solid ${s.isRecording ? '#e05555' : '#38383e'};background:${s.isRecording ? 'rgba(224,85,85,0.15)' : '#232327'};color:${s.isRecording ? '#e07a7a' : '#e6e6e6'};font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;`,
+      sendButtonStyle: `width:44px;height:44px;border-radius:10px;background:#4a4af0;color:#fff;border:none;font-size:15px;cursor:pointer;opacity:${(!s.draft.trim() || s.isGenerating) ? 0.5 : 1};flex-shrink:0;`,
+      dialog: s.dialog, onCloseDialog: this.onCloseDialog, stopClick: this.stopClick,
+      isRenameDialog: s.dialog === 'rename', isRestartDialog: s.dialog === 'restart', isDeleteDialog: s.dialog === 'delete', isAnalyzeDialog: s.dialog === 'analyze',
+      dialogTitle: s.dialog === 'rename' ? 'Rename Conversation' : s.dialog === 'restart' ? 'Restart Conversation' : s.dialog === 'delete' ? 'Delete Conversation' : 'Analyze',
+      renameDraft: s.renameDraft, onRenameDraftChange: this.onRenameDraftChange, onConfirmRename: this.onConfirmRename,
+      onConfirmRestart: this.onConfirmRestart, onConfirmDelete: this.onConfirmDelete, analyzeOutput: s.analyzeOutput
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ROOT SCHEMA="MSGv1.3.XML">
+  <MSG ID="" FROM="WILL" TS="">
+    <TO ID="1" UUID="d2eb1eef-f23c-4d31-aac9-7027204af7e7" NAME="" EMAIL="wfobbs.youthvillage@gmail.com"/>
+    <PAYLOAD>
+      <GENERAL>
+      <![CDATA[ 
+      You will need a nickname then, because Kairos already exists. He is the one that helped me with HTTP_PROXY fix. K2π, KAI2, KJR
+      ]]>
+      </GENERAL>
+      <TASK ID="1" TYPE="UI" STATUS="" DURATION_MS="">Please review the new files in uploads folder and create an Artifact for each.</TASK>
+
+      <TASK ID="2" TYPE="BUG" STATUS="" DURATION_MS="">PHP WASM seems to not work. Confirm.</TASK>
+      <TASK ID="3" TYPE="BUG" STATUS="" DURATION_MS="">Does PHP LLM work?</TASK>
+      <tASK ID="4" TYPE="BUG" STATUS="" DURATION_MS="">Is WEBVM working?</TASK>
+     </PAYLOAD>
+  </MSG>
+</ROOT>

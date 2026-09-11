@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>body{margin:0;background:#0b1426;}</style>
+</helmet>
+<div style="min-height:100vh;background:#0b1426;color:#cdd6e8;font-family:'DM Sans',sans-serif;font-size:13px;">
+
+  <div style="border-bottom:1px solid #1e3052;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;background:rgba(11,20,38,0.9);">
+    <div>
+      <div style="font-family:'Cormorant Garamond',serif;font-size:22px;color:#f0f4fb;">{{ dealName }}</div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;">FUEL ADDITIVE — DIESEL EFFICIENCY MODEL</div>
+    </div>
+    <div style="font-family:'DM Mono',monospace;font-size:10px;color:#c9a84c;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);padding:6px 12px;border-radius:3px;">{{ dealStatus }}</div>
+  </div>
+
+  <div style="padding:26px 32px;">
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Fleet / Site Inputs</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#1e3052;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:10px;">
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Vehicles / Units</div>
+        <input type="number" value="{{ unitCount }}" onInput="{{ onUnitCountChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Diesel L/Unit/Year</div>
+        <input type="number" value="{{ litersPerUnitYear }}" onInput="{{ onLitersChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Diesel Price ($/L)</div>
+        <input type="number" step="0.01" value="{{ dieselPrice }}" onInput="{{ onDieselPriceChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Fuel Savings (%)</div>
+        <input type="number" step="0.1" value="{{ savingsPct }}" onInput="{{ onSavingsPctChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+        <div style="font-size:9.5px;color:#5a6a8a;margin-top:4px;">patented additive, 6–8% typical</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#1e3052;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:24px;">
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Additive Cost ($/L Diesel)</div>
+        <input type="number" step="0.001" value="{{ additiveCostPerL }}" onInput="{{ onAdditiveCostChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">PM2.5/Emissions Cut (%)</div>
+        <input type="number" step="1" value="{{ emissionsCutPct }}" onInput="{{ onEmissionsCutChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+      </div>
+      <div style="background:#111d35;padding:12px 14px;">
+        <div style="font-size:9px;color:#8a99b3;text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Community Health Value ($/unit/yr)</div>
+        <input type="number" value="{{ healthValuePerUnit }}" onInput="{{ onHealthValueChange }}" style="width:100%;background:#0b1426;border:1px solid #1e3052;color:#f0f4fb;font-family:'DM Mono',monospace;font-size:14px;padding:6px 8px;border-radius:3px;box-sizing:border-box;" />
+        <div style="font-size:9.5px;color:#5a6a8a;margin-top:4px;">illustrative, reduced asthma/lost workdays</div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:1px;background:#1e3052;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:24px;">
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:130px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Diesel Consumed / Year</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:#f0f4fb;">{{ totalLitersLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:130px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Fuel Saved / Year</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:#5dade2;">{{ litersSavedLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:130px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Net Annual Savings</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:#2ecc71;">{{ netSavingsLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:130px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">CO₂ Avoided (est. tons/yr)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:#c9a84c;">{{ co2AvoidedLabel }}</div>
+      </div>
+      <div style="flex:1;padding:14px 16px;background:#111d35;min-width:130px;">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:1.5px;color:#8a99b3;margin-bottom:4px;">Payback (months)</div>
+        <div style="font-family:'DM Mono',monospace;font-size:16px;color:{{ paybackColor }};">{{ paybackLabel }}</div>
+      </div>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Impact & Value Summary</div>
+    <div style="background:#111d35;border:1px solid #1e3052;border-radius:3px;overflow:hidden;margin-bottom:26px;">
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Fuel Cost Savings</span>
+        <span style="font-family:'DM Mono',monospace;color:#5dade2;">{{ fuelSavingsLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Community Health Value (Kitwe-style illustrative)</span>
+        <span style="font-family:'DM Mono',monospace;color:#c9a84c;">{{ healthValueLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+        <span style="color:#cdd6e8;">Additive Cost (annual)</span>
+        <span style="font-family:'DM Mono',monospace;color:#e74c3c;">−{{ additiveCostLabel }}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:12px 16px;background:#0e1830;">
+        <span style="color:#f0f4fb;font-weight:600;">Total Annual Value Created</span>
+        <span style="font-family:'DM Mono',monospace;color:#f0f4fb;font-weight:600;">{{ totalValueLabel }}</span>
+      </div>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:#8a99b3;margin-bottom:12px;">Regional Scale-Out</div>
+    <div style="background:#111d35;border:1px solid #1e3052;border-radius:3px;overflow:hidden;">
+      <sc-for list="{{ scaleRows }}" as="row" hint-placeholder-count="3">
+        <div style="display:flex;justify-content:space-between;padding:11px 16px;border-bottom:1px solid rgba(30,48,82,.4);">
+          <span style="color:#cdd6e8;">{{ row.label }}</span>
+          <span style="font-family:'DM Mono',monospace;color:#8a99b3;">{{ row.value }}</span>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="font-size:10px;color:#556080;font-family:'DM Mono',monospace;margin-top:20px;padding-top:14px;border-top:1px solid #1e3052;">CONFIDENTIAL — Modeled on Liquid EnerG (Clean EnerG subsidiary) diesel additive: 6–8% fuel savings, ~70% cut in CO₂/sulfates/nitrates/PM2.5. Pilot: Zambian copper mines → 5 mines → DRC/Tanzania. Health-value and CO₂ figures are illustrative pending clinic/ZEMA-partnered baseline data.</div>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1200,&quot;height&quot;:900},&quot;dealName&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Liquid EnerG — Diesel Additive&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;dealStatus&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;PILOT → SCALE&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;defaultUnitCount&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:40,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1,&quot;max&quot;:10000},&quot;defaultLitersPerUnitYear&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:150000,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:1,&quot;max&quot;:10000000},&quot;defaultDieselPrice&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:1.05,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0.1,&quot;max&quot;:10,&quot;step&quot;:0.01},&quot;defaultSavingsPct&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:7,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:20,&quot;step&quot;:0.5},&quot;defaultAdditiveCostPerL&quot;:{&quot;editor&quot;:&quot;float&quot;,&quot;default&quot;:0.015,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:1,&quot;step&quot;:0.001},&quot;defaultEmissionsCutPct&quot;:{&quot;editor&quot;:&quot;range&quot;,&quot;default&quot;:70,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:100,&quot;step&quot;:1},&quot;defaultHealthValuePerUnit&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:2500,&quot;tsType&quot;:&quot;number&quot;,&quot;min&quot;:0,&quot;max&quot;:1000000}}">
+function fmtUSD(n) { return '$' + Math.round(n).toLocaleString(); }
+function fmtUSDShort(n) {
+  const sign = n < 0 ? '-' : '';
+  n = Math.abs(n);
+  if (n >= 1e6) return sign + '$' + (n / 1e6).toFixed(2) + 'M';
+  if (n >= 1e3) return sign + '$' + (n / 1e3).toFixed(0) + 'K';
+  return sign + '$' + Math.round(n);
+}
+function fmtNum(n) { return Math.round(n).toLocaleString(); }
+
+// kg CO2 per liter diesel combusted (standard emissions factor), used to
+// translate liters saved into an illustrative CO2-avoided figure.
+const CO2_KG_PER_LITER = 2.68;
+
+class Component extends DCLogic {
+  state = {
+    unitCount: this.props.defaultUnitCount ?? 40,
+    litersPerUnitYear: this.props.defaultLitersPerUnitYear ?? 150000,
+    dieselPrice: this.props.defaultDieselPrice ?? 1.05,
+    savingsPct: this.props.defaultSavingsPct ?? 7,
+    additiveCostPerL: this.props.defaultAdditiveCostPerL ?? 0.015,
+    emissionsCutPct: this.props.defaultEmissionsCutPct ?? 70,
+    healthValuePerUnit: this.props.defaultHealthValuePerUnit ?? 2500,
+  };
+
+  onUnitCountChange = (e) => this.setState({ unitCount: Number(e.target.value) || 0 });
+  onLitersChange = (e) => this.setState({ litersPerUnitYear: Number(e.target.value) || 0 });
+  onDieselPriceChange = (e) => this.setState({ dieselPrice: Number(e.target.value) || 0 });
+  onSavingsPctChange = (e) => this.setState({ savingsPct: Number(e.target.value) || 0 });
+  onAdditiveCostChange = (e) => this.setState({ additiveCostPerL: Number(e.target.value) || 0 });
+  onEmissionsCutChange = (e) => this.setState({ emissionsCutPct: Number(e.target.value) || 0 });
+  onHealthValueChange = (e) => this.setState({ healthValuePerUnit: Number(e.target.value) || 0 });
+
+  renderVals() {
+    const s = this.state;
+    const totalLiters = s.unitCount * s.litersPerUnitYear;
+    const litersSaved = totalLiters * (s.savingsPct / 100);
+    const fuelSavings = litersSaved * s.dieselPrice;
+    const additiveCost = totalLiters * s.additiveCostPerL;
+    const netSavings = fuelSavings - additiveCost;
+    const healthValue = s.unitCount * s.healthValuePerUnit;
+    const totalValue = netSavings + healthValue;
+    const co2Avoided = (litersSaved * CO2_KG_PER_LITER) / 1000; // tons
+    const paybackMonths = additiveCost > 0 ? (additiveCost / (fuelSavings / 12)) : 0;
+
+    return {
+      dealName: this.props.dealName || 'Liquid EnerG — Diesel Additive',
+      dealStatus: this.props.dealStatus || 'PILOT → SCALE',
+
+      unitCount: s.unitCount, onUnitCountChange: this.onUnitCountChange,
+      litersPerUnitYear: s.litersPerUnitYear, onLitersChange: this.onLitersChange,
+      dieselPrice: s.dieselPrice, onDieselPriceChange: this.onDieselPriceChange,
+      savingsPct: s.savingsPct, onSavingsPctChange: this.onSavingsPctChange,
+      additiveCostPerL: s.additiveCostPerL, onAdditiveCostChange: this.onAdditiveCostChange,
+      emissionsCutPct: s.emissionsCutPct, onEmissionsCutChange: this.onEmissionsCutChange,
+      healthValuePerUnit: s.healthValuePerUnit, onHealthValueChange: this.onHealthValueChange,
+
+      totalLitersLabel: fmtNum(totalLiters) + ' L',
+      litersSavedLabel: fmtNum(litersSaved) + ' L',
+      netSavingsLabel: fmtUSDShort(netSavings),
+      co2AvoidedLabel: fmtNum(co2Avoided) + ' t',
+      paybackLabel: paybackMonths.toFixed(1),
+      paybackColor: paybackMonths <= 3 ? '#2ecc71' : (paybackMonths <= 12 ? '#c9a84c' : '#e74c3c'),
+
+      fuelSavingsLabel: fmtUSDShort(fuelSavings),
+      healthValueLabel: fmtUSDShort(healthValue),
+      additiveCostLabel: fmtUSDShort(additiveCost),
+      totalValueLabel: fmtUSDShort(totalValue),
+
+      scaleRows: [
+        { label: 'Pilot (1 mine, ' + s.unitCount + ' units)', value: fmtUSDShort(totalValue) + '/yr' },
+        { label: '5 Mines (Zambia scale-out, ' + (s.unitCount * 5) + ' units)', value: fmtUSDShort(totalValue * 5) + '/yr' },
+        { label: 'Regional (DRC + Tanzania, ' + (s.unitCount * 15) + ' units)', value: fmtUSDShort(totalValue * 15) + '/yr' },
+      ],
+    };
+  }
+}
+
+</script>
+</body>
+</html>

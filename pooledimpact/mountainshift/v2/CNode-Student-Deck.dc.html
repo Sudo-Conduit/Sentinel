@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%">
+
+<section data-label="Title" data-speaker-notes="Open with the core hook: your laptop can quietly build your future while you sleep." style="background:#0d1117;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:120px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:28px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">FOR STUDENTS</div>
+  <div style="font-size:64px;font-weight:800;line-height:1.15;max-width:1500px;">Your Laptop Can Build Your Future While You Sleep</div>
+  <div style="font-size:26px;color:#8b949e;margin-top:40px;">Real rewards. A real head start on retirement. A real way to give back.</div>
+</section>
+
+<section data-label="How It Works" data-speaker-notes="Plain-language mechanic — opt in, plug in, quiet overnight." style="background:#161b22;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:120px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:24px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">HOW IT WORKS</div>
+  <div style="font-size:52px;font-weight:800;line-height:1.3;max-width:1500px;">Turn it on before bed. Plug in. Your laptop quietly earns rewards overnight — no extra work.</div>
+</section>
+
+<section data-label="Anchor Your Future" data-speaker-notes="Tier 4 framing — starting at 18 vs. starting at 30, same monthly amount, real compound growth difference." style="background:#0d1117;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:100px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:24px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">ANCHOR YOUR FUTURE</div>
+  <div style="font-size:32px;font-weight:800;line-height:1.3;max-width:1500px;margin-bottom:30px;">Starting to save at 18 instead of 30 makes a huge difference — even with the same small amount each month.</div>
+  <div style="display:flex;align-items:flex-end;gap:50px;">
+    <svg width="640" height="280" viewBox="0 0 640 280">
+      <line x1="50" y1="240" x2="600" y2="240" stroke="#30363d" stroke-width="2"/>
+      <line x1="50" y1="240" x2="50" y2="20" stroke="#30363d" stroke-width="2"/>
+      <path d="M 50 235 L 200 210 L 350 165 L 500 90 L 590 40" stroke="#3fb950" stroke-width="5" fill="none"/>
+      <path d="M 50 238 L 200 230 L 350 210 L 500 170 L 590 140" stroke="#8b949e" stroke-width="5" fill="none"/>
+      <text x="60" y="16" fill="#3fb950" font-size="24" font-family="sans-serif">Start at 18</text>
+      <text x="60" y="150" fill="#8b949e" font-size="24" font-family="sans-serif">Start at 30</text>
+      <text x="30" y="255" fill="#8b949e" font-size="24" font-family="sans-serif">Age 18</text>
+      <text x="560" y="255" fill="#8b949e" font-size="24" font-family="sans-serif">Age 65</text>
+    </svg>
+    <div style="max-width:560px;">
+      <div style="font-size:26px;font-weight:700;margin-bottom:16px;">Years matter more than amount</div>
+      <div style="font-size:24px;color:#8b949e;line-height:1.5;">The earlier your money starts growing, the more time it has to compound — a real head start most people never get in college.</div>
+    </div>
+  </div>
+</section>
+
+<section data-label="Change a Life" data-speaker-notes="Tier 5 framing — a DAF holds and grows the gift before it's given, so the real impact is larger than the original donation." style="background:#161b22;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:100px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:24px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">CHANGE A LIFE</div>
+  <div style="font-size:32px;font-weight:800;line-height:1.3;max-width:1500px;margin-bottom:30px;">A gift routed through a real giving fund can grow before it's given — making your original gift go even further.</div>
+  <div style="display:flex;align-items:flex-end;gap:50px;">
+    <svg width="640" height="280" viewBox="0 0 640 280">
+      <line x1="50" y1="240" x2="600" y2="240" stroke="#30363d" stroke-width="2"/>
+      <line x1="50" y1="240" x2="50" y2="20" stroke="#30363d" stroke-width="2"/>
+      <rect x="90" y="215" width="80" height="25" fill="#8b949e"/>
+      <rect x="250" y="180" width="80" height="60" fill="#3fb950"/>
+      <rect x="410" y="130" width="80" height="110" fill="#3fb950"/>
+      <text x="95" y="210" fill="#8b949e" font-size="24" font-family="sans-serif">Gift Given</text>
+      <text x="250" y="170" fill="#3fb950" font-size="24" font-family="sans-serif">+ Growth</text>
+      <text x="410" y="120" fill="#3fb950" font-size="24" font-family="sans-serif">Real Impact</text>
+    </svg>
+    <div style="max-width:560px;">
+      <div style="font-size:26px;font-weight:700;margin-bottom:16px;">Your gift, working harder</div>
+      <div style="font-size:24px;color:#8b949e;line-height:1.5;">Instead of a one-time gift, the fund grows first — meaning the person you help receives more than what you originally gave.</div>
+    </div>
+  </div>
+</section>
+
+<section data-label="You're In Control" data-speaker-notes="Emphasize control, safety, reversibility." style="background:#0d1117;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:120px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:24px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">YOU CHOOSE, YOU CONTROL</div>
+  <div style="font-size:52px;font-weight:800;line-height:1.3;max-width:1500px;">Spend it, save it for retirement, or give it away — your choice, every time. Turn it off anytime.</div>
+</section>
+
+<section data-label="Get Started" data-speaker-notes="Close — simple call to action." style="background:#161b22;color:#e8eaf0;display:flex;flex-direction:column;justify-content:center;padding:120px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <div style="font-size:24px;color:#3fb950;font-weight:700;letter-spacing:2px;margin-bottom:24px;">TRY IT TONIGHT</div>
+  <div style="font-size:56px;font-weight:800;line-height:1.3;max-width:1500px;">Sign Up Today</div>
+  <div style="font-size:36px;color:#3fb950;margin-top:24px;">MountainShift.com/rewards</div>
+</section>
+
+</x-import>
+</x-dc>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Payroll Report — Print</title>
+<style>doc-page:not(:defined){visibility:hidden}</style>
+<script src="./doc-page.js"></script>
+<script src="./RealOrgData.js"></script>
+<style>
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { font: 14px/1.4 system-ui, -apple-system, sans-serif; color: #20242c; }
+  h1 { font-size: 22px; margin: 0 0 4px 0; }
+  .subtitle { color: #666; font-size: 12px; margin-bottom: 18px; }
+  h2 { font-size: 14px; margin: 22px 0 6px 0; break-after: avoid; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; break-inside: avoid; }
+  thead { display: table-header-group; }
+  th, td { padding: 5px 8px; border-bottom: 1px solid #dde2e8; text-align: left; }
+  th { background: #eef1f5; font-size: 10px; text-transform: uppercase; letter-spacing: .03em; color: #6b7382; }
+  td.num, th.num { text-align: right; }
+  tr.group-row td { background: #f7f8fa; font-weight: 600; }
+  tr.total-row td { border-top: 2px solid #2b3140; font-weight: 700; }
+</style>
+</head>
+<body>
+<doc-page margin="0.75in">
+  <h1>Payroll Report</h1>
+  <div class="subtitle">HOPE Hospitality and Warming Center — Real 2025 Payroll — Generated from PayrollRecord data, grouped by Staff then Pay Period</div>
+  <div id="report-body"></div>
+</doc-page>
+<script>
+function money(n) {
+  return '$' + (n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+const staffById = new Map(REAL_ORG_DATA.staff.map(s => [s.id, s]));
+const byStaff = new Map();
+REAL_ORG_DATA.payrollRecords.forEach(p => {
+  if (!byStaff.has(p.staffId)) byStaff.set(p.staffId, []);
+  byStaff.get(p.staffId).push(p);
+});
+let grandTotal = 0;
+let html = '<table><thead><tr><th>Staff / Pay Period</th><th class="num">Total Hours</th><th class="num">Total Earnings</th><th class="num">Net Pay</th><th class="num">Employer Liability</th><th class="num">Total Cost to Org</th></tr></thead><tbody>';
+[...byStaff.entries()].sort((a, b) => {
+  const nameA = staffById.get(a[0])?.name || '', nameB = staffById.get(b[0])?.name || '';
+  return nameA.localeCompare(nameB);
+}).forEach(([staffId, records]) => {
+  const staff = staffById.get(staffId);
+  let staffTotal = 0;
+  html += `<tr class="group-row"><td colspan="6">${staff ? staff.name : staffId}</td></tr>`;
+  records.forEach(p => {
+    const totalCostToOrg = p.totalEarnings + p.employerLiability.total;
+    staffTotal += totalCostToOrg;
+    grandTotal += totalCostToOrg;
+    html += `<tr><td style="padding-left:18px">${p.periodStart} \u2013 ${p.periodEnd}</td><td class="num">${p.totalHours}</td><td class="num">${money(p.totalEarnings)}</td><td class="num">${money(p.netPay)}</td><td class="num">${money(p.employerLiability.total)}</td><td class="num">${money(totalCostToOrg)}</td></tr>`;
+  });
+  html += `<tr><td style="padding-left:18px;font-weight:600">Subtotal \u2014 ${staff ? staff.name : staffId}</td><td></td><td></td><td></td><td></td><td class="num" style="font-weight:600">${money(staffTotal)}</td></tr>`;
+});
+html += `<tr class="total-row"><td>Grand Total \u2014 All Staff</td><td></td><td></td><td></td><td></td><td class="num">${money(grandTotal)}</td></tr>`;
+html += '</tbody></table>';
+document.getElementById('report-body').innerHTML = html;
+</script>
+</body>
+</html>

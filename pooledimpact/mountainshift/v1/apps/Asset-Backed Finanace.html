@@ -1,0 +1,2261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ABF Capital — Provider Directory</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0d0d0d;--paper:#f4f1eb;--cream:#ede9df;--gold:#c9a84c;--gold-light:#e8d5a0;
+  --rust:#8b3a2a;--slate:#2c3e50;--slate-mid:#4a5568;--slate-light:#718096;
+  --rule:#d4cfc4;--white:#ffffff;--green:#276749;--green-bg:rgba(72,187,120,0.12);
+  --blue:#1a4971;--blue-bg:rgba(66,153,225,0.12);
+  --shadow:0 4px 24px rgba(13,13,13,0.08);--radius:2px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;font-size:14px;}
+
+header{background:var(--ink);color:var(--paper);padding:0 28px;display:flex;align-items:center;justify-content:space-between;height:60px;position:sticky;top:0;z-index:100;border-bottom:1px solid var(--gold);}
+.brand{display:flex;align-items:baseline;gap:10px;}
+.brand-name{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;color:var(--gold);}
+.brand-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--slate-light);letter-spacing:.15em;text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:12px;}
+.header-stats{display:flex;gap:20px;}
+.hstat{text-align:right;}
+.hstat-val{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--gold);font-weight:500;}
+.hstat-lbl{font-size:8px;color:var(--slate-light);letter-spacing:.12em;text-transform:uppercase;}
+.hdr-btn{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;border-radius:var(--radius);padding:5px 12px;transition:all .15s;}
+.hdr-btn-ghost{border:1px solid rgba(201,168,76,.4);background:transparent;color:var(--gold);}
+.hdr-btn-ghost:hover{background:rgba(201,168,76,.15);}
+.hdr-btn-import{border:1px solid rgba(66,153,225,.4);background:transparent;color:#7db8e8;}
+.hdr-btn-import:hover{background:rgba(66,153,225,.1);}
+
+#breadcrumb{padding:8px 28px;background:var(--cream);border-bottom:1px solid var(--rule);font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate-light);display:flex;align-items:center;gap:6px;min-height:34px;}
+.bc-link{cursor:pointer;color:var(--gold);}
+.bc-link:hover{text-decoration:underline;}
+.bc-sep{color:var(--rule);}
+
+.view{display:none;}.view.active{display:block;}
+
+.toolbar{padding:12px 28px;display:flex;align-items:center;gap:9px;flex-wrap:wrap;border-bottom:1px solid var(--rule);background:var(--white);}
+.toolbar-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;color:var(--ink);flex:1;min-width:140px;}
+input[type="text"],input[type="search"],input[type="number"],input[type="url"]{border:1px solid var(--rule);background:var(--paper);padding:6px 11px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);border-radius:var(--radius);outline:none;transition:border-color .2s;}
+input:focus{border-color:var(--gold);}
+select{border:1px solid var(--rule);background:var(--paper);padding:6px 10px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);border-radius:var(--radius);outline:none;cursor:pointer;}
+select:focus{border-color:var(--gold);}
+textarea{border:1px solid var(--rule);background:var(--paper);padding:8px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);border-radius:var(--radius);outline:none;resize:vertical;}
+textarea:focus{border-color:var(--gold);}
+
+.btn{padding:6px 14px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;border-radius:var(--radius);border:1px solid transparent;transition:all .15s;}
+.btn-gold{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+.btn-gold:hover{background:#b8973e;}
+.btn-outline{background:transparent;color:var(--slate-mid);border-color:var(--rule);}
+.btn-outline:hover{border-color:var(--slate-mid);color:var(--ink);}
+.btn-danger{background:transparent;color:var(--rust);border-color:#d9a9a0;}
+.btn-danger:hover{background:#fdf0ee;}
+.btn-sm{padding:3px 9px;font-size:9px;}
+.btn-zoho{background:var(--slate);color:var(--white);border-color:var(--slate);}
+.btn-zoho:hover{background:#1e2b3a;}
+.btn-import{background:rgba(26,73,113,.08);color:var(--blue);border-color:rgba(26,73,113,.3);}
+.btn-import:hover{background:rgba(26,73,113,.15);}
+.btn-green{background:rgba(39,103,73,.1);color:var(--green);border-color:rgba(39,103,73,.3);}
+.btn-green:hover{background:rgba(39,103,73,.18);}
+
+/* REAL DATA BADGE */
+.real-data-badge{display:inline-flex;align-items:center;gap:4px;font-family:'IBM Plex Mono',monospace;font-size:8px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;background:linear-gradient(135deg,rgba(39,103,73,.12),rgba(39,103,73,.06));color:var(--green);border:1px solid rgba(39,103,73,.25);padding:2px 7px;border-radius:10px;}
+.real-data-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse-dot 2s infinite;}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.6;transform:scale(.85);}}
+
+/* PROVIDER GRID */
+#provider-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:20px 28px;}
+.provider-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--radius);padding:18px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden;}
+.provider-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--gold);transform:scaleX(0);transition:transform .2s;transform-origin:left;}
+.provider-card:hover{border-color:var(--gold);box-shadow:var(--shadow);transform:translateY(-2px);}
+.provider-card:hover::before{transform:scaleX(1);}
+.provider-card.has-real-data{border-left:3px solid var(--green);}
+.pc-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:6px;}
+.pc-ticker{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;letter-spacing:.12em;color:var(--gold);background:rgba(201,168,76,.1);padding:2px 7px;border-radius:2px;flex-shrink:0;}
+.pc-type{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--slate-light);}
+.pc-name{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:2px;line-height:1.3;}
+.pc-meta{font-size:10px;color:var(--slate-light);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;}
+.pc-about{font-size:11px;color:var(--slate-mid);line-height:1.5;margin-bottom:7px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.pc-capital{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate-light);margin-bottom:7px;}
+.pc-capital strong{color:var(--ink);}
+.pc-footer{display:flex;justify-content:space-between;align-items:center;padding-top:9px;border-top:1px solid var(--rule);}
+
+/* DETAIL */
+.detail-layout{display:grid;grid-template-columns:355px 1fr;gap:0;min-height:calc(100vh - 94px);}
+.detail-sidebar{border-right:1px solid var(--rule);background:var(--white);padding:20px;overflow-y:auto;max-height:calc(100vh - 94px);position:sticky;top:94px;}
+.detail-main{padding:20px 26px;overflow-y:auto;}
+.provider-name-lg{font-family:'Playfair Display',serif;font-size:19px;font-weight:700;color:var(--ink);margin-bottom:2px;line-height:1.2;}
+.provider-ticker-lg{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--gold);letter-spacing:.12em;margin-bottom:10px;}
+.detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:13px;}
+.dmeta{padding:7px 9px;background:var(--paper);border-radius:var(--radius);}
+.dmeta-lbl{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;margin-bottom:3px;}
+.dmeta-val{font-size:12px;font-weight:500;color:var(--ink);line-height:1.4;}
+.dmeta-val a{color:var(--gold);text-decoration:none;}
+.dmeta-val a:hover{text-decoration:underline;}
+.section-title{font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--ink);margin-bottom:9px;padding-bottom:6px;border-bottom:1px solid var(--rule);display:flex;align-items:center;justify-content:space-between;}
+.section-title span{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate-light);font-weight:400;}
+
+.notes-area{margin-bottom:11px;}
+.note-item{background:var(--paper);border-left:3px solid var(--gold);padding:8px 11px;margin-bottom:6px;border-radius:0 2px 2px 0;position:relative;}
+.note-item.contact-note{border-left-color:var(--rust);}
+.note-date{font-family:'IBM Plex Mono',monospace;font-size:8px;color:var(--slate-light);margin-bottom:3px;}
+.note-text{font-size:12px;line-height:1.5;color:var(--ink);padding-right:20px;}
+.note-del{position:absolute;top:6px;right:7px;background:none;border:none;cursor:pointer;color:var(--slate-light);font-size:14px;line-height:1;transition:color .15s;}
+.note-del:hover{color:var(--rust);}
+.note-form{display:flex;flex-direction:column;gap:6px;}
+.note-input{width:100%;min-height:60px;}
+
+#contact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(265px,1fr));gap:11px;}
+.contact-card{background:var(--white);border:1px solid var(--rule);border-radius:var(--radius);padding:13px;cursor:pointer;transition:all .2s;}
+.contact-card:hover{border-color:var(--rust);box-shadow:var(--shadow);transform:translateY(-1px);}
+.contact-card.real-contact{border-top:2px solid var(--green);}
+.cc-top{display:flex;align-items:flex-start;gap:9px;margin-bottom:8px;}
+.cc-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--slate),var(--slate-mid));color:var(--white);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;flex-shrink:0;overflow:hidden;}
+.cc-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.cc-name{font-weight:600;font-size:12px;color:var(--ink);margin-bottom:1px;}
+.cc-title{font-size:10px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;}
+.cc-division{font-size:9px;color:var(--slate-mid);font-family:'IBM Plex Mono',monospace;margin-top:1px;}
+.cc-tags{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:7px;}
+.cc-footer{display:flex;justify-content:space-between;align-items:center;padding-top:7px;border-top:1px solid var(--rule);}
+.cc-email{font-size:9px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:165px;}
+
+.contact-header-row{display:flex;align-items:center;gap:12px;margin-bottom:13px;}
+.contact-avatar-lg{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,var(--slate),var(--slate-mid));color:var(--white);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;flex-shrink:0;overflow:hidden;border:2px solid var(--rule);}
+.contact-avatar-lg img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.contact-name-lg{font-family:'Playfair Display',serif;font-size:18px;font-weight:600;color:var(--ink);margin-bottom:1px;}
+.contact-org{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);letter-spacing:.08em;}
+
+.tag{display:inline-block;padding:2px 6px;font-family:'IBM Plex Mono',monospace;font-size:8px;letter-spacing:.08em;border-radius:2px;font-weight:500;text-transform:uppercase;white-space:nowrap;}
+.tag-type{background:rgba(44,62,80,.08);color:var(--slate);}
+.tag-s-inactive{background:rgba(113,128,150,.12);color:var(--slate-mid);}
+.tag-s-active{background:var(--green-bg);color:var(--green);}
+.tag-s-imported{background:var(--blue-bg);color:var(--blue);}
+.tag-a-none{background:rgba(212,207,196,.4);color:var(--slate-light);}
+.tag-a-started{background:rgba(201,168,76,.15);color:#8a6b1a;}
+.tag-a-emailed{background:var(--blue-bg);color:var(--blue);}
+.tag-a-emailresponse{background:var(--green-bg);color:var(--green);}
+.tag-a-linkedinconnected{background:rgba(10,102,194,.1);color:#0a66c2;}
+.tag-a-meetingcreated{background:rgba(139,58,42,.1);color:var(--rust);}
+.tag-p-high{background:rgba(139,58,42,.1);color:var(--rust);}
+.tag-p-medium{background:rgba(201,168,76,.15);color:#8a6b1a;}
+.tag-p-low{background:rgba(113,128,150,.1);color:var(--slate-mid);}
+
+.pagination{padding:16px 28px;display:flex;align-items:center;justify-content:center;gap:4px;border-top:1px solid var(--rule);}
+.page-btn{width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:11px;cursor:pointer;border:1px solid var(--rule);background:var(--white);color:var(--slate-mid);border-radius:var(--radius);transition:all .15s;}
+.page-btn:hover{border-color:var(--gold);color:var(--gold);}
+.page-btn.active{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+.page-btn.disabled{opacity:.3;cursor:default;pointer-events:none;}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,.75);z-index:200;display:none;align-items:flex-start;justify-content:center;padding:28px 20px;overflow-y:auto;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--white);border-radius:var(--radius);border:1px solid var(--rule);padding:22px;max-width:560px;width:100%;position:relative;margin:auto;}
+.modal-lg{max-width:740px;}
+.modal-title{font-family:'Playfair Display',serif;font-size:17px;font-weight:600;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--rule);}
+.modal-subtitle{font-size:11px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;margin-top:-8px;margin-bottom:14px;}
+.modal-close{position:absolute;top:13px;right:13px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--slate-light);line-height:1;}
+.modal-close:hover{color:var(--ink);}
+.form-row{margin-bottom:11px;}
+.form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:11px;}
+.form-row-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:11px;}
+.form-label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;margin-bottom:4px;display:block;}
+.form-input{width:100%;border:1px solid var(--rule);background:var(--paper);padding:7px 11px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);border-radius:var(--radius);outline:none;transition:border-color .2s;}
+.form-input:focus{border-color:var(--gold);}
+.form-textarea{width:100%;min-height:68px;border:1px solid var(--rule);background:var(--paper);padding:7px 11px;font-family:'IBM Plex Sans',sans-serif;font-size:13px;color:var(--ink);border-radius:var(--radius);outline:none;resize:vertical;}
+.form-textarea:focus{border-color:var(--gold);}
+.modal-footer{display:flex;justify-content:flex-end;gap:7px;margin-top:15px;padding-top:13px;border-top:1px solid var(--rule);}
+.score-picker{display:flex;gap:4px;padding:4px 0;}
+.score-picker span{font-size:22px;cursor:pointer;color:var(--rule);transition:color .1s;}
+.score-picker span.lit{color:var(--gold);}
+
+/* SUGGESTION CHIPS */
+.suggest-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:500;letter-spacing:.06em;border-radius:10px;cursor:pointer;background:rgba(201,168,76,.1);color:#8a6b1a;border:1px solid rgba(201,168,76,.3);transition:all .15s;white-space:nowrap;}
+.suggest-chip:hover{background:rgba(201,168,76,.25);border-color:var(--gold);}
+.suggest-chip.applied{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+.suggest-chip-label{font-size:8px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin-right:2px;}
+
+
+.csv-drop{border:2px dashed var(--rule);border-radius:4px;padding:26px;text-align:center;background:var(--paper);transition:all .2s;cursor:pointer;}
+.csv-drop:hover,.csv-drop.dragover{border-color:var(--gold);background:rgba(201,168,76,.05);}
+.csv-drop-icon{font-size:30px;margin-bottom:7px;opacity:.4;}
+.csv-drop p{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate-light);}
+.csv-drop strong{color:var(--gold);}
+.mapping-table{width:100%;border-collapse:collapse;}
+.mapping-table th{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--slate-light);padding:6px 10px;border-bottom:2px solid var(--rule);text-align:left;background:var(--paper);position:sticky;top:0;}
+.mapping-table td{padding:5px 8px;border-bottom:1px solid var(--rule);font-size:12px;vertical-align:middle;}
+.mapping-table td:first-child{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--slate-mid);white-space:nowrap;}
+.mapping-table td:last-child{font-size:11px;color:var(--slate-mid);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.mapping-table select{padding:4px 7px;font-size:11px;width:100%;}
+.import-preview-box{background:var(--paper);border:1px solid var(--rule);border-radius:var(--radius);padding:10px 12px;margin-top:8px;font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--slate-mid);max-height:80px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;}
+.import-warning{background:rgba(139,58,42,.07);border:1px solid rgba(139,58,42,.2);border-radius:var(--radius);padding:10px 12px;margin:8px 0;font-size:12px;color:var(--rust);}
+.import-success-bar{background:var(--green-bg);border:1px solid rgba(39,103,73,.25);border-radius:var(--radius);padding:10px 12px;margin:8px 0;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--green);}
+.import-mode-toggle{display:flex;gap:0;border:1px solid var(--rule);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.import-mode-btn{flex:1;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;background:transparent;border:none;color:var(--slate-mid);transition:all .15s;border-right:1px solid var(--rule);}
+.import-mode-btn:last-child{border-right:none;}
+.import-mode-btn.active{background:var(--gold);color:var(--ink);font-weight:600;}
+
+/* EXPORT PANEL */
+.export-panel{background:var(--white);border:1px solid var(--rule);border-radius:var(--radius);}
+.export-option{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--rule);}
+.export-option:last-child{border-bottom:none;}
+.export-option-info{flex:1;}
+.export-option-title{font-weight:600;font-size:13px;margin-bottom:2px;}
+.export-option-desc{font-size:11px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;}
+
+.zoho-panel{background:linear-gradient(135deg,var(--slate) 0%,#1e2b3a 100%);border-radius:var(--radius);padding:14px;margin-top:12px;color:var(--white);}
+.zoho-panel-title{font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:7px;}
+.zoho-status{font-family:'IBM Plex Mono',monospace;font-size:11px;color:rgba(255,255,255,.5);margin-top:6px;min-height:15px;}
+.zoho-status.success{color:#68d391;}
+.zoho-status.error{color:#fc8181;}
+
+.empty-state{text-align:center;padding:45px 24px;color:var(--slate-light);grid-column:1/-1;}
+.empty-state-icon{font-size:32px;margin-bottom:9px;opacity:.35;}
+.empty-state p{font-family:'IBM Plex Mono',monospace;font-size:11px;}
+.loading-ring{display:inline-block;width:16px;height:16px;border:2px solid var(--rule);border-top-color:var(--gold);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:5px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+::-webkit-scrollbar{width:4px;}::-webkit-scrollbar-track{background:var(--paper);}::-webkit-scrollbar-thumb{background:var(--rule);border-radius:3px;}
+
+@media(max-width:860px){
+  .detail-layout{grid-template-columns:1fr;}
+  .detail-sidebar{position:static;max-height:none;}
+  header{padding:0 14px;}.header-stats{display:none;}
+  #provider-grid,.detail-main,.detail-sidebar{padding:13px;}
+  .toolbar{padding:10px 13px;}.pagination{padding:13px;}
+  .form-row-2,.form-row-3{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-name">ABF Capital</div>
+    <div class="brand-sub">Pooled Impact - Accelerating Human Flourighing</div>
+  </div>
+  <div class="header-right">
+    <div class="header-stats">
+      <div class="hstat"><div class="hstat-val" id="stat-providers">—</div><div class="hstat-lbl">Companies</div></div>
+      <div class="hstat"><div class="hstat-val" id="stat-contacts">—</div><div class="hstat-lbl">Contacts</div></div>
+      <div class="hstat"><div class="hstat-val" id="stat-notes">—</div><div class="hstat-lbl">Notes</div></div>
+    </div>
+    <button class="hdr-btn hdr-btn-import" onclick="openCompanyCSVImport()">⬆ Import Companies</button>
+    <button class="hdr-btn hdr-btn-ghost" onclick="openModal('modal-export')">⬇ Export</button>
+    <button class="hdr-btn" id="mesh-btn" onclick="toggleMeshPanel()" style="border:1px solid rgba(201,168,76,.35);color:#c9a84c;display:flex;align-items:center;gap:5px;">
+      <span id="mesh-dot" style="width:7px;height:7px;border-radius:50%;background:#4a5568;transition:all .3s;display:inline-block;"></span>
+      MESH
+    </button>
+  </div>
+</header>
+
+<div id="breadcrumb">
+  <span class="bc-link" onclick="showView('providers')">Companies</span>
+  <span id="bc-provider" style="display:none"><span class="bc-sep">›</span> <span class="bc-link" id="bc-provider-name" onclick="showView('provider-detail')"></span></span>
+  <span id="bc-contact" style="display:none"><span class="bc-sep">›</span> <span id="bc-contact-name" style="color:var(--slate-light)"></span></span>
+</div>
+
+<!-- VIEW: COMPANY LIST -->
+<div id="view-providers" class="view active">
+  <div class="toolbar">
+    <div class="toolbar-title">Asset-Backed Finance Companies</div>
+    <input type="search" id="provider-search" placeholder="Search companies…" style="width:185px" oninput="filterProviders()">
+    <select id="provider-type-filter" onchange="filterProviders()">
+      <option value="">All Categories</option>
+      <option>Alternative Asset Manager</option>
+      <option>BDC</option>
+      <option>Bank-Affiliated Manager</option>
+      <option>Insurance Asset Manager</option>
+    </select>
+    <select id="provider-score-filter" onchange="filterProviders()">
+      <option value="">Any Score</option>
+      <option value="5">★★★★★ 5</option>
+      <option value="4">★★★★ 4+</option>
+      <option value="3">★★★ 3+</option>
+    </select>
+    <select id="provider-data-filter" onchange="filterProviders()">
+      <option value="">All Data</option>
+      <option value="real">Live Data Only</option>
+      <option value="seed">Seed Data Only</option>
+    </select>
+    <select id="provider-sort" onchange="filterProviders()">
+      <option value="">Sort: Default</option>
+      <option value="aum-desc">AUM: High → Low</option>
+      <option value="aum-asc">AUM: Low → High</option>
+      <option value="score-desc">Score: High → Low</option>
+      <option value="name-asc">Name A → Z</option>
+    </select>
+    <button class="btn btn-gold" onclick="openAddProvider()">+ Add Company</button>
+  </div>
+  <div id="provider-grid"><div class="empty-state" style="grid-column:1/-1"><span class="loading-ring"></span> Loading companies…</div></div>
+  <div class="pagination" id="provider-pagination"></div>
+</div>
+
+<!-- VIEW: PROVIDER DETAIL -->
+<div id="view-provider-detail" class="view">
+  <div class="detail-layout">
+    <div class="detail-sidebar" id="provider-sidebar"></div>
+    <div class="detail-main" id="provider-main"></div>
+  </div>
+</div>
+
+<!-- VIEW: CONTACT DETAIL -->
+<div id="view-contact-detail" class="view">
+  <div class="detail-layout">
+    <div class="detail-sidebar" id="contact-sidebar"></div>
+    <div class="detail-main" id="contact-main"></div>
+  </div>
+</div>
+
+<!-- MODAL: ADD/EDIT COMPANY -->
+<div class="modal-overlay" id="modal-add-provider">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="modal-provider-title">Add Company</div>
+    <button class="modal-close" onclick="closeModal('modal-add-provider')">×</button>
+
+    <!-- Row 1: Name + Ticker -->
+    <div class="form-row-2">
+      <div><label class="form-label">Company Name *</label><input class="form-input" id="ap-name" type="text"></div>
+      <div><label class="form-label">Ticker / Code</label><input class="form-input" id="ap-ticker" type="text" maxlength="6"></div>
+    </div>
+
+    <!-- Row 2: Category → SubCategory (dependent) -->
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Category *</label>
+        <select class="form-input" id="ap-category" onchange="onCategoryChange()">
+          <option value="">Select category…</option>
+          <option>Alternative Asset Manager</option>
+          <option>BDC</option>
+          <option>Bank-Affiliated Manager</option>
+          <option>Insurance Asset Manager</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Sub-Category</label>
+        <select class="form-input" id="ap-subcategory" onchange="onSubCategoryChange()">
+          <option value="">Select sub-category…</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Row 3: Asset Class (suggestive multi-hint) + Security Type (auto-suggest) -->
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Asset Class
+          <span id="ap-asset-hint" style="margin-left:6px;font-size:9px;color:var(--gold);font-style:normal;font-family:'IBM Plex Sans',sans-serif"></span>
+        </label>
+        <select class="form-input" id="ap-assetclass">
+          <option value="">Select asset class…</option>
+          <option>Corporate - Middle Market</option>
+          <option>Corporate - Senior Secured</option>
+          <option>Unitranche</option>
+          <option>Investment Grade ABF</option>
+          <option>Asset-Backed (ABF)</option>
+          <option>Consumer Loans</option>
+          <option>Equipment Leasing</option>
+          <option>Aviation</option>
+          <option>Music Royalties</option>
+          <option>Infrastructure</option>
+          <option>IG Corporate Debt</option>
+          <option>Commercial Real Estate</option>
+          <option>Residential Real Estate</option>
+          <option>Residential Mortgages</option>
+          <option>Venture Debt</option>
+          <option>Niche ABF</option>
+          <option>Real Estate</option>
+          <option>SME</option>
+          <option>Consumer Portfolio</option>
+          <option>Lower Middle Market</option>
+          <option>Upper Middle Market</option>
+          <option>Large Cap</option>
+          <option>Venture / Early Stage</option>
+          <option>Mezzanine / Opportunistic</option>
+        </select>
+        <!-- Suggestion chips -->
+        <div id="ap-asset-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;min-height:20px"></div>
+      </div>
+      <div>
+        <label class="form-label">Security Type
+          <span id="ap-security-hint" style="margin-left:6px;font-size:9px;color:var(--slate-light);font-style:italic;font-family:'IBM Plex Sans',sans-serif"></span>
+        </label>
+        <input class="form-input" id="ap-securitytype" type="text" placeholder="e.g. Senior Secured / Unitranche">
+      </div>
+    </div>
+
+    <!-- Row 4: Market Segment suggestions -->
+    <div class="form-row" id="ap-market-row" style="display:none">
+      <label class="form-label">Market Segment
+        <span id="ap-market-hint" style="margin-left:6px;font-size:9px;color:var(--gold);font-family:'IBM Plex Sans',sans-serif"></span>
+      </label>
+      <input class="form-input" id="ap-market" type="text" placeholder="e.g. Core Middle Market">
+      <div id="ap-market-chips" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px;min-height:20px"></div>
+    </div>
+
+    <!-- Row 5: AUM fields -->
+    <div class="form-row-2">
+      <div><label class="form-label">AUM Display <span style="color:var(--slate-light);font-weight:400">(shown in UI)</span></label><input class="form-input" id="ap-aum" type="text" placeholder="e.g. $29.5B"></div>
+      <div><label class="form-label">AUM Total <span style="color:var(--slate-light);font-weight:400">(numeric, for sorting)</span></label><input class="form-input" id="ap-aum-total" type="number" min="0" placeholder="e.g. 29500000000"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">AUM Date <span style="color:var(--slate-light);font-weight:400">(report date)</span></label><input class="form-input" id="ap-aum-date" type="text" placeholder="e.g. 2025-12-31"></div>
+      <div><label class="form-label">Public Ticker</label><input class="form-input" id="ap-pub-ticker" type="text" placeholder="e.g. ARCC" maxlength="8"></div>
+    </div>
+    <!-- Row 6: Deal Range -->
+    <div class="form-row-2">
+      <div><label class="form-label">Deal Size Low ($M)</label><input class="form-input" id="ap-cap-low" type="number" min="0"></div>
+      <div><label class="form-label">Deal Size High ($M)</label><input class="form-input" id="ap-cap-high" type="number" min="0"></div>
+    </div>
+
+    <!-- Row 6: Location + Website -->
+    <div class="form-row-2">
+      <div><label class="form-label">HQ Location</label><input class="form-input" id="ap-location" type="text"></div>
+      <div><label class="form-label">Website</label><input class="form-input" id="ap-website" type="text"></div>
+    </div>
+
+    <!-- Row 7: Focus -->
+    <div class="form-row"><label class="form-label">Focus Areas</label><input class="form-input" id="ap-focus" type="text" placeholder="e.g. Consumer ABS, CLOs, CMBS"></div>
+
+    <!-- Row 8: About -->
+    <div class="form-row"><label class="form-label">About Company</label><textarea class="form-textarea" id="ap-about" placeholder="Brief description of the firm…"></textarea></div>
+
+    <!-- Row 9: Score -->
+    <div class="form-row">
+      <label class="form-label">Score (1–5)</label>
+      <div class="score-picker" id="ap-score-picker">
+        <span onclick="setFormScore(1)">★</span><span onclick="setFormScore(2)">★</span>
+        <span onclick="setFormScore(3)">★</span><span onclick="setFormScore(4)">★</span>
+        <span onclick="setFormScore(5)">★</span>
+      </div>
+      <input type="hidden" id="ap-score" value="0">
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-add-provider')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveProvider()">Save Company</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: ADD/EDIT CONTACT -->
+<div class="modal-overlay" id="modal-add-contact">
+  <div class="modal">
+    <div class="modal-title" id="modal-contact-title">Add Contact</div>
+    <button class="modal-close" onclick="closeModal('modal-add-contact')">×</button>
+    <div class="form-row-2">
+      <div><label class="form-label">First Name *</label><input class="form-input" id="ac-first" type="text"></div>
+      <div><label class="form-label">Last Name *</label><input class="form-input" id="ac-last" type="text"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Title / Role</label><input class="form-input" id="ac-title" type="text"></div>
+      <div><label class="form-label">Division</label><input class="form-input" id="ac-division" type="text"></div>
+    </div>
+    <div class="form-row-2">
+      <div>
+        <label class="form-label">Email
+          <span id="ac-email-badge" style="margin-left:6px;font-size:9px;padding:1px 6px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-weight:600;background:rgba(139,58,42,.1);color:var(--rust);border:1px solid rgba(139,58,42,.2)">✗ Unverified</span>
+        </label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input class="form-input" id="ac-email" type="text" style="flex:1">
+          <button type="button" id="ac-email-toggle" onclick="toggleEmailValid()" style="flex-shrink:0;padding:7px 10px;font-family:'IBM Plex Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:var(--radius);border:1px solid rgba(139,58,42,.3);background:transparent;color:var(--rust);white-space:nowrap;transition:all .15s">Mark Valid</button>
+        </div>
+        <input type="hidden" id="ac-emailvalid" value="false">
+      </div>
+      <div><label class="form-label">Phone</label><input class="form-input" id="ac-phone" type="text"></div>
+    </div>
+    <div class="form-row"><label class="form-label">LinkedIn URL</label><input class="form-input" id="ac-linkedin" type="text" placeholder="https://linkedin.com/in/…"></div>
+    <div class="form-row"><label class="form-label">Image URL</label><input class="form-input" id="ac-imageurl" type="text" placeholder="https://… (headshot photo)"></div>
+    <div class="form-row-3">
+      <div><label class="form-label">Status</label>
+        <select class="form-input" id="ac-status">
+          <option value="inactive">In Active</option><option value="active">Active</option><option value="imported">Imported</option>
+        </select>
+      </div>
+      <div><label class="form-label">Activity</label>
+        <select class="form-input" id="ac-activity">
+          <option value="none">None</option><option value="started">Started</option><option value="emailed">Emailed</option>
+          <option value="emailresponse">Email Response</option><option value="linkedinconnected">LinkedIn Connected</option><option value="meetingcreated">Meeting Created</option>
+        </select>
+      </div>
+      <div><label class="form-label">Priority</label>
+        <select class="form-input" id="ac-priority">
+          <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row"><label class="form-label">About</label><textarea class="form-textarea" id="ac-about" placeholder="Background, focus, relationship context…"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="ac-delete-btn" style="display:none;margin-right:auto" onclick="deleteContactFromModal()">Delete Contact</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-add-contact')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveContact()">Save Contact</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: COMPANY CSV IMPORT -->
+<div class="modal-overlay" id="modal-company-csv">
+  <div class="modal modal-lg">
+    <div class="modal-title">Import Companies from CSV</div>
+    <div class="modal-subtitle">Map your CSV columns to company fields. Existing companies will not be deleted — new rows are added or updated by name match.</div>
+    <button class="modal-close" onclick="closeModal('modal-company-csv')">×</button>
+
+    <div id="co-step-1">
+      <div class="import-mode-toggle">
+        <button class="import-mode-btn active" id="co-mode-add" onclick="setCoMode('add')">Add New Only</button>
+        <button class="import-mode-btn" id="co-mode-upsert" onclick="setCoMode('upsert')">Update Existing by Name</button>
+        <button class="import-mode-btn" id="co-mode-replace" onclick="setCoMode('replace')">Replace All Companies</button>
+      </div>
+      <div id="co-mode-warning" class="import-warning" style="display:none"></div>
+      <div class="csv-drop" id="co-drop-zone" onclick="document.getElementById('co-file-input').click()">
+        <div class="csv-drop-icon">🏢</div>
+        <p><strong>Click to choose</strong> or drag & drop your Companies CSV</p>
+        <p style="margin-top:5px;font-size:10px">First row must be column headers · UTF-8 encoding</p>
+      </div>
+      <input type="file" id="co-file-input" accept=".csv,text/csv" style="display:none" onchange="handleCompanyCSV(this)">
+    </div>
+
+    <div id="co-step-2" style="display:none">
+      <div id="co-preview-info" class="import-success-bar"></div>
+      <p style="font-size:12px;color:var(--slate-mid);margin-bottom:10px;line-height:1.5">Map your CSV columns to the CRM fields. Unmapped fields are skipped.</p>
+      <div style="max-height:360px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--radius);">
+        <table class="mapping-table">
+          <thead><tr><th>CRM Field</th><th>Your CSV Column</th><th>Row 1 Preview</th></tr></thead>
+          <tbody id="co-mapping-tbody"></tbody>
+        </table>
+      </div>
+      <div class="import-preview-box" id="co-raw-preview"></div>
+    </div>
+
+    <div id="co-step-result" style="display:none"></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-company-csv')">Cancel</button>
+      <button class="btn btn-import" id="co-back-btn" style="display:none" onclick="coGoStep(1)">← Back</button>
+      <button class="btn btn-gold" id="co-next-btn" style="display:none" onclick="coGoStep(3)">Import Companies</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: CONTACT CSV IMPORT -->
+<div class="modal-overlay" id="modal-csv-import">
+  <div class="modal modal-lg">
+    <div class="modal-title" id="csv-modal-title">Import Contacts from CSV</div>
+    <button class="modal-close" onclick="closeModal('modal-csv-import')">×</button>
+    <div id="csv-step-1">
+      <div class="import-warning">⚠ This will <strong>overwrite all existing contacts</strong> for <span id="csv-company-name" style="font-weight:600"></span>. Notes will be preserved.</div>
+      <div class="csv-drop" id="csv-drop-zone" onclick="document.getElementById('csv-file-input').click()">
+        <div class="csv-drop-icon">📄</div>
+        <p><strong>Click to choose</strong> or drag & drop a CSV file</p>
+        <p style="margin-top:5px;font-size:10px">First row must be column headers</p>
+      </div>
+      <input type="file" id="csv-file-input" accept=".csv,text/csv" style="display:none" onchange="handleContactCSVFile(this)">
+    </div>
+    <div id="csv-step-2" style="display:none">
+      <div id="csv-preview-info" class="import-success-bar"></div>
+      <p style="font-size:12px;color:var(--slate-mid);margin-bottom:10px;line-height:1.5">Map your CSV columns to the CRM fields below.</p>
+      <div style="max-height:340px;overflow-y:auto;border:1px solid var(--rule);border-radius:var(--radius);">
+        <table class="mapping-table">
+          <thead><tr><th>CRM Field</th><th>Your CSV Column</th><th>Row 1 Preview</th></tr></thead>
+          <tbody id="mapping-tbody"></tbody>
+        </table>
+      </div>
+      <div class="import-preview-box" id="csv-raw-preview"></div>
+    </div>
+    <div id="csv-step-result" style="display:none"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-csv-import')">Cancel</button>
+      <button class="btn btn-import" id="csv-back-btn" style="display:none" onclick="csvGoStep(1)">← Back</button>
+      <button class="btn btn-gold" id="csv-next-btn" style="display:none" onclick="csvGoStep(3)">Import Contacts</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: EXPORT -->
+<div class="modal-overlay" id="modal-export">
+  <div class="modal">
+    <div class="modal-title">Export Data</div>
+    <button class="modal-close" onclick="closeModal('modal-export')">×</button>
+    <p style="font-size:12px;color:var(--slate-mid);margin-bottom:14px;line-height:1.6">Download your CRM data as CSV files to your local system.</p>
+    <div class="export-panel">
+      <div class="export-option">
+        <div class="export-option-info"><div class="export-option-title">All Companies</div><div class="export-option-desc">All company records with every field</div></div>
+        <button class="btn btn-outline" onclick="exportCSV('providers')">Download CSV</button>
+      </div>
+      <div class="export-option">
+        <div class="export-option-info"><div class="export-option-title">All Contacts</div><div class="export-option-desc">All contacts across every company</div></div>
+        <button class="btn btn-outline" onclick="exportCSV('contacts')">Download CSV</button>
+      </div>
+      <div class="export-option">
+        <div class="export-option-info"><div class="export-option-title">Company Notes</div><div class="export-option-desc">All company-level notes with timestamps</div></div>
+        <button class="btn btn-outline" onclick="exportCSV('provider_notes')">Download CSV</button>
+      </div>
+      <div class="export-option">
+        <div class="export-option-info"><div class="export-option-title">Contact Notes</div><div class="export-option-desc">All contact-level notes with timestamps</div></div>
+        <button class="btn btn-outline" onclick="exportCSV('contact_notes')">Download CSV</button>
+      </div>
+      <div class="export-option" style="background:rgba(201,168,76,.04);">
+        <div class="export-option-info"><div class="export-option-title" style="color:var(--gold)">Full Export (All 4 Files)</div><div class="export-option-desc">Downloads all CSVs at once</div></div>
+        <button class="btn btn-gold" onclick="exportAll()">Download All</button>
+      </div>
+    </div>
+    <p style="font-size:10px;color:var(--slate-light);font-family:'IBM Plex Mono',monospace;margin-top:10px;">Files saved to your browser Downloads folder.</p>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CATEGORY / SUBCATEGORY / ASSET CLASS INTELLIGENCE
+// ═══════════════════════════════════════════════════════
+const CATEGORIES = {
+  "Alternative Asset Manager": ["Private Credit","Private Equity","Specialty Finance","Hedge Fund"],
+  "BDC": ["Publicly Traded","Non-Traded","Private Placement"],
+  "Bank-Affiliated Manager": ["Investment Bank Sub","Commercial Bank","Boutique Bank"],
+  "Insurance Asset Manager": ["General Account","Third-Party Mandate"]
+};
+
+// SubCategory → likely asset classes
+const subToAssetMap = {
+  "Private Credit":       ["Corporate - Middle Market","Corporate - Senior Secured","Unitranche","Asset-Backed (ABF)"],
+  "Private Equity":       ["Lower Middle Market","Upper Middle Market","Large Cap"],
+  "Specialty Finance":    ["Music Royalties","Aviation","Equipment Leasing","Consumer Loans","SME","Consumer Portfolio"],
+  "Hedge Fund":           ["Mezzanine / Opportunistic","IG Corporate Debt","Investment Grade ABF"],
+  "Publicly Traded":      ["Corporate - Middle Market","Unitranche","Lower Middle Market"],
+  "Non-Traded":           ["Corporate - Middle Market","Unitranche"],
+  "Private Placement":    ["Venture Debt","Lower Middle Market","Niche ABF"],
+  "Investment Bank Sub":  ["Upper Middle Market","Large Cap","IG Corporate Debt"],
+  "Commercial Bank":      ["Upper Middle Market","Large Cap","Commercial Real Estate"],
+  "Boutique Bank":        ["Corporate - Senior Secured","Lower Middle Market"],
+  "General Account":      ["Infrastructure","IG Corporate Debt","Investment Grade ABF","Commercial Real Estate"],
+  "Third-Party Mandate":  ["Investment Grade ABF","Residential Mortgages","Asset-Backed (ABF)"],
+};
+
+// Category → market segment suggestions
+const marketSuggestions = {
+  "BDC":                    ["Core Middle Market","Lower Middle Market"],
+  "Bank-Affiliated Manager":["Upper Middle Market","Large Cap"],
+  "Alternative Asset Manager":["Lower Middle Market","Core Middle Market","Venture / Early Stage"],
+  "Insurance Asset Manager":["Investment Grade","Infrastructure","Real Estate"],
+};
+
+// Category → default security type (auto-populated, editable)
+const securityDefaults = {
+  "Alternative Asset Manager": "Senior Secured / Unitranche",
+  "BDC":                       "Senior Secured / Unitranche",
+  "Bank-Affiliated Manager":   "Senior Secured",
+  "Insurance Asset Manager":   "Investment Grade / First Lien",
+  "Hedge Fund":                "Mezzanine / Opportunistic",
+};
+
+// SubCategory → security type override (more specific)
+const subSecurityDefaults = {
+  "Hedge Fund":          "Mezzanine / Opportunistic",
+  "General Account":     "Investment Grade / First Lien",
+  "Third-Party Mandate": "Investment Grade / First Lien",
+  "Specialty Finance":   "Asset-Backed / Structured",
+  "Private Equity":      "Equity / Junior Capital",
+};
+
+// Flat list of all category keys for the COMPANY_TYPES used elsewhere
+const COMPANY_TYPES = Object.keys(CATEGORIES);
+
+// ─── Smart dropdown logic ───────────────────────────────
+function onCategoryChange(){
+  const cat = document.getElementById('ap-category').value;
+  const subSel = document.getElementById('ap-subcategory');
+  // Repopulate subcategory
+  subSel.innerHTML = '<option value="">Select sub-category…</option>';
+  (CATEGORIES[cat]||[]).forEach(s=>{
+    const o=document.createElement('option');o.value=s;o.textContent=s;subSel.appendChild(o);
+  });
+  // Auto-suggest security type
+  const secEl = document.getElementById('ap-securitytype');
+  if(securityDefaults[cat]) secEl.value = securityDefaults[cat];
+  document.getElementById('ap-security-hint').textContent = securityDefaults[cat] ? '(auto-suggested)' : '';
+  // Market suggestions
+  const mChips = document.getElementById('ap-market-chips');
+  const mRow = document.getElementById('ap-market-row');
+  const mSugs = marketSuggestions[cat]||[];
+  if(mSugs.length){
+    mRow.style.display='';
+    document.getElementById('ap-market-hint').textContent = 'Suggested:';
+    mChips.innerHTML = mSugs.map(s=>`<span class="suggest-chip" onclick="applyChip('ap-market','${s}',this)">${s}</span>`).join('');
+  } else {
+    mRow.style.display='none';
+  }
+  // Clear asset chips since subcategory not chosen yet
+  document.getElementById('ap-asset-chips').innerHTML='';
+  document.getElementById('ap-asset-hint').textContent='';
+}
+
+function onSubCategoryChange(){
+  const sub = document.getElementById('ap-subcategory').value;
+  const assetSel = document.getElementById('ap-assetclass');
+  const chips = document.getElementById('ap-asset-chips');
+  const hint = document.getElementById('ap-asset-hint');
+  const sugs = subToAssetMap[sub]||[];
+  if(sugs.length){
+    hint.textContent = '— Suggested:';
+    chips.innerHTML = sugs.map(s=>`<span class="suggest-chip" onclick="applyChip('ap-assetclass','${s}',this)">${s}</span>`).join('');
+    // Auto-select first suggestion in dropdown
+    const match = Array.from(assetSel.options).find(o=>o.value===sugs[0]);
+    if(match) assetSel.value = sugs[0];
+  } else {
+    hint.textContent='';
+    chips.innerHTML='';
+  }
+  // Sub-level security override
+  if(subSecurityDefaults[sub]){
+    document.getElementById('ap-securitytype').value = subSecurityDefaults[sub];
+    document.getElementById('ap-security-hint').textContent = '(auto-suggested)';
+  }
+}
+
+function applyChip(fieldId, value, chipEl){
+  const el = document.getElementById(fieldId);
+  if(!el) return;
+  // For select: set option; for input: set text
+  if(el.tagName==='SELECT'){
+    const opt = Array.from(el.options).find(o=>o.value===value);
+    if(opt) el.value=value;
+  } else {
+    el.value=value;
+  }
+  // Toggle applied style on chips in same container
+  chipEl.parentElement.querySelectorAll('.suggest-chip').forEach(c=>c.classList.remove('applied'));
+  chipEl.classList.add('applied');
+}
+
+
+
+// ═══════════════════════════════════════════════════════
+//  INDEXED DB
+// ═══════════════════════════════════════════════════════
+const DB_NAME='abf_crm_v5',DB_VER=1;
+let db;
+function initDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('providers')){
+        const ps=d.createObjectStore('providers',{keyPath:'id',autoIncrement:true});
+        ps.createIndex('name','name',{unique:false});
+        ps.createIndex('type','type');
+        ps.createIndex('score','score');
+      }
+      if(!d.objectStoreNames.contains('contacts')){
+        const cs=d.createObjectStore('contacts',{keyPath:'id',autoIncrement:true});
+        cs.createIndex('providerId','providerId');
+        cs.createIndex('status','status');
+        cs.createIndex('activity','activity');
+        cs.createIndex('priority','priority');
+      }
+      if(!d.objectStoreNames.contains('provider_notes'))
+        d.createObjectStore('provider_notes',{keyPath:'id',autoIncrement:true}).createIndex('providerId','providerId');
+      if(!d.objectStoreNames.contains('contact_notes'))
+        d.createObjectStore('contact_notes',{keyPath:'id',autoIncrement:true}).createIndex('contactId','contactId');
+    };
+    req.onsuccess=e=>{db=e.target.result;res(db);};
+    req.onerror=e=>rej(e.target.error);
+  });
+}
+function tx(store,mode='readonly'){return db.transaction(store,mode).objectStore(store);}
+function dbAll(store,idx,key){
+  return new Promise((res,rej)=>{
+    const s=tx(store);
+    const r=idx?s.index(idx).getAll(key):s.getAll();
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbGet(store,id){
+  return new Promise((res,rej)=>{
+    const r=tx(store).get(id);
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbAdd(store,obj){
+  return new Promise((res,rej)=>{
+    const r=tx(store,'readwrite').add(obj);
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbPut(store,obj){
+  return new Promise((res,rej)=>{
+    const r=tx(store,'readwrite').put(obj);
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbDel(store,id){
+  return new Promise((res,rej)=>{
+    const r=tx(store,'readwrite').delete(id);
+    r.onsuccess=()=>res();
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbCount(store){
+  return new Promise(res=>{
+    const r=tx(store).count();
+    r.onsuccess=e=>res(e.target.result);
+    r.onerror=()=>res(0);
+  });
+}
+function dbClearIndex(store,idx,key){
+  return new Promise((res,rej)=>{
+    const s=tx(store,'readwrite');
+    const r=s.index(idx).openCursor(IDBKeyRange.only(key));
+    r.onsuccess=e=>{const cur=e.target.result;if(cur){cur.delete();cur.continue();}else res();};
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+function dbClearAll(store){
+  return new Promise((res,rej)=>{
+    const r=tx(store,'readwrite').clear();
+    r.onsuccess=()=>res();
+    r.onerror=e=>rej(e.target.error);
+  });
+}
+// Find provider by exact name (case-insensitive)
+function dbFindProviderByName(name){
+  return new Promise((res)=>{
+    const nl=name.toLowerCase().trim();
+    const r=tx('providers').openCursor();
+    r.onsuccess=e=>{
+      const cur=e.target.result;
+      if(cur){
+        if((cur.value.name||'').toLowerCase().trim()===nl)res(cur.value);
+        else cur.continue();
+      }else res(null);
+    };
+    r.onerror=()=>res(null);
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  SEED DATA
+// ═══════════════════════════════════════════════════════
+const PNAMES=["Ares Capital Corporation","Blackstone Credit","Apollo Global Management","KKR Credit Advisors","Carlyle Secured Lending","Blue Owl Capital","Owl Rock Technology","Prospect Capital","FS Investment Corporation","Golub Capital BDC","TCP Capital Corp","Sixth Street Specialty","Benefit Street Partners","Nuveen Asset Management","Newstar Financial","Monroe Capital","Golub Capital Direct","Antares Capital","Madison Capital Funding","Audax Private Debt","Katonah Debt Advisors","Bain Capital Credit","Angelo Gordon","Benefit Street CLO","Fortress Investment Group","Waterfall Asset Management","Arbor Realty Trust","Ready Capital","AFC Gamma","Sachem Capital","Manhattan Bridge Capital","Broadmark Realty Capital","Western Technology Investment","Hercules Capital","TriplePoint Venture","Horizon Technology Finance","Saratoga Investment","WhiteHorse Finance","THL Credit","Palmer Square Capital","MVC Capital","PennantPark","Harvest Capital Credit","Capitala Finance Corp","Gladstone Investment","TCP Capital","Medley Capital","Stellus Capital","Owl Rock Capital","Blue Owl Credit","Owl Rock Income","Owl Rock Core Income","Oxford Lane Capital","Eagle Point Credit","XAI Octagon","East Asset Management","Sound Point Capital","Cerberus Capital","Oaktree Specialty Lending","Pimco Dynamic Credit","Blackstone Secured Lending","TCG BDC","New Mountain Finance","Gladstone Capital","Solar Capital","Monroe Capital BDC","Palmer Square CLO","Sound Point Meridian","Cerberus Loan Fund","WhiteHorse Credit","THL Credit Income","Watershed Asset Management","Shoreline Capital","Pacific Asset Funding","Redwood Trust","Ellington Financial","Two Harbors Investment","Granite Point Mortgage","Terra Property Trust","BrightSpire Capital","Ares Commercial REIT","Broadstone Net Lease","Innovative Industrial Properties","Ready Capital Corp","Driftwood Capital","Fifth Street Finance","Benefit Street Advisors","Harvest Small Cap Partners","Pacific Investment Management","Cerberus Business Finance","Owl Rock Capital II","Blue Owl BDC","KKR Real Estate Finance","Blackstone Mortgage Trust","Apollo Senior Floating Rate","Ares Dynamic Credit","Monroe Capital Income Plus","Golub Capital BDC 3","Carlyle Credit Partners","Benefit Street III"];
+const FOCUSES=["Senior Secured Loans","Consumer ABS","CLOs","CMBS","Residential MBS","Equipment Leasing","Trade Finance","Infrastructure Debt","Real Estate Debt","Structured Credit"];
+const LOCS=["New York, NY","Los Angeles, CA","Chicago, IL","Boston, MA","Houston, TX","Dallas, TX","San Francisco, CA","Atlanta, GA","Charlotte, NC","Miami, FL"];
+const ABOUTS=["A leading provider of direct lending solutions focused on middle-market companies, with a track record of disciplined underwriting across economic cycles.","Specializes in asset-backed structures across residential and commercial sectors, deploying capital through origination partnerships and secondary market purchases.","One of the largest CLO managers in the US, with deep expertise in leveraged loan markets and a diversified investor base across institutional accounts.","Focused on senior secured first-lien lending to sponsor-backed companies, emphasizing capital preservation and strong covenant structures.","A vertically integrated specialty finance platform with origination, servicing, and structuring capabilities across consumer and commercial asset classes.","Manages a diversified portfolio of structured credit including CLOs, ABS, and CMBS with a focus on investment-grade and near-investment-grade tranches.","Provides bespoke financing solutions across real estate and infrastructure credit, with particular expertise in complex transitional assets.","An insurance-linked securities specialist deploying capital into catastrophe bonds, sidecars, and collateralized reinsurance vehicles globally."];
+const FNAMES=["James","Sarah","Michael","Emily","Robert","Jennifer","David","Lisa","William","Karen","Richard","Nancy","Joseph","Betty","Thomas","Helen","Charles","Sandra","Christopher","Donna","Daniel","Carol","Matthew","Ruth","Anthony","Sharon","Mark","Michelle","Donald","Laura","Steven","Kimberly","Paul","Deborah","Andrew","Jessica","Joshua","Shirley","Kenneth","Cynthia"];
+const LNAMES=["Smith","Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Wilson","Martinez","Anderson","Taylor","Thomas","Hernandez","Moore","Martin","Jackson","Thompson","White","Lopez","Lee","Gonzalez","Harris","Clark","Lewis","Robinson","Walker","Perez","Hall","Young","Allen","Sanchez","Wright","King","Scott","Green","Baker","Adams","Nelson","Carter"];
+const TITLES_S=["Managing Director","Director","Vice President","Senior Vice President","Partner","Associate","Principal","Portfolio Manager","Head of Originations","Chief Investment Officer","Head of Capital Markets","Director of Business Development","Senior Analyst","Associate Director","Investment Manager","Relationship Manager","Senior Portfolio Manager","Executive Director"];
+const DIVS=["Originations","Credit","Capital Markets","Business Development","Portfolio Management","Investor Relations","Research & Analytics","Structured Finance","Real Estate","Corporate Finance"];
+const STATUSES_C=["inactive","active","imported"];
+const ACTIVITIES=["none","started","emailed","emailresponse","linkedinconnected","meetingcreated"];
+const PRIORITIES=["low","medium","high"];
+
+function rnd(a){return a[Math.floor(Math.random()*a.length)];}
+function rndInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+async function seedIfEmpty(){
+  if(await dbCount('providers')>0) return;
+  for(let i=0;i<100;i++){
+    const fc=[...FOCUSES];
+    const focuses=[];
+    for(let f=0;f<rndInt(2,4);f++){const idx=Math.floor(Math.random()*fc.length);focuses.push(fc.splice(idx,1)[0]);}
+    const low=rndInt(5,100);
+    const pid=await dbAdd('providers',{
+      name:PNAMES[i]||`Provider ${i+1}`,
+      ticker:(PNAMES[i]||'PROV').split(' ').map(w=>w[0]).join('').substring(0,4).toUpperCase(),
+      category:rnd(COMPANY_TYPES),
+      type:rnd(COMPANY_TYPES),
+      aum:`$${(Math.random()*90+1).toFixed(1)}B`,
+      aumDisplay:`$${(Math.random()*90+1).toFixed(1)}B`,
+      aumTotal:Math.round(rndInt(1,90)*1e9+Math.random()*1e9),
+      aumDate:'2024-12-31',
+      location:rnd(LOCS),
+      focus:focuses.join(', '),
+      website:`www.${(PNAMES[i]||'provider').toLowerCase().replace(/[^a-z]/g,'').substring(0,10)}.com`,
+      about:rnd(ABOUTS),
+      capitalSizeLow:low,
+      capitalSizeHigh:low+rndInt(50,900),
+      score:rndInt(1,5),
+      hasRealData:false,
+      createdAt:new Date().toISOString()
+    });
+    for(let j=0;j<30;j++){
+      const fn=rnd(FNAMES),ln=rnd(LNAMES);
+      const slug=(PNAMES[i]||'firm').toLowerCase().replace(/[^a-z]/g,'').substring(0,8);
+      await dbAdd('contacts',{
+        providerId:pid,firstName:fn,lastName:ln,title:rnd(TITLES_S),division:rnd(DIVS),
+        email:`${fn.toLowerCase()}.${ln.toLowerCase()}@${slug}.com`,
+        phone:`+1 (${rndInt(200,999)}) ${rndInt(200,999)}-${rndInt(1000,9999)}`,
+        linkedin:`https://linkedin.com/in/${fn.toLowerCase()}-${ln.toLowerCase()}-${rndInt(100,999)}`,
+        imageUrl:'',status:rnd(STATUSES_C),activity:rnd(ACTIVITIES),priority:rnd(PRIORITIES),
+        about:`${fn} is a seasoned professional with expertise in ${rnd(FOCUSES).toLowerCase()} and ${rnd(FOCUSES).toLowerCase()} strategies.`,
+        isReal:false,createdAt:new Date().toISOString()
+      });
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let allProviders=[],filteredProviders=[],currentPage=1;
+const PAGE_SIZE=20;
+let currentProvider=null,currentContact=null;
+
+// ═══════════════════════════════════════════════════════
+//  VIEWS
+// ═══════════════════════════════════════════════════════
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  const el=document.getElementById('view-'+name);
+  if(el) el.classList.add('active');
+  updateBreadcrumb(name);
+}
+function updateBreadcrumb(view){
+  document.getElementById('bc-provider').style.display='none';
+  document.getElementById('bc-contact').style.display='none';
+  if((view==='provider-detail'||view==='contact-detail')&&currentProvider){
+    document.getElementById('bc-provider').style.display='inline';
+    document.getElementById('bc-provider-name').textContent=currentProvider.name;
+  }
+  if(view==='contact-detail'&&currentContact){
+    document.getElementById('bc-contact').style.display='inline';
+    document.getElementById('bc-contact-name').textContent=`${currentContact.firstName} ${currentContact.lastName}`;
+  }
+}
+function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function initials(f,l){return((f||'?')[0]+(l||'?')[0]).toUpperCase();}
+// Format deal size: values ≥ 1000M display as $xB, otherwise $xM
+function formatDeal(m){
+  if(m==null||m===''||isNaN(m)) return'—';
+  const n=parseFloat(m);
+  if(n>=1000) return`$${(n/1000).toFixed(n%1000===0?0:1)}B`;
+  return`$${n}M`;
+}
+function actLabel(a){return{none:'None',started:'Started',emailed:'Emailed',emailresponse:'Email Response',linkedinconnected:'LinkedIn Connected',meetingcreated:'Meeting Created'}[a]||a;}
+function starsHtml(score,size=12){return[1,2,3,4,5].map(i=>`<span style="font-size:${size}px;color:${i<=score?'var(--gold)':'var(--rule)'}"">★</span>`).join('');}
+function avatarHtml(contact,size=36,fontSize=12){
+  if(contact.imageUrl){
+    const esc_init=initials(contact.firstName,contact.lastName);
+    return `<div class="cc-avatar" style="width:${size}px;height:${size}px"><img src="${escHtml(contact.imageUrl)}" alt="${esc_init}" onerror="this.style.display='none';this.parentElement.textContent='${esc_init}'"></div>`;
+  }
+  return `<div class="cc-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px">${initials(contact.firstName,contact.lastName)}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROVIDER LIST  — FIX: await renderProviderGrid properly
+// ═══════════════════════════════════════════════════════
+async function loadProviders(){
+  allProviders = await dbAll('providers');      // ← reads entire providers store from DB
+  filteredProviders = [...allProviders];
+  currentPage = 1;
+  await renderProviderGrid();                   // ← await so note-count fetches complete
+  await updateStats();
+}
+
+function filterProviders(){
+  const q=document.getElementById('provider-search').value.toLowerCase();
+  const t=document.getElementById('provider-type-filter').value;
+  const sc=parseInt(document.getElementById('provider-score-filter').value)||0;
+  const df=document.getElementById('provider-data-filter').value;
+  const sort=document.getElementById('provider-sort').value;
+  filteredProviders=allProviders.filter(p=>{
+    const mq=!q||p.name.toLowerCase().includes(q)||(p.ticker||'').toLowerCase().includes(q)||(p.focus||'').toLowerCase().includes(q)||(p.about||'').toLowerCase().includes(q)||(p.subCategory||'').toLowerCase().includes(q);
+    const mt=!t||p.type===t||p.category===t;
+    const ms=!sc||(p.score||0)>=sc;
+    const md=!df||(df==='real'&&p.hasRealData)||(df==='seed'&&!p.hasRealData);
+    return mq&&mt&&ms&&md;
+  });
+  // Apply sort
+  if(sort==='aum-desc') filteredProviders.sort((a,b)=>(b.aumTotal||0)-(a.aumTotal||0));
+  else if(sort==='aum-asc') filteredProviders.sort((a,b)=>(a.aumTotal||0)-(b.aumTotal||0));
+  else if(sort==='score-desc') filteredProviders.sort((a,b)=>(b.score||0)-(a.score||0));
+  else if(sort==='name-asc') filteredProviders.sort((a,b)=>a.name.localeCompare(b.name));
+  currentPage=1;
+  renderProviderGrid();
+}
+
+async function renderProviderGrid(){
+  const grid=document.getElementById('provider-grid');
+  if(!filteredProviders.length){
+    grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">◈</div><p>No companies found</p></div>`;
+    document.getElementById('provider-pagination').innerHTML='';
+    return;
+  }
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=filteredProviders.slice(start,start+PAGE_SIZE);
+
+  // Fetch note counts for this page from IndexedDB
+  const nc=await Promise.all(
+    page.map(p=>dbAll('provider_notes','providerId',p.id).then(n=>n.length))
+  );
+
+  grid.innerHTML=page.map((p,i)=>`
+    <div class="provider-card${p.hasRealData?' has-real-data':''}" onclick="openProvider(${p.id})">
+      <div class="pc-header">
+        <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+          <span class="pc-ticker">${escHtml(p.ticker||'—')}</span>
+          ${p.hasRealData?`<span class="real-data-badge"><span class="real-data-dot"></span>Live</span>`:''}
+        </div>
+        <span class="pc-type">${escHtml(p.category||p.type||'')}</span>
+      </div>
+      <div class="pc-name">${escHtml(p.name)}</div>
+      <div class="pc-meta">${escHtml(p.location||'—')}</div>
+      ${p.subCategory?`<div style="margin-bottom:5px;display:flex;gap:4px;flex-wrap:wrap"><span class="tag tag-type">${escHtml(p.subCategory)}</span>${p.assetClass?`<span class="tag" style="background:rgba(201,168,76,.12);color:#8a6b1a">${escHtml(p.assetClass)}</span>`:''}</div>`:''}
+      ${p.about?`<div class="pc-about">${escHtml(p.about)}</div>`:''}
+      ${(p.capitalSizeLow||p.capitalSizeHigh)?`<div class="pc-capital">Deal: <strong>${formatDeal(p.capitalSizeLow)}</strong>–<strong>${formatDeal(p.capitalSizeHigh)}</strong></div>`:''}
+      <div style="margin-bottom:7px">${(p.focus||'').split(',').slice(0,2).map(f=>`<span class="tag tag-type">${escHtml(f.trim())}</span> `).join('')}</div>
+      <div class="pc-footer">
+        <div>
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500">${escHtml(p.aumDisplay||p.aum||'—')}</div>
+          <div style="font-size:8px;color:var(--slate-light);text-transform:uppercase;letter-spacing:.08em">AUM${p.aumDate?` · ${p.aumDate}`:''}</div>
+        </div>
+        <div>${starsHtml(p.score||0,11)}</div>
+        ${nc[i]>0?`<span class="tag" style="color:var(--rust);background:rgba(139,58,42,.08)">✎ ${nc[i]}</span>`:'<span></span>'}
+      </div>
+    </div>`).join('');
+
+  renderPagination();
+}
+
+function renderPagination(){
+  const total=Math.ceil(filteredProviders.length/PAGE_SIZE);
+  const pag=document.getElementById('provider-pagination');
+  if(total<=1){pag.innerHTML='';return;}
+  let h=`<button class="page-btn ${currentPage===1?'disabled':''}" onclick="goPage(${currentPage-1})">‹</button>`;
+  for(let i=1;i<=total;i++){
+    if(i===1||i===total||(i>=currentPage-2&&i<=currentPage+2))
+      h+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    else if(i===currentPage-3||i===currentPage+3)
+      h+=`<span style="padding:0 3px;color:var(--slate-light);font-size:11px">…</span>`;
+  }
+  h+=`<button class="page-btn ${currentPage===total?'disabled':''}" onclick="goPage(${currentPage+1})">›</button>`;
+  pag.innerHTML=h;
+}
+function goPage(p){
+  const t=Math.ceil(filteredProviders.length/PAGE_SIZE);
+  if(p<1||p>t)return;
+  currentPage=p;
+  renderProviderGrid();
+  window.scrollTo(0,0);
+}
+
+// ═══════════════════════════════════════════════════════
+//  PROVIDER DETAIL
+// ═══════════════════════════════════════════════════════
+async function openProvider(id){
+  currentProvider=await dbGet('providers',id);
+  await renderProviderDetail();
+  showView('provider-detail');
+}
+
+async function renderProviderDetail(){
+  const p=currentProvider;
+  const notes=await dbAll('provider_notes','providerId',p.id);
+  const contacts=await dbAll('contacts','providerId',p.id);
+  const sc={inactive:0,active:0,imported:0};
+  contacts.forEach(c=>{if(sc[c.status]!==undefined)sc[c.status]++;});
+  const realCount=contacts.filter(c=>c.isReal).length;
+
+  document.getElementById('provider-sidebar').innerHTML=`
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px">
+      <div class="provider-name-lg">${escHtml(p.name)}</div>
+      <button class="btn btn-outline btn-sm" onclick="openEditProvider(${p.id})" style="flex-shrink:0;margin-left:8px;margin-top:3px">Edit</button>
+    </div>
+    <div class="provider-ticker-lg">${escHtml(p.ticker||'')} · ${escHtml(p.category||p.type||'')}</div>
+    ${p.subCategory?`<div style="margin-bottom:6px"><span class="tag tag-type">${escHtml(p.subCategory)}</span>${p.assetClass?` <span class="tag" style="background:rgba(201,168,76,.12);color:#8a6b1a">${escHtml(p.assetClass)}</span>`:''}</div>`:''}
+    ${p.hasRealData?`<div style="margin-bottom:8px"><span class="real-data-badge"><span class="real-data-dot"></span>Live Contact Data · ${realCount} imported</span></div>`:''}
+    <div style="margin-bottom:10px">${starsHtml(p.score||0,15)}</div>
+    ${p.about?`<div style="font-size:11px;color:var(--slate-mid);line-height:1.6;margin-bottom:11px;padding:9px;background:var(--paper);border-radius:2px">${escHtml(p.about)}</div>`:''}
+    <div class="detail-meta-grid">
+      <div class="dmeta"><div class="dmeta-lbl">AUM</div><div class="dmeta-val">${escHtml(p.aumDisplay||p.aum||'—')}</div></div>
+      <div class="dmeta"><div class="dmeta-lbl">Location</div><div class="dmeta-val">${escHtml(p.location||'—')}</div></div>
+      ${p.aumTotal?`<div class="dmeta"><div class="dmeta-lbl">AUM Total</div><div class="dmeta-val" style="font-size:11px">$${Number(p.aumTotal).toLocaleString()}</div></div>`:''}
+      ${p.aumDate?`<div class="dmeta"><div class="dmeta-lbl">AUM Date</div><div class="dmeta-val">${escHtml(p.aumDate)}</div></div>`:''}
+      ${p.publicTicker?`<div class="dmeta"><div class="dmeta-lbl">Public Ticker</div><div class="dmeta-val"><strong>${escHtml(p.publicTicker)}</strong></div></div>`:''}
+      ${!p.aumTotal&&!p.aumDate?'':''}
+      <div class="dmeta"><div class="dmeta-lbl">Deal Low</div><div class="dmeta-val">${formatDeal(p.capitalSizeLow)}</div></div>
+      <div class="dmeta"><div class="dmeta-lbl">Deal High</div><div class="dmeta-val">${formatDeal(p.capitalSizeHigh)}</div></div>
+      ${p.securityType?`<div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Security Type</div><div class="dmeta-val" style="font-size:11px">${escHtml(p.securityType)}</div></div>`:''}
+      ${p.marketSegment?`<div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Market Segment</div><div class="dmeta-val" style="font-size:11px">${escHtml(p.marketSegment)}</div></div>`:''}
+      <div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Focus</div><div class="dmeta-val" style="font-size:11px">${escHtml(p.focus||'—')}</div></div>
+      <div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Website</div><div class="dmeta-val"><a href="https://${escHtml(p.website||'')}" target="_blank" rel="noopener">${escHtml(p.website||'—')}</a></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:13px">
+      ${Object.entries(sc).map(([s,c])=>`<div class="dmeta" style="text-align:center"><div class="dmeta-val">${c}</div><div class="dmeta-lbl"><span class="tag tag-s-${s}" style="font-size:8px">${s==='inactive'?'Inactive':s.charAt(0).toUpperCase()+s.slice(1)}</span></div></div>`).join('')}
+    </div>
+    <div class="section-title">Company Notes <span id="pnote-count">${notes.length}</span></div>
+    <div class="notes-area" id="provider-notes-list">${renderNotes(notes,'provider')}</div>
+    <div class="note-form">
+      <textarea class="note-input" id="pnote-input" placeholder="Add a note about this company…"></textarea>
+      <button class="btn btn-gold" onclick="addProviderNote(${p.id})">Add Note</button>
+    </div>`;
+
+  document.getElementById('provider-main').innerHTML=`
+    <div class="toolbar" style="padding:0 0 12px 0;border:none;background:none">
+      <div class="toolbar-title">Contacts <span style="font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--slate-light);font-weight:400">(${contacts.length})</span></div>
+      <input type="search" id="contact-search" placeholder="Search…" style="width:150px" oninput="filterContacts()">
+      <select id="contact-status-filter" onchange="filterContacts()">
+        <option value="">All Statuses</option>
+        <option value="inactive">In Active</option><option value="active">Active</option><option value="imported">Imported</option>
+      </select>
+      <select id="contact-activity-filter" onchange="filterContacts()">
+        <option value="">All Activity</option>
+        <option value="none">None</option><option value="started">Started</option><option value="emailed">Emailed</option>
+        <option value="emailresponse">Email Response</option><option value="linkedinconnected">LinkedIn Connected</option><option value="meetingcreated">Meeting Created</option>
+      </select>
+      <select id="contact-priority-filter" onchange="filterContacts()">
+        <option value="">All Priority</option>
+        <option value="high">High</option><option value="medium">Medium</option><option value="low">Low</option>
+      </select>
+      <button class="btn btn-import" onclick="openCSVImport(${p.id})">⬆ Import Contacts</button>
+      <button class="btn btn-gold" onclick="openAddContact(${p.id})">+ Add Contact</button>
+    </div>
+    <div id="contact-grid"></div>`;
+
+  window._providerContacts=contacts;
+  filterContacts();
+}
+
+function renderNotes(notes,type){
+  if(!notes.length) return`<div style="color:var(--slate-light);font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 0">No notes yet</div>`;
+  return notes.sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).map(n=>`
+    <div class="note-item ${type==='contact'?'contact-note':''}">
+      <div class="note-date">${new Date(n.createdAt).toLocaleString()}</div>
+      <div class="note-text">${escHtml(n.text)}</div>
+      <button class="note-del" onclick="deleteNote('${type}',${n.id},${type==='provider'?currentProvider.id:currentContact.id})">×</button>
+    </div>`).join('');
+}
+
+function filterContacts(){
+  const contacts=window._providerContacts||[];
+  const q=(document.getElementById('contact-search')||{}).value||'';
+  const s=(document.getElementById('contact-status-filter')||{}).value||'';
+  const a=(document.getElementById('contact-activity-filter')||{}).value||'';
+  const pr=(document.getElementById('contact-priority-filter')||{}).value||'';
+  const f=contacts.filter(c=>{
+    const name=`${c.firstName} ${c.lastName}`.toLowerCase();
+    const mq=!q||name.includes(q.toLowerCase())||(c.title||'').toLowerCase().includes(q.toLowerCase())||(c.email||'').toLowerCase().includes(q.toLowerCase())||(c.division||'').toLowerCase().includes(q.toLowerCase());
+    return mq&&(!s||c.status===s)&&(!a||c.activity===a)&&(!pr||c.priority===pr);
+  });
+  const grid=document.getElementById('contact-grid');
+  if(!grid) return;
+  if(!f.length){grid.innerHTML=`<div class="empty-state"><div class="empty-state-icon">◈</div><p>No contacts found</p></div>`;return;}
+  grid.innerHTML=f.map(c=>`
+    <div class="contact-card${c.isReal?' real-contact':''}" onclick="openContact(${c.id})">
+      <div class="cc-top">
+        ${avatarHtml(c,36,12)}
+        <div style="flex:1;min-width:0">
+          <div class="cc-name">${escHtml(c.firstName)} ${escHtml(c.lastName)}</div>
+          <div class="cc-title">${escHtml(c.title||'—')}</div>
+          ${c.division?`<div class="cc-division">${escHtml(c.division)}</div>`:''}
+        </div>
+        <span class="tag tag-p-${c.priority||'low'}" style="flex-shrink:0">${c.priority||'low'}</span>
+      </div>
+      <div class="cc-tags">
+        <span class="tag tag-s-${c.status||'inactive'}">${c.status==='inactive'?'In Active':(c.status||'inactive').charAt(0).toUpperCase()+(c.status||'inactive').slice(1)}</span>
+        <span class="tag tag-a-${c.activity||'none'}">${actLabel(c.activity||'none')}</span>
+        ${c.isReal?`<span class="tag" style="background:var(--green-bg);color:var(--green)">● Real</span>`:''}
+      </div>
+      <div class="cc-footer">
+        <div class="cc-email">${c.emailValid?'<span style="color:var(--green);font-size:9px;margin-right:3px">✓</span>':''} ${escHtml(c.email||'—')}</div>
+        ${c.linkedin?`<a href="${escHtml(c.linkedin)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:10px;color:#0a66c2;font-family:'IBM Plex Mono',monospace;font-weight:700">in</a>`:''}
+      </div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTACT DETAIL
+// ═══════════════════════════════════════════════════════
+async function openContact(id){
+  currentContact=await dbGet('contacts',id);
+  await renderContactDetail();
+  showView('contact-detail');
+}
+
+async function renderContactDetail(){
+  const c=currentContact,p=currentProvider;
+  const notes=await dbAll('contact_notes','contactId',c.id);
+  const avatarLg=c.imageUrl
+    ?`<div class="contact-avatar-lg"><img src="${escHtml(c.imageUrl)}" alt="${initials(c.firstName,c.lastName)}" onerror="this.style.display='none';this.parentElement.textContent='${initials(c.firstName,c.lastName)}'"></div>`
+    :`<div class="contact-avatar-lg">${initials(c.firstName,c.lastName)}</div>`;
+
+  document.getElementById('contact-sidebar').innerHTML=`
+    <div class="contact-header-row">
+      ${avatarLg}
+      <div style="flex:1;min-width:0">
+        <div class="contact-name-lg">${escHtml(c.firstName)} ${escHtml(c.lastName)}</div>
+        <div class="contact-org">${escHtml(p.name)}</div>
+        ${c.isReal?`<div style="margin-top:4px"><span class="real-data-badge"><span class="real-data-dot"></span>Real Contact</span></div>`:''}
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="openEditContact(${c.id})" style="flex-shrink:0">Edit</button>
+    </div>
+    <div class="detail-meta-grid">
+      <div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Title</div><div class="dmeta-val">${escHtml(c.title||'—')}</div></div>
+      <div class="dmeta"><div class="dmeta-lbl">Division</div><div class="dmeta-val">${escHtml(c.division||'—')}</div></div>
+      <div class="dmeta"><div class="dmeta-lbl">Priority</div><div class="dmeta-val"><span class="tag tag-p-${c.priority||'low'}">${c.priority||'low'}</span></div></div>
+      <div class="dmeta" style="grid-column:1/-1">
+        <div class="dmeta-lbl">Email
+          <span style="margin-left:6px;font-size:8px;padding:1px 5px;border-radius:8px;font-family:'IBM Plex Mono',monospace;font-weight:600;${c.emailValid?'background:rgba(39,103,73,.12);color:var(--green);border:1px solid rgba(39,103,73,.25)':'background:rgba(139,58,42,.08);color:var(--rust);border:1px solid rgba(139,58,42,.18)'}">
+            ${c.emailValid?'✓ Verified':'✗ Unverified'}
+          </span>
+        </div>
+        <div class="dmeta-val" style="word-break:break-all;font-size:11px">${escHtml(c.email||'—')}</div>
+      </div>
+      <div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Phone</div><div class="dmeta-val">${escHtml(c.phone||'—')}</div></div>
+      ${c.linkedin?`<div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">LinkedIn</div><div class="dmeta-val"><a href="${escHtml(c.linkedin)}" target="_blank" rel="noopener">View Profile ↗</a></div></div>`:''}
+      ${c.imageUrl?`<div class="dmeta" style="grid-column:1/-1"><div class="dmeta-lbl">Image URL</div><div class="dmeta-val" style="font-size:10px;word-break:break-all;color:var(--slate-light)">${escHtml(c.imageUrl)}</div></div>`:''}
+    </div>
+    ${c.about?`<div style="font-size:11px;color:var(--slate-mid);line-height:1.6;margin-bottom:11px;padding:9px;background:var(--paper);border-radius:2px">${escHtml(c.about)}</div>`:''}
+    <div style="margin-bottom:11px">
+      <div class="form-label" style="margin-bottom:5px">Status</div>
+      <div style="display:flex;gap:4px;flex-wrap:wrap">
+        ${['inactive','active','imported'].map(s=>`<button class="btn btn-sm ${c.status===s?'btn-gold':'btn-outline'}" onclick="setContactField(${c.id},'status','${s}')">${s==='inactive'?'In Active':s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
+      </div>
+    </div>
+    <div style="margin-bottom:13px">
+      <div class="form-label" style="margin-bottom:5px">Activity</div>
+      <select class="form-input" onchange="setContactField(${c.id},'activity',this.value)" style="width:100%;font-size:12px">
+        <option value="none" ${!c.activity||c.activity==='none'?'selected':''}>None</option>
+        <option value="started" ${c.activity==='started'?'selected':''}>Started</option>
+        <option value="emailed" ${c.activity==='emailed'?'selected':''}>Emailed</option>
+        <option value="emailresponse" ${c.activity==='emailresponse'?'selected':''}>Email Response</option>
+        <option value="linkedinconnected" ${c.activity==='linkedinconnected'?'selected':''}>LinkedIn Connected</option>
+        <option value="meetingcreated" ${c.activity==='meetingcreated'?'selected':''}>Meeting Created</option>
+      </select>
+    </div>
+    <div class="zoho-panel">
+      <div class="zoho-panel-title">⬆ Push to Zoho CRM</div>
+      <p style="font-size:10px;color:rgba(255,255,255,.5);margin-bottom:7px;line-height:1.5">Send contact & parent company to Zoho via Zoho Flow webhook.</p>
+      <input class="form-input" id="zoho-webhook-url" type="text" placeholder="Paste Zoho Flow webhook URL…" style="font-size:11px;margin-bottom:6px;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.15);color:#fff;width:100%">
+      <button class="btn btn-zoho" onclick="pushToZoho(${c.id})">Push to Zoho</button>
+      <div class="zoho-status" id="zoho-status"></div>
+    </div>`;
+
+  document.getElementById('contact-main').innerHTML=`
+    <div class="section-title">Contact Notes <span id="cnote-count">${notes.length}</span></div>
+    <div class="notes-area" id="contact-notes-list">${renderNotes(notes,'contact')}</div>
+    <div class="note-form">
+      <textarea class="note-input" id="cnote-input" placeholder="Add a call log, meeting note, or follow-up…"></textarea>
+      <button class="btn btn-gold" onclick="addContactNote(${c.id})">Add Note</button>
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════
+//  INLINE FIELD UPDATES
+// ═══════════════════════════════════════════════════════
+async function setContactField(contactId,field,value){
+  const c=await dbGet('contacts',contactId);
+  c[field]=value;
+  await dbPut('contacts',c);
+  currentContact=c;
+  if(field==='status'){
+    document.querySelectorAll('#contact-sidebar .btn-sm').forEach(b=>{
+      const bv=b.textContent.trim().toLowerCase().replace(/\s/g,'');
+      const cv=value.toLowerCase();
+      b.className=`btn btn-sm ${(bv===cv||(bv==='inactive'&&cv==='inactive'))?'btn-gold':'btn-outline'}`;
+    });
+  }
+  if(window._providerContacts){
+    const idx=window._providerContacts.findIndex(x=>x.id===contactId);
+    if(idx>-1) window._providerContacts[idx][field]=value;
+    filterContacts();
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  NOTES
+// ═══════════════════════════════════════════════════════
+async function addProviderNote(pid){
+  const inp=document.getElementById('pnote-input');
+  const text=inp.value.trim();
+  if(!text) return;
+  await dbAdd('provider_notes',{providerId:pid,text,createdAt:new Date().toISOString()});
+  inp.value='';
+  const notes=await dbAll('provider_notes','providerId',pid);
+  document.getElementById('provider-notes-list').innerHTML=renderNotes(notes,'provider');
+  document.getElementById('pnote-count').textContent=notes.length;
+  updateStats();
+}
+async function addContactNote(cid){
+  const inp=document.getElementById('cnote-input');
+  const text=inp.value.trim();
+  if(!text) return;
+  await dbAdd('contact_notes',{contactId:cid,text,createdAt:new Date().toISOString()});
+  inp.value='';
+  const notes=await dbAll('contact_notes','contactId',cid);
+  document.getElementById('contact-notes-list').innerHTML=renderNotes(notes,'contact');
+  document.getElementById('cnote-count').textContent=notes.length;
+  updateStats();
+}
+async function deleteNote(type,noteId,parentId){
+  const store=type==='provider'?'provider_notes':'contact_notes';
+  await dbDel(store,noteId);
+  if(type==='provider'){
+    const notes=await dbAll('provider_notes','providerId',parentId);
+    document.getElementById('provider-notes-list').innerHTML=renderNotes(notes,'provider');
+    document.getElementById('pnote-count').textContent=notes.length;
+  }else{
+    const notes=await dbAll('contact_notes','contactId',parentId);
+    document.getElementById('contact-notes-list').innerHTML=renderNotes(notes,'contact');
+    document.getElementById('cnote-count').textContent=notes.length;
+  }
+  updateStats();
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADD / EDIT COMPANY
+// ═══════════════════════════════════════════════════════
+let _editPid=null;
+function openAddProvider(){
+  _editPid=null;
+  document.getElementById('modal-provider-title').textContent='Add Company';
+  ['ap-name','ap-ticker','ap-aum','ap-location','ap-focus','ap-website','ap-about','ap-securitytype','ap-market','ap-aum-date','ap-pub-ticker'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['ap-cap-low','ap-cap-high','ap-aum-total'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ap-category').value='';
+  document.getElementById('ap-subcategory').innerHTML='<option value="">Select sub-category…</option>';
+  document.getElementById('ap-assetclass').value='';
+  document.getElementById('ap-asset-chips').innerHTML='';
+  document.getElementById('ap-market-chips').innerHTML='';
+  document.getElementById('ap-market-row').style.display='none';
+  document.getElementById('ap-asset-hint').textContent='';
+  document.getElementById('ap-security-hint').textContent='';
+  document.getElementById('ap-score').value=0;
+  setFormScore(0);
+  openModal('modal-add-provider');
+}
+async function openEditProvider(id){
+  _editPid=id;
+  const p=await dbGet('providers',id);
+  document.getElementById('modal-provider-title').textContent='Edit Company';
+  document.getElementById('ap-name').value=p.name||'';
+  document.getElementById('ap-ticker').value=p.ticker||'';
+  document.getElementById('ap-aum').value=p.aum||p.aumDisplay||'';
+  document.getElementById('ap-aum-total').value=p.aumTotal||'';
+  document.getElementById('ap-aum-date').value=p.aumDate||'';
+  document.getElementById('ap-pub-ticker').value=p.publicTicker||p.ticker||'';
+  document.getElementById('ap-location').value=p.location||'';
+  document.getElementById('ap-focus').value=p.focus||'';
+  document.getElementById('ap-website').value=p.website||'';
+  document.getElementById('ap-about').value=p.about||'';
+  document.getElementById('ap-cap-low').value=p.capitalSizeLow||'';
+  document.getElementById('ap-cap-high').value=p.capitalSizeHigh||'';
+  document.getElementById('ap-securitytype').value=p.securityType||'';
+  document.getElementById('ap-market').value=p.marketSegment||'';
+  // Category → triggers subcategory repopulation
+  document.getElementById('ap-category').value=p.category||p.type||'';
+  onCategoryChange();
+  // Subcategory
+  document.getElementById('ap-subcategory').value=p.subCategory||'';
+  onSubCategoryChange();
+  // Asset class
+  document.getElementById('ap-assetclass').value=p.assetClass||'';
+  // Security type may have been overridden by user — respect saved value
+  if(p.securityType) document.getElementById('ap-securitytype').value=p.securityType;
+  document.getElementById('ap-score').value=p.score||0;
+  setFormScore(p.score||0);
+  openModal('modal-add-provider');
+}
+async function saveProvider(){
+  const name=document.getElementById('ap-name').value.trim();
+  if(!name){alert('Company name is required');return;}
+  const existing=_editPid?await dbGet('providers',_editPid):null;
+  const cat=document.getElementById('ap-category').value;
+  const obj={
+    name,
+    ticker:document.getElementById('ap-ticker').value.trim().toUpperCase(),
+    category:cat,
+    subCategory:document.getElementById('ap-subcategory').value,
+    type:cat, // type mirrors category for filter/display compatibility
+    assetClass:document.getElementById('ap-assetclass').value,
+    securityType:document.getElementById('ap-securitytype').value.trim(),
+    marketSegment:(document.getElementById('ap-market')||{value:''}).value.trim(),
+    aum:document.getElementById('ap-aum').value.trim(),
+    aumDisplay:document.getElementById('ap-aum').value.trim(),
+    aumTotal:parseFloat(document.getElementById('ap-aum-total').value)||null,
+    aumDate:document.getElementById('ap-aum-date').value.trim(),
+    publicTicker:document.getElementById('ap-pub-ticker').value.trim().toUpperCase(),
+    location:document.getElementById('ap-location').value.trim(),
+    focus:document.getElementById('ap-focus').value.trim(),
+    website:document.getElementById('ap-website').value.trim(),
+    about:document.getElementById('ap-about').value.trim(),
+    capitalSizeLow:parseFloat(document.getElementById('ap-cap-low').value)||null,
+    capitalSizeHigh:parseFloat(document.getElementById('ap-cap-high').value)||null,
+    score:parseInt(document.getElementById('ap-score').value)||0,
+    hasRealData:existing?existing.hasRealData:false,
+    createdAt:existing?existing.createdAt:new Date().toISOString()
+  };
+  if(_editPid){
+    obj.id=_editPid;
+    await dbPut('providers',obj);
+    currentProvider=obj;
+    // Update in-memory cache so grid reflects changes immediately
+    const idx=allProviders.findIndex(x=>x.id===_editPid);
+    if(idx>-1) allProviders[idx]=obj;
+    // Sync filteredProviders too so the grid re-renders with new data
+    const fidx=filteredProviders.findIndex(x=>x.id===_editPid);
+    if(fidx>-1) filteredProviders[fidx]=obj;
+    closeModal('modal-add-provider');
+    // Re-render grid in background (non-blocking) + detail if visible
+    renderProviderGrid();
+    if(document.getElementById('view-provider-detail').classList.contains('active')){
+      await renderProviderDetail();
+    }
+  }else{
+    const newId=await dbAdd('providers',obj);
+    obj.id=newId;
+    allProviders.push(obj);
+    closeModal('modal-add-provider');
+    await loadProviders();
+  }
+}
+function setFormScore(val){
+  document.getElementById('ap-score').value=val;
+  document.querySelectorAll('#ap-score-picker span').forEach((s,i)=>s.classList.toggle('lit',i<val));
+}
+
+// ─── Email Valid helpers ─────────────────────────────────
+function _setEmailBadge(valid){
+  const badge=document.getElementById('ac-email-badge');
+  const btn=document.getElementById('ac-email-toggle');
+  if(!badge||!btn) return;
+  if(valid){
+    badge.textContent='✓ Verified';
+    badge.style.cssText='margin-left:6px;font-size:9px;padding:1px 6px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:rgba(39,103,73,.12);color:var(--green);border:1px solid rgba(39,103,73,.25)';
+    btn.textContent='Mark Invalid';
+    btn.style.cssText='flex-shrink:0;padding:7px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:9px;font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:var(--radius);border:1px solid rgba(39,103,73,.3);background:transparent;color:var(--green);white-space:nowrap;transition:all .15s';
+  } else {
+    badge.textContent='✗ Unverified';
+    badge.style.cssText='margin-left:6px;font-size:9px;padding:1px 6px;border-radius:8px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:rgba(139,58,42,.1);color:var(--rust);border:1px solid rgba(139,58,42,.2)';
+    btn.textContent='Mark Valid';
+    btn.style.cssText='flex-shrink:0;padding:7px 10px;font-family:\'IBM Plex Mono\',monospace;font-size:9px;font-weight:600;letter-spacing:.06em;cursor:pointer;border-radius:var(--radius);border:1px solid rgba(139,58,42,.3);background:transparent;color:var(--rust);white-space:nowrap;transition:all .15s';
+  }
+}
+function toggleEmailValid(){
+  const hidden=document.getElementById('ac-emailvalid');
+  const newVal=hidden.value!=='true';
+  hidden.value=String(newVal);
+  _setEmailBadge(newVal);
+}
+
+// ─── Delete Contact ──────────────────────────────────────
+async function deleteContactFromModal(){
+  const cid=parseInt(document.getElementById('ac-delete-btn').getAttribute('data-cid'));
+  if(!cid) return;
+  const c=await dbGet('contacts',cid);
+  if(!c) return;
+  if(!confirm(`Delete ${c.firstName} ${c.lastName}? This cannot be undone.`)) return;
+  // Delete contact + their notes
+  await dbDel('contacts',cid);
+  await dbClearIndex('contact_notes','contactId',cid);
+  closeModal('modal-add-contact');
+  // Refresh contact grid
+  const pid=c.providerId;
+  window._providerContacts=await dbAll('contacts','providerId',pid);
+  filterContacts();
+  // Update provider detail header contact count
+  await renderProviderDetail();
+  updateStats();
+  // If we were on the contact detail view, go back to provider
+  if(document.getElementById('view-contact-detail').classList.contains('active')){
+    showView('provider-detail');
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ADD / EDIT CONTACT
+// ═══════════════════════════════════════════════════════
+let _editCid=null;
+function openAddContact(providerId){
+  _editCid=null;
+  window._addCPid=providerId;
+  document.getElementById('modal-contact-title').textContent='Add Contact';
+  ['ac-first','ac-last','ac-title','ac-division','ac-email','ac-phone','ac-linkedin','ac-imageurl','ac-about'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('ac-status').value='inactive';
+  document.getElementById('ac-activity').value='none';
+  document.getElementById('ac-priority').value='low';
+  document.getElementById('ac-emailvalid').value='false';
+  _setEmailBadge(false);
+  // Hide delete button for new contacts
+  const delBtn=document.getElementById('ac-delete-btn');
+  if(delBtn) delBtn.style.display='none';
+  openModal('modal-add-contact');
+}
+async function openEditContact(id){
+  _editCid=id;
+  const c=await dbGet('contacts',id);
+  document.getElementById('modal-contact-title').textContent='Edit Contact';
+  document.getElementById('ac-first').value=c.firstName||'';
+  document.getElementById('ac-last').value=c.lastName||'';
+  document.getElementById('ac-title').value=c.title||'';
+  document.getElementById('ac-division').value=c.division||'';
+  document.getElementById('ac-email').value=c.email||'';
+  document.getElementById('ac-phone').value=c.phone||'';
+  document.getElementById('ac-linkedin').value=c.linkedin||'';
+  document.getElementById('ac-imageurl').value=c.imageUrl||'';
+  document.getElementById('ac-status').value=c.status||'inactive';
+  document.getElementById('ac-activity').value=c.activity||'none';
+  document.getElementById('ac-priority').value=c.priority||'low';
+  document.getElementById('ac-about').value=c.about||'';
+  const valid=c.emailValid===true;
+  document.getElementById('ac-emailvalid').value=String(valid);
+  _setEmailBadge(valid);
+  // Show delete button for existing contacts
+  const delBtn=document.getElementById('ac-delete-btn');
+  if(delBtn){delBtn.style.display='';delBtn.setAttribute('data-cid',id);}
+  openModal('modal-add-contact');
+}
+async function saveContact(){
+  const first=document.getElementById('ac-first').value.trim();
+  const last=document.getElementById('ac-last').value.trim();
+  if(!first||!last){alert('First and last name required');return;}
+  const existingC=_editCid?await dbGet('contacts',_editCid):null;
+  const obj={
+    providerId:existingC?existingC.providerId:window._addCPid,
+    firstName:first,lastName:last,
+    title:document.getElementById('ac-title').value.trim(),
+    division:document.getElementById('ac-division').value.trim(),
+    email:document.getElementById('ac-email').value.trim(),
+    emailValid:document.getElementById('ac-emailvalid').value==='true',
+    phone:document.getElementById('ac-phone').value.trim(),
+    linkedin:document.getElementById('ac-linkedin').value.trim(),
+    imageUrl:document.getElementById('ac-imageurl').value.trim(),
+    status:document.getElementById('ac-status').value,
+    activity:document.getElementById('ac-activity').value,
+    priority:document.getElementById('ac-priority').value,
+    about:document.getElementById('ac-about').value.trim(),
+    isReal:existingC?existingC.isReal:false,
+    createdAt:existingC?existingC.createdAt:new Date().toISOString()
+  };
+  if(_editCid){obj.id=_editCid;await dbPut('contacts',obj);currentContact=obj;}
+  else await dbAdd('contacts',obj);
+  closeModal('modal-add-contact');
+  window._providerContacts=await dbAll('contacts','providerId',obj.providerId);
+  filterContacts();
+  if(_editCid) await renderContactDetail();
+}
+
+// ═══════════════════════════════════════════════════════
+//  CSV HELPERS (shared parser)
+// ═══════════════════════════════════════════════════════
+function parseCSVText(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(lines.length<2) return null;
+  return{
+    headers:parseCSVLine(lines[0]),
+    rows:lines.slice(1).filter(l=>l.trim()).map(l=>parseCSVLine(l))
+  };
+}
+function parseCSVLine(line){
+  const res=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}
+    else if(ch===','&&!inQ){res.push(cur.trim());cur='';}
+    else cur+=ch;
+  }
+  res.push(cur.trim());
+  return res;
+}
+function autoMapColumns(headers,crmFields){
+  const map={};
+  headers.forEach((h,i)=>{
+    const hl=h.toLowerCase().replace(/[\s_\-\/\(\)]/g,'');
+    const match=crmFields.find(f=>{
+      if(f.key==='_skip') return false;
+      const fl=f.key.toLowerCase().replace(/[\s_\-]/g,'');
+      const ll=f.label.toLowerCase().replace(/[\s\/\-\(\)\*]/g,'');
+      return fl===hl||ll===hl||hl.includes(fl)||fl.includes(hl.substring(0,5));
+    });
+    if(match) map[match.key]=i;
+  });
+  return map;
+}
+function buildMappingTbody(tbodyId,headers,rows,crmFields,autoMap){
+  const tbody=document.getElementById(tbodyId);
+  tbody.innerHTML=crmFields.filter(f=>f.key!=='_skip').map(f=>{
+    const selIdx=autoMap[f.key]!==undefined?autoMap[f.key]:-1;
+    const opts=`<option value="-1">— Not mapped —</option>`+
+      headers.map((h,i)=>`<option value="${i}" ${i===selIdx?'selected':''}>${escHtml(h)}</option>`).join('');
+    const preview=selIdx>=0&&rows[0]?escHtml(rows[0][selIdx]||''):'<span style="color:var(--slate-light)">—</span>';
+    return`<tr>
+      <td>${escHtml(f.label)}${f.required?` <span style="color:var(--rust)">*</span>`:''}</td>
+      <td><select data-field="${f.key}" onchange="refreshPreview(this,'mp-${f.key}')" style="width:100%">${opts}</select></td>
+      <td id="mp-${f.key}">${preview}</td>
+    </tr>`;
+  }).join('');
+}
+function refreshPreview(sel,previewId){
+  const colIdx=parseInt(sel.value);
+  const el=document.getElementById(previewId);
+  if(!el) return;
+  if(colIdx>=0&&window._csvRows&&window._csvRows[0]) el.textContent=window._csvRows[0][colIdx]||'—';
+  else el.innerHTML='<span style="color:var(--slate-light)">—</span>';
+}
+function readMapping(crmFields){
+  const map={};
+  crmFields.filter(f=>f.key!=='_skip').forEach(f=>{
+    const sel=document.querySelector(`[data-field="${f.key}"]`);
+    if(sel){const v=parseInt(sel.value);if(v>=0)map[f.key]=v;}
+  });
+  return map;
+}
+
+// ═══════════════════════════════════════════════════════
+//  COMPANY CSV IMPORT  ← NEW
+// ═══════════════════════════════════════════════════════
+const COMPANY_CSV_FIELDS=[
+  {key:'name',label:'Company Name',required:true},
+  {key:'ticker',label:'Ticker / Code'},
+  {key:'category',label:'Category (Alternative Asset Manager / BDC / Bank-Affiliated Manager / Insurance Asset Manager)'},
+  {key:'subCategory',label:'Sub-Category (e.g. Private Credit, Publicly Traded, General Account)'},
+  {key:'assetClass',label:'Asset Class'},
+  {key:'securityType',label:'Security Type'},
+  {key:'marketSegment',label:'Market Segment'},
+  {key:'aum',label:'AUM Display (e.g. $29.5B)'},
+  {key:'aumTotal',label:'AUM Total (numeric, e.g. 29500000000)'},
+  {key:'aumDate',label:'AUM Date (e.g. 2025-12-31)'},
+  {key:'publicTicker',label:'Public Ticker (e.g. ARCC)'},
+  {key:'capitalSizeLow',label:'Deal Size Low ($M)'},
+  {key:'capitalSizeHigh',label:'Deal Size High ($M)'},
+  {key:'location',label:'Location / HQ'},
+  {key:'website',label:'Website'},
+  {key:'focus',label:'Focus Areas'},
+  {key:'about',label:'About Company'},
+  {key:'score',label:'Score (1-5)'},
+];
+
+let _coMode='add',_coHeaders=[],_coRows=[];
+
+function openCompanyCSVImport(){
+  _coMode='add';_coHeaders=[];_coRows=[];
+  setCoMode('add');
+  document.getElementById('co-step-1').style.display='';
+  document.getElementById('co-step-2').style.display='none';
+  document.getElementById('co-step-result').style.display='none';
+  document.getElementById('co-back-btn').style.display='none';
+  document.getElementById('co-next-btn').style.display='none';
+  document.getElementById('co-file-input').value='';
+  openModal('modal-company-csv');
+}
+function setCoMode(mode){
+  _coMode=mode;
+  ['add','upsert','replace'].forEach(m=>{
+    document.getElementById('co-mode-'+m).classList.toggle('active',m===mode);
+  });
+  const warn=document.getElementById('co-mode-warning');
+  if(mode==='replace'){
+    warn.style.display='';
+    warn.textContent='⚠ Replace All will DELETE every existing company and their contacts. This cannot be undone.';
+  }else if(mode==='upsert'){
+    warn.style.display='';
+    warn.textContent='ℹ Update Existing will match by Company Name (case-insensitive) and overwrite matching fields.';
+    warn.style.color='var(--blue)';warn.style.background='var(--blue-bg)';warn.style.borderColor='rgba(26,73,113,.2)';
+  }else{
+    warn.style.display='none';
+  }
+}
+
+const coDropZone=document.getElementById('co-drop-zone');
+coDropZone.addEventListener('dragover',e=>{e.preventDefault();coDropZone.classList.add('dragover');});
+coDropZone.addEventListener('dragleave',()=>coDropZone.classList.remove('dragover'));
+coDropZone.addEventListener('drop',e=>{e.preventDefault();coDropZone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)parseCompanyCSVFile(f);});
+
+function handleCompanyCSV(input){const f=input.files[0];if(f)parseCompanyCSVFile(f);}
+function parseCompanyCSVFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const parsed=parseCSVText(e.target.result);
+    if(!parsed||parsed.rows.length<1){alert('CSV must have a header row and at least one data row.');return;}
+    _coHeaders=parsed.headers;_coRows=parsed.rows;
+    window._csvRows=_coRows;
+    const autoMap=autoMapColumns(_coHeaders,COMPANY_CSV_FIELDS);
+    buildMappingTbody('co-mapping-tbody',_coHeaders,_coRows,COMPANY_CSV_FIELDS,autoMap);
+    document.getElementById('co-preview-info').textContent=`✓ Parsed ${_coRows.length} company row${_coRows.length!==1?'s':''} · ${_coHeaders.length} columns`;
+    document.getElementById('co-raw-preview').textContent='Headers: '+_coHeaders.join(' | ');
+    coGoStep(2);
+  };
+  reader.readAsText(file);
+}
+function coGoStep(step){
+  if(step===2){
+    document.getElementById('co-step-1').style.display='none';
+    document.getElementById('co-step-2').style.display='';
+    document.getElementById('co-step-result').style.display='none';
+    document.getElementById('co-back-btn').style.display='';
+    document.getElementById('co-next-btn').style.display='';
+    document.getElementById('co-next-btn').textContent=`Import ${_coRows.length} Companies`;
+  }else if(step===1){
+    document.getElementById('co-step-1').style.display='';
+    document.getElementById('co-step-2').style.display='none';
+    document.getElementById('co-back-btn').style.display='none';
+    document.getElementById('co-next-btn').style.display='none';
+  }else if(step===3){
+    executeCompanyImport();
+  }
+}
+async function executeCompanyImport(){
+  const mapping=readMapping(COMPANY_CSV_FIELDS);
+  if(mapping.name===undefined){alert('Company Name column must be mapped to proceed.');return;}
+
+  document.getElementById('co-back-btn').style.display='none';
+  document.getElementById('co-next-btn').style.display='none';
+  document.getElementById('co-step-2').style.display='none';
+
+  let added=0,updated=0,skipped=0;
+
+  // Replace mode: wipe everything
+  if(_coMode==='replace'){
+    await dbClearAll('providers');
+    await dbClearAll('contacts');
+    allProviders=[];
+  }
+
+  for(const row of _coRows){
+    const name=(mapping.name!==undefined?row[mapping.name]||'':'').trim();
+    if(!name){skipped++;continue;}
+
+    const rawCat=(mapping.category!==undefined?row[mapping.category]||'':'').trim();
+    const normCat=COMPANY_TYPES.find(t=>t.toLowerCase()===rawCat.toLowerCase())||rawCat||'';
+
+    const obj={
+      name,
+      ticker:mapping.ticker!==undefined?(row[mapping.ticker]||'').trim().toUpperCase():'',
+      category:normCat,
+      type:normCat, // mirror for backwards compat
+      subCategory:mapping.subCategory!==undefined?(row[mapping.subCategory]||'').trim():'',
+      assetClass:mapping.assetClass!==undefined?(row[mapping.assetClass]||'').trim():'',
+      securityType:mapping.securityType!==undefined?(row[mapping.securityType]||'').trim():'',
+      marketSegment:mapping.marketSegment!==undefined?(row[mapping.marketSegment]||'').trim():'',
+      aum:mapping.aum!==undefined?(row[mapping.aum]||'').trim():'',
+      aumDisplay:mapping.aum!==undefined?(row[mapping.aum]||'').trim():'',
+      aumTotal:mapping.aumTotal!==undefined?parseFloat(row[mapping.aumTotal])||null:null,
+      aumDate:mapping.aumDate!==undefined?(row[mapping.aumDate]||'').trim():'',
+      publicTicker:mapping.publicTicker!==undefined?(row[mapping.publicTicker]||'').trim().toUpperCase():'',
+      capitalSizeLow:mapping.capitalSizeLow!==undefined?parseFloat(row[mapping.capitalSizeLow])||null:null,
+      capitalSizeHigh:mapping.capitalSizeHigh!==undefined?parseFloat(row[mapping.capitalSizeHigh])||null:null,
+      location:mapping.location!==undefined?(row[mapping.location]||'').trim():'',
+      website:mapping.website!==undefined?(row[mapping.website]||'').trim():'',
+      focus:mapping.focus!==undefined?(row[mapping.focus]||'').trim():'',
+      about:mapping.about!==undefined?(row[mapping.about]||'').trim():'',
+      score:mapping.score!==undefined?Math.min(5,Math.max(0,parseInt(row[mapping.score])||0)):0,
+      hasRealData:true,
+      createdAt:new Date().toISOString()
+    };
+
+    if(_coMode==='add'||_coMode==='replace'){
+      const newId=await dbAdd('providers',obj);
+      obj.id=newId;
+      allProviders.push(obj);
+      added++;
+    }else{ // upsert
+      const existing=await dbFindProviderByName(name);
+      if(existing){
+        const merged=Object.assign({},existing,obj,{id:existing.id,createdAt:existing.createdAt,hasRealData:true});
+        await dbPut('providers',merged);
+        const idx=allProviders.findIndex(x=>x.id===existing.id);
+        if(idx>-1) allProviders[idx]=merged;
+        updated++;
+      }else{
+        const newId=await dbAdd('providers',obj);
+        obj.id=newId;
+        allProviders.push(obj);
+        added++;
+      }
+    }
+  }
+
+  filteredProviders=[...allProviders];
+  await renderProviderGrid();
+  await updateStats();
+
+  const res=document.getElementById('co-step-result');
+  res.style.display='';
+  let msg=`✓ Import complete — `;
+  if(added) msg+=`${added} added`;
+  if(updated) msg+=`${added?', ':''}${updated} updated`;
+  if(skipped) msg+=` · ${skipped} skipped (missing name)`;
+  res.innerHTML=`<div class="import-success-bar">${msg}</div>
+    <p style="font-size:12px;color:var(--slate-mid);margin-top:8px">Companies with imported data show the <span class="real-data-badge" style="display:inline-flex"><span class="real-data-dot"></span>Live</span> badge.</p>`;
+
+  setTimeout(()=>closeModal('modal-company-csv'),2400);
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTACT CSV IMPORT
+// ═══════════════════════════════════════════════════════
+const CONTACT_CSV_FIELDS=[
+  {key:'firstName',label:'First Name',required:true},
+  {key:'lastName',label:'Last Name',required:true},
+  {key:'title',label:'Title / Role'},
+  {key:'division',label:'Division'},
+  {key:'email',label:'Email'},
+  {key:'emailValid',label:'Email Valid (true/false)'},
+  {key:'phone',label:'Phone'},
+  {key:'linkedin',label:'LinkedIn URL'},
+  {key:'imageUrl',label:'Image URL'},
+  {key:'status',label:'Status (inactive/active/imported)'},
+  {key:'activity',label:'Activity'},
+  {key:'priority',label:'Priority (low/medium/high)'},
+  {key:'about',label:'About'},
+];
+
+let _csvProviderId=null,_csvHeaders=[],_csvRows=[];
+
+function openCSVImport(providerId){
+  _csvProviderId=providerId;_csvHeaders=[];_csvRows=[];
+  document.getElementById('csv-company-name').textContent=currentProvider.name;
+  document.getElementById('csv-step-1').style.display='';
+  document.getElementById('csv-step-2').style.display='none';
+  document.getElementById('csv-step-result').style.display='none';
+  document.getElementById('csv-back-btn').style.display='none';
+  document.getElementById('csv-next-btn').style.display='none';
+  document.getElementById('csv-file-input').value='';
+  openModal('modal-csv-import');
+}
+
+const csvDropZone=document.getElementById('csv-drop-zone');
+csvDropZone.addEventListener('dragover',e=>{e.preventDefault();csvDropZone.classList.add('dragover');});
+csvDropZone.addEventListener('dragleave',()=>csvDropZone.classList.remove('dragover'));
+csvDropZone.addEventListener('drop',e=>{e.preventDefault();csvDropZone.classList.remove('dragover');const f=e.dataTransfer.files[0];if(f)parseContactCSVFile(f);});
+
+function handleContactCSVFile(input){const f=input.files[0];if(f)parseContactCSVFile(f);}
+function parseContactCSVFile(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const parsed=parseCSVText(e.target.result);
+    if(!parsed||parsed.rows.length<1){alert('CSV must have a header row and at least one data row.');return;}
+    _csvHeaders=parsed.headers;_csvRows=parsed.rows;
+    window._csvRows=_csvRows;
+    const autoMap=autoMapColumns(_csvHeaders,CONTACT_CSV_FIELDS);
+    buildMappingTbody('mapping-tbody',_csvHeaders,_csvRows,CONTACT_CSV_FIELDS,autoMap);
+    document.getElementById('csv-preview-info').textContent=`✓ Parsed ${_csvRows.length} contact row${_csvRows.length!==1?'s':''} · ${_csvHeaders.length} columns`;
+    document.getElementById('csv-raw-preview').textContent='Headers: '+_csvHeaders.join(' | ');
+    csvGoStep(2);
+  };
+  reader.readAsText(file);
+}
+function csvGoStep(step){
+  if(step===2){
+    document.getElementById('csv-step-1').style.display='none';
+    document.getElementById('csv-step-2').style.display='';
+    document.getElementById('csv-step-result').style.display='none';
+    document.getElementById('csv-back-btn').style.display='';
+    document.getElementById('csv-next-btn').style.display='';
+    document.getElementById('csv-next-btn').textContent=`Import ${_csvRows.length} Contacts`;
+  }else if(step===1){
+    document.getElementById('csv-step-1').style.display='';
+    document.getElementById('csv-step-2').style.display='none';
+    document.getElementById('csv-back-btn').style.display='none';
+    document.getElementById('csv-next-btn').style.display='none';
+  }else if(step===3){
+    executeContactImport();
+  }
+}
+async function executeContactImport(){
+  const mapping=readMapping(CONTACT_CSV_FIELDS);
+  if(mapping.firstName===undefined||mapping.lastName===undefined){
+    alert('First Name and Last Name columns must be mapped to proceed.');return;
+  }
+  await dbClearIndex('contacts','providerId',_csvProviderId);
+
+  const VALID_STATUS=['inactive','active','imported'];
+  const VALID_ACT=['none','started','emailed','emailresponse','linkedinconnected','meetingcreated'];
+  const VALID_PRI=['low','medium','high'];
+  let imported=0,skipped=0;
+
+  for(const row of _csvRows){
+    const fn=(mapping.firstName!==undefined?row[mapping.firstName]||'':'').trim();
+    const ln=(mapping.lastName!==undefined?row[mapping.lastName]||'':'').trim();
+    if(!fn&&!ln){skipped++;continue;}
+    const rawStatus=(mapping.status!==undefined?row[mapping.status]||'':'').toLowerCase().trim();
+    const rawAct=(mapping.activity!==undefined?row[mapping.activity]||'':'').toLowerCase().replace(/\s/g,'').trim();
+    const rawPri=(mapping.priority!==undefined?row[mapping.priority]||'':'').toLowerCase().trim();
+    await dbAdd('contacts',{
+      providerId:_csvProviderId,
+      firstName:fn||'Unknown',lastName:ln||'Unknown',
+      title:mapping.title!==undefined?row[mapping.title]||'':'',
+      division:mapping.division!==undefined?row[mapping.division]||'':'',
+      email:mapping.email!==undefined?row[mapping.email]||'':'',
+      emailValid:mapping.emailValid!==undefined?(row[mapping.emailValid]||'').toLowerCase().trim()==='true':false,
+      phone:mapping.phone!==undefined?row[mapping.phone]||'':'',
+      linkedin:mapping.linkedin!==undefined?row[mapping.linkedin]||'':'',
+      imageUrl:mapping.imageUrl!==undefined?row[mapping.imageUrl]||'':'',
+      about:mapping.about!==undefined?row[mapping.about]||'':'',
+      status:VALID_STATUS.includes(rawStatus)?rawStatus:'active',
+      activity:VALID_ACT.includes(rawAct)?rawAct:'none',
+      priority:VALID_PRI.includes(rawPri)?rawPri:'medium',
+      isReal:true,createdAt:new Date().toISOString()
+    });
+    imported++;
+  }
+
+  const prov=await dbGet('providers',_csvProviderId);
+  prov.hasRealData=true;
+  await dbPut('providers',prov);
+  currentProvider=prov;
+  const pidx=allProviders.findIndex(x=>x.id===_csvProviderId);
+  if(pidx>-1) allProviders[pidx].hasRealData=true;
+
+  document.getElementById('csv-step-2').style.display='none';
+  document.getElementById('csv-back-btn').style.display='none';
+  document.getElementById('csv-next-btn').style.display='none';
+  const res=document.getElementById('csv-step-result');
+  res.style.display='';
+  res.innerHTML=`<div class="import-success-bar">✓ ${imported} contacts imported${skipped?`, ${skipped} skipped`:''}.</div>`;
+
+  window._providerContacts=await dbAll('contacts','providerId',_csvProviderId);
+  filterContacts();
+  await renderProviderDetail();
+  updateStats();
+  setTimeout(()=>closeModal('modal-csv-import'),2000);
+}
+
+// ═══════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════
+function toCSV(rows,cols){
+  const esc=v=>{const s=String(v??'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`;};
+  return cols.join(',')+'\n'+rows.map(r=>cols.map(c=>esc(r[c])).join(',')).join('\n');
+}
+function downloadCSV(filename,csv){
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+async function exportCSV(store){
+  const rows=await dbAll(store);
+  let cols,filename;
+  if(store==='providers'){cols=['id','name','ticker','publicTicker','category','subCategory','type','assetClass','securityType','marketSegment','aum','aumDisplay','aumTotal','aumDate','capitalSizeLow','capitalSizeHigh','location','focus','website','about','score','hasRealData','createdAt'];filename='abf_companies.csv';}
+  else if(store==='contacts'){cols=['id','providerId','firstName','lastName','title','division','email','emailValid','phone','linkedin','imageUrl','status','activity','priority','about','isReal','createdAt'];filename='abf_contacts.csv';}
+  else if(store==='provider_notes'){cols=['id','providerId','text','createdAt'];filename='abf_company_notes.csv';}
+  else{cols=['id','contactId','text','createdAt'];filename='abf_contact_notes.csv';}
+  downloadCSV(filename,toCSV(rows,cols));
+}
+async function exportAll(){
+  for(const s of['providers','contacts','provider_notes','contact_notes']){
+    await exportCSV(s);
+    await new Promise(r=>setTimeout(r,350));
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ZOHO
+// ═══════════════════════════════════════════════════════
+async function pushToZoho(contactId){
+  const url=document.getElementById('zoho-webhook-url').value.trim();
+  const el=document.getElementById('zoho-status');
+  if(!url){el.className='zoho-status error';el.textContent='✗ Paste your Zoho Flow webhook URL first';return;}
+  const c=currentContact,p=currentProvider;
+  const notes=await dbAll('contact_notes','contactId',c.id);
+  const payload={
+    contact:{First_Name:c.firstName,Last_Name:c.lastName,Title:c.title,Department:c.division,
+      Email:c.email,Phone:c.phone,LinkedIn:c.linkedin,Image_URL:c.imageUrl,
+      Status:c.status,Activity:actLabel(c.activity),Priority:c.priority,About:c.about,
+      Notes:notes.map(n=>`[${new Date(n.createdAt).toLocaleDateString()}] ${n.text}`).join('\n\n')},
+    account:{Account_Name:p.name,Ticker:p.ticker,Type:p.type,Website:p.website,
+      City:(p.location||'').split(',')[0]?.trim(),State:(p.location||'').split(',')[1]?.trim(),
+      AUM:p.aum,Capital_Low:p.capitalSizeLow,Capital_High:p.capitalSizeHigh,
+      Score:p.score,About:p.about,Focus:p.focus}
+  };
+  el.className='zoho-status';el.innerHTML='<span class="loading-ring"></span> Pushing…';
+  try{
+    const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    if(r.ok){el.className='zoho-status success';el.textContent='✓ Successfully pushed to Zoho CRM';await setContactField(contactId,'activity','emailed');}
+    else throw new Error(`HTTP ${r.status}`);
+  }catch(e){el.className='zoho-status error';el.textContent=`✗ ${e.message}`;}
+}
+
+// ═══════════════════════════════════════════════════════
+//  STATS
+// ═══════════════════════════════════════════════════════
+async function updateStats(){
+  const [p,c,pn,cn]=await Promise.all([dbCount('providers'),dbCount('contacts'),dbCount('provider_notes'),dbCount('contact_notes')]);
+  document.getElementById('stat-providers').textContent=p;
+  document.getElementById('stat-contacts').textContent=c.toLocaleString();
+  document.getElementById('stat-notes').textContent=(pn+cn).toLocaleString();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MODAL
+// ═══════════════════════════════════════════════════════
+function openModal(id){document.getElementById(id).classList.add('open');}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-overlay').forEach(m=>{
+  m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});
+});
+
+// ═══════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════
+(async()=>{
+  await initDB();
+  await seedIfEmpty();
+  await loadProviders();
+  initMesh();
+  initVFS();
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════
+     SENTINEL MESH PANEL
+════════════════════════════════════════════════════ -->
+<div id="mesh-panel" style="
+  display:none;position:fixed;bottom:0;right:0;width:420px;height:360px;
+  background:#070b12;border:1px solid #1c2d42;border-radius:8px 0 0 0;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:#dde8f5;
+  box-shadow:-4px -4px 24px rgba(0,0,0,.5);z-index:9999;
+  display:none;flex-direction:column;overflow:hidden;">
+  <div style="background:#0b1019;border-bottom:1px solid #1c2d42;padding:7px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+    <span style="font-size:10px;color:#c9a84c;letter-spacing:.15em;text-transform:uppercase;font-weight:600;">SENTINEL MESH</span>
+    <span style="font-size:9px;color:#6b7e96;flex:1;">sentinel-broadcast</span>
+    <span id="mp-ent-count" style="font-size:9px;color:#00e5a0;">0 online</span>
+    <button onclick="toggleMeshPanel()" style="background:none;border:none;color:#6b7e96;cursor:pointer;font-size:14px;padding:0 2px;line-height:1;">×</button>
+  </div>
+  <!-- Feed -->
+  <div id="mp-feed" style="flex:1;overflow-y:auto;padding:6px 10px;"></div>
+  <!-- Upload drop zone -->
+  <div id="mp-drop" style="
+    margin:0 8px 6px;padding:6px 10px;border:1px dashed #1c2d42;border-radius:4px;
+    font-size:9.5px;color:#6b7e96;text-align:center;cursor:pointer;transition:all .15s;"
+    ondragover="mpDragOver(event)" ondragleave="mpDragLeave(event)" ondrop="mpDrop(event)"
+    onclick="document.getElementById('mp-file-in').click()">
+    ⬆ Drop file or click to share with mesh
+    <input id="mp-file-in" type="file" style="display:none" onchange="mpFileSelected(this)">
+  </div>
+  <!-- Composer -->
+  <div style="display:flex;gap:5px;padding:0 8px 8px;flex-shrink:0;">
+    <select id="mp-from" style="background:#0f1623;border:1px solid #1c2d42;color:#dde8f5;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:4px 6px;border-radius:3px;outline:none;width:70px;">
+      <option>Will</option><option>M</option><option>G-1</option><option>G-2</option><option>MAUDE-1</option>
+    </select>
+    <input id="mp-input" placeholder="Message…" onkeydown="if(event.key==='Enter')mpSend()"
+      style="flex:1;background:#0f1623;border:1px solid #1c2d42;color:#dde8f5;font-family:'IBM Plex Mono',monospace;font-size:10.5px;padding:4px 8px;border-radius:3px;outline:none;" />
+    <button onclick="mpSend()" style="background:#c9a84c;border:none;color:#07080c;padding:4px 10px;border-radius:3px;cursor:pointer;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;">→</button>
+  </div>
+</div>
+
+<!-- VFS TRAY -->
+<div id="vfs-tray" style="
+  display:none;position:fixed;bottom:0;left:0;width:260px;max-height:320px;
+  background:#070b12;border:1px solid #1c2d42;border-radius:0 8px 0 0;
+  font-family:'IBM Plex Mono',monospace;font-size:11px;color:#dde8f5;
+  box-shadow:4px -4px 24px rgba(0,0,0,.5);z-index:9998;flex-direction:column;overflow:hidden;">
+  <div style="background:#0b1019;border-bottom:1px solid #1c2d42;padding:7px 12px;display:flex;align-items:center;gap:8px;flex-shrink:0;">
+    <span style="font-size:10px;color:#4fc3f7;letter-spacing:.15em;text-transform:uppercase;font-weight:600;">VFS</span>
+    <span style="font-size:9px;color:#6b7e96;flex:1;">Virtual File System</span>
+    <button onclick="toggleVFS()" style="background:none;border:none;color:#6b7e96;cursor:pointer;font-size:14px;padding:0 2px;line-height:1;">×</button>
+  </div>
+  <div id="vfs-list" style="flex:1;overflow-y:auto;padding:4px 0;max-height:220px;"></div>
+  <div style="padding:6px 8px;border-top:1px solid #1c2d42;display:flex;gap:5px;">
+    <button onclick="document.getElementById('vfs-file-in').click()" style="flex:1;background:#0f1623;border:1px solid #1c2d42;color:#4fc3f7;font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:4px;border-radius:3px;cursor:pointer;">+ Add File</button>
+    <input id="vfs-file-in" type="file" style="display:none" onchange="vfsAddFile(this)">
+    <button onclick="vfsClear()" style="background:#0f1623;border:1px solid #1c2d42;color:#6b7e96;font-family:'IBM Plex Mono',monospace;font-size:9.5px;padding:4px 8px;border-radius:3px;cursor:pointer;">Clear</button>
+  </div>
+</div>
+
+<!-- VFS button -->
+<button onclick="toggleVFS()" style="
+  position:fixed;bottom:16px;left:16px;
+  background:#070b12;border:1px solid rgba(79,195,247,.35);
+  color:#4fc3f7;font-family:'IBM Plex Mono',monospace;font-size:10px;
+  padding:6px 12px;border-radius:4px;cursor:pointer;z-index:9997;
+  letter-spacing:.1em;text-transform:uppercase;">
+  VFS <span id="vfs-count" style="color:#6b7e96;">0</span>
+</button>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  FEATURE 3 — MESSAGE TYPE DETECTION
+// ═══════════════════════════════════════════════════════
+function detectMsgType(text) {
+  if(!text) return {type:'EMPTY', color:'#6b7e96', icon:'○'};
+  const t = text.trim();
+  // System commands
+  if(t.startsWith('/') || t.startsWith('CMD:') || t.startsWith('SYS:'))
+    return {type:'CMD', color:'#fb923c', icon:'⚙'};
+  // Ping / heartbeat
+  if(/^(ping|pong|hb|heartbeat|alive\??)$/i.test(t))
+    return {type:'PING', color:'#22d3ee', icon:'◎'};
+  // Log lines
+  if(/^\[(INFO|WARN|ERROR|OK|DEBUG)\]/i.test(t) || /^\d{2}:\d{2}:\d{2}/.test(t))
+    return {type:'LOG', color:'#6b7e96', icon:'≡'};
+  // JSON
+  if((t.startsWith('{') && t.endsWith('}')) || (t.startsWith('[') && t.endsWith(']')))
+    return {type:'JSON', color:'#c084fc', icon:'{ }'};
+  // HTML
+  if(/<[a-z][\s\S]*>/i.test(t))
+    return {type:'HTML', color:'#4fc3f7', icon:'<>'};
+  // Artifact marker
+  if(t.startsWith('ARTIFACT:') || t.includes('artifact_id'))
+    return {type:'ARTIFACT', color:'#00e5a0', icon:'◆'};
+  // Markdown (headings, bold, lists)
+  if(/^#+\s|^\*\*|^[-*]\s|\[.+\]\(.+\)/.test(t))
+    return {type:'MARKDOWN', color:'#e8c46a', icon:'M↓'};
+  // File share
+  if(t.startsWith('FILE:') || t.startsWith('VFS:'))
+    return {type:'FILE', color:'#00e5a0', icon:'📄'};
+  // Default plain
+  return {type:'MSG', color:'#9ab0c8', icon:'▸'};
+}
+
+// ═══════════════════════════════════════════════════════
+//  FEATURE 1 — SENTINEL MESH (BroadcastChannel)
+// ═══════════════════════════════════════════════════════
+let meshBC = null;
+let meshOnline = new Map(); // name → lastSeen
+let meshPanelOpen = false;
+
+function initMesh() {
+  meshBC = new BroadcastChannel('sentinel-broadcast');
+  meshBC.onmessage = ({data}) => {
+    const from = data.from || data.user || '?';
+    const text = data.text || data.micro || data.payload?.text || '';
+    const type = data.type || 'MSG';
+    meshOnline.set(from, new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false}));
+    document.getElementById('mp-ent-count').textContent = meshOnline.size + ' online';
+    document.getElementById('mesh-dot').style.cssText = 'width:7px;height:7px;border-radius:50%;background:#00e5a0;box-shadow:0 0 6px #00e5a0;transition:all .3s;display:inline-block;';
+    mpRenderMsg(from, text, type, data.payload);
+    // flash
+    setTimeout(()=>{
+      document.getElementById('mesh-dot').style.background = meshOnline.size > 0 ? '#c9a84c' : '#4a5568';
+      document.getElementById('mesh-dot').style.boxShadow = '';
+    }, 800);
+  };
+  // announce presence
+  meshBC.postMessage({
+    from:'ABF-CRM', to:'ALL', type:'PRESENCE',
+    entityType:'sys', payload:{status:'online', app:'abf-crm-v6'},
+    ts: new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false})
+  });
+  meshOnline.set('ABF-CRM', 'now');
+  document.getElementById('mp-ent-count').textContent = '1 online';
+  document.getElementById('mesh-dot').style.cssText = 'width:7px;height:7px;border-radius:50%;background:#c9a84c;box-shadow:0 0 6px #c9a84c;transition:all .3s;display:inline-block;';
+}
+
+function toggleMeshPanel() {
+  const p = document.getElementById('mesh-panel');
+  meshPanelOpen = !meshPanelOpen;
+  p.style.display = meshPanelOpen ? 'flex' : 'none';
+}
+
+function mpSend() {
+  const inp = document.getElementById('mp-input');
+  const from = document.getElementById('mp-from').value;
+  const raw = inp.value.trim(); if(!raw) return;
+  const dt = detectMsgType(raw);
+  meshBC.postMessage({from, to:'ALL', type:dt.type, text:raw,
+    ts: new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false})});
+  mpRenderMsg(from, raw, dt.type, null, true);
+  inp.value='';
+}
+
+function mpRenderMsg(from, text, type, payload, self=false) {
+  const feed = document.getElementById('mp-feed');
+  if(!feed) return;
+  const dt = detectMsgType(text||type);
+  const ts = new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const entityColors = {will:'#4fc3f7',m:'#c9a84c',meridian:'#c9a84c',g:'#00e5a0','abf-crm':'#fb923c',maude:'#c084fc',sys:'#fb923c'};
+  const fromKey = (from||'').toLowerCase().replace(/[-\d]/g,'').trim();
+  const fc = entityColors[fromKey] || '#9ab0c8';
+  const display = text || (payload ? JSON.stringify(payload).slice(0,80) : type);
+  const el = document.createElement('div');
+  el.style.cssText = `padding:3px 4px;margin-bottom:2px;border-radius:3px;display:flex;gap:6px;font-size:10.5px;line-height:1.5;border-left:2px solid ${dt.color};${self?'background:rgba(201,168,76,.04)':''}`;
+  el.innerHTML = `<span style="color:#3d5166;flex-shrink:0;font-size:9.5px;">${ts}</span><span style="color:${fc};flex-shrink:0;width:52px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(from)}</span><span style="color:${dt.color};flex-shrink:0;font-size:9px;width:50px;">${dt.icon} ${dt.type}</span><span style="color:#9ab0c8;word-break:break-word;flex:1;">${escHtml(String(display||''))}</span>`;
+  feed.appendChild(el);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+// File drag/drop into mesh
+function mpDragOver(e) { e.preventDefault(); document.getElementById('mp-drop').style.borderColor='#c9a84c'; document.getElementById('mp-drop').style.color='#c9a84c'; }
+function mpDragLeave(e) { document.getElementById('mp-drop').style.borderColor='#1c2d42'; document.getElementById('mp-drop').style.color='#6b7e96'; }
+function mpDrop(e) {
+  e.preventDefault(); mpDragLeave(e);
+  const file = e.dataTransfer.files[0]; if(!file) return;
+  mpShareFile(file);
+}
+function mpFileSelected(inp) { if(inp.files[0]) mpShareFile(inp.files[0]); inp.value=''; }
+function mpShareFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const content = e.target.result;
+    const from = document.getElementById('mp-from').value;
+    const isText = file.type.startsWith('text') || file.name.endsWith('.html') || file.name.endsWith('.md') || file.name.endsWith('.json') || file.name.endsWith('.csv');
+    const payload = isText ? {filename:file.name, size:file.size, preview:content.slice(0,200)} : {filename:file.name, size:file.size, type:file.type};
+    // Store in VFS
+    vfsStore(file.name, content, file.type, file.size);
+    // Broadcast
+    meshBC.postMessage({from, to:'ALL', type:'FILE', text:`FILE:${file.name} (${(file.size/1024).toFixed(1)}KB)`,
+      payload, ts: new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false})});
+    mpRenderMsg(from, `FILE:${file.name} (${(file.size/1024).toFixed(1)}KB)`, 'FILE', null, true);
+  };
+  if(file.type.startsWith('text') || ['html','md','json','csv','txt','js'].some(e=>file.name.endsWith('.'+e))) {
+    reader.readAsText(file);
+  } else {
+    reader.readAsDataURL(file);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+//  FEATURE 2 — VIRTUAL FILE SYSTEM (VFS)
+// ═══════════════════════════════════════════════════════
+let vfsFiles = new Map(); // name → {name, content, type, size, addedAt}
+let vfsPanelOpen = false;
+
+function initVFS() {
+  // load from IDB if exists
+  renderVFSList();
+}
+function toggleVFS() {
+  vfsPanelOpen = !vfsPanelOpen;
+  const tray = document.getElementById('vfs-tray');
+  tray.style.display = vfsPanelOpen ? 'flex' : 'none';
+  if(vfsPanelOpen) renderVFSList();
+}
+function vfsStore(name, content, type, size) {
+  vfsFiles.set(name, {name, content, type, size, addedAt: new Date().toLocaleTimeString('en-US',{timeZone:'America/Detroit',hour12:false})});
+  document.getElementById('vfs-count').textContent = vfsFiles.size;
+  renderVFSList();
+  // also persist to IDB
+  try { db.transaction('provider_notes','readwrite').objectStore('provider_notes').add({vfsEntry:true, name, type, size, addedAt: new Date().toISOString()}); } catch(e){}
+}
+function vfsAddFile(inp) {
+  const file = inp.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { vfsStore(file.name, e.target.result, file.type, file.size); };
+  if(file.type.startsWith('text') || ['html','md','json','csv','txt','js'].some(ex=>file.name.endsWith('.'+ex))) {
+    reader.readAsText(file);
+  } else { reader.readAsDataURL(file); }
+  inp.value='';
+}
+function vfsGet(name) { return vfsFiles.get(name); }
+function vfsClear() { vfsFiles.clear(); document.getElementById('vfs-count').textContent='0'; renderVFSList(); }
+function vfsOpen(name) {
+  const f = vfsFiles.get(name); if(!f) return;
+  if(f.type === 'text/html' || name.endsWith('.html')) {
+    const w = window.open('','_blank');
+    w.document.write(f.content); w.document.close();
+  } else {
+    const blob = new Blob([f.content],{type:f.type||'text/plain'});
+    const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  }
+}
+function renderVFSList() {
+  const el = document.getElementById('vfs-list'); if(!el) return;
+  if(!vfsFiles.size) { el.innerHTML='<div style="padding:10px 12px;color:#3d5166;font-size:10px;">No files. Drop files in Mesh or use + Add File.</div>'; return; }
+  const typeIcons = {'text/html':'<>','text/csv':'⊞','application/json':'{}','text/markdown':'M↓','text/plain':'≡'};
+  el.innerHTML = [...vfsFiles.values()].map(f => {
+    const icon = typeIcons[f.type] || Object.entries(typeIcons).find(([k])=>f.name.endsWith(k.split('/')[1]))?.[1] || '📄';
+    const dt = detectMsgType(f.content||'');
+    return `<div style="padding:5px 10px;border-bottom:1px solid #0f1623;display:flex;align-items:center;gap:7px;cursor:pointer;transition:background .1s;" onmouseover="this.style.background='#0b1019'" onmouseout="this.style.background=''" onclick="vfsOpen('${escHtml(f.name)}')">
+      <span style="color:${dt.color};font-size:9.5px;width:22px;text-align:center;">${icon}</span>
+      <span style="flex:1;color:#dde8f5;font-size:10.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escHtml(f.name)}</span>
+      <span style="color:#3d5166;font-size:9px;">${(f.size/1024).toFixed(1)}K</span>
+      <button onclick="event.stopPropagation();vfsFiles.delete('${escHtml(f.name)}');document.getElementById('vfs-count').textContent=vfsFiles.size;renderVFSList();" style="background:none;border:none;color:#3d5166;cursor:pointer;font-size:12px;padding:0;line-height:1;">×</button>
+    </div>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

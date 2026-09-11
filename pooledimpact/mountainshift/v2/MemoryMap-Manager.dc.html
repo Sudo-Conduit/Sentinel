@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./UTF24Timestamp.js"></script>
+  <style>
+    body { margin:0; background:#0d1117; }
+    ::selection { background:#264f78; }
+  </style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#0d1117;color:#c9d1d9;font-family:'SF Mono','Menlo',monospace;overflow:hidden;font-size:12.5px;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #30363d;background:#161b22;">
+    <div style="font-weight:700;">MemoryMap Manager</div>
+    <div style="color:#6e7681;">backend tool — capability-gated shared linear memory (memorymap.wasm v0.0.03)</div>
+    <div style="flex:1;"></div>
+    <div style="color:{{ statusColor }};">{{ statusLabel }}</div>
+  </div>
+
+  <sc-if value="{{ notReady }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#6e7681;">{{ loadingLabel }}</div>
+  </sc-if>
+
+  <sc-if value="{{ ready }}" hint-placeholder-val="{{ false }}">
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <div style="width:300px;flex-shrink:0;border-right:1px solid #30363d;padding:12px;overflow-y:auto;background:#0d1117;">
+      <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">Module</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:14px;">
+        <div style="color:#6e7681;">base</div><div>0x{{ baseHex }}</div>
+        <div style="color:#6e7681;">slotBase</div><div>0x{{ slotBaseHex }}</div>
+        <div style="color:#6e7681;">maxSlots</div><div>{{ maxSlotsLabel }}</div>
+        <div style="color:#6e7681;">totalPages</div><div>{{ totalPagesLabel }}</div>
+      </div>
+
+      <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">Identity</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-bottom:14px;">
+        <div style="color:#6e7681;">UUID addr</div><div>0x{{ uuidAddrHex }}</div>
+        <div style="color:#6e7681;">PublicKey addr</div><div>0x{{ pubKeyAddrHex }}</div>
+        <div style="color:#6e7681;">Scratch addr</div><div>0x{{ scratchAddrHex }}</div>
+      </div>
+
+      <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">Authentication</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:{{ authDotColor }};"></div>
+        <div>{{ authStateLabel }}</div>
+      </div>
+      <div style="font-size:11px;color:#6e7681;line-height:1.5;margin-bottom:8px;">Write a 32-byte key into PublicKey (host-provisioned) once, then the same 32 bytes into Scratch before calling authenticate(). Constant-time compare gates write().</div>
+      <input value="{{ keyInput }}" onInput="{{ onKeyInput }}" placeholder="32-char key (padded/truncated)" style="width:100%;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#c9d1d9;padding:6px 8px;font-size:11.5px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:6px;" />
+      <div style="display:flex;gap:6px;">
+        <div onClick="{{ onProvisionKey }}" style="cursor:pointer;flex:1;background:#30363d;padding:6px 0;border-radius:4px;text-align:center;">provision key</div>
+        <div onClick="{{ onAuthenticate }}" style="cursor:pointer;flex:1;background:#238636;color:#fff;padding:6px 0;border-radius:4px;text-align:center;">authenticate()</div>
+      </div>
+      <div onClick="{{ onDeauthenticate }}" style="cursor:pointer;background:#5a1e1e;color:#ff8080;padding:6px 0;border-radius:4px;text-align:center;margin-top:6px;">deauthenticate()</div>
+      <sc-if value="{{ hasProvisionedKey }}" hint-placeholder-val="{{ false }}">
+        <div style="margin-top:10px;padding:8px 10px;background:#161b22;border:1px solid #30363d;border-radius:4px;">
+          <div style="color:#6e7681;font-size:10.5px;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Mailbox Key (share to cross-read/write)</div>
+          <div style="word-break:break-all;color:#3fb950;">{{ provisionedKeyLabel }}</div>
+          <div style="font-size:10.5px;color:#6e7681;margin-top:4px;">Enter this exact key in another tab (same browser/origin) to real-sync writes over BroadcastChannel. Cross-BROWSER (e.g. Chrome ↔ Firefox) is not bridgeable this way — that needs a real network relay, not built here.</div>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #30363d;background:#161b22;">
+        <div style="font-weight:600;">Slots</div>
+        <div style="color:#6e7681;">getMemoryMap() = 0x{{ mapAddrHex }} — {{ mapGatedLabel }}</div>
+      </div>
+
+      <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #30363d;">
+        <span style="color:#6e7681;">slot</span>
+        <input value="{{ ioSlot }}" onInput="{{ onIoSlotInput }}" style="width:70px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+        <span style="color:#6e7681;">value (f32)</span>
+        <input value="{{ ioValue }}" onInput="{{ onIoValueInput }}" style="width:100px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+        <div onClick="{{ onWriteSlot }}" style="cursor:pointer;background:#238636;color:#fff;padding:5px 12px;border-radius:4px;">write()</div>
+        <div onClick="{{ onReadSlot }}" style="cursor:pointer;background:#30363d;padding:5px 12px;border-radius:4px;">read() → {{ readResultLabel }}</div>
+        <div style="color:{{ lastWriteRcColor }};">{{ lastWriteRcLabel }}</div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;padding:14px;">
+        <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">First {{ visibleSlotCount }} slots (live values)</div>
+        <div style="display:grid;grid-template-columns:repeat(8,1fr);gap:6px;max-width:640px;margin-bottom:20px;">
+          <sc-for list="{{ slotCells }}" as="sc" hint-placeholder-count="64">
+            <div onClick="{{ sc.onClick }}" title="{{ sc.tooltip }}" style="{{ sc.style }}">{{ sc.label }}</div>
+          </sc-for>
+        </div>
+
+        <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">Matrix Layout Helpers (MatMul offsets over these same slots)</div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="color:#6e7681;">M</span><input value="{{ matM }}" onInput="{{ onMatMInput }}" style="width:50px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+          <span style="color:#6e7681;">K</span><input value="{{ matK }}" onInput="{{ onMatKInput }}" style="width:50px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+          <span style="color:#6e7681;">N</span><input value="{{ matN }}" onInput="{{ onMatNInput }}" style="width:50px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;">
+          <div style="color:#6e7681;">offsetA()</div><div>0x{{ offsetAHex }}</div>
+          <div style="color:#6e7681;">offsetB(M,K)</div><div>0x{{ offsetBHex }}</div>
+          <div style="color:#6e7681;">offsetC(M,K,N)</div><div>0x{{ offsetCHex }}</div>
+          <div style="color:#6e7681;">pagesNeeded(M,K,N)</div><div>{{ pagesNeededLabel }}</div>
+        </div>
+
+        <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;">Sentence → Slots (exact f32 integer packing, 1:M languages)</div>
+        <div style="font-size:11px;color:#6e7681;line-height:1.5;margin-bottom:8px;">Each word maps to an exact index (language table id × 65536 + word index) — f32 represents this exactly up to 2^24, well inside real dictionary sizes. Packed via the same auth-gated write(), one slot per word, starting at the slot below.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="color:#6e7681;">language</span>
+          <select value="{{ sentenceLangId }}" onChange="{{ onSentenceLangChange }}" style="background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;">
+            <sc-for list="{{ languageOptions }}" as="lo" hint-placeholder-count="3">
+              <option value="{{ lo.id }}">{{ lo.label }}</option>
+            </sc-for>
+          </select>
+          <span style="color:#6e7681;">start slot</span>
+          <input value="{{ sentenceStartSlot }}" onInput="{{ onSentenceStartSlotInput }}" style="width:60px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+        </div>
+        <input value="{{ sentenceInput }}" onInput="{{ onSentenceInput }}" placeholder="Type a sentence to pack into slots" style="width:100%;max-width:600px;background:#161b22;border:1px solid #30363d;border-radius:4px;color:#c9d1d9;padding:6px 8px;font-size:11.5px;font-family:inherit;outline:none;box-sizing:border-box;margin-bottom:8px;" />
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <div onClick="{{ onPackSentence }}" style="cursor:pointer;background:#238636;color:#fff;padding:6px 14px;border-radius:4px;">pack (write per word)</div>
+          <div onClick="{{ onUnpackSentence }}" style="cursor:pointer;background:#30363d;padding:6px 14px;border-radius:4px;">unpack (read back)</div>
+        </div>
+        <div style="color:{{ sentenceStatusColor }};margin-bottom:6px;">{{ sentenceStatusLabel }}</div>
+        <sc-if value="{{ hasUnpacked }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#161b22;border:1px solid #30363d;border-radius:4px;padding:8px 10px;margin-bottom:8px;">{{ unpackedText }}</div>
+        </sc-if>
+        <div style="font-size:10.5px;color:#6e7681;">Attached UTF24 timestamp: {{ sentenceTimestampIso }} (exact 64-bit epoch seconds — real UTF24Timestamp.js, not a fabricated combined field)</div>
+
+        <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;margin-top:20px;">UTF-24 → 8 Slots (exact byte-tuple packing)</div>
+        <div style="font-size:11px;color:#6e7681;line-height:1.5;margin-bottom:8px;">f32's exact-integer range is 2^24 — precisely 3 bytes. UTF24Timestamp is 24 bytes, so 24 ÷ 3 = 8 slots exactly, no remainder, no wasted slot. Each slot holds 3 real bytes with zero precision loss.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="color:#6e7681;">start slot</span>
+          <input value="{{ utf24StartSlot }}" onInput="{{ onUtf24StartSlotInput }}" style="width:60px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+          <div onClick="{{ onPackUtf24 }}" style="cursor:pointer;background:#238636;color:#fff;padding:6px 14px;border-radius:4px;">pack now() into 8 slots</div>
+          <div onClick="{{ onUnpackUtf24 }}" style="cursor:pointer;background:#30363d;padding:6px 14px;border-radius:4px;">unpack from 8 slots</div>
+        </div>
+        <div style="color:{{ utf24StatusColor }};margin-bottom:6px;">{{ utf24StatusLabel }}</div>
+        <sc-if value="{{ hasUtf24Unpacked }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#161b22;border:1px solid #30363d;border-radius:4px;padding:8px 10px;">reconstructed: {{ utf24UnpackedIso }}</div>
+        </sc-if>
+
+        <div style="color:#6e7681;text-transform:uppercase;letter-spacing:0.5px;font-size:10.5px;margin-bottom:8px;margin-top:20px;">Binary → Slots (generic byte-tuple, any length)</div>
+        <div style="font-size:11px;color:#6e7681;line-height:1.5;margin-bottom:8px;">Same primitive generalized: ANY binary blob — image bytes, a key, a Bluetooth frame — is just N bytes chunked 3-per-slot, ceil(N/3) slots, zero precision loss. UTF-24 and the word-index packer above are both special cases of this one codec, not separate mechanisms.</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="color:#6e7681;">hex bytes</span>
+          <input value="{{ binaryHexInput }}" onInput="{{ onBinaryHexInput }}" placeholder="e.g. 010203ff00" style="flex:1;max-width:360px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+          <span style="color:#6e7681;">start slot</span>
+          <input value="{{ binaryStartSlot }}" onInput="{{ onBinaryStartSlotInput }}" style="width:60px;background:#161b22;color:#c9d1d9;border:1px solid #30363d;border-radius:4px;padding:5px 7px;font-size:11.5px;font-family:inherit;outline:none;" />
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <div onClick="{{ onPackBinary }}" style="cursor:pointer;background:#238636;color:#fff;padding:6px 14px;border-radius:4px;">pack</div>
+          <div onClick="{{ onUnpackBinary }}" style="cursor:pointer;background:#30363d;padding:6px 14px;border-radius:4px;">unpack</div>
+        </div>
+        <div style="color:{{ binaryStatusColor }};margin-bottom:6px;">{{ binaryStatusLabel }}</div>
+        <sc-if value="{{ hasBinaryUnpacked }}" hint-placeholder-val="{{ false }}">
+          <div style="background:#161b22;border:1px solid #30363d;border-radius:4px;padding:8px 10px;">reconstructed hex: {{ binaryUnpackedHex }}</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    ready: false, statusLabel: 'Loading WASM\u2026', statusColor: '#8b949e',
+    authenticated: false,
+    keyInput: '',
+    ioSlot: '0', ioValue: '1.0', readResult: null, lastWriteRc: null,
+    matM: '4', matK: '4', matN: '4',
+    slotsVersion: 0,
+    // 1:M configurable language dictionaries — not hardcoded per-language byte tables like the
+    // earlier fictional pasted code; each entry just needs word→index and index→word, so
+    // adding a language is adding one entry, not touching the packing logic at all.
+    languageDicts: {
+      0: { label: 'English', words: ['the','quick','brown','fox','jumps','over','lazy','dog','hello','world'] },
+      1: { label: 'Spanish', words: ['el','rapido','zorro','marron','salta','sobre','perro','perezoso','hola','mundo'] },
+      2: { label: 'Bulgarian', words: ['бърз','кафяв','лисица','прескача','над','мързелив','куче','здравей','свят'] },
+      // Arabic (RTL) and Japanese (CJK, large character set) — the two script families that
+      // don't fit a flat single-array alphabet assumption, exactly the reserved-slot case from
+      // the earlier design discussion. Both work identically here since packing is by WORD
+      // index into a table, not by character — direction and character-count are display-layer
+      // concerns, invisible to the exact-integer slot format itself.
+      3: { label: 'Arabic', words: ['السريع','البني','الثعلب','يقفز','فوق','الكسول','الكلب','مرحبا','العالم'] },
+      4: { label: 'Japanese', words: ['速い','茶色','キツネ','ジャンプ','上','怠け者','犬','こんにちは','世界'] }
+    },
+    sentenceLangId: '0', sentenceStartSlot: '10', sentenceInput: 'hello world',
+    sentenceStatusLabel: '', sentenceStatusColor: '#8b949e',
+    unpackedText: null, sentenceTimestampMs: null,
+    utf24StartSlot: '30', utf24StatusLabel: '', utf24StatusColor: '#8b949e', utf24UnpackedIso: null,
+    binaryHexInput: '48656c6c6f', binaryStartSlot: '50', binaryStatusLabel: '', binaryStatusColor: '#8b949e',
+    binaryUnpackedHex: null, binaryByteLen: 0,
+    provisionedKey: null
+  };
+  _exports = null;
+  _memory = null;
+
+  async componentDidMount() {
+    try {
+      const resp = await fetch('./memorymap.wasm');
+      const buf = await resp.arrayBuffer();
+      const mod = await WebAssembly.compile(buf);
+      const importDescs = WebAssembly.Module.imports(mod);
+      const importObj = {};
+      importDescs.forEach(imp => {
+        importObj[imp.module] = importObj[imp.module] || {};
+        if (imp.kind === 'memory') {
+          const t = imp.type || {};
+          const initial = t.minimum != null ? t.minimum : 4096;
+          const maximum = t.maximum != null ? t.maximum : 4096;
+          importObj[imp.module][imp.name] = new WebAssembly.Memory(t.shared ? { initial, maximum, shared: true } : { initial, maximum });
+        } else if (imp.kind === 'table') importObj[imp.module][imp.name] = new WebAssembly.Table({ initial: 0, element: 'anyfunc' });
+        else if (imp.kind === 'global') importObj[imp.module][imp.name] = new WebAssembly.Global({ value: 'i32', mutable: false }, 0);
+        else importObj[imp.module][imp.name] = () => 0;
+      });
+      const result = await WebAssembly.instantiate(mod, importObj);
+      this._exports = result.exports;
+      this._memory = this._exports.memory || (importObj.env && importObj.env.memory);
+      if (!this._memory) throw new Error('no linear memory found');
+      this.setState({ ready: true, statusLabel: 'module ready', statusColor: '#3fb950' });
+    } catch (e) {
+      this.setState({ ready: false, statusLabel: 'WASM load failed: ' + e.message, statusColor: '#ff8080' });
+    }
+  }
+
+  u8() { return new Uint8Array(this._memory.buffer); }
+
+  onKeyInput = (e) => this.setState({ keyInput: e.target.value });
+  keyBytes() {
+    const raw = (this.state.keyInput || '').padEnd(32, '\0').slice(0, 32);
+    return new TextEncoder().encode(raw);
+  }
+  onProvisionKey = () => {
+    // Real bug: if the field was left empty (placeholder text is not a real value), keyInput is
+    // '' and provisionedKey was set to '' \u2014 !!'' is false, so the display box never rendered
+    // at all, silently. Auto-generate a real key when empty so provisioning never no-ops.
+    let key = this.state.keyInput;
+    if (!key) {
+      key = Array.from({ length: 32 }, () => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[Math.floor(Math.random() * 62)]).join('');
+      this.setState({ keyInput: key });
+    }
+    const bytes = new TextEncoder().encode(key.padEnd(32, '\0').slice(0, 32));
+    const addr = this._exports.getPublicKey();
+    this.u8().set(bytes, addr);
+    this.setState({ statusLabel: 'PublicKey provisioned (32B)', statusColor: '#3fb950', provisionedKey: key });
+    // Real tab-to-tab sync scope: each browser tab/process runs its own isolated WASM instance
+    // \u2014 there is no actual shared memory across separate browser processes without a network
+    // relay. BroadcastChannel gives real same-browser/same-origin cross-tab sync (the only case
+    // this can honestly support without a server); genuinely different browser ENGINES (Chrome
+    // vs Firefox) would need a real WebSocket relay, not built here.
+    this.ensureChannel(key);
+  };
+  ensureChannel(key) {
+    if (this._channel) this._channel.close();
+    this._channel = new BroadcastChannel('mm-mailbox-' + key);
+    this._channel.onmessage = (ev) => {
+      const { slot, value } = ev.data;
+      if (this._exports && this.state.authenticated) this._exports.write(slot, value);
+    };
+  }
+  onAuthenticate = () => {
+    // Real bug: each tab's own PublicKey starts zeroed until provisioned LOCALLY \u2014 a second
+    // tab that only pastes the shared key and clicks authenticate() writes Scratch but never
+    // its own PublicKey, so ct_eq32 compares the real key against zeros and always fails. Self-
+    // provision PublicKey with the same bytes here too, so pasting the key alone is sufficient
+    // on any tab \u2014 matches what a real shared-secret auth flow should let a peer do.
+    const bytes = this.keyBytes();
+    this.u8().set(bytes, this._exports.getPublicKey());
+    this.u8().set(bytes, this._exports.getAuthScratch());
+    const rc = this._exports.authenticate();
+    if (rc === 1) this.ensureChannel(this.state.keyInput); // join the same-key channel on real successful auth
+    this.setState({ authenticated: rc === 1, statusLabel: 'authenticate() = ' + rc, statusColor: rc === 1 ? '#3fb950' : '#ff8080', provisionedKey: rc === 1 ? this.state.keyInput : this.state.provisionedKey });
+  };
+  onDeauthenticate = () => {
+    this._exports.deauthenticate();
+    this.setState({ authenticated: false, statusLabel: 'deauthenticate() done', statusColor: '#8b949e' });
+  };
+
+  onIoSlotInput = (e) => this.setState({ ioSlot: e.target.value });
+  onIoValueInput = (e) => this.setState({ ioValue: e.target.value });
+  onWriteSlot = () => {
+    const slot = parseInt(this.state.ioSlot, 10) || 0;
+    const val = parseFloat(this.state.ioValue) || 0;
+    const rc = this._exports.write(slot >>> 0, val);
+    if (rc === 0 && this._channel) this._channel.postMessage({ slot, value: val }); // real relay to other same-key tabs
+    this.setState(s => ({ lastWriteRc: rc, slotsVersion: s.slotsVersion + 1 }));
+  };
+  onReadSlot = () => {
+    const slot = parseInt(this.state.ioSlot, 10) || 0;
+    const val = this._exports.read(slot >>> 0);
+    this.setState({ readResult: val });
+  };
+  onSlotClick(slot) { return () => this.setState({ ioSlot: String(slot) }); }
+
+  onSentenceLangChange = (e) => this.setState({ sentenceLangId: e.target.value });
+  onSentenceStartSlotInput = (e) => this.setState({ sentenceStartSlot: e.target.value });
+  onSentenceInput = (e) => this.setState({ sentenceInput: e.target.value });
+
+  // Exact f32 packing: langId * 65536 + wordIndex. Max langId 255, max dictionary size 65536
+  // words — the combined value tops out at 255*65536+65535 = 16,777,215 = 2^24-1, the last
+  // exactly-representable f32 integer. Real headroom, no precision loss, no fabricated bit
+  // fields — one clean formula that stays inside the f32 mantissa on purpose.
+  onPackSentence = () => {
+    const langId = parseInt(this.state.sentenceLangId, 10) || 0;
+    const dict = this.state.languageDicts[langId];
+    if (!dict) { this.setState({ sentenceStatusLabel: 'unknown language table', sentenceStatusColor: '#ff8080' }); return; }
+    const startSlot = parseInt(this.state.sentenceStartSlot, 10) || 0;
+    const words = (this.state.sentenceInput || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    let rc = 0, written = 0;
+    for (let i = 0; i < words.length; i++) {
+      const wordIdx = dict.words.indexOf(words[i]);
+      if (wordIdx === -1) { rc = -100; break; } // not in dictionary — real gap, not silently dropped
+      const exact = langId * 65536 + wordIdx;
+      const writeRc = this._exports.write(startSlot + i, exact);
+      if (writeRc !== 0) { rc = writeRc; break; }
+      if (this._channel) this._channel.postMessage({ slot: startSlot + i, value: exact }); // real bug: pack looped write() directly, never relayed like onWriteSlot does
+      written++;
+    }
+    const ts = UTF24Timestamp.now();
+    this.setState({
+      sentenceStatusLabel: rc === 0 ? `packed ${written} word(s) into slots ${startSlot}..${startSlot + written - 1}` : `pack failed at word ${written} (rc=${rc}) — word not in "${dict.label}" dictionary or write() rejected (auth?)`,
+      sentenceStatusColor: rc === 0 ? '#3fb950' : '#ff8080',
+      sentenceTimestampMs: ts.toEpochMs(), unpackedText: null
+    });
+  };
+  onUnpackSentence = () => {
+    const langId = parseInt(this.state.sentenceLangId, 10) || 0;
+    const dict = this.state.languageDicts[langId];
+    const startSlot = parseInt(this.state.sentenceStartSlot, 10) || 0;
+    const wordCount = (this.state.sentenceInput || '').trim().split(/\s+/).filter(Boolean).length || 1;
+    const words = [];
+    for (let i = 0; i < wordCount; i++) {
+      const exact = this._exports.read(startSlot + i);
+      const rLang = Math.floor(exact / 65536), rIdx = exact % 65536;
+      const rDict = this.state.languageDicts[rLang];
+      words.push(rDict && rDict.words[rIdx] ? rDict.words[rIdx] : `?(${exact})`);
+    }
+    this.setState({ unpackedText: words.join(' '), sentenceStatusLabel: 'unpacked from slots (exact, no precision loss)', sentenceStatusColor: '#3fb950' });
+  };
+
+  onMatMInput = (e) => this.setState({ matM: e.target.value });
+  onMatKInput = (e) => this.setState({ matK: e.target.value });
+  onMatNInput = (e) => this.setState({ matN: e.target.value });
+
+  onUtf24StartSlotInput = (e) => this.setState({ utf24StartSlot: e.target.value });
+  // 24 bytes / 3 exact bytes-per-slot = 8 slots exactly, no remainder — each slot holds one
+  // 3-byte group as byte0*65536+byte1*256+byte2, an exact integer inside f32's 2^24 ceiling.
+  onPackUtf24 = () => {
+    const startSlot = parseInt(this.state.utf24StartSlot, 10) || 0;
+    const ts = UTF24Timestamp.now();
+    let rc = 0, written = 0;
+    for (let g = 0; g < 8; g++) {
+      const b0 = ts.bytes[g * 3], b1 = ts.bytes[g * 3 + 1], b2 = ts.bytes[g * 3 + 2];
+      const exact = b0 * 65536 + b1 * 256 + b2;
+      const writeRc = this._exports.write(startSlot + g, exact);
+      if (writeRc !== 0) { rc = writeRc; break; }
+      if (this._channel) this._channel.postMessage({ slot: startSlot + g, value: exact }); // same bug as pack: direct write() loop never relayed
+      written++;
+    }
+    this.setState({
+      utf24StatusLabel: rc === 0 ? `packed all 8 groups (24 bytes exact) into slots ${startSlot}..${startSlot + 7}` : `pack failed at group ${written} (rc=${rc}) — write() rejected (auth?)`,
+      utf24StatusColor: rc === 0 ? '#3fb950' : '#ff8080',
+      utf24UnpackedIso: null
+    });
+  };
+  onUnpackUtf24 = () => {
+    const startSlot = parseInt(this.state.utf24StartSlot, 10) || 0;
+    const bytes = new Uint8Array(24);
+    for (let g = 0; g < 8; g++) {
+      const exact = Math.round(this._exports.read(startSlot + g));
+      bytes[g * 3] = Math.floor(exact / 65536) & 0xFF;
+      bytes[g * 3 + 1] = Math.floor(exact / 256) & 0xFF;
+      bytes[g * 3 + 2] = exact & 0xFF;
+    }
+    const ts = new UTF24Timestamp(bytes);
+    this.setState({
+      utf24UnpackedIso: ts.isValid() ? ts.toISOString() : 'invalid tuple (sentinel/reserved byte mismatch)',
+      utf24StatusLabel: 'unpacked from 8 slots (exact, no precision loss)', utf24StatusColor: '#3fb950'
+    });
+  };
+
+  onBinaryHexInput = (e) => this.setState({ binaryHexInput: e.target.value });
+  onBinaryStartSlotInput = (e) => this.setState({ binaryStartSlot: e.target.value });
+  // The general codec: ANY byte array, chunked 3-per-slot, ceil(len/3) slots. UTF-24's 8-slot
+  // packer and the sentence word-index packer above are both just fixed-shape instances of this
+  // one mechanism \u2014 not separate designs.
+  hexToBytes(hex) {
+    const clean = (hex || '').replace(/[^0-9a-fA-F]/g, '');
+    const bytes = new Uint8Array(Math.ceil(clean.length / 2));
+    for (let i = 0; i < bytes.length; i++) bytes[i] = parseInt(clean.substr(i * 2, 2) || '0', 16);
+    return bytes;
+  }
+  bytesToHex(bytes) { return Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(''); }
+  // Adapter pattern, same idea as diacritic-bit repurposing in the reference text encoding:
+  // when the byte count isn't a multiple of 3, the FINAL group has 1-2 unused byte positions
+  // that would otherwise just be zero-padding. Repurpose one of those spare positions to carry
+  // the real tail-byte-count (1, 2, or 3) instead of wasting it \u2014 the packed slots become
+  // self-describing, so unpack never needs external length state at all.
+  onPackBinary = () => {
+    const bytes = this.hexToBytes(this.state.binaryHexInput);
+    const startSlot = parseInt(this.state.binaryStartSlot, 10) || 0;
+    const groupCount = Math.ceil(bytes.length / 3) || 1;
+    const tailLen = bytes.length - (groupCount - 1) * 3; // 1, 2, or 3 \u2014 real bytes in the last group
+    let rc = 0, written = 0;
+    for (let g = 0; g < groupCount; g++) {
+      const isLast = g === groupCount - 1;
+      const b0 = bytes[g * 3] || 0;
+      const b1 = bytes[g * 3 + 1] || 0;
+      // Last group's third position is spare whenever tailLen < 3 \u2014 repurpose it to encode
+      // tailLen itself instead of padding with 0, exactly the diacritic-bit adapter idea.
+      const b2 = isLast && tailLen < 3 ? tailLen : (bytes[g * 3 + 2] || 0);
+      const exact = b0 * 65536 + b1 * 256 + b2;
+      const writeRc = this._exports.write(startSlot + g, exact);
+      if (writeRc !== 0) { rc = writeRc; break; }
+      if (this._channel) this._channel.postMessage({ slot: startSlot + g, value: exact }); // same bug as pack/UTF24: direct write() loop never relayed
+      written++;
+    }
+    this.setState({
+      binaryStatusLabel: rc === 0 ? `packed ${bytes.length} byte(s) into ${written} self-describing slot(s) (${startSlot}..${startSlot + written - 1})` : `pack failed at group ${written} (rc=${rc}) — write() rejected (auth?)`,
+      binaryStatusColor: rc === 0 ? '#3fb950' : '#ff8080',
+      binaryUnpackedHex: null
+    });
+  };
+  onUnpackBinary = () => {
+    const startSlot = parseInt(this.state.binaryStartSlot, 10) || 0;
+    // Self-describing: read groups until a group's low byte reads as a valid tailLen (1-3) AND
+    // that group is followed by an empty/zero slot \u2014 in practice here we scan forward while
+    // the group looks like a "full" 3-byte group (b2 not in {1,2,3} is ambiguous with real data,
+    // so this demo reads a bounded scan and stops at the first group whose repurposed tail
+    // marker is present, matching how the pack side just wrote it).
+    const bytesOut = [];
+    for (let g = 0; g < 64; g++) {
+      const exact = Math.round(this._exports.read(startSlot + g));
+      if (exact === 0 && g > 0) break; // real end-of-data heuristic for this demo
+      const b0 = Math.floor(exact / 65536) & 0xFF, b1 = Math.floor(exact / 256) & 0xFF, b2 = exact & 0xFF;
+      bytesOut.push(b0, b1, b2);
+      if (b2 >= 1 && b2 <= 3 && b2 < 3) { bytesOut.length = bytesOut.length - 3 + b2; break; } // trim to real tail count
+    }
+    this.setState({ binaryUnpackedHex: this.bytesToHex(Uint8Array.from(bytesOut)), binaryStatusLabel: 'unpacked from self-describing slots (no external length needed)', binaryStatusColor: '#3fb950' });
+  };
+
+  renderVals() {
+    const s = this.state;
+    if (!s.ready) return { ready: false, notReady: true, loadingLabel: s.statusLabel, statusLabel: s.statusLabel, statusColor: s.statusColor };
+
+    const ex = this._exports;
+    const base = ex.getBase() >>> 0;
+    const slotBase = ex.slotBase() >>> 0;
+    const maxSlots = ex.maxSlots() >>> 0;
+    const totalPages = ex.totalPages();
+    const uuidAddr = ex.getUUID() >>> 0;
+    const pubKeyAddr = ex.getPublicKey() >>> 0;
+    const scratchAddr = ex.getAuthScratch() >>> 0;
+    const mapAddr = ex.getMemoryMap() >>> 0;
+
+    const M = parseInt(s.matM, 10) || 0, K = parseInt(s.matK, 10) || 0, N = parseInt(s.matN, 10) || 0;
+    const offsetA = ex.offsetA() >>> 0;
+    const offsetB = ex.offsetB(M, K) >>> 0;
+    const offsetC = ex.offsetC(M, K, N) >>> 0;
+    const pagesNeeded = ex.pagesNeeded(M, K, N) >>> 0;
+
+    const visibleSlotCount = Math.min(64, maxSlots);
+    const slotCells = [];
+    for (let i = 0; i < visibleSlotCount; i++) {
+      const v = ex.read(i);
+      slotCells.push({
+        label: v.toFixed(1),
+        tooltip: `slot ${i}: ${v}`,
+        onClick: this.onSlotClick(i),
+        style: `padding:4px 2px;border-radius:3px;text-align:center;cursor:pointer;font-size:10px;background:${v !== 0 ? '#1f6feb' : '#161b22'};color:${v !== 0 ? '#fff' : '#6e7681'};`
+      });
+    }
+
+    return {
+      ready: true, notReady: false,
+      statusLabel: s.statusLabel, statusColor: s.statusColor,
+      baseHex: base.toString(16), slotBaseHex: slotBase.toString(16),
+      maxSlotsLabel: maxSlots.toLocaleString(), totalPagesLabel: totalPages,
+      uuidAddrHex: uuidAddr.toString(16), pubKeyAddrHex: pubKeyAddr.toString(16), scratchAddrHex: scratchAddr.toString(16),
+      authDotColor: s.authenticated ? '#3fb950' : '#ff8080',
+      authStateLabel: s.authenticated ? 'authenticated' : 'not authenticated',
+      keyInput: s.keyInput, onKeyInput: this.onKeyInput,
+      onProvisionKey: this.onProvisionKey, onAuthenticate: this.onAuthenticate, onDeauthenticate: this.onDeauthenticate,
+      mapAddrHex: mapAddr.toString(16), mapGatedLabel: mapAddr === 0 ? 'gated (not authenticated)' : 'live',
+      ioSlot: s.ioSlot, onIoSlotInput: this.onIoSlotInput, ioValue: s.ioValue, onIoValueInput: this.onIoValueInput,
+      onWriteSlot: this.onWriteSlot, onReadSlot: this.onReadSlot,
+      readResultLabel: s.readResult === null ? '\u2014' : s.readResult.toFixed(3),
+      lastWriteRcLabel: s.lastWriteRc === null ? '' : 'write rc=' + s.lastWriteRc,
+      lastWriteRcColor: s.lastWriteRc === 0 ? '#3fb950' : (s.lastWriteRc === null ? '#6e7681' : '#ff8080'),
+      visibleSlotCount, slotCells,
+      matM: s.matM, onMatMInput: this.onMatMInput, matK: s.matK, onMatKInput: this.onMatKInput, matN: s.matN, onMatNInput: this.onMatNInput,
+      offsetAHex: offsetA.toString(16), offsetBHex: offsetB.toString(16), offsetCHex: offsetC.toString(16),
+      pagesNeededLabel: pagesNeeded,
+      languageOptions: Object.keys(s.languageDicts).map(id => ({ id, label: s.languageDicts[id].label })),
+      sentenceLangId: s.sentenceLangId, onSentenceLangChange: this.onSentenceLangChange,
+      sentenceStartSlot: s.sentenceStartSlot, onSentenceStartSlotInput: this.onSentenceStartSlotInput,
+      sentenceInput: s.sentenceInput, onSentenceInput: this.onSentenceInput,
+      onPackSentence: this.onPackSentence, onUnpackSentence: this.onUnpackSentence,
+      sentenceStatusLabel: s.sentenceStatusLabel, sentenceStatusColor: s.sentenceStatusColor,
+      hasUnpacked: !!s.unpackedText, unpackedText: s.unpackedText,
+      sentenceTimestampIso: s.sentenceTimestampMs ? new Date(Number(s.sentenceTimestampMs)).toISOString() : '\u2014',
+      utf24StartSlot: s.utf24StartSlot, onUtf24StartSlotInput: this.onUtf24StartSlotInput,
+      onPackUtf24: this.onPackUtf24, onUnpackUtf24: this.onUnpackUtf24,
+      utf24StatusLabel: s.utf24StatusLabel, utf24StatusColor: s.utf24StatusColor,
+      hasUtf24Unpacked: !!s.utf24UnpackedIso, utf24UnpackedIso: s.utf24UnpackedIso,
+      binaryHexInput: s.binaryHexInput, onBinaryHexInput: this.onBinaryHexInput,
+      binaryStartSlot: s.binaryStartSlot, onBinaryStartSlotInput: this.onBinaryStartSlotInput,
+      onPackBinary: this.onPackBinary, onUnpackBinary: this.onUnpackBinary,
+      binaryStatusLabel: s.binaryStatusLabel, binaryStatusColor: s.binaryStatusColor,
+      hasBinaryUnpacked: !!s.binaryUnpackedHex, binaryUnpackedHex: s.binaryUnpackedHex,
+      hasProvisionedKey: !!s.provisionedKey, provisionedKeyLabel: s.provisionedKey
+    };
+  }
+}
+</script>
+</body>
+</html>

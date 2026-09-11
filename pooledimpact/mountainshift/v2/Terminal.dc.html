@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+<style>
+  body { margin:0; background:#1e1e1e; }
+  @keyframes term-blink { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }
+</style>
+<script src="./BaseClassX.js"></script>
+<script src="./FileFsX.js"></script>
+<script src="./Environment.js"></script>
+<script src="./CPU.js"></script>
+<script src="./Physical.js"></script>
+<script src="./Memory.js"></script>
+<script src="./Kernel.js"></script>
+<script src="./BIOS.js"></script>
+<script src="./Procd.js"></script>
+<script src="./PosixCommands.js"></script>
+</helmet>
+<div onClick="{{ focusInput }}" style="width:100%;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;background:rgba(30,30,30,0.7);font-family:'Courier New',monospace;">
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#252526;border-bottom:1px solid #333;flex-shrink:0;">
+    <span style="color:#8b93a0;font-size:11px;text-transform:uppercase;letter-spacing:.04em;">MeshOS Terminal</span>
+    <button onClick="{{ clearScreen }}" style="color:#888;background:transparent;border:none;font:12px system-ui;cursor:pointer;padding:4px 10px;">Clear</button>
+  </div>
+  <div ref="{{ scrollRef }}" style="flex:1;overflow:auto;padding:12px;font-size:12px;line-height:1.6;color:#d4d4d4;background:transparent;backdrop-filter:blur(6px);">
+    <sc-for list="{{ lines }}" as="ln" hint-placeholder-count="4">
+      <div style="white-space:pre-wrap;word-break:break-word;color:{{ ln.color }};">{{ ln.text }}</div>
+    </sc-for>
+  </div>
+  <div style="display:flex;align-items:flex-start;padding:8px 12px;border-top:1px solid #333;background:#252526;flex-shrink:0;">
+    <span style="color:#6b9;font-size:12px;margin-right:6px;padding-top:2px;">{{ promptChar }}</span>
+    <textarea ref="{{ inputRef }}" value="{{ typed }}" onInput="{{ onInput }}" onKeyDown="{{ onKeyDown }}" rows="1" spellCheck="false" autoFocus="{{ true }}" style="flex:1;background:transparent;border:none;outline:none;resize:none;color:#d4d4d4;font:12px 'Courier New',monospace;padding:0;padding-top:2px;"></textarea>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  state = {
+    lines: [{ text: 'MeshOS Terminal v1.0', color: '#8b93a0' }, { text: 'Type "help" for commands. (POSIX binaries load from /bin \u2014 boot VB6 IDE once first if commands are missing.)', color: '#8b93a0' }],
+    typed: '', cwd: '/', currentUser: 'root', loginTime: null
+  };
+
+  componentDidMount() {
+    this._history = []; this._histIdx = -1;
+    this._users = { root: { uid: 0, gid: 0, home: '/root', passwordHash: null }, guest: { uid: 1000, gid: 1000, home: '/home/guest', passwordHash: null } };
+    this._sessionLog = [];
+    this._commands = new Map();
+    this._fs = null;
+    this.inputRef = (el) => { this._input = el; if (el) el.focus(); };
+    this.scrollRef = (el) => { this._scroll = el; };
+    this._hashPassword('wfobbs').then(h => { this._users.root.passwordHash = h; });
+    this._bootKernel();
+    this._initFS();
+  }
+
+  async _hashPassword(pw) {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Helmet-loaded modules resolve asynchronously in the DC runtime, so Procd may
+  // not exist yet when componentDidMount fires. Poll briefly instead of a
+  // one-shot typeof check, or attachKernel() silently never happens.
+  async _waitForProcd(timeoutMs) {
+    const start = Date.now();
+    while (typeof Procd === 'undefined') {
+      if (Date.now() - start > (timeoutMs || 15000)) return null;
+      await new Promise(r => setTimeout(r, 30));
+    }
+    return Procd;
+  }
+  // Safety net: if the initial boot-time attach missed the window (Procd.js loaded
+  // later than the wait), any Procd-dependent command lazily re-attaches here
+  // instead of leaving the terminal permanently disconnected from its own Kernel.
+  _ensureProcdAttached() {
+    if (typeof Procd !== 'undefined' && this._kernel && Procd.getAttachedKernel() !== this._kernel) {
+      Procd.attachKernel(this._kernel);
+    }
+    // --console demos render via Output->Clear->Output, same cadence as top:
+    // mirror that same content into this terminal's own buffer, not just devtools.
+    if (typeof Procd !== 'undefined' && !this._procdSinkWired) {
+      this._procdSinkWired = true;
+      Procd.setConsoleSink((text) => {
+        // One call = one complete frame (Procd.js buffers all _consoleLog calls between
+        // clears and flushes them together) — replace the previous frame's lines with this one.
+        this.setState(s => ({ lines: s.lines.slice(0, s.lines.length - (this._lastDemoLines || 0)) }));
+        const newLines = text.split('\n');
+        newLines.forEach(t => this._push(t, '#8b93a0'));
+        this._lastDemoLines = newLines.length;
+      });
+    }
+  }
+
+  async _bootKernel() {
+    try {
+      const ProcdRef = await this._waitForProcd();
+      let shared = null;
+      try { shared = (window.parent && window.parent !== window && window.parent.__meshKernel) || null; } catch (e) { shared = null; } // cross-origin parent (standalone load) — fall back to own boot
+      if (shared) {
+        this._kernel = shared;
+        if (ProcdRef && ProcdRef.attachKernel) ProcdRef.attachKernel(this._kernel);
+        const init = this._kernel.ps().find(p => p.cmd === 'kernel.js');
+        this._shellPid = this._kernel.fork('bsh', init ? init.pid : 0).pid;
+        return;
+      }
+      const physical = new Physical({ capacityMHz: 2600, ramBytes: 0x400000 });
+      const bios = new BIOS();
+      this._kernel = await bios.boot(physical, null, null);
+      if (ProcdRef && ProcdRef.attachKernel) ProcdRef.attachKernel(this._kernel);
+      this._kernel.fork('kernel.js', 0);
+      this._shellPid = this._kernel.fork('bsh', 1).pid;
+    } catch (e) { console.warn('bootKernel:', e); }
+  }
+
+  _initFS() {
+    if (typeof FileFsX === 'undefined') return;
+    FileFsX.create({ autoSave: false, backend: 'idb', key: 'meshui-root' }).then(fs => {
+      this._fs = fs;
+      const setup = (typeof PosixCommands !== 'undefined') ? PosixCommands.setupUnixFS(fs) : Promise.resolve();
+      return setup.then(() => this._loadCommands());
+    }).catch(e => console.warn('FileFsX init:', e));
+  }
+
+  _loadCommands() {
+    const GLOB_CHARS = /[*?[]/;
+    this._expandGlobs = (args) => args.reduce((accP, arg) => accP.then(async (acc) => {
+      if (!GLOB_CHARS.test(arg)) { acc.push(arg); return acc; }
+      const slash = arg.lastIndexOf('/');
+      const dir = slash === -1 ? this.state.cwd : (arg.slice(0, slash) || '/');
+      const pattern = slash === -1 ? arg : arg.slice(slash + 1);
+      try {
+        const entries = await this._fs.readdir(dir);
+        const re = new RegExp('^' + pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.') + '$');
+        const matches = entries.filter(e => re.test(e.name || e)).map(e => (slash === -1 ? '' : dir + '/') + (e.name || e));
+        acc.push(...(matches.length ? matches : [arg]));
+      } catch (e) { acc.push(arg); }
+      return acc;
+    }), Promise.resolve([]));
+
+    return this._fs.readdir('/bin').then(entries => Promise.all(
+      (entries || []).filter(e => (e.name || e).endsWith('.js')).map(e => {
+        const file = '/bin/' + (e.name || e);
+        return this._fs.readFile(file, 'utf8').then(src => {
+          const mod = { exports: {} };
+          try {
+            new Function('module', 'exports', 'TermCommand', String(src))(mod, mod.exports, function(){});
+            const CmdClass = mod.exports;
+            const key = CmdClass && CmdClass.name ? CmdClass.name : file.split('/').pop().replace(/^unix\./, '').replace(/\.js$/, '');
+            if (CmdClass) this._commands.set(key, CmdClass);
+          } catch (err) { console.warn('loadCommands: failed ' + file, err); }
+        });
+      })
+    )).catch(e => console.warn('loadCommands:', e));
+  }
+
+  focusInput() { if (this._input) this._input.focus(); }
+  _scrollToEnd() { requestAnimationFrame(() => { if (this._scroll) this._scroll.scrollTop = this._scroll.scrollHeight; }); }
+  _push(text, color) { this.setState(s => ({ lines: [...s.lines, { text, color: color || '#d4d4d4' }] })); this._scrollToEnd(); }
+  clearScreen() { this.setState({ lines: [] }); }
+
+  onInput(e) { this.setState({ typed: e.target.value }); }
+  onKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._run(); return; }
+    if (e.key === 'ArrowUp' && !e.shiftKey && this._history.length) { e.preventDefault(); this._histIdx = Math.min(this._histIdx + 1, this._history.length - 1); this.setState({ typed: this._history[this._history.length - 1 - this._histIdx] }); return; }
+    if (e.key === 'ArrowDown' && !e.shiftKey) { e.preventDefault(); if (this._histIdx <= 0) { this._histIdx = -1; this.setState({ typed: '' }); } else { this._histIdx--; this.setState({ typed: this._history[this._history.length - 1 - this._histIdx] }); } return; }
+  }
+
+  _resolvePath(p) {
+    const cwd = this.state.cwd || '/';
+    if (!p) return cwd;
+    if (p.startsWith('/')) return p;
+    return ((cwd === '/' ? '' : cwd) + '/' + p).replace(/\/+/g, '/');
+  }
+
+  _sessionCtx() {
+    return {
+      user: () => this.state.currentUser || '(no session)',
+      isActive: () => !!this.state.currentUser,
+      users: () => this._users,
+      loginTime: () => this.state.loginTime,
+      log: () => this._sessionLog,
+      login: (user, password) => this._doLogin(user, password),
+      logout: () => this._doLogout(),
+      useradd: (username, password) => this._doUseradd(this.state.currentUser, username, password)
+    };
+  }
+  async _doLogin(user, password) {
+    const u = this._users[user];
+    if (!u) return { error: 'unknown user: ' + user };
+    if (u.passwordHash) {
+      const attempt = password ? await this._hashPassword(password) : null;
+      if (attempt !== u.passwordHash) return { error: 'incorrect password' };
+    }
+    if (this.state.currentUser) this._sessionLog.push({ user: this.state.currentUser, action: 'logout', time: Date.now() });
+    this._sessionLog.push({ user, action: 'login', time: Date.now() });
+    this.setState({ currentUser: user, loginTime: Date.now() });
+    return { ok: true };
+  }
+  _doLogout() {
+    if (!this.state.currentUser) return { error: 'not logged in' };
+    this._sessionLog.push({ user: this.state.currentUser, action: 'logout', time: Date.now() });
+    this.setState({ currentUser: null, loginTime: null });
+    return { ok: true };
+  }
+  async _doUseradd(actingUser, username, password) {
+    const acting = this._users[actingUser];
+    if (!acting || acting.uid !== 0) return { error: 'permission denied (root only)' };
+    if (this._users[username]) return { error: 'user already exists: ' + username };
+    const nextUid = Math.max(...Object.values(this._users).map(u => u.uid)) + 1;
+    this._users[username] = { uid: nextUid, gid: nextUid, home: '/home/' + username, passwordHash: password ? await this._hashPassword(password) : null };
+    return { ok: true, uid: nextUid };
+  }
+
+  _run() {
+    const cmd = this.state.typed.trim();
+    if (!cmd) return;
+    this._history.push(cmd); this._histIdx = -1;
+    this.setState({ typed: '' });
+    if (typeof Procd !== 'undefined') Procd.fg(0); // every command reclaims the console from any running job (e.g. top), same as real shells
+    if (this._replMode === 'llm') {
+      this._push('llm> ' + cmd, '#6b9');
+      if (cmd === 'exit' || cmd === '/exit' || cmd === 'quit') { this._replMode = null; this._push('(exited llm chat)', '#8b93a0'); return; }
+      this._runLlmReplTurn(cmd);
+      return;
+    }
+    this._push('$ ' + cmd, '#6b9');
+    const push = (s) => this._push(s);
+    const cwd = () => this.state.cwd || '/';
+    const commandsHelp = Array.from(this._commands.keys()).join(', ');
+
+    if (cmd === 'help') push('Commands: help, ' + commandsHelp + ', cat <file>, mkdir <dir>, cd [path], pwd, touch <file>, rm <path>, clear, echo <string>');
+    else if (cmd === 'pwd') push(cwd());
+    else if (cmd === 'clear') { this._stopTop(); this._lastTopLines = 0; this.clearScreen(); }
+    else if (cmd.startsWith('echo ')) push(cmd.slice(5));
+    else if (cmd === 'echo') push('');
+    else if (cmd === 'top stop' || cmd === 'stop') { this._stopTop(); this._lastTopLines = 0; }
+    else if (this._commands.has(cmd.split(' ')[0])) {
+      const parts = cmd.split(' ');
+      const verb = parts.shift();
+      const CmdClass = this._commands.get(verb);
+      // top/ps/jobs/fg/bg/kill/demo are real /bin commands too (unix.*.js / procd.demo.js)
+      // — they don't need the filesystem, so they run even before FileFsX is ready.
+      const needsFs = !['ps', 'jobs', 'fg', 'bg', 'kill', 'top', 'demo', 'llm'].includes(verb);
+      if (verb === 'top') { this._ensureProcdAttached(); this._runTop(); return; }
+      if (verb === 'llm' && parts[0] === 'chat' && parts.includes('--repl')) {
+        this._replMode = 'llm';
+        push('Entering llm chat REPL — type your prompts directly, "exit" to leave.');
+        return;
+      }
+      if (needsFs && !this._fs) { push(verb + ': FileFsX not ready yet', '#e0666e'); return; }
+      const runWithArgs = (expandedArgs) => {
+        const inst = new CmdClass();
+        let buf = '';
+        const writer = { write: (s) => { buf += s; } };
+        const flush = () => { buf.split('\n').forEach((line, i, arr) => { if (i < arr.length - 1 || line) push(line); }); buf = ''; };
+        const fs = this._fs;
+        const vfsCtx = fs ? {
+          readFile: (...a) => fs.readFile(...a), writeFile: (...a) => fs.writeFile(...a), mkdir: (...a) => fs.mkdir(...a),
+          readdir: (...a) => fs.readdir(...a), stat: (...a) => fs.stat(...a), lstat: (...a) => fs.lstat(...a),
+          unlink: (...a) => fs.unlink(...a), rmdir: (...a) => fs.rmdir(...a), rename: (...a) => fs.rename(...a),
+          exists: (path) => fs.stat(path).then(() => true).catch(() => false),
+          chmod: (...a) => fs.chmod(...a), chown: (...a) => fs.chown(...a),
+          readClass: (path) => fs.readFile(path, 'utf8').then(src => { const mod = { exports: {} }; new Function('module', 'exports', 'TermCommand', String(src))(mod, mod.exports, function(){}); return mod.exports; }),
+          mounts: () => {
+            const mount = fs.mount;
+            const device = mount && mount.backend !== 'picker' ? (mount.backend + ':' + mount.key) : 'memory';
+            const opts = (mount && mount._autoSave ? 'rw,autosave' : 'rw') + ',nodes=' + (mount ? mount._nodeCount : 0);
+            return Promise.resolve([{ device, path: '/', type: 'filefsx-' + (mount ? mount.backend : 'json'), options: opts }]);
+          }
+        } : {};
+        let llmd = null;
+        try { llmd = window.Llmd || (window.parent && window.parent !== window && window.parent.Llmd) || null; } catch (e) { llmd = null; }
+        const system = { kernel: this._kernel, procd: (typeof Procd !== 'undefined' ? Procd : null), llmd, contextId: 'terminal:' + (this._sessionId || 'main'), ensureAttached: () => this._ensureProcdAttached() };
+        const ctx = { stdin: (async function*(){})(), stdout: writer, stderr: writer, cwd: cwd(), vfs: vfsCtx, session: this._sessionCtx(), system };
+        return Promise.resolve(inst.execute(parts, ctx)).then(flush);
+      };
+      if (needsFs) this._expandGlobs(parts).then(runWithArgs).catch(e => push(verb + ': ' + e.message, '#e0666e'));
+      else runWithArgs(parts).catch(e => push(verb + ': ' + e.message, '#e0666e'));
+    }
+    else if (cmd.startsWith('cd')) {
+      const p = cmd.slice(2).trim();
+      const target = p ? this._resolvePath(p) : '/';
+      if (!this._fs) push('cd: FileFsX not ready yet', '#e0666e');
+      else this._fs.stat(target).then(st => { if (st.isDirectory && !st.isDirectory()) { push('cd: not a directory: ' + target); return; } this.setState({ cwd: target }); }).catch(e => push('cd: ' + e.message, '#e0666e'));
+    }
+    else if (cmd.startsWith('mkdir ')) {
+      if (!this._fs) push('mkdir: FileFsX not ready yet', '#e0666e');
+      else { const target = this._resolvePath(cmd.slice(6).trim()); this._fs.mkdir(target, { recursive: true }).then(() => push('created ' + target)).catch(e => push('mkdir: ' + e.message, '#e0666e')); }
+    }
+    else if (cmd.startsWith('touch ')) {
+      if (!this._fs) push('touch: FileFsX not ready yet', '#e0666e');
+      else { const target = this._resolvePath(cmd.slice(6).trim()); this._fs.writeFile(target, '').then(() => push('created ' + target)).catch(e => push('touch: ' + e.message, '#e0666e')); }
+    }
+    else if (cmd.startsWith('rm ')) {
+      if (!this._fs) push('rm: FileFsX not ready yet', '#e0666e');
+      else { const target = this._resolvePath(cmd.slice(3).trim()); this._fs.unlink(target).then(() => push('removed ' + target)).catch(() => this._fs.rmdir(target, { recursive: true }).then(() => push('removed ' + target)).catch(e2 => push('rm: ' + e2.message, '#e0666e'))); }
+    }
+    else this._push(cmd + ': command not found', '#e0666e');
+  }
+
+  // top is a real Procd job (type 'console'), not a private setInterval \u2014 so
+  // `jobs`/`fg <id>`/`bg <id>`/`kill <id>` uniformly control it, same as any demo job.
+  // render() only fires while this job holds the console (job.fg), matching real
+  // shell job control: backgrounding it (fg 0 / another job's fg) silences its output
+  // without stopping its tick().
+  _stopTop() { if (this._topJob) { this._topJob.stop(); this._topJob = null; } }
+
+  async _runLlmReplTurn(text) {
+    let llmd = null;
+    try { llmd = window.Llmd || (window.parent && window.parent !== window && window.parent.Llmd) || null; } catch (e) { llmd = null; }
+    if (!llmd) { this._push('llm: llmd not available in this host', '#e0666e'); return; }
+    if (!llmd.isReady()) {
+      this._push('llm: no model loaded — loading default model, this can take a while...', '#8b93a0');
+      try { await llmd.loadModel('Llama-3.2-1B-Instruct-q4f16_1-MLC'); }
+      catch (e) { this._push('llm: ' + e.message, '#e0666e'); return; }
+    }
+    const contextId = 'terminal:' + (this._sessionId || 'main');
+    let lineIdx = null;
+    try {
+      await llmd.chat(contextId, text, (tok) => {
+        this.setState(s => {
+          const lines = s.lines.slice();
+          if (lineIdx === null) { lineIdx = lines.length; lines.push({ text: tok, color: '#ddd' }); }
+          else lines[lineIdx] = { text: lines[lineIdx].text + tok, color: '#ddd' };
+          return { lines };
+        });
+      });
+    } catch (e) { this._push('llm: ' + e.message, '#e0666e'); }
+  }
+  _runTop() {
+    this._stopTop();
+    if (typeof Procd === 'undefined') { this._push('top: Procd not loaded', '#e0666e'); return; }
+    this._topStart = Date.now();
+    // tick() must stay cheap and NOT call Procd.cpuTick() itself — cpuTick's
+    // work-unit cost would get measured as top's OWN job weight (job._lastTickMs),
+    // inflating top above every other job just for taking the system measurement.
+    // The measurement + weighting math lives in render(), which isn't timed for
+    // per-job CPU attribution.
+    const tick = () => {
+      if (this._kernel) this._kernel.tick(); // advance real scheduler
+    };
+    const render = () => {
+      const procs = (this._kernel ? this._kernel.ps() : []);
+      const real = Procd.cpuTick(this._kernel ? this._kernel.cores : 1); // real measured, per-core-normalized load
+      const pidWeights = Procd.pidWorkWeights(); // real per-job measured tick cost, keyed by pid — not a flat share
+      const weights = procs.map(p => (pidWeights[p.pid] || 0));
+      const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+      const memory = this._kernel && this._kernel.getMemory ? this._kernel.getMemory() : null;
+      const totalMemBytes = memory ? memory.sizeBytes : 0;
+      this._topState = procs.map((p, i) => ({
+        pid: p.pid, user: p.user || 'root', cmd: p.cmd,
+        cpu: real.loadPercent * (weights[i] / totalW),
+        mem: totalMemBytes ? (100 * (p.memBytes || 0) / totalMemBytes) : 0
+      })).sort((a, b) => b.cpu - a.cpu);
+      const now = new Date();
+      const uptimeSec = Math.round((Date.now() - this._topStart) / 1000);
+      const rows = this._topState;
+      const totalCpu = rows.reduce((s, r) => s + r.cpu, 0);
+      const running = rows.filter(r => r.cpu > 20).length;
+      const topLineCount = 5 + rows.length;
+      // Redraw in place like real top, instead of scrolling the buffer forever.
+      this.setState(s => ({ lines: s.lines.slice(0, s.lines.length - (this._lastTopLines || 0)) }));
+      this._push(`top - ${now.toLocaleTimeString()} up, ${uptimeSec}s, load: ${(totalCpu / 100).toFixed(2)}`, '#8b93a0');
+      this._push(`Tasks: ${rows.length} total, ${running} running`, '#8b93a0');
+      this._push(`CPU(s): ${totalCpu.toFixed(1)}% used`, '#8b93a0');
+      this._push(`Mem: ${(256 - Math.random() * 40).toFixed(0)}M free`, '#8b93a0');
+      this._push('PID\tUSER\tCPU%\tMEM%\tCOMMAND', '#8b93a0');
+      rows.forEach(r => this._push(`${r.pid}\t${r.user}\t${r.cpu.toFixed(1)}\t${r.mem.toFixed(1)}\t${r.cmd}`));
+      this._lastTopLines = topLineCount;
+    };
+    this._topJob = Procd.registerJob('top', 'console', 2000, tick, render, () => { this._lastTopLines = 0; });
+    tick();
+    render();
+  }
+
+  renderVals() {
+    const s = this.state;
+    return {
+      lines: s.lines, typed: s.typed,
+      promptChar: this._replMode === 'llm' ? 'llm>' : (s.currentUser ? s.currentUser + '@meshos:' + s.cwd + '$' : '$'),
+      focusInput: () => this.focusInput(),
+      clearScreen: () => this.clearScreen(),
+      inputRef: this.inputRef, scrollRef: this.scrollRef,
+      onInput: (e) => this.onInput(e), onKeyDown: (e) => this.onKeyDown(e)
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Kernel-Machine Smoke Test</title>
+<script src="./BaseClassX.js"></script>
+<script src="./CPU.js"></script>
+<script src="./Environment.js"></script>
+<script src="./Registry.js"></script>
+<script src="./Physical.js"></script>
+<script src="./Memory.js"></script>
+<script src="./Kernel.js"></script>
+<script src="./FileFsX.js"></script>
+<script src="./BootDeviceScan.js"></script>
+<script src="./StorageDevice.js"></script>
+<script src="./FileFsBootAdapter.js"></script>
+<script src="./ISO.js"></script>
+<script src="./Installer.js"></script>
+<script src="./BIOS.js"></script>
+<style>body{font:13px monospace;background:#111;color:#0f0;padding:16px;white-space:pre-wrap}</style>
+</head>
+<body>
+<div id="out">running...</div>
+<script>
+(async () => {
+const lines = [];
+function log(x){ lines.push(typeof x === 'string' ? x : JSON.stringify(x)); }
+
+const physical = new Physical({ ramBytes: 0x10000, capacityMHz: 3200, energyBudgetW: 45 });
+const registry = new Registry();
+registry.set('bootDeviceOrder', ['disk', 'esp', 'network']);
+const bios = new BIOS();
+bios.attachRegistry(registry);
+log('firmwareType: ' + bios.firmwareType);
+log('bootDeviceOrder (from registry): ' + JSON.stringify(bios.bootDeviceOrder));
+
+const kernel = await bios.boot(physical, null);
+log('unconfirmed bootedFrom: ' + kernel.bootedFrom);
+
+function shash(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h).toString(36);}
+
+// Seed a cache-backend FIXED (hard-drive) volume with a real UEFI marker + sidecar.
+const hd = StorageDevice.hardDrive({ FileFS: FileFsX, surface: 'cache', id: 'usb0' });
+await hd.mount();
+await hd.mkdir('/EFI/BOOT', { recursive: true });
+await hd.writeFile('/EFI/BOOT/BOOTX64.EFI', 'stub-bootloader');
+await hd.writeFile('/EFI/BOOT/BOOTX64.EFI.sha', shash('stub-bootloader'));
+const adapter = new FileFsBootAdapter(FileFsX);
+const confirmedEntry = await adapter.findBootEntry('disk', 'UEFI');
+log('confirmed boot entry (fixed): ' + JSON.stringify(confirmedEntry));
+
+// Add a REMOVABLE (USB) volume with the same marker+sidecar on a different
+// surface — the scan should prefer it over the fixed one.
+const usb = StorageDevice.usb({ FileFS: FileFsX, surface: 'opfs', id: 'stick0' });
+await usb.mount();
+await usb.mkdir('/EFI/BOOT', { recursive: true });
+await usb.writeFile('/EFI/BOOT/BOOTX64.EFI', 'stub-bootloader');
+await usb.writeFile('/EFI/BOOT/BOOTX64.EFI.sha', shash('stub-bootloader'));
+const confirmedEntry2 = await adapter.findBootEntry('disk', 'UEFI');
+log('confirmed boot entry (removable preferred): ' + JSON.stringify(confirmedEntry2));
+
+const bios2 = new BIOS();
+const kernel2 = await bios2.boot(new Physical({ ramBytes: 0x10000 }), adapter);
+log('confirmed bootedFrom: ' + kernel2.bootedFrom);
+
+// Fresh-install path: clear the earlier cache-backed volume so the scan
+// genuinely finds nothing bootable first, then supply an ISO.
+await caches.delete('meshui-vol-usb0');
+try { const root = await navigator.storage.getDirectory(); await root.removeEntry('meshui-usb-stick0', { recursive: true }); } catch (e) {}
+await new Promise((resolve) => {
+  const req = indexedDB.open('FileFsX', 1);
+  req.onsuccess = () => {
+    const db = req.result;
+    const tx = db.transaction('mounts', 'readwrite');
+    tx.objectStore('mounts').delete('meshui-vol-fresh01');
+    tx.oncomplete = () => { db.close(); resolve(); };
+  };
+  req.onerror = () => resolve();
+});
+const iso = ISO.withDefaultUEFIBootloader({ name: 'MeshUI Base', manifest: [{ path: '/kernel.img', content: 'stub-kernel' }] });
+log('iso checksum: ' + iso.checksum);
+const bios3 = new BIOS();
+bios3.installTargetId = 'fresh01';
+const adapter3 = new FileFsBootAdapter(FileFsX);
+const kernel3 = await bios3.boot(new Physical({ ramBytes: 0x10000 }), adapter3, iso);
+log('post-install bootedFrom: ' + kernel3.bootedFrom);
+log('trace has iso_install: ' + bios3.trace.some(t => t.type === 'iso_install'));
+
+// Registry persistence round-trip.
+const reg2 = new Registry();
+reg2.set('firmwareType', 'UEFI');
+await reg2.save(FileFsX, { backend: 'idb', key: 'meshui-registry-test' });
+const reg3 = await Registry.load(FileFsX, { backend: 'idb', key: 'meshui-registry-test' });
+log('registry persisted+reloaded firmwareType: ' + reg3.get('firmwareType'));
+log('postComplete: ' + bios.postComplete);
+log('bootedFrom: ' + kernel.bootedFrom);
+log('env.runtime: ' + kernel.getEnvironment().runtime);
+log('env.cores: ' + kernel.getEnvironment().cores);
+
+const mem = new Memory({ sizeBytes: physical.ramBytes });
+mem.attach(physical.getCPU());
+
+const p1 = kernel.fork('shell', 0);
+const p2 = kernel.fork('procd', 0);
+log('ps: ' + JSON.stringify(kernel.ps()));
+
+const r1 = mem.alloc(p1.pid, 4096, 'shell-stack');
+const r2 = mem.alloc(p2.pid, 8192, 'procd-heap');
+log('regions: ' + JSON.stringify(mem.regions));
+
+const ticked = kernel.tick();
+log('tick ran ' + ticked.length + ' processes');
+log('p1 context after tick: ' + JSON.stringify(ticked.find(p => p.pid === p1.pid).context));
+
+kernel.kill(p1.pid);
+log('after kill: ' + JSON.stringify(kernel.ps()));
+
+log('CPU dumpState: ' + JSON.stringify(physical.getCPU().dumpState().registers));
+log('trace entries on kernel: ' + kernel.trace.length);
+
+document.getElementById('out').textContent = lines.join('\n');
+})();
+</script>
+</body>
+</html>

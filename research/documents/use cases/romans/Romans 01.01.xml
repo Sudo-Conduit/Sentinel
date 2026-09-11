@@ -1,0 +1,154 @@
+<text phrasesCount="9" wordsCount="70" nounsCount="28">
+    <phrase phraseID="1" function="subject" definition="A person named Paul, who serves Christ." sentimentScore="0.5" phraseRank="2">
+        <word partOfSpeech="NN" 
+              lemma="Paul" 
+              pronunciation="/pɔːl/" 
+              synonyms="['Saul']" 
+              antonyms="[]" 
+              usageExample="He is serving Paul." 
+              frequency="100" 
+              semanticRole="agent" 
+              strongsID="G3962" 
+              greekDefinition="Παῦλος" 
+              biblicalDefinition="A significant figure in the New Testament." 
+              wordRank="2" 
+              phraseRank="2">paul</word>
+        <word partOfSpeech="DT" lemma="a" frequency="200" wordRank="0" phraseRank="1">a</word>
+        <word partOfSpeech="NN" lemma="servant" frequency="50" wordRank="1" phraseRank="2">servant</word>
+        <word partOfSpeech="IN" lemma="of" frequency="300" wordRank="0" phraseRank="2">of</word>
+        <word partOfSpeech="NN" 
+              lemma="Christ" 
+              strongsID="G5547" 
+              greekDefinition="Χριστός" 
+              biblicalDefinition="The anointed one." 
+              frequency="80" 
+              wordRank="2" 
+              phraseRank="2">christ</word>
+        <word partOfSpeech="NN" 
+              lemma="Jesus" 
+              strongsID="G2424" 
+              greekDefinition="Ἰησοῦς" 
+              biblicalDefinition="Central figure of Christianity." 
+              frequency="95" 
+              wordRank="2" 
+              phraseRank="2">jesus</word>
+    </phrase>
+    <phrase phraseID="2" function="infinitive phrase" definition="The act of being or becoming an apostle." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="VBD" lemma="call" frequency="20" wordRank="1" phraseRank="1">call</word>
+        <word partOfSpeech="IN" lemma="to" frequency="250" wordRank="1" phraseRank="1">to</word>
+        <word partOfSpeech="VB" lemma="be" frequency="100" wordRank="2" phraseRank="1">be</word>
+        <word partOfSpeech="DT" lemma="an" frequency="150" wordRank="1" phraseRank="1">an</word>
+        <word partOfSpeech="NN" lemma="apostle" frequency="30" wordRank="2" phraseRank="1">apostle</word>
+    </phrase>
+    <phrase phraseID="3" function="modifier" definition="Describes a specific purpose or function of the gospel." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="CC" lemma="and" frequency="300" wordRank="1" phraseRank="1">and</word>
+        <word partOfSpeech="NN" lemma="set" frequency="10" wordRank="1" phraseRank="1">set</word>
+        <word partOfSpeech="NN" lemma="apart" frequency="15" wordRank="1" phraseRank="1">apart</word>
+        <word partOfSpeech="IN" lemma="for" frequency="275" wordRank="1" phraseRank="1">for</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="NN" lemma="gospel" frequency="50" wordRank="2" phraseRank="1">gospel</word>
+        <word partOfSpeech="IN" lemma="of" frequency="300" wordRank="1" phraseRank="1">of</word>
+        <word partOfSpeech="NN" 
+              lemma="God" 
+              strongsID="G2316" 
+              greekDefinition="Θεός" 
+              biblicalDefinition="The Creator and Sustainer." 
+              frequency="200" 
+              wordRank="2" 
+              phraseRank="1">god</word>
+    </phrase>
+    <phrase phraseID="4" function="reference" definition="Indicates the gospel he preached as previously promised." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="NN" lemma="2" frequency="5" wordRank="0" phraseRank="1">2</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="NN" lemma="gospel" frequency="50" wordRank="2" phraseRank="1">gospel</word>
+        <word partOfSpeech="NN" lemma="he" frequency="150" wordRank="1" phraseRank="1">he</word>
+        <word partOfSpeech="VBD" lemma="promis" frequency="10" wordRank="1" phraseRank="1">promis</word>
+        <word partOfSpeech="NN" lemma="beforehand" frequency="5" wordRank="1" phraseRank="1">beforehand</word>
+        <word partOfSpeech="IN" lemma="through" frequency="20" wordRank="1" phraseRank="1">through</word>
+        <word partOfSpeech="NN" lemma="his" frequency="150" wordRank="1" phraseRank="1">his</word>
+        <word partOfSpeech="NN" lemma="prophets" frequency="10" wordRank="1" phraseRank="1">prophets</word>
+        <word partOfSpeech="IN" lemma="in" frequency="300" wordRank="1" phraseRank="1">in</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="RB" lemma="holy" frequency="15" wordRank="2" phraseRank="1">holy</word>
+        <word partOfSpeech="NN" lemma="scriptures" frequency="30" wordRank="2" phraseRank="1">scriptures</word>
+    </phrase>
+    <phrase phraseID="5" function="topic" definition="Refers to the son in a theological context regarding his mission." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="NN" lemma="3" frequency="5" wordRank="0" phraseRank="1">3</word>
+        <word partOfSpeech="VBG" lemma="regard" frequency="15" wordRank="1" phraseRank="1">regard</word>
+        <word partOfSpeech="NN" lemma="his" frequency="150" wordRank="1" phraseRank="1">his</word>
+        <word partOfSpeech="NN" lemma="son" frequency="60" wordRank="2" phraseRank="1">son</word>
+        <word partOfSpeech="PWH" lemma="who" frequency="250" wordRank="1" phraseRank="1">who</word>
+        <word partOfSpeech="NN" lemma="as" frequency="150" wordRank="1" phraseRank="1">as</word>
+        <word partOfSpeech="IN" lemma="to" frequency="250" wordRank="1" phraseRank="1">to</word>
+        <word partOfSpeech="NN" lemma="his" frequency="150" wordRank="1" phraseRank="1">his</word>
+        <word partOfSpeech="RB" lemma="earthly" frequency="10" wordRank="1" phraseRank="1">earthly</word>
+        <word partOfSpeech="NN" lemma="life" frequency="30" wordRank="2" phraseRank="1">life</word>
+    </phrase>
+    <phrase phraseID="6" function="subordinate clause" definition="Explains the lineage of Jesus." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="VBD" lemma="was" frequency="200" wordRank="2" phraseRank="1">was</word>
+        <word partOfSpeech="DT" lemma="a" frequency="200" wordRank="1" phraseRank="1">a</word>
+        <word partOfSpeech="NN" lemma="descendant" frequency="30" wordRank="2" phraseRank="1">descendant</word>
+        <word partOfSpeech="IN" lemma="of" frequency="300" wordRank="1" phraseRank="1">of</word>
+        <word partOfSpeech="NN" 
+              lemma="David" 
+              strongsID="G1138" 
+              greekDefinition="Δαβίδ" 
+              biblicalDefinition="King of Israel." 
+              frequency="60" 
+              wordRank="2" 
+              phraseRank="1">david</word>
+    </phrase>
+    <phrase phraseID="7" function="subordinate clause" definition="Describes the divine nature of Jesus as appointed son of God." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="NN" lemma="4" frequency="5" wordRank="0" phraseRank="1">4</word>
+        <word partOfSpeech="CC" lemma="and" frequency="300" wordRank="1" phraseRank="1">and</word>
+        <word partOfSpeech="PWH" lemma="who" frequency="250" wordRank="1" phraseRank="1">who</word>
+        <word partOfSpeech="IN" lemma="through" frequency="20" wordRank="1" phraseRank="1">through</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="NN" lemma="spirit" frequency="25" wordRank="2" phraseRank="1">spirit</word>
+        <word partOfSpeech="IN" lemma="of" frequency="300" wordRank="1" phraseRank="1">of</word>
+        <word partOfSpeech="NN" lemma="holiness" frequency="10" wordRank="2" phraseRank="1">holiness</word>
+        <word partOfSpeech="VBD" lemma="was" frequency="200" wordRank="2" phraseRank="1">was</word>
+        <word partOfSpeech="VBD" lemma="appoint" frequency="10" wordRank="1" phraseRank="1">appoint</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="NN" lemma="son" frequency="60" wordRank="2" phraseRank="1">son</word>
+        <word partOfSpeech="IN" lemma="of" frequency="300" wordRank="1" phraseRank="1">of</word>
+        <word partOfSpeech="NN" 
+              lemma="God" 
+              strongsID="G2316" 
+              greekDefinition="Θεός" 
+              biblicalDefinition="The Creator and Sustainer." 
+              frequency="200" 
+              wordRank="2" 
+              phraseRank="1">god</word>
+    </phrase>
+    <phrase phraseID="8" function="prepositional phrase" definition="Describes the power attributed by resurrection." sentimentScore="0" phraseRank="1">
+        <word partOfSpeech="IN" lemma="in" frequency="300" wordRank="1" phraseRank="1">in</word>
+        <word partOfSpeech="NN" lemma="power" frequency="20" wordRank="1" phraseRank="1">power</word>
+        <word partOfSpeech="IN" lemma="by" frequency="200" wordRank="1" phraseRank="1">by</word>
+        <word partOfSpeech="NN" lemma="his" frequency="100" wordRank="1" phraseRank="1">his</word>
+        <word partOfSpeech="NN" lemma="resurrection" frequency="15" wordRank="2" phraseRank="1">resurrection</word>
+        <word partOfSpeech="IN" lemma="from" frequency="5" wordRank="1" phraseRank="1">from</word>
+        <word partOfSpeech="DT" lemma="the" frequency="400" wordRank="1" phraseRank="1">the</word>
+        <word partOfSpeech="NN" lemma="dead" frequency="10" wordRank="2" phraseRank="1">dead</word>
+    </phrase>
+    <phrase phraseID="9" function="subject" definition="Refers to Jesus Christ as the Lord." sentimentScore="0.5" phraseRank="2">
+        <word partOfSpeech="NN" 
+              lemma="jesus" 
+              strongsID="G2424" 
+              greekDefinition="Ἰησοῦς" 
+              biblicalDefinition="Central figure of Christianity." 
+              frequency="95" 
+              wordRank="2" 
+              phraseRank="2">jesus</word>
+        <word partOfSpeech="NN" 
+              lemma="christ" 
+              strongsID="G5547" 
+              greekDefinition="Χριστός" 
+              biblicalDefinition="The anointed one." 
+              frequency="80" 
+              wordRank="2" 
+              phraseRank="2">christ</word>
+        <word partOfSpeech="NN" lemma="our" frequency="100" wordRank="1" phraseRank="2">our</word>
+        <word partOfSpeech="NN" lemma="lord" frequency="150" wordRank="2" phraseRank="2">lord</word>
+    </phrase>
+</text>

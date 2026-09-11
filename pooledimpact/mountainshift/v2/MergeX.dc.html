@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { margin:0; background:#1e1f22; }
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-thumb { background:#3a3c42; border-radius:5px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+  </style>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FileFsX.js"></script>
+  <script src="./Environment.js"></script>
+  <script src="./CPU.js"></script>
+  <script src="./Physical.js"></script>
+  <script src="./Memory.js"></script>
+  <script src="./Kernel.js"></script>
+  <script src="./BIOS.js"></script>
+  <script src="./Procd.js"></script>
+  <script src="./PosixCommands.js"></script>
+  <script src="https://unpkg.com/@isomorphic-git/lightning-fs"></script>
+  <script src="https://unpkg.com/isomorphic-git@1.27.1/index.umd.min.js"></script>
+  <script src="https://unpkg.com/diff@5.2.0/dist/diff.min.js"></script>
+</helmet>
+
+<div style="width:100%;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;background:#1e1f22;font-family:'Noto Sans',-apple-system,sans-serif;color:#d5d7de;overflow:hidden;">
+
+  <!-- Toolbar -->
+  <div style="flex-shrink:0;height:46px;display:flex;align-items:center;gap:10px;padding:0 12px;background:#26272b;border-bottom:1px solid #17181b;">
+    <div style="font-weight:700;font-size:13.5px;color:#8fa8e8;letter-spacing:.01em;">MergeX</div>
+    <sc-if value="{{ repoReady }}" hint-placeholder-val="{{ false }}">
+      <div style="width:1px;height:20px;background:#3a3c42;"></div>
+      <div style="font-size:12.5px;color:#9a9da6;font-family:'Noto Sans Mono',monospace;">{{ currentBranch }}</div>
+      <div style="display:flex;gap:6px;margin-left:6px;">
+        <button onClick="{{ doFetch }}" disabled="{{ isBusy }}" style="{{ tbBtnStyle }}">{{ fetchLabel }}</button>
+        <button onClick="{{ doPull }}" disabled="{{ isBusy }}" style="{{ tbBtnStyle }}">{{ pullLabel }}</button>
+        <button onClick="{{ doPush }}" disabled="{{ isBusy }}" style="{{ tbBtnStyle }}">{{ pushLabel }}</button>
+      </div>
+      <div style="flex:1;"></div>
+      <button onClick="{{ toggleNewBranch }}" style="{{ tbBtnStyle }}">+ Branch</button>
+      <button onClick="{{ resetRepo }}" style="{{ tbBtnStyle }}">Close Repo</button>
+    </sc-if>
+    <sc-if value="{{ !repoReady }}" hint-placeholder-val="{{ true }}">
+      <div style="flex:1;"></div>
+    </sc-if>
+    <button onClick="{{ toggleSettings }}" style="{{ tbBtnStyle }}">⚙ Settings</button>
+  </div>
+
+  <sc-if value="{{ hasError }}" hint-placeholder-val="{{ false }}">
+    <div style="flex-shrink:0;padding:8px 14px;background:#3a2327;color:#f0a7ac;font-size:12.5px;border-bottom:1px solid #17181b;display:flex;justify-content:space-between;">
+      <span>{{ errorMsg }}</span>
+      <span onClick="{{ clearError }}" style="cursor:pointer;opacity:.7;">✕</span>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showSettings }}" hint-placeholder-val="{{ false }}">
+    <div style="flex-shrink:0;padding:14px;background:#26272b;border-bottom:1px solid #17181b;display:flex;gap:22px;align-items:flex-end;flex-wrap:wrap;">
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;color:#8b8f98;">Author name</label>
+        <input type="text" value="{{ authorName }}" onInput="{{ onAuthorNameInput }}" style="{{ inputStyle }}width:160px;" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;color:#8b8f98;">Author email</label>
+        <input type="text" value="{{ authorEmail }}" onInput="{{ onAuthorEmailInput }}" style="{{ inputStyle }}width:200px;" />
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;">
+        <label style="font-size:11px;color:#8b8f98;">GitHub personal access token (for private repos / push)</label>
+        <input type="password" value="{{ pat }}" onInput="{{ onPatInput }}" placeholder="ghp_…" style="{{ inputStyle }}width:280px;" />
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ showNewBranch }}" hint-placeholder-val="{{ false }}">
+    <div style="flex-shrink:0;padding:10px 14px;background:#26272b;border-bottom:1px solid #17181b;display:flex;gap:8px;align-items:center;">
+      <input type="text" value="{{ newBranchName }}" onInput="{{ onNewBranchInput }}" onKeyDown="{{ onNewBranchKeyDown }}" placeholder="new-branch-name" style="{{ inputStyle }}width:220px;" />
+      <button onClick="{{ createBranch }}" style="{{ tbBtnPrimaryStyle }}">Create &amp; Checkout</button>
+      <button onClick="{{ toggleNewBranch }}" style="{{ tbBtnStyle }}">Cancel</button>
+    </div>
+  </sc-if>
+
+  <!-- Welcome / Clone screen -->
+  <sc-if value="{{ !repoReady }}" hint-placeholder-val="{{ true }}">
+    <div style="flex:1;display:flex;align-items:center;justify-content:center;">
+      <div style="width:460px;display:flex;flex-direction:column;gap:16px;padding:32px;background:#26272b;border:1px solid #333;border-radius:10px;box-sizing:border-box;">
+        <div style="font-size:18px;font-weight:700;">Open a repository</div>
+        <div style="font-size:12.5px;color:#9a9da6;">Clones run through the isomorphic-git CORS proxy against your FileFsX-backed IndexedDB filesystem.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <label style="font-size:11px;color:#8b8f98;">Repository URL</label>
+          <input type="text" value="{{ cloneUrl }}" onInput="{{ onCloneUrlInput }}" placeholder="https://github.com/owner/repo.git" style="{{ inputStyle }}width:100%;box-sizing:border-box;" />
+        </div>
+        <button onClick="{{ doClone }}" disabled="{{ cloneBusy }}" style="{{ tbBtnPrimaryStyle }}padding:10px;font-size:13px;">{{ cloneLabel }}</button>
+        <div style="display:flex;align-items:center;gap:10px;color:#666a73;font-size:11px;"><div style="flex:1;height:1px;background:#333;"></div>or<div style="flex:1;height:1px;background:#333;"></div></div>
+        <button onClick="{{ cloneExample }}" disabled="{{ cloneBusy }}" style="{{ tbBtnStyle }}padding:9px;">Try example repo (octocat/Hello-World)</button>
+        <button onClick="{{ initEmpty }}" disabled="{{ cloneBusy }}" style="{{ tbBtnStyle }}padding:9px;">Initialize empty repository here</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Main 3-pane repo view -->
+  <sc-if value="{{ repoReady }}" hint-placeholder-val="{{ false }}">
+    <div style="flex:1;display:flex;min-height:0;">
+
+      <!-- Sidebar -->
+      <div style="width:{{ colWidths.locations }}px;min-width:120px;flex:0 0 auto;background:#232427;border-right:1px solid #17181b;overflow-y:auto;padding:10px 0;">
+        <div style="padding:4px 14px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">WORKING COPY</div>
+        <div onClick="{{ selectWorking }}" style="{{ workingRowStyle }}">
+          <span>Uncommitted Changes</span>
+          <sc-if value="{{ hasChanges }}" hint-placeholder-val="{{ false }}"><span style="{{ badgeStyle }}">{{ changeCount }}</span></sc-if>
+        </div>
+        <div style="padding:14px 14px 4px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">BRANCHES</div>
+        <sc-for list="{{ branchRows }}" as="b" hint-placeholder-count="2">
+          <div onClick="{{ b.onClick }}" style="{{ b.style }}">{{ b.label }}</div>
+        </sc-for>
+        <sc-if value="{{ hasRemote }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:14px 14px 4px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">REMOTE</div>
+          <div style="padding:5px 14px;font-size:11.5px;color:#8b8f98;word-break:break-all;">{{ remoteUrl }}</div>
+        </sc-if>
+      </div>
+
+      <div onMouseDown="{{ startDragLocations }}" style="width:4px;flex-shrink:0;cursor:col-resize;background:transparent;"></div>
+
+      <!-- Commit graph list -->
+      <div style="width:{{ colWidths.commits }}px;min-width:160px;flex:0 0 auto;background:#1e1f22;border-right:1px solid #17181b;overflow-y:auto;">
+        <sc-for list="{{ commitRows }}" as="c" hint-placeholder-count="6">
+          <div onClick="{{ c.onClick }}" style="{{ c.style }}">
+            <div style="width:8px;height:8px;border-radius:50%;background:{{ c.dotColor }};flex-shrink:0;margin-top:4px;"></div>
+            <div style="min-width:0;flex:1;">
+              <div style="font-size:12.5px;color:#e2e3e8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ c.title }}</div>
+              <div style="font-size:11px;color:#7a7d85;margin-top:2px;">{{ c.sub }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div onMouseDown="{{ startDragCommits }}" style="width:4px;flex-shrink:0;cursor:col-resize;background:transparent;"></div>
+
+      <!-- Files column -->
+      <div style="width:{{ colWidths.files }}px;min-width:120px;flex:0 0 auto;background:#1e1f22;border-right:1px solid #17181b;overflow-y:auto;">
+        <sc-if value="{{ isWorkingView }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:8px 12px;border-bottom:1px solid #17181b;display:flex;gap:6px;">
+            <span onClick="{{ toggleNewFileInline }}" style="flex:1;text-align:center;font-size:11px;color:#8fa8e8;cursor:pointer;padding:4px;border:1px dashed #3a3c42;border-radius:5px;">+ New File</span>
+          </div>
+          <sc-if value="{{ newFileOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:8px 12px;border-bottom:1px solid #17181b;display:flex;flex-direction:column;gap:6px;">
+              <input type="text" value="{{ newFilePath }}" onInput="{{ onNewFilePathInput }}" onKeyDown="{{ onNewFilePathKeyDown }}" placeholder="path/to/file.txt" style="{{ inputStyle }}width:100%;box-sizing:border-box;font-size:11.5px;padding:5px 8px;" />
+              <div style="display:flex;gap:6px;">
+                <span onClick="{{ createFile }}" style="{{ tbBtnPrimaryStyle }}flex:1;text-align:center;padding:4px;">Create</span>
+                <span onClick="{{ toggleNewFileInline }}" style="{{ tbBtnStyle }}flex:1;text-align:center;padding:4px;">Cancel</span>
+              </div>
+            </div>
+          </sc-if>
+          <sc-if value="{{ hasUnstaged }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:10px 14px 4px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">WORKING DIRECTORY</div>
+            <sc-for list="{{ unstagedRows }}" as="f" hint-placeholder-count="2">
+              <div style="{{ f.rowStyle }}">
+                <span style="{{ f.statusPillStyle }}">{{ f.statusLetter }}</span>
+                <span onClick="{{ f.onSelect }}" style="{{ f.pathStyle }}">{{ f.path }}</span>
+                <span onClick="{{ f.onToggleStage }}" style="{{ f.stageBtnStyle }}">Stage</span>
+                <span onClick="{{ f.onDelete }}" style="{{ f.deleteBtnStyle }}" title="Delete file">✕</span>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ hasStaged }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:10px 14px 4px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">STAGED FILES</div>
+            <sc-for list="{{ stagedRows }}" as="f" hint-placeholder-count="2">
+              <div style="{{ f.rowStyle }}">
+                <span style="{{ f.statusPillStyle }}">{{ f.statusLetter }}</span>
+                <span onClick="{{ f.onSelect }}" style="{{ f.pathStyle }}">{{ f.path }}</span>
+                <span onClick="{{ f.onToggleStage }}" style="{{ f.stageBtnStyle }}">Unstage</span>
+                <span onClick="{{ f.onDelete }}" style="{{ f.deleteBtnStyle }}" title="Delete file">✕</span>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ !hasChanges }}" hint-placeholder-val="{{ true }}">
+            <div style="padding:16px 14px;font-size:12px;color:#666a73;">No changes in working directory.</div>
+          </sc-if>
+        </sc-if>
+        <sc-if value="{{ isCommitView }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:10px 14px 4px;font-size:10.5px;font-weight:700;color:#666a73;letter-spacing:.08em;">FILES CHANGED</div>
+          <sc-for list="{{ commitFileRows }}" as="f" hint-placeholder-count="2">
+            <div onClick="{{ f.onSelect }}" style="{{ f.rowStyle }}">
+              <span style="{{ f.statusPillStyle }}">{{ f.statusLetter }}</span>
+              <span style="{{ f.pathStyle }}">{{ f.path }}</span>
+            </div>
+          </sc-for>
+        </sc-if>
+      </div>
+
+      <div onMouseDown="{{ startDragFiles }}" style="width:4px;flex-shrink:0;cursor:col-resize;background:transparent;"></div>
+
+      <!-- Detail / diff pane -->
+      <div style="flex:1 1 auto;min-width:260px;display:flex;flex-direction:column;overflow-x:auto;">
+
+        <sc-if value="{{ isWorkingView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex-shrink:0;padding:10px 14px;border-bottom:1px solid #17181b;display:flex;flex-direction:column;gap:8px;align-items:stretch;background:#232427;min-width:220px;">
+            <textarea value="{{ commitMessage }}" onInput="{{ onCommitMessageInput }}" placeholder="Commit message…" rows="2" style="width:100%;resize:vertical;background:#1e1f22;border:1px solid #3a3c42;border-radius:6px;color:#e2e3e8;font-size:12.5px;padding:8px 10px;outline:none;font-family:inherit;box-sizing:border-box;"></textarea>
+            <button onClick="{{ doCommit }}" disabled="{{ commitDisabled }}" style="{{ tbBtnPrimaryStyle }}padding:9px 16px;">Commit</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isCommitView }}" hint-placeholder-val="{{ false }}">
+          <div style="flex-shrink:0;padding:12px 16px;border-bottom:1px solid #17181b;background:#232427;">
+            <div style="font-size:13.5px;color:#e2e3e8;">{{ selectedCommitMessage }}</div>
+            <div style="font-size:11.5px;color:#8b8f98;margin-top:4px;font-family:'Noto Sans Mono',monospace;">{{ selectedCommitMeta }}</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasSelectedFile }}" hint-placeholder-val="{{ false }}">
+          <div style="flex-shrink:0;padding:8px 14px;border-bottom:1px solid #17181b;display:flex;align-items:center;justify-content:space-between;background:#26272b;">
+            <span style="font-size:12px;color:#c8cad2;font-family:'Noto Sans Mono',monospace;">{{ selectedFile }}</span>
+            <div style="display:flex;gap:6px;">
+              <sc-if value="{{ isWorkingView }}" hint-placeholder-val="{{ false }}">
+                <span onClick="{{ toggleEditFile }}" style="{{ tbBtnStyle }}padding:4px 10px;">{{ editToggleLabel }}</span>
+                <span onClick="{{ selectedFileStageAction }}" style="{{ tbBtnStyle }}padding:4px 10px;">{{ selectedFileStageLabel }}</span>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ editingFile }}" hint-placeholder-val="{{ false }}">
+          <div style="flex:1;display:flex;flex-direction:column;min-height:0;">
+            <textarea value="{{ editorText }}" onInput="{{ onEditorInput }}" style="flex:1;resize:none;background:#1e1f22;border:none;color:#e2e3e8;font-size:12.5px;padding:10px 14px;outline:none;font-family:'Noto Sans Mono',monospace;box-sizing:border-box;"></textarea>
+            <div style="flex-shrink:0;padding:8px 14px;border-top:1px solid #17181b;background:#232427;display:flex;gap:8px;justify-content:flex-end;">
+              <span onClick="{{ toggleEditFile }}" style="{{ tbBtnStyle }}padding:5px 12px;">Cancel</span>
+              <span onClick="{{ saveEditorContent }}" style="{{ tbBtnPrimaryStyle }}padding:5px 12px;">Save to Disk</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ !editingFile }}" hint-placeholder-val="{{ true }}">
+          <div style="flex:1;overflow:auto;font-family:'Noto Sans Mono',monospace;font-size:12px;">
+            <sc-if value="{{ hasDiff }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;min-width:420px;">
+                <div style="flex:1;min-width:210px;">
+                  <sc-for list="{{ diffLeft }}" as="dl" hint-placeholder-count="6">
+                    <div style="{{ dl.style }}">{{ dl.text }}</div>
+                  </sc-for>
+                </div>
+                <div style="width:1px;background:#17181b;flex-shrink:0;"></div>
+                <div style="flex:1;min-width:210px;">
+                  <sc-for list="{{ diffRight }}" as="dr" hint-placeholder-count="6">
+                    <div style="{{ dr.style }}">{{ dr.text }}</div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ !hasDiff }}" hint-placeholder-val="{{ true }}">
+              <div style="padding:24px;color:#666a73;font-family:'Noto Sans',sans-serif;font-size:12.5px;">{{ diffPlaceholder }}</div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- Console -->
+  <div style="flex-shrink:0;background:#18191b;border-top:1px solid #17181b;display:flex;flex-direction:column;">
+    <sc-if value="{{ consoleOpen }}" hint-placeholder-val="{{ false }}">
+      <div onMouseDown="{{ startDragConsole }}" style="height:4px;flex-shrink:0;cursor:row-resize;background:transparent;"></div>
+    </sc-if>
+    <div onClick="{{ toggleConsole }}" style="flex-shrink:0;height:26px;display:flex;align-items:center;gap:6px;padding:0 12px;cursor:pointer;color:#8b8f98;font-size:11px;font-family:'Noto Sans Mono',monospace;user-select:none;">
+      <span>{{ consoleCaret }}</span><span>Console</span><span style="color:#5a5d66;">kernel.tick() · pid {{ consolePid }}</span>
+    </div>
+    <sc-if value="{{ consoleOpen }}" hint-placeholder-val="{{ false }}">
+      <div style="height:{{ consoleHeight }}px;display:flex;flex-direction:column;min-height:0;">
+        <div ref="{{ consoleScrollRef }}" style="flex:1;overflow-y:auto;padding:6px 12px;font-family:'Noto Sans Mono',monospace;font-size:12px;">
+          <sc-for list="{{ consoleLines }}" as="ln" hint-placeholder-count="2">
+            <div style="{{ ln.style }}">{{ ln.text }}</div>
+          </sc-for>
+        </div>
+        <div style="flex-shrink:0;display:flex;align-items:center;gap:6px;padding:6px 12px;border-top:1px solid #232427;">
+          <span style="color:#6b9;font-size:12px;font-family:'Noto Sans Mono',monospace;">{{ consolePrompt }}</span>
+          <input type="text" value="{{ consoleInput }}" onInput="{{ onConsoleInput }}" onKeyDown="{{ onConsoleKeyDown }}" style="flex:1;background:transparent;border:none;color:#e2e3e8;font-size:12px;font-family:'Noto Sans Mono',monospace;outline:none;" />
+        </div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const CORS_PROXY = 'https://cors.isomorphic-git.org';
+const REPO_DIR = '/';
+
+class Component extends DCLogic {
+  state = {
+    fsReady: false, repoReady: false,
+    cloneUrl: '', cloneBusy: false,
+    authorName: 'MeshUser', authorEmail: 'user@meshui.local', pat: '',
+    showSettings: false, showNewBranch: false, newBranchName: '',
+    branches: [], currentBranch: '', remoteUrl: '',
+    commits: [], statusRows: [],
+    selected: { type: 'working' },
+    selectedFile: null,
+    diffLeft: [], diffRight: [],
+    commitMessage: '',
+    busyAction: null,
+    errorMsg: '',
+    colWidths: { locations: 170, commits: 230, files: 170 },
+    consoleOpen: false, consoleHeight: 220, consoleLines: [], consoleInput: '', cwd: '/',
+    newFileOpen: false, newFilePath: '',
+    editingFile: false, editorText: ''
+  };
+
+  componentDidMount() {
+    try {
+      this._authorName = localStorage.getItem('mergex_authorName');
+      this._authorEmail = localStorage.getItem('mergex_authorEmail');
+      this._pat = localStorage.getItem('mergex_pat');
+    } catch (e) {}
+    if (this._authorName || this._authorEmail || this._pat) {
+      this.setState({
+        authorName: this._authorName || this.state.authorName,
+        authorEmail: this._authorEmail || this.state.authorEmail,
+        pat: this._pat || ''
+      });
+    }
+    this._bootKernel();
+    this._initFs();
+    try {
+      const saved = JSON.parse(localStorage.getItem('mergex_colWidths') || 'null');
+      if (saved) this.setState({ colWidths: saved });
+      const savedH = parseInt(localStorage.getItem('mergex_consoleHeight'), 10);
+      if (savedH) this.setState({ consoleHeight: savedH });
+    } catch (e) {}
+    this._onMouseMove = (e) => this._handleDrag(e);
+    this._onMouseUp = () => this._endDrag();
+    window.addEventListener('mousemove', this._onMouseMove);
+    window.addEventListener('mouseup', this._onMouseUp);
+  }
+
+  componentWillUnmount() {
+    if (this._kernel && this._pid) { try { this._kernel.kill(this._pid); } catch (e) {} }
+    if (this._kernel && this._consolePid) { try { this._kernel.kill(this._consolePid); } catch (e) {} }
+    window.removeEventListener('mousemove', this._onMouseMove);
+    window.removeEventListener('mouseup', this._onMouseUp);
+  }
+
+  startDrag(col) {
+    return (e) => {
+      e.preventDefault();
+      this._dragCol = col;
+      this._dragStartX = e.clientX;
+      this._dragStartWidth = this.state.colWidths[col];
+    };
+  }
+  startDragConsole(e) {
+    e.preventDefault();
+    this._draggingConsole = true;
+    this._dragStartY = e.clientY;
+    this._dragStartHeight = this.state.consoleHeight;
+  }
+  _handleDrag(e) {
+    if (this._draggingConsole) {
+      const delta = this._dragStartY - e.clientY;
+      const next = Math.min(600, Math.max(100, this._dragStartHeight + delta));
+      this.setState({ consoleHeight: next });
+      return;
+    }
+    if (!this._dragCol) return;
+    const delta = e.clientX - this._dragStartX;
+    const min = this._dragCol === 'commits' ? 160 : 120;
+    const next = Math.max(min, this._dragStartWidth + delta);
+    this.setState(s => ({ colWidths: { ...s.colWidths, [this._dragCol]: next } }));
+  }
+  _endDrag() {
+    if (this._draggingConsole) {
+      this._draggingConsole = false;
+      try { localStorage.setItem('mergex_consoleHeight', String(this.state.consoleHeight)); } catch (e) {}
+    }
+    if (!this._dragCol) return;
+    this._dragCol = null;
+    try { localStorage.setItem('mergex_colWidths', JSON.stringify(this.state.colWidths)); } catch (e) {}
+  }
+
+  toggleConsole() {
+    this.setState(s => ({ consoleOpen: !s.consoleOpen }), () => {
+      if (this.state.consoleOpen && !this._commands) this._loadConsoleCommands();
+    });
+  }
+
+  async _loadConsoleCommands() {
+    this._commands = new Map();
+    try {
+      if (typeof PosixCommands !== 'undefined') await PosixCommands.setupUnixFS(this._rawFs);
+      const entries = await this._rawFs.readdir('/bin');
+      await Promise.all((entries || []).filter(e => (e.name || e).endsWith('.js')).map(async (e) => {
+        const file = '/bin/' + (e.name || e);
+        try {
+          const src = await this._rawFs.readFile(file, 'utf8');
+          const mod = { exports: {} };
+          new Function('module', 'exports', 'TermCommand', String(src))(mod, mod.exports, function(){});
+          const CmdClass = mod.exports;
+          const key = CmdClass && CmdClass.name ? CmdClass.name : file.split('/').pop().replace(/^unix\./, '').replace(/\.js$/, '');
+          if (CmdClass) this._commands.set(key, CmdClass);
+        } catch (err) { console.warn('MergeX console: failed loading ' + file, err); }
+      }));
+    } catch (e) { console.warn('MergeX console: setup failed', e); }
+    this._pushConsole('MergeX console — bsh pid ' + this._consolePid + ' · commands: ' + Array.from(this._commands.keys()).join(', '), '#8b93a0');
+  }
+
+  onConsoleInput(e) { this.setState({ consoleInput: e.target.value }); }
+  onConsoleKeyDown(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this._runConsole(); return; }
+    this._consoleHistory = this._consoleHistory || [];
+    if (e.key === 'ArrowUp' && this._consoleHistory.length) { e.preventDefault(); this._consoleHistIdx = Math.min((this._consoleHistIdx ?? -1) + 1, this._consoleHistory.length - 1); this.setState({ consoleInput: this._consoleHistory[this._consoleHistory.length - 1 - this._consoleHistIdx] }); return; }
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (this._consoleHistIdx === undefined || this._consoleHistIdx <= 0) { this._consoleHistIdx = -1; this.setState({ consoleInput: '' }); }
+      else { this._consoleHistIdx--; this.setState({ consoleInput: this._consoleHistory[this._consoleHistory.length - 1 - this._consoleHistIdx] }); }
+    }
+  }
+
+  _pushConsole(text, color) {
+    this.setState(s => ({ consoleLines: [...s.consoleLines, { text, style: 'padding:1px 0;white-space:pre-wrap;word-break:break-word;color:' + (color || '#d4d4d4') + ';' }] }), () => this._scrollConsoleToBottom());
+  }
+
+  _scrollConsoleToBottom() {
+    if (this._consoleScrollRef) this._consoleScrollRef.scrollTop = this._consoleScrollRef.scrollHeight;
+  }
+
+  _resolveConsolePath(p) {
+    const cwd = this.state.cwd || '/';
+    if (!p) return cwd;
+    if (p.startsWith('/')) return p;
+    return ((cwd === '/' ? '' : cwd) + '/' + p).replace(/\/+/g, '/');
+  }
+
+  async _runConsole() {
+    const cmd = this.state.consoleInput.trim();
+    if (!cmd) return;
+    this._consoleHistory = this._consoleHistory || [];
+    this._consoleHistory.push(cmd);
+    this._consoleHistIdx = -1;
+    this.setState({ consoleInput: '' });
+    // reclaim console from any running job before running a new command, same as Terminal.dc.html —
+    // but only when a job actually owns it, so plain typing (cd/echo/etc.) isn't disrupted needlessly.
+    if (typeof Procd !== 'undefined' && Procd.fg && this._topJob) Procd.fg(0);
+    this._pushConsole(this.state.cwd + ' $ ' + cmd, '#6b9');
+    const parts = cmd.split(' ').filter(Boolean);
+    const verb = parts.shift();
+    const push = (s) => this._pushConsole(s);
+    try {
+      if (verb === 'help') push('Commands: ' + Array.from((this._commands || new Map()).keys()).join(', ') + ', top, jobs, fg, bg, kill, cd, pwd, mkdir, touch, rm, echo, clear');
+      else if (verb === 'pwd') push(this.state.cwd);
+      else if (verb === 'clear') { this._stopConsoleTop(); this._lastTopLines = 0; this.setState({ consoleLines: [] }); return; }
+      else if (verb === 'echo') push(parts.join(' '));
+      else if (verb === 'top') { this._runConsoleTop(); return; }
+      else if (verb === 'stop' && parts[0] === 'top') { this._stopConsoleTop(); this._lastTopLines = 0; return; }
+      else if (verb === 'jobs' || verb === 'fg' || verb === 'bg' || verb === 'kill') {
+        if (typeof Procd === 'undefined' || !Procd.run) push(verb + ': Procd not loaded', '#e0666e');
+        else {
+          try {
+            // Procd.ps() (invoked here via Procd.run("ps")) IS Procd's job table —
+            // [CONSOLE_JOB].concat(_jobs) — so "jobs" is just the familiar shell alias for it.
+            const realCmd = verb === 'jobs' ? ['ps', ...parts].join(' ').trim() : [verb, ...parts].join(' ').trim();
+            const result = Procd.run(realCmd);
+            if (result !== undefined && result !== null) push(typeof result === 'string' ? result : JSON.stringify(result));
+          } catch (e) { push(verb + ': ' + e.message, '#e0666e'); }
+        }
+      }
+      else if (verb === 'cd') {
+        const target = this._resolveConsolePath(parts[0] || '/');
+        await this._rawFs.stat(target);
+        this.setState({ cwd: target });
+      }
+      else if (verb === 'mkdir') { const t = this._resolveConsolePath(parts[0]); await this._rawFs.mkdir(t, { recursive: true }); push('created ' + t); }
+      else if (verb === 'touch') { const t = this._resolveConsolePath(parts[0]); await this._rawFs.writeFile(t, ''); push('created ' + t); }
+      else if (verb === 'rm') { const t = this._resolveConsolePath(parts[0]); try { await this._rawFs.unlink(t); } catch (e) { await this._rawFs.rmdir(t, { recursive: true }); } push('removed ' + t); }
+      else if (this._commands && this._commands.has(verb)) {
+        const CmdClass = this._commands.get(verb);
+        const inst = new CmdClass();
+        let buf = '';
+        const writer = { write: (s) => { buf += s; } };
+        const fs = this._rawFs;
+        const vfsCtx = {
+          readFile: (...a) => fs.readFile(...a), writeFile: (...a) => fs.writeFile(...a), mkdir: (...a) => fs.mkdir(...a),
+          readdir: (...a) => fs.readdir(...a), stat: (...a) => fs.stat(...a), lstat: (...a) => fs.lstat(...a),
+          unlink: (...a) => fs.unlink(...a), rmdir: (...a) => fs.rmdir(...a), rename: (...a) => fs.rename(...a),
+          exists: (path) => fs.stat(path).then(() => true).catch(() => false),
+          chmod: (...a) => fs.chmod(...a), chown: (...a) => fs.chown(...a)
+        };
+        const system = { kernel: this._kernel, procd: (typeof Procd !== 'undefined' ? Procd : null), contextId: 'mergex-console' };
+        const ctx = { stdin: (async function*(){})(), stdout: writer, stderr: writer, cwd: this.state.cwd, vfs: vfsCtx, session: {}, system };
+        await Promise.resolve(inst.execute(parts, ctx));
+        buf.split('\n').forEach((line, i, arr) => { if (i < arr.length - 1 || line) push(line); });
+      }
+      else push(verb + ': command not found', '#e0666e');
+    } catch (e) { push((verb || cmd) + ': ' + e.message, '#e0666e'); }
+    if (this._kernel) this._kernel.tick(); // real scheduler quantum for this bsh pid and every other live process, same cadence Terminal/Procd demos drive
+  }
+
+  // Real Procd job (type 'console'), same as Terminal.dc.html's top — jobs/fg/bg/kill
+  // in Terminal control this uniformly, and Procd.fg(0) on the next console Enter stops it.
+  _stopConsoleTop() { if (this._topJob) { this._topJob.stop(); this._topJob = null; } }
+
+  _runConsoleTop() {
+    if (typeof Procd === 'undefined') { this._pushConsole('top: Procd not loaded', '#e0666e'); return; }
+    this._topStart = Date.now();
+    const tick = () => { if (this._kernel) this._kernel.tick(); };
+    const render = () => {
+      const procs = (this._kernel ? this._kernel.ps() : []);
+      const real = Procd.cpuTick(this._kernel ? this._kernel.cores : 1);
+      const pidWeights = Procd.pidWorkWeights();
+      const weights = procs.map(p => (pidWeights[p.pid] || 0));
+      const totalW = weights.reduce((a, b) => a + b, 0) || 1;
+      const memory = this._kernel && this._kernel.getMemory ? this._kernel.getMemory() : null;
+      const totalMemBytes = memory ? memory.sizeBytes : 0;
+      const rows = procs.map((p, i) => ({
+        pid: p.pid, user: p.user || 'root', cmd: p.cmd,
+        cpu: real.loadPercent * (weights[i] / totalW),
+        mem: totalMemBytes ? (100 * (p.memBytes || 0) / totalMemBytes) : 0
+      })).sort((a, b) => b.cpu - a.cpu);
+      const now = new Date();
+      const uptimeSec = Math.round((Date.now() - this._topStart) / 1000);
+      const totalCpu = rows.reduce((s, r) => s + r.cpu, 0);
+      const running = rows.filter(r => r.cpu > 20).length;
+      const topLineCount = 5 + rows.length;
+      this.setState(s => ({ consoleLines: s.consoleLines.slice(0, s.consoleLines.length - (this._lastTopLines || 0)) }));
+      this._pushConsole(`top - ${now.toLocaleTimeString()} up, ${uptimeSec}s, load: ${(totalCpu / 100).toFixed(2)}`, '#8b93a0');
+      this._pushConsole(`Tasks: ${rows.length} total, ${running} running`, '#8b93a0');
+      this._pushConsole(`CPU(s): ${totalCpu.toFixed(1)}% used`, '#8b93a0');
+      this._pushConsole(`Mem: ${(256 - Math.random() * 40).toFixed(0)}M free`, '#8b93a0');
+      this._pushConsole('PID\tUSER\tCPU%\tMEM%\tCOMMAND', '#8b93a0');
+      rows.forEach(r => this._pushConsole(`${r.pid}\t${r.user}\t${r.cpu.toFixed(1)}\t${r.mem.toFixed(1)}\t${r.cmd}`));
+      this._lastTopLines = topLineCount;
+    };
+    this._topJob = Procd.registerJob('top', 'console', 2000, tick, render, () => { this._lastTopLines = 0; });
+    tick();
+    render();
+  }
+
+  async _bootKernel() {
+    try {
+      let shared = null;
+      try { shared = (window.parent && window.parent !== window && window.parent.__meshKernel) || null; } catch (e) { shared = null; }
+      if (shared) {
+        this._kernel = shared;
+        if (typeof Procd !== 'undefined' && Procd.attachKernel) Procd.attachKernel(this._kernel);
+        const init = this._kernel.ps().find(p => p.cmd === 'kernel.js');
+        this._pid = this._kernel.fork('mergex', init ? init.pid : 0).pid;
+      } else {
+        const physical = new Physical({ capacityMHz: 2600, ramBytes: 0x400000 });
+        const bios = new BIOS();
+        this._kernel = await bios.boot(physical, null, null);
+        if (typeof Procd !== 'undefined' && Procd.attachKernel) Procd.attachKernel(this._kernel);
+        this._kernel.fork('kernel.js', 0);
+        this._pid = this._kernel.fork('mergex', 1).pid;
+      }
+      this._consolePid = this._kernel.fork('bsh', this._pid).pid;
+      this.forceUpdate();
+    } catch (e) { console.warn('MergeX bootKernel:', e); }
+  }
+
+  async _initFs() {
+    try {
+      // TEMPORARY: FileFsX's fs adapter crashes inside isomorphic-git's git.add
+      // (reproduced directly: init/status work, add throws "Cannot read
+      // properties of undefined (reading 'toString')" in isomorphic-git's own
+      // internals while writing the object/index). Using LightningFS to unblock
+      // staging/commit now; swap back to a fixed FileFsX adapter later — see
+      // the open todo on this bug.
+      const lfs = new LightningFS('mergex-repo');
+      this._rawFs = lfs.promises;
+      this._fs = lfs.promises;
+      this._git = window.git;
+      this._http = {
+        request: async ({ url, method, headers, body }) => {
+          let payload;
+          if (body) {
+            const chunks = [];
+            for await (const chunk of body) chunks.push(chunk);
+            payload = new Blob(chunks);
+          }
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 20000);
+          let res;
+          try {
+            res = await fetch(url, { method: method || 'GET', headers, body: payload, signal: controller.signal });
+          } finally { clearTimeout(timeoutId); }
+          const resHeaders = {};
+          res.headers.forEach((v, k) => { resHeaders[k] = v; });
+          async function* iterate(reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) return;
+              yield value;
+            }
+          }
+          return {
+            url: res.url,
+            method: method || 'GET',
+            statusCode: res.status,
+            statusMessage: res.statusText,
+            headers: resHeaders,
+            body: iterate(res.body.getReader())
+          };
+        }
+      };
+      this.setState({ fsReady: true });
+      const hasRepo = await this._fs.stat('/.git').then(() => true).catch(() => false);
+      if (hasRepo) { this.setState({ repoReady: true }); await this._refreshAll(); }
+    } catch (e) { this._fail(e); }
+  }
+
+  _fail(e) { console.warn('MergeX:', e); this.setState({ errorMsg: (e && e.message) || String(e) }); }
+
+  // Any network op (clone/fetch/pull/push) must never hang the UI forever —
+  // a blocked/unreachable CORS proxy should surface an error within seconds,
+  // not leave cloneBusy/busyAction stuck with no recourse but reload.
+  _withTimeout(promise, ms, label) {
+    let timer;
+    const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error(label + ' timed out after ' + Math.round(ms / 1000) + 's (network/proxy unreachable)')), ms); });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
+
+  // FileFsX rejects with a plain Error whose message is "CODE: ..." but never
+  // sets .code — isomorphic-git's fs wrapper checks err.code === 'ENOENT' etc.
+  // to treat speculative reads (.git/config, packed-refs, shallow) as
+  // "doesn't exist yet" rather than fatal. Wrap every method to parse and
+  // attach the real code before rethrowing.
+  _wrapFs(raw) {
+    const codes = ['ENOENT', 'EISDIR', 'ENOTDIR', 'ENOTEMPTY', 'EEXIST', 'EINVAL', 'ENOTSUP', 'EPERM'];
+    const withCode = (fn) => async (...args) => {
+      try { return await fn.apply(raw, args); }
+      catch (e) {
+        const msg = (e && e.message) || String(e);
+        const found = codes.find(c => msg.indexOf(c) === 0 || msg.indexOf(c + ':') === 0);
+        if (found && !e.code) e.code = found;
+        throw e;
+      }
+    };
+    const methods = ['readFile', 'writeFile', 'unlink', 'readdir', 'mkdir', 'rmdir', 'stat', 'lstat', 'rename', 'chmod', 'chown', 'symlink', 'readlink'];
+    const wrapped = {};
+    for (const m of methods) {
+      if (typeof raw[m] === 'function') wrapped[m] = withCode(raw[m]);
+    }
+    return wrapped;
+  }
+  _authorObj() { return { name: this.state.authorName || 'MeshUser', email: this.state.authorEmail || 'user@meshui.local' }; }
+  _onAuth() { const token = this.state.pat; return token ? { username: token } : undefined; }
+
+  onCloneUrlInput(e) { this.setState({ cloneUrl: e.target.value }); }
+  onAuthorNameInput(e) { const v = e.target.value; this.setState({ authorName: v }); try { localStorage.setItem('mergex_authorName', v); } catch (er) {} }
+  onAuthorEmailInput(e) { const v = e.target.value; this.setState({ authorEmail: v }); try { localStorage.setItem('mergex_authorEmail', v); } catch (er) {} }
+  onPatInput(e) { const v = e.target.value; this.setState({ pat: v }); try { localStorage.setItem('mergex_pat', v); } catch (er) {} }
+  onCommitMessageInput(e) { this.setState({ commitMessage: e.target.value }); }
+  onNewBranchInput(e) { this.setState({ newBranchName: e.target.value }); }
+  onNewBranchKeyDown(e) { if (e.key === 'Enter') this.createBranch(); }
+  toggleSettings() { this.setState(s => ({ showSettings: !s.showSettings })); }
+  toggleNewBranch() { this.setState(s => ({ showNewBranch: !s.showNewBranch, newBranchName: '' })); }
+  clearError() { this.setState({ errorMsg: '' }); }
+
+  async doClone() {
+    if (!this.state.cloneUrl.trim()) return;
+    await this._clone(this.state.cloneUrl.trim());
+  }
+  async cloneExample() { await this._clone('https://github.com/octocat/Hello-World'); }
+
+  async _clone(url) {
+    this.setState({ cloneBusy: true, errorMsg: '' });
+    try {
+      await this._withTimeout(this._git.clone({
+        fs: this._fs, http: this._http, dir: REPO_DIR, url,
+        corsProxy: CORS_PROXY, singleBranch: false, depth: 200,
+        onAuth: () => this._onAuth()
+      }), 25000, 'Clone');
+      this.setState({ repoReady: true, cloneBusy: false });
+      await this._refreshAll();
+    } catch (e) { this.setState({ cloneBusy: false }); this._fail(e); }
+  }
+
+  async initEmpty() {
+    this.setState({ cloneBusy: true, errorMsg: '' });
+    try {
+      await this._git.init({ fs: this._fs, dir: REPO_DIR });
+      this.setState({ repoReady: true, cloneBusy: false });
+      await this._refreshAll();
+    } catch (e) { this.setState({ cloneBusy: false }); this._fail(e); }
+  }
+
+  async resetRepo() {
+    try {
+      const entries = await this._fs.readdir('/');
+      for (const name of entries) {
+        const st = await this._fs.stat('/' + name);
+        if (st.isDirectory()) await this._fs.rmdir('/' + name, { recursive: true });
+        else await this._fs.unlink('/' + name);
+      }
+    } catch (e) {}
+    this.setState({
+      repoReady: false, commits: [], statusRows: [], branches: [], currentBranch: '',
+      remoteUrl: '', selected: { type: 'working' }, selectedFile: null, diffLeft: [], diffRight: [],
+      commitMessage: '', errorMsg: ''
+    });
+  }
+
+  async _refreshAll() {
+    await Promise.all([this._loadBranches(), this._loadLog(), this._loadStatus(), this._loadRemote()]);
+    await this._loadDiffForSelection();
+  }
+
+  async _loadBranches() {
+    try {
+      const branches = await this._git.listBranches({ fs: this._fs, dir: REPO_DIR });
+      const current = await this._git.currentBranch({ fs: this._fs, dir: REPO_DIR, fullname: false }) || '(detached)';
+      this.setState({ branches, currentBranch: current });
+    } catch (e) { this._fail(e); }
+  }
+
+  async _loadRemote() {
+    try {
+      const remotes = await this._git.listRemotes({ fs: this._fs, dir: REPO_DIR });
+      const origin = remotes.find(r => r.remote === 'origin');
+      this.setState({ remoteUrl: origin ? origin.url : '' });
+    } catch (e) { this.setState({ remoteUrl: '' }); }
+  }
+
+  async _loadLog() {
+    try {
+      const log = await this._git.log({ fs: this._fs, dir: REPO_DIR, depth: 200 });
+      const commits = log.map(c => ({
+        oid: c.oid,
+        message: (c.commit.message || '').split('\n')[0],
+        authorName: c.commit.author.name,
+        timestamp: c.commit.author.timestamp * 1000,
+        parents: c.commit.parent || []
+      }));
+      this.setState({ commits });
+    } catch (e) { this.setState({ commits: [] }); }
+  }
+
+  async _loadStatus() {
+    try {
+      const matrix = await this._git.statusMatrix({ fs: this._fs, dir: REPO_DIR });
+      // row: [filepath, headStatus, workdirStatus, stageStatus]
+      const rows = matrix.filter(r => !(r[1] === 1 && r[2] === 1 && r[3] === 1)).map(r => {
+        const [path, head, workdir, stage] = r;
+        let label = 'M';
+        if (head === 0 && stage !== 0) label = 'A';
+        else if (head === 0) label = '?';
+        else if (workdir === 0) label = 'D';
+        else if (stage !== head && stage === workdir) label = 'M';
+        else label = 'M';
+        const staged = stage !== head;
+        return { path, label, staged };
+      });
+      this.setState({ statusRows: rows });
+    } catch (e) { this.setState({ statusRows: [] }); }
+  }
+
+  async _readBlobAt(oid, filepath) {
+    try {
+      const { blob } = await this._git.readBlob({ fs: this._fs, dir: REPO_DIR, oid, filepath });
+      return new TextDecoder().decode(blob);
+    } catch (e) { return ''; }
+  }
+
+  async _headOid() {
+    try { return await this._git.resolveRef({ fs: this._fs, dir: REPO_DIR, ref: 'HEAD' }); } catch (e) { return null; }
+  }
+
+  selectWorking() { this.setState({ selected: { type: 'working' }, selectedFile: null, diffLeft: [], diffRight: [] }); }
+
+  selectCommit(oid) {
+    this.setState({ selected: { type: 'commit', oid }, selectedFile: null, diffLeft: [], diffRight: [] }, () => this._loadCommitFiles(oid));
+  }
+
+  async _loadCommitFiles(oid) {
+    try {
+      const commitObj = await this._git.readCommit({ fs: this._fs, dir: REPO_DIR, oid });
+      const parentOid = (commitObj.commit.parent || [])[0] || null;
+      const files = [];
+      await this._git.walk({
+        fs: this._fs, dir: REPO_DIR,
+        trees: [this._git.TREE({ ref: parentOid || oid }), this._git.TREE({ ref: oid })],
+        map: async (filepath, [a, b]) => {
+          if (filepath === '.') return;
+          const aType = a ? await a.type() : null;
+          const bType = b ? await b.type() : null;
+          if (aType === 'tree' || bType === 'tree') return;
+          if (!parentOid) { if (b) files.push({ path: filepath, label: 'A' }); return; }
+          const aOid = a ? await a.oid() : null;
+          const bOid = b ? await b.oid() : null;
+          if (!aOid && bOid) files.push({ path: filepath, label: 'A' });
+          else if (aOid && !bOid) files.push({ path: filepath, label: 'D' });
+          else if (aOid !== bOid) files.push({ path: filepath, label: 'M' });
+        }
+      });
+      this._commitFiles = files;
+      this.forceUpdate();
+    } catch (e) { this._commitFiles = []; this._fail(e); }
+  }
+
+  selectFile(path) { this.setState({ selectedFile: path, editingFile: false }, () => this._loadDiffForSelection()); }
+
+  toggleNewFileInline() { this.setState(s => ({ newFileOpen: !s.newFileOpen, newFilePath: '' })); }
+  onNewFilePathInput(e) { this.setState({ newFilePath: e.target.value }); }
+  onNewFilePathKeyDown(e) { if (e.key === 'Enter') this.createFile(); }
+
+  // Real file creation on the same FileFsX mount isomorphic-git reads/writes —
+  // isomorphic-git itself has no writeFile/mkdir; it only stages what's already
+  // on the fs adapter (git.add), so the file has to actually exist here first.
+  async createFile() {
+    const path = (this.state.newFilePath || '').trim().replace(/^\/+/, '');
+    if (!path) return;
+    try {
+      const parts = path.split('/').slice(0, -1);
+      let cur = '';
+      for (const part of parts) { cur += '/' + part; try { await this._fs.mkdir(cur); } catch (e) {} }
+      await this._fs.writeFile(REPO_DIR.replace(/\/$/, '') + '/' + path, '');
+      this.setState({ newFileOpen: false, newFilePath: '' });
+      await this._loadStatus();
+      this.selectFile(path);
+    } catch (e) { this._fail(e); }
+  }
+
+  async deleteFile(path) {
+    try {
+      await this._fs.unlink(REPO_DIR.replace(/\/$/, '') + '/' + path);
+      // tell git the file is gone too (separate from actually deleting it) so status/index reflect the removal
+      try { await this._git.remove({ fs: this._fs, dir: REPO_DIR, filepath: path }); } catch (e) {}
+      if (this.state.selectedFile === path) this.setState({ selectedFile: null, editingFile: false, diffLeft: [], diffRight: [] });
+      await this._loadStatus();
+    } catch (e) { this._fail(e); }
+  }
+
+  toggleEditFile() {
+    if (!this.state.editingFile) {
+      this._fs.readFile(REPO_DIR.replace(/\/$/, '') + '/' + this.state.selectedFile, { encoding: 'utf8' })
+        .catch(() => '')
+        .then(text => this.setState({ editingFile: true, editorText: text || '' }));
+    } else {
+      this.setState({ editingFile: false });
+    }
+  }
+  onEditorInput(e) { this.setState({ editorText: e.target.value }); }
+
+  async saveEditorContent() {
+    try {
+      await this._fs.writeFile(REPO_DIR.replace(/\/$/, '') + '/' + this.state.selectedFile, this.state.editorText);
+      this.setState({ editingFile: false });
+      await this._loadStatus();
+      await this._loadDiffForSelection();
+    } catch (e) { this._fail(e); }
+  }
+
+  async _loadDiffForSelection() {
+    const path = this.state.selectedFile;
+    if (!path) { this.setState({ diffLeft: [], diffRight: [] }); return; }
+    let oldText = '', newText = '';
+    try {
+      if (this.state.selected.type === 'working') {
+        const head = await this._headOid();
+        oldText = head ? await this._readBlobAt(head, path) : '';
+        try { newText = await this._fs.readFile(REPO_DIR + path, { encoding: 'utf8' }); } catch (e) { newText = ''; }
+      } else {
+        const oid = this.state.selected.oid;
+        const commitObj = await this._git.readCommit({ fs: this._fs, dir: REPO_DIR, oid });
+        const parentOid = (commitObj.commit.parent || [])[0] || null;
+        oldText = parentOid ? await this._readBlobAt(parentOid, path) : '';
+        newText = await this._readBlobAt(oid, path);
+      }
+    } catch (e) { this._fail(e); }
+    this._buildDiff(oldText, newText);
+  }
+
+  _buildDiff(oldText, newText) {
+    const Diff = window.Diff;
+    if (!Diff) { this.setState({ diffLeft: [], diffRight: [] }); return; }
+    const parts = Diff.diffLines(oldText || '', newText || '');
+    const left = [], right = [];
+    const baseStyle = 'padding:1px 10px;white-space:pre-wrap;word-break:break-word;';
+    for (const part of parts) {
+      const lines = part.value.split('\n');
+      if (lines.length && lines[lines.length - 1] === '') lines.pop();
+      for (const line of lines) {
+        const text = line === '' ? ' ' : line;
+        if (part.added) {
+          right.push({ text, style: baseStyle + 'background:#1f3a26;color:#9fd8ac;' });
+          left.push({ text: ' ', style: baseStyle + 'color:#4a4d55;' });
+        } else if (part.removed) {
+          left.push({ text, style: baseStyle + 'background:#3a2327;color:#e0a3a8;' });
+          right.push({ text: ' ', style: baseStyle + 'color:#4a4d55;' });
+        } else {
+          left.push({ text, style: baseStyle + 'color:#9a9da6;' });
+          right.push({ text, style: baseStyle + 'color:#9a9da6;' });
+        }
+      }
+    }
+    this.setState({ diffLeft: left, diffRight: right });
+  }
+
+  async toggleStage(path, staged) {
+    try {
+      if (staged) await this._git.resetIndex({ fs: this._fs, dir: REPO_DIR, filepath: path });
+      else await this._git.add({ fs: this._fs, dir: REPO_DIR, filepath: path });
+      await this._loadStatus();
+    } catch (e) { this._fail(e); }
+  }
+
+  async doCommit() {
+    const msg = this.state.commitMessage.trim();
+    if (!msg) return;
+    this.setState({ busyAction: 'commit' });
+    try {
+      await this._git.commit({ fs: this._fs, dir: REPO_DIR, message: msg, author: this._authorObj() });
+      this.setState({ commitMessage: '', busyAction: null });
+      await this._refreshAll();
+    } catch (e) { this.setState({ busyAction: null }); this._fail(e); }
+  }
+
+  async createBranch() {
+    const name = this.state.newBranchName.trim();
+    if (!name) return;
+    try {
+      await this._git.branch({ fs: this._fs, dir: REPO_DIR, ref: name, checkout: true });
+      this.setState({ showNewBranch: false, newBranchName: '' });
+      await this._refreshAll();
+    } catch (e) { this._fail(e); }
+  }
+
+  async checkoutBranch(name) {
+    try {
+      await this._git.checkout({ fs: this._fs, dir: REPO_DIR, ref: name, force: true });
+      await this._refreshAll();
+    } catch (e) { this._fail(e); }
+  }
+
+  async doFetch() {
+    this.setState({ busyAction: 'fetch' });
+    try { await this._withTimeout(this._git.fetch({ fs: this._fs, http: this._http, dir: REPO_DIR, corsProxy: CORS_PROXY, onAuth: () => this._onAuth() }), 20000, 'Fetch'); await this._refreshAll(); }
+    catch (e) { this._fail(e); }
+    this.setState({ busyAction: null });
+  }
+
+  async doPull() {
+    this.setState({ busyAction: 'pull' });
+    try {
+      await this._withTimeout(this._git.pull({ fs: this._fs, http: this._http, dir: REPO_DIR, corsProxy: CORS_PROXY, ref: this.state.currentBranch, singleBranch: true, author: this._authorObj(), onAuth: () => this._onAuth() }), 20000, 'Pull');
+      await this._refreshAll();
+    } catch (e) { this._fail(e); }
+    this.setState({ busyAction: null });
+  }
+
+  async doPush() {
+    this.setState({ busyAction: 'push' });
+    try {
+      await this._withTimeout(this._git.push({ fs: this._fs, http: this._http, dir: REPO_DIR, remote: 'origin', ref: this.state.currentBranch, corsProxy: CORS_PROXY, onAuth: () => this._onAuth() }), 20000, 'Push');
+    } catch (e) { this._fail(e); }
+    this.setState({ busyAction: null });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const tbBtnStyle = 'padding:5px 10px;font-size:12px;background:#2f3136;color:#c8cad2;border:1px solid #3a3c42;border-radius:6px;cursor:pointer;white-space:nowrap;';
+    const tbBtnPrimaryStyle = 'padding:5px 10px;font-size:12px;background:#4a68c4;color:#fff;border:none;border-radius:6px;cursor:pointer;font-weight:600;white-space:nowrap;';
+    const inputStyle = 'padding:7px 10px;border-radius:6px;border:1px solid #3a3c42;background:#1e1f22;color:#e2e3e8;font-size:12.5px;outline:none;';
+
+    const changeCount = s.statusRows.length;
+    const isBusy = !!s.busyAction;
+
+    const workingSelected = s.selected.type === 'working';
+    const workingRowStyle = 'padding:6px 14px;font-size:12.5px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:' + (workingSelected ? '#33415e' : 'transparent') + ';color:' + (workingSelected ? '#cfe0ff' : '#c8cad2') + ';';
+
+    const branchRows = s.branches.map(b => {
+      const current = b === s.currentBranch;
+      return {
+        label: (current ? '● ' : '') + b,
+        onClick: () => this.checkoutBranch(b),
+        style: 'padding:5px 14px;font-size:12px;cursor:pointer;color:' + (current ? '#8fa8e8' : '#b7bac2') + ';font-weight:' + (current ? '600' : '400') + ';'
+      };
+    });
+
+    const commitRows = [];
+    const wSel = s.selected.type === 'working';
+    commitRows.push({
+      onClick: () => this.selectWorking(),
+      title: 'Uncommitted Changes' + (changeCount ? ' (' + changeCount + ')' : ''),
+      sub: changeCount ? changeCount + ' file(s) changed' : 'working tree clean',
+      dotColor: changeCount ? '#e0b34a' : '#4a4d55',
+      style: 'display:flex;gap:8px;padding:8px 14px;cursor:pointer;background:' + (wSel ? '#2a2c31' : 'transparent') + ';border-left:2px solid ' + (wSel ? '#4a68c4' : 'transparent') + ';'
+    });
+    s.commits.forEach(c => {
+      const sel = s.selected.type === 'commit' && s.selected.oid === c.oid;
+      commitRows.push({
+        onClick: () => this.selectCommit(c.oid),
+        title: c.message || '(no message)',
+        sub: c.oid.slice(0, 7) + ' · ' + c.authorName + ' · ' + new Date(c.timestamp).toLocaleDateString(),
+        dotColor: '#5b7fe0',
+        style: 'display:flex;gap:8px;padding:8px 14px;cursor:pointer;background:' + (sel ? '#2a2c31' : 'transparent') + ';border-left:2px solid ' + (sel ? '#4a68c4' : 'transparent') + ';'
+      });
+    });
+
+    const mkFileRow = (r) => ({
+      path: r.path,
+      statusLetter: r.label,
+      staged: r.staged,
+      onToggleStage: () => this.toggleStage(r.path, r.staged),
+      onSelect: () => this.selectFile(r.path),
+      onDelete: () => this.deleteFile(r.path),
+      rowStyle: 'display:flex;align-items:center;gap:6px;padding:5px 14px;font-size:12px;background:' + (s.selectedFile === r.path ? '#2a2c31' : 'transparent') + ';cursor:default;',
+      statusPillStyle: 'width:14px;text-align:center;font-size:10.5px;font-weight:700;color:#8b8f98;flex-shrink:0;',
+      pathStyle: 'cursor:pointer;color:#c8cad2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;',
+      stageBtnStyle: 'flex-shrink:0;font-size:10.5px;color:#8fa8e8;cursor:pointer;opacity:.85;',
+      deleteBtnStyle: 'flex-shrink:0;font-size:11px;color:#c07178;cursor:pointer;opacity:.75;'
+    });
+    const statusRows = s.statusRows.map(mkFileRow);
+    const unstagedRows = statusRows.filter(r => !r.staged);
+    const stagedRows = statusRows.filter(r => r.staged);
+
+    const commitFileRows = (this._commitFiles || []).map(f => ({
+      path: f.path,
+      statusLetter: f.label,
+      onSelect: () => this.selectFile(f.path),
+      rowStyle: 'display:flex;align-items:center;gap:8px;padding:5px 14px;font-size:12px;cursor:pointer;background:' + (s.selectedFile === f.path ? '#2a2c31' : 'transparent') + ';',
+      statusPillStyle: 'width:16px;text-align:center;font-size:10.5px;font-weight:700;color:#8b8f98;',
+      pathStyle: 'color:#c8cad2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;'
+    }));
+
+    const selCommit = s.selected.type === 'commit' ? s.commits.find(c => c.oid === s.selected.oid) : null;
+    const selStatusRow = s.selectedFile ? s.statusRows.find(r => r.path === s.selectedFile) : null;
+
+    return {
+      fsReady: s.fsReady, repoReady: s.repoReady,
+      cloneUrl: s.cloneUrl, cloneBusy: s.cloneBusy,
+      onCloneUrlInput: (e) => this.onCloneUrlInput(e),
+      doClone: () => this.doClone(), cloneExample: () => this.cloneExample(), initEmpty: () => this.initEmpty(),
+      cloneLabel: s.cloneBusy ? 'Cloning…' : 'Clone',
+      inputStyle, tbBtnStyle, tbBtnPrimaryStyle,
+      colWidths: s.colWidths,
+      startDragLocations: this.startDrag('locations'),
+      startDragCommits: this.startDrag('commits'),
+      startDragFiles: this.startDrag('files'),
+      consoleOpen: s.consoleOpen, consoleCaret: s.consoleOpen ? '▾' : '▸',
+      consolePid: this._consolePid || '—', consoleHeight: s.consoleHeight,
+      toggleConsole: () => this.toggleConsole(), startDragConsole: (e) => this.startDragConsole(e),
+      consoleLines: s.consoleLines, consolePrompt: (s.cwd || '/') + ' $',
+      consoleInput: s.consoleInput, onConsoleInput: (e) => this.onConsoleInput(e), onConsoleKeyDown: (e) => this.onConsoleKeyDown(e),
+      consoleScrollRef: (el) => { this._consoleScrollRef = el; },
+      currentBranch: s.currentBranch,
+      isBusy,
+      fetchLabel: s.busyAction === 'fetch' ? 'Fetching…' : 'Fetch',
+      pullLabel: s.busyAction === 'pull' ? 'Pulling…' : 'Pull',
+      pushLabel: s.busyAction === 'push' ? 'Pushing…' : 'Push',
+      doFetch: () => this.doFetch(), doPull: () => this.doPull(), doPush: () => this.doPush(),
+      toggleNewBranch: () => this.toggleNewBranch(), resetRepo: () => this.resetRepo(),
+      toggleSettings: () => this.toggleSettings(), showSettings: s.showSettings,
+      authorName: s.authorName, authorEmail: s.authorEmail, pat: s.pat,
+      onAuthorNameInput: (e) => this.onAuthorNameInput(e), onAuthorEmailInput: (e) => this.onAuthorEmailInput(e), onPatInput: (e) => this.onPatInput(e),
+      showNewBranch: s.showNewBranch, newBranchName: s.newBranchName,
+      onNewBranchInput: (e) => this.onNewBranchInput(e), onNewBranchKeyDown: (e) => this.onNewBranchKeyDown(e),
+      createBranch: () => this.createBranch(),
+      hasError: !!s.errorMsg, errorMsg: s.errorMsg, clearError: () => this.clearError(),
+      workingRowStyle, selectWorking: () => this.selectWorking(),
+      hasChanges: changeCount > 0, changeCount,
+      badgeStyle: 'background:#e0b34a;color:#26272b;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;',
+      branchRows,
+      hasRemote: !!s.remoteUrl, remoteUrl: s.remoteUrl,
+      commitRows,
+      isWorkingView: workingSelected, isCommitView: !workingSelected,
+      statusRows, unstagedRows, stagedRows,
+      hasUnstaged: unstagedRows.length > 0, hasStaged: stagedRows.length > 0,
+      commitFileRows,
+      hasSelectedFile: !!s.selectedFile,
+      selectedFileStageLabel: selStatusRow && selStatusRow.staged ? 'Unstage File' : 'Stage File',
+      selectedFileStageAction: selStatusRow ? (() => this.toggleStage(selStatusRow.path, selStatusRow.staged)) : (() => {}),
+      newFileOpen: s.newFileOpen, newFilePath: s.newFilePath,
+      toggleNewFileInline: () => this.toggleNewFileInline(), onNewFilePathInput: (e) => this.onNewFilePathInput(e),
+      onNewFilePathKeyDown: (e) => this.onNewFilePathKeyDown(e), createFile: () => this.createFile(),
+      editingFile: s.editingFile, editorText: s.editorText, onEditorInput: (e) => this.onEditorInput(e),
+      editToggleLabel: s.editingFile ? 'Viewing Diff' : 'Edit', toggleEditFile: () => this.toggleEditFile(),
+      saveEditorContent: () => this.saveEditorContent(),
+      selectedCommitMessage: selCommit ? selCommit.message : '',
+      selectedCommitMeta: selCommit ? (selCommit.oid.slice(0, 10) + ' · ' + selCommit.authorName + ' · ' + new Date(selCommit.timestamp).toLocaleString()) : '',
+      commitMessage: s.commitMessage, onCommitMessageInput: (e) => this.onCommitMessageInput(e),
+      commitDisabled: !s.commitMessage.trim() || !s.statusRows.some(r => r.staged) || s.busyAction === 'commit',
+      doCommit: () => this.doCommit(),
+      hasDiff: s.diffLeft.length > 0, diffLeft: s.diffLeft, diffRight: s.diffRight,
+      diffPlaceholder: s.selectedFile ? 'No diff to show.' : 'Select a file to view its diff.'
+    };
+  }
+}
+
+</script>
+</body>
+</html>

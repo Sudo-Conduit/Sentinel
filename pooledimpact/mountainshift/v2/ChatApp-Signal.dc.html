@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>body{margin:0;background:#0e0e10;}</style>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <script src="./ChatLib.js"></script>
+  <script type="module">
+    import * as webllm from 'https://cdn.jsdelivr.net/npm/@mlc-ai/web-llm@0.2.79/+esm';
+    window.__webllm = webllm;
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/+esm';
+    window.__transformers = { pipeline };
+  </script>
+</helmet>
+
+<div style="display:flex;height:100vh;background:#0e0e10;color:#e9e9ec;font-family:-apple-system,'Segoe UI',sans-serif;font-size:13px;">
+
+  <div style="width:300px;flex-shrink:0;background:#141416;border-right:1px solid #232326;display:flex;flex-direction:column;">
+    <div style="padding:16px 16px 10px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-size:16px;font-weight:700;">Relay</div>
+      <div style="display:flex;gap:8px;">
+        <button onClick="{{ onNewDM }}" title="New chat" style="background:#232326;color:#e9e9ec;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;">＋</button>
+        <button onClick="{{ onNewGroup }}" title="New group" style="background:#232326;color:#e9e9ec;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:12px;">⚉</button>
+        <button onClick="{{ onOpenAddInstanceRandomName }}" title="Add model instance (random name)" style="background:#232326;color:#e9e9ec;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:12px;">🤖</button>
+      </div>
+    </div>
+    <div style="padding:0 14px 10px;">
+      <input value="{{ searchQuery }}" onInput="{{ onSearchChange }}" placeholder="Search" style="width:100%;background:#1e1e21;border:1px solid #2a2a2e;border-radius:8px;padding:8px 10px;color:#e9e9ec;font-size:12.5px;box-sizing:border-box;outline:none;" />
+    </div>
+    <div style="flex:1;overflow-y:auto;">
+      <sc-for list="{{ threads }}" as="t" hint-placeholder-count="4">
+        <div onClick="{{ t.onSelect }}" style="{{ t.rowStyle }}position:relative;">
+          <div style="width:42px;height:42px;border-radius:50%;background:{{ t.avatarBg }};display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#fff;flex-shrink:0;position:relative;">
+            {{ t.avatarInitial }}
+            <sc-if value="{{ t.hasAI }}" hint-placeholder-val="{{ false }}">
+              <span style="position:absolute;bottom:-2px;right:-2px;background:#7c3aed;color:#fff;font-size:8px;font-weight:700;border-radius:6px;padding:1px 4px;border:2px solid #141416;">AI</span>
+            </sc-if>
+          </div>
+          <div style="flex:1;min-width:0;margin-left:10px;">
+            <div style="display:flex;justify-content:space-between;">
+              <span style="font-size:13px;font-weight:600;color:#f0f0f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.title }}</span>
+              <span style="font-size:10.5px;color:#7a7a82;flex-shrink:0;margin-left:6px;">{{ t.timeLabel }}</span>
+            </div>
+            <div style="font-size:11.5px;color:#8a8a92;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ t.preview }}</div>
+          </div>
+          <div onClick="{{ t.onMenuToggle }}" style="padding:4px 6px;color:#7a7a82;cursor:pointer;flex-shrink:0;">⋯</div>
+          <sc-if value="{{ t.menuOpen }}" hint-placeholder-val="{{ false }}">
+            <div style="position:absolute;right:10px;top:44px;z-index:20;background:#1e1e21;border:1px solid #2a2a2e;border-radius:8px;padding:4px;min-width:130px;box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+              <div onClick="{{ t.onRename }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;">Rename</div>
+              <div onClick="{{ t.onRestart }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;">Restart</div>
+              <div onClick="{{ t.onDelete }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;color:#e07a7a;">Delete</div>
+              <sc-if value="{{ t.isAdmin }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ t.onAnalyze }}" style="padding:7px 10px;font-size:12px;border-radius:5px;cursor:pointer;color:#7ee0a8;">Analyze</div>
+              </sc-if>
+            </div>
+          </sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <div style="flex:1;display:flex;flex-direction:column;min-width:0;">
+    <sc-if value="{{ hasActive }}" hint-placeholder-val="{{ false }}">
+      <div style="padding:12px 20px;border-bottom:1px solid #232326;display:flex;align-items:center;gap:10px;">
+        <div style="width:34px;height:34px;border-radius:50%;background:{{ activeAvatarBg }};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff;">{{ activeAvatarInitial }}</div>
+        <div style="flex:1;">
+          <div style="font-size:13.5px;font-weight:600;color:#f0f0f2;">{{ activeTitle }}</div>
+          <div style="font-size:10.5px;color:#8a8a92;">{{ activeParticipantsLabel }}</div>
+        </div>
+        <sc-if value="{{ isGenerating }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onStop }}" style="background:#2b2b2e;color:#e07a7a;border:1px solid #3a2a2a;border-radius:6px;padding:6px 12px;font-size:11px;cursor:pointer;">⏹ Stop</button>
+        </sc-if>
+      </div>
+
+      <div ref="{{ scrollRef }}" style="flex:1;overflow-y:auto;padding:18px 24px;">
+        <sc-if value="{{ hasDigest }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:560px;margin:0 auto 16px;background:#1a1a1d;border:1px solid #232326;border-radius:10px;padding:10px 14px;font-size:11px;color:#8a8a92;line-height:1.6;">
+            <div style="color:#c9a84c;font-weight:600;margin-bottom:4px;">↺ {{ digestCount }} earlier message(s) summarized — retrievable by time, never deleted</div>
+            {{ digestPreview }}
+          </div>
+        </sc-if>
+        <sc-for list="{{ messages }}" as="m" hint-placeholder-count="4">
+          <div style="{{ m.rowStyle }}">
+            <div style="max-width:420px;">
+              <div style="{{ m.bubbleStyle }}">
+                <sc-if value="{{ m.showAuthor }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:10.5px;font-weight:700;color:{{ m.authorColor }};margin-bottom:2px;display:flex;align-items:center;gap:5px;">
+                    {{ m.authorLabel }}
+                    <sc-if value="{{ m.isAI }}" hint-placeholder-val="{{ false }}">
+                      <span style="background:rgba(124,58,237,0.2);color:#a78bfa;font-size:8.5px;padding:1px 5px;border-radius:6px;">AI</span>
+                    </sc-if>
+                  </div>
+                </sc-if>
+                <div style="{{ m.textStyle }}">{{ m.text }}</div>
+                <sc-if value="{{ m.pinned }}" hint-placeholder-val="{{ false }}">
+                  <div style="font-size:9px;color:#c9a84c;margin-top:3px;">★ beacon Δ{{ m.deltaSLabel }}</div>
+                </sc-if>
+              </div>
+              <sc-if value="{{ m.canReply }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ m.onReply }}" style="font-size:10px;color:#7a7a82;cursor:pointer;margin-top:2px;text-align:{{ m.replyLinkAlign }};">↩ Reply</div>
+              </sc-if>
+            </div>
+          </div>
+        </sc-for>
+        <sc-if value="{{ isGenerating }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:560px;margin:0 auto;color:#8a8a92;font-size:12px;">typing…</div>
+        </sc-if>
+      </div>
+
+      <div style="padding:12px 20px 18px;border-top:1px solid #232326;">
+        <sc-if value="{{ hasReplyTarget }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:640px;margin:0 auto 8px;display:flex;align-items:center;justify-content:space-between;background:#1a1a1d;border-left:2px solid #2b7de9;border-radius:6px;padding:6px 10px;">
+            <div style="font-size:11px;color:#8a8a92;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Replying to <span style="color:#e9e9ec;">{{ replyTargetLabel }}</span>: {{ replyTargetPreview }}</div>
+            <div onClick="{{ onClearReplyTarget }}" style="cursor:pointer;color:#7a7a82;font-size:13px;flex-shrink:0;margin-left:8px;">✕</div>
+          </div>
+        </sc-if>
+        <div style="max-width:640px;margin:0 auto;display:flex;gap:8px;background:#1a1a1d;border:1px solid #2a2a2e;border-radius:20px;padding:10px 8px 10px 16px;align-items:flex-end;">
+          <input type="file" ref="{{ fileInputRef }}" onChange="{{ onFileSelected }}" style="display:none;" />
+          <button onClick="{{ onAttachClick }}" title="Attach file" style="background:transparent;border:none;color:#8a8a92;cursor:pointer;font-size:17px;flex-shrink:0;padding:4px;">📎</button>
+          <textarea ref="{{ composeRef }}" value="{{ draft }}" onInput="{{ onDraftChange }}" onKeyDown="{{ onKeyDown }}" placeholder="{{ composePlaceholder }}" rows="2" style="flex:1;background:transparent;border:none;color:#e9e9ec;font-size:13px;outline:none;resize:none;font-family:inherit;line-height:1.4;max-height:160px;overflow-y:auto;padding:4px 0;"></textarea>
+          <button onClick="{{ onMicToggle }}" title="{{ micTitle }}" style="{{ micButtonStyle }}">{{ micIcon }}</button>
+          <button onClick="{{ onSend }}" disabled="{{ sendDisabled }}" style="background:#2b7de9;color:#fff;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:14px;opacity:{{ sendOpacity }};flex-shrink:0;">➤</button>
+        </div>
+        <sc-if value="{{ hasAttachment }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:640px;margin:6px auto 0;display:flex;align-items:center;gap:8px;background:#1a1a1d;border-left:2px solid #2b7de9;border-radius:6px;padding:6px 10px;font-size:11px;color:#8a8a92;">
+            📎 <span style="color:#e9e9ec;">{{ attachmentName }}</span>
+            <div onClick="{{ onClearAttachment }}" style="cursor:pointer;margin-left:auto;">✕</div>
+          </div>
+        </sc-if>
+      </div>
+    </sc-if>
+    <sc-if value="{{ noThreadSelected }}" hint-placeholder-val="{{ false }}">
+      <div style="flex:1;display:flex;align-items:center;justify-content:center;color:#5a5a62;font-size:13px;">Select a chat or start a new one</div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ dialog }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseDialog }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:60;">
+      <div onClick="{{ stopClick }}" style="background:#1a1a1d;border:1px solid #2a2a2e;border-radius:12px;padding:20px 22px;width:400px;max-height:70vh;overflow-y:auto;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;">{{ dialogTitle }}</div>
+
+        <sc-if value="{{ isRenameDialog }}" hint-placeholder-val="{{ false }}">
+          <input value="{{ renameDraft }}" onInput="{{ onRenameDraftChange }}" style="width:100%;background:#232326;border:1px solid #2a2a2e;border-radius:6px;padding:8px 10px;color:#e9e9ec;font-size:13px;box-sizing:border-box;margin-bottom:14px;outline:none;" />
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #2a2a2e;color:#e9e9ec;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmRename }}" style="background:#2b7de9;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Save</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isRestartDialog }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;color:#8a8a92;margin-bottom:14px;line-height:1.5;">This clears all messages, archived history, and digests in this thread. This cannot be undone.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #2a2a2e;color:#e9e9ec;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmRestart }}" style="background:#e07a3f;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Restart</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isDeleteDialog }}" hint-placeholder-val="{{ false }}">
+          <div style="font-size:12.5px;color:#8a8a92;margin-bottom:14px;line-height:1.5;">Permanently delete this thread? This cannot be undone.</div>
+          <div style="display:flex;gap:8px;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:transparent;border:1px solid #2a2a2e;color:#e9e9ec;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Cancel</button>
+            <button onClick="{{ onConfirmDelete }}" style="background:#e05555;color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Delete</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isAnalyzeDialog }}" hint-placeholder-val="{{ false }}">
+          <pre style="background:#0f0f11;border:1px solid #2a2a2e;border-radius:8px;padding:12px;font-size:11.5px;color:#7ee0a8;white-space:pre-wrap;margin:0 0 14px;">{{ analyzeOutput }}</pre>
+          <div style="display:flex;justify-content:flex-end;">
+            <button onClick="{{ onCloseDialog }}" style="background:#232326;color:#e9e9ec;border:1px solid #2a2a2e;border-radius:6px;padding:7px 14px;font-size:12px;cursor:pointer;">Close</button>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isNewGroupOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseNewGroup }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:50;">
+      <div onClick="{{ stopClick }}" style="background:#1a1a1d;border:1px solid #2a2a2e;border-radius:14px;padding:22px 24px;width:380px;">
+        <div style="font-size:15px;font-weight:700;margin-bottom:14px;">New Group</div>
+        <input value="{{ newGroupName }}" onInput="{{ onNewGroupNameChange }}" placeholder="Group name" style="width:100%;background:#232326;border:1px solid #2a2a2e;border-radius:8px;padding:9px 12px;color:#e9e9ec;font-size:13px;box-sizing:border-box;margin-bottom:14px;outline:none;" />
+        <div style="font-size:11px;color:#8a8a92;margin-bottom:8px;">Add participants (humans or AI sessions)</div>
+        <sc-for list="{{ groupCandidateRows }}" as="cand" hint-placeholder-count="3">
+          <div onClick="{{ cand.onToggle }}" style="display:flex;align-items:center;gap:10px;padding:8px 6px;border-radius:6px;cursor:pointer;background:{{ cand.rowBg }};">
+            <div style="width:28px;height:28px;border-radius:50%;background:{{ cand.avatarBg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;">{{ cand.initial }}</div>
+            <span style="flex:1;font-size:12.5px;">{{ cand.name }}</span>
+            <sc-if value="{{ cand.isAI }}" hint-placeholder-val="{{ false }}">
+              <span style="background:rgba(124,58,237,0.2);color:#a78bfa;font-size:8.5px;padding:1px 5px;border-radius:6px;">AI</span>
+            </sc-if>
+            <span style="font-size:11px;" title="Supports MSOS tool calls">{{ cand.toolsBadge }}</span>
+            <sc-if value="{{ cand.showInstanceControl }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;align-items:center;gap:5px;background:#0e0e10;border-radius:6px;padding:2px 4px;">
+                <div onClick="{{ cand.onDecrement }}" style="width:16px;height:16px;border-radius:4px;background:#2a2a2e;color:#e9e9ec;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;">−</div>
+                <span style="font-size:11px;color:#e9e9ec;min-width:8px;text-align:center;">{{ cand.instanceCount }}</span>
+                <div onClick="{{ cand.onIncrement }}" style="width:16px;height:16px;border-radius:4px;background:#2a2a2e;color:#e9e9ec;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;">+</div>
+              </div>
+            </sc-if>
+            <span style="font-size:14px;">{{ cand.checkMark }}</span>
+          </div>
+        </sc-for>
+        <button onClick="{{ onCreateGroup }}" disabled="{{ createGroupDisabled }}" style="width:100%;margin-top:14px;background:#2b7de9;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;opacity:{{ createGroupOpacity }};">Create Group</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAddInstanceOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseAddInstance }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;z-index:50;">
+      <div onClick="{{ stopClick }}" style="background:#1a1a1d;border:1px solid #2a2a2e;border-radius:14px;padding:22px 24px;width:380px;">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px;">Add Model Instance</div>
+        <div style="font-size:11px;color:#8a8a92;margin-bottom:14px;line-height:1.5;">Spin up another named session from any base model — run several instances of the same model side by side, each with its own conversation state.</div>
+        <input value="{{ newInstanceName }}" onInput="{{ onNewInstanceNameChange }}" placeholder="Instance name (e.g. \"Llama #2\")" style="width:100%;background:#232326;border:1px solid #2a2a2e;border-radius:8px;padding:9px 12px;color:#e9e9ec;font-size:13px;box-sizing:border-box;margin-bottom:10px;outline:none;" />
+        <select value="{{ newInstanceBaseModel }}" onChange="{{ onNewInstanceModelChange }}" style="width:100%;background:#232326;border:1px solid #2a2a2e;border-radius:8px;padding:9px 12px;color:#e9e9ec;font-size:12.5px;box-sizing:border-box;margin-bottom:14px;">
+          <sc-for list="{{ baseModelOptions }}" as="bm" hint-placeholder-count="4">
+            <option value="{{ bm.value }}">{{ bm.label }}</option>
+          </sc-for>
+        </select>
+        <button onClick="{{ onCreateInstance }}" disabled="{{ createInstanceDisabled }}" style="width:100%;background:#2b7de9;color:#fff;border:none;border-radius:8px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;opacity:{{ createInstanceOpacity }};">Create Instance</button>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const AI_MODELS = [
+  { id: 'ai-llama', name: 'Llama Session', modelId: 'Llama-3.2-1B-Instruct-q4f16_1-MLC' },
+  { id: 'ai-llama-tools', name: 'Llama Tools Session', modelId: 'Hermes-3-Llama-3.1-8B-q4f16_1-MLC' },
+  { id: 'ai-qwen', name: 'Qwen Session', modelId: 'Qwen2.5-1.5B-Instruct-q4f16_1-MLC' },
+  { id: 'ai-qwen-math', name: 'Qwen Math Session', modelId: 'Qwen2.5-Math-1.5B-Instruct-q4f16_1-MLC' },
+  { id: 'ai-phi-vision', name: 'Phi Vision Session', modelId: 'Phi-3.5-vision-instruct-q4f16_1-MLC' },
+  { id: 'ai-smol', name: 'SmolLM2 135M Session', modelId: 'SmolLM2-135M-Instruct-q0f16-MLC' }
+];
+const HUMAN_CONTACTS = [
+  { id: 'human-alex', name: 'Alex' }, { id: 'human-jordan', name: 'Jordan' }
+];
+const INSTANCE_NAME_POOL = ['Ada','Bran','Cleo','Dash','Echo','Finn','Greer','Hux','Iris','Jax','Kira','Lior','Milo','Nyla','Orin','Piper','Quin','Rue','Sable','Tavi'];
+function initials(name) { return (name || '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
+function colorFor(id) { const palette = ['#e05555','#5dade2','#2ecc71','#c9a84c','#7c3aed','#e67e22']; let h = 0; for (const c of id) h = (h * 31 + c.charCodeAt(0)) >>> 0; return palette[h % palette.length]; }
+
+class Component extends DCLogic {
+  state = { contexts: [], activeId: null, draft: '', isGenerating: false, searchQuery: '', isNewGroupOpen: false, newGroupName: '', groupSelectedIds: [], rev: 0, replyToMessageId: null,
+    openMenuId: null, dialog: null, dialogConvId: null, renameDraft: '', analyzeOutput: '', customInstances: [], isAddInstanceOpen: false, newInstanceName: '', newInstanceBaseModel: AI_MODELS[0].modelId,
+    isRecording: false, isTranscribing: false, attachment: null, groupInstanceCounts: {} };
+  composeRef = React.createRef();
+  scrollRef = React.createRef();
+
+  scrollToBottom() {
+    const el = this.scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }
+
+  componentDidUpdate() { this.scrollToBottom(); }
+  fileInputRef = React.createRef();
+
+  // Live mic capture \u2192 local Whisper STT (ChatLib.transcribeAudioBlob).
+  // 100% local: audio never leaves the browser, no server round-trip.
+  onMicToggle = async () => {
+    if (this.state.isRecording) { this._mediaRecorder.stop(); return; }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        this.setState({ isRecording: false, isTranscribing: true });
+        try {
+          const blob = new Blob(chunks, { type: 'audio/webm' });
+          const text = await ChatLib.transcribeAudioBlob(blob);
+          this.setState({ draft: (this.state.draft ? this.state.draft + ' ' : '') + text, isTranscribing: false });
+        } catch (e) { console.error('Transcription failed:', e); this.setState({ isTranscribing: false }); }
+      };
+      this._mediaRecorder = recorder;
+      recorder.start();
+      this.setState({ isRecording: true });
+    } catch (e) { console.error('Mic access failed:', e); }
+  };
+
+  onAttachClick = () => { if (this.fileInputRef.current) this.fileInputRef.current.click(); };
+  onFileSelected = (e) => {
+    const file = e.target.files[0];
+    if (file) this.setState({ attachment: file });
+  };
+  onClearAttachment = () => { this.setState({ attachment: null }); if (this.fileInputRef.current) this.fileInputRef.current.value = ''; };
+
+  onOpenAddInstance = () => this.setState({ isAddInstanceOpen: true, newInstanceName: '', newInstanceBaseModel: AI_MODELS[0].modelId });
+  onCloseAddInstance = () => this.setState({ isAddInstanceOpen: false });
+  onNewInstanceNameChange = (e) => this.setState({ newInstanceName: e.target.value });
+  onNewInstanceModelChange = (e) => this.setState({ newInstanceBaseModel: e.target.value });
+  onCreateInstance = () => {
+    const s = this.state;
+    const name = s.newInstanceName.trim();
+    if (!name) return;
+    const instance = { id: 'custom-' + Date.now() + '-' + Math.floor(Math.random() * 1e5), name, modelId: s.newInstanceBaseModel };
+    this.setState({ customInstances: [...s.customInstances, instance], isAddInstanceOpen: false });
+  };
+  onOpenAddInstanceRandomName = () => {
+    const used = new Set([...AI_MODELS, ...this.state.customInstances].map(m => m.name));
+    const pool = INSTANCE_NAME_POOL.filter(n => !used.has(n));
+    const name = pool.length ? pool[Math.floor(Math.random() * pool.length)] : INSTANCE_NAME_POOL[Math.floor(Math.random() * INSTANCE_NAME_POOL.length)];
+    this.setState({ isAddInstanceOpen: true, newInstanceName: name, newInstanceBaseModel: AI_MODELS[0].modelId });
+  };
+
+  allAIModels() { return [...AI_MODELS, ...this.state.customInstances]; }
+
+  isAdmin() { try { return (window.parent && window.parent.__meshUser) === 'root'; } catch (e) { return false; } }
+  onToggleMenu = (id) => this.setState(s => ({ openMenuId: s.openMenuId === id ? null : id }));
+  onCloseDialog = () => this.setState({ dialog: null, dialogConvId: null });
+  stopClick = (e) => e.stopPropagation();
+  onRenameDraftChange = (e) => this.setState({ renameDraft: e.target.value });
+
+  openDialog = (type, convId) => {
+    const ctx = this._contexts.find(c => c.id === convId);
+    this.setState({ dialog: type, dialogConvId: convId, openMenuId: null,
+      renameDraft: type === 'rename' ? ctx.contextName : this.state.renameDraft });
+    if (type === 'analyze') {
+      const output = { contextName: ctx.contextName, contextType: ctx.contextType, messageCount: ctx.messages.length,
+        archivedCount: ctx.archivedMessages.length, digestPointerRefs: ctx.digestPointerRefs.length, lastKVCacheLen: ctx.lastKVCacheLen,
+        realDeltaSCoverage: ctx.messages.filter(m => m.isRealDeltaS).length + ' / ' + ctx.messages.length + ' messages',
+        beaconCount: ctx.messages.filter(m => m.pinned).length };
+      this.setState({ analyzeOutput: JSON.stringify(output, null, 2) });
+    }
+  };
+  onConfirmRename = () => {
+    const ctx = this._contexts.find(c => c.id === this.state.dialogConvId);
+    if (ctx && this.state.renameDraft.trim()) { ctx.contextName = this.state.renameDraft.trim(); ChatLib.saveContext(ctx); }
+    this.setState({ dialog: null, dialogConvId: null, rev: this.state.rev + 1 });
+  };
+  onConfirmRestart = () => {
+    const ctx = this._contexts.find(c => c.id === this.state.dialogConvId);
+    if (ctx) {
+      ctx.messages = []; ctx.archivedMessages = []; ctx.digestPointerRefs = []; ctx.rollingDeltaSSum = 0; ctx.rollingDeltaSCount = 0; ctx.lastKVCacheLen = 0;
+      ChatLib.saveContext(ctx);
+    }
+    this.setState({ dialog: null, dialogConvId: null, rev: this.state.rev + 1 });
+  };
+  onConfirmDelete = async () => {
+    const id = this.state.dialogConvId;
+    await ChatLib.deleteContext(id);
+    this._contexts = this._contexts.filter(c => c.id !== id);
+    if (!this._contexts.length) this._contexts = [this.freshDM(AI_MODELS[0])];
+    this.setState({ dialog: null, dialogConvId: null, activeId: this.state.activeId === id ? this._contexts[0].id : this.state.activeId, contexts: this._contexts });
+  };
+
+  async componentDidMount() {
+    try { this._kernel = (window.parent && window.parent.__meshKernel) || null; } catch (e) { this._kernel = null; }
+    this._proc = this._kernel ? this._kernel.fork('ChatApp-Signal', 0) : null;
+
+    try {
+      const saved = await ChatLib.loadAllContexts();
+      const mine = saved.filter(c => c.appTag === 'signal');
+      // Pre-fix, every save created a NEW IDB record (stable id was never
+      // persisted through fromJSON), leaving duplicate rows for what was
+      // really one conversation. De-dupe by contextName + participant set,
+      // keeping the most recent savedAt, and delete the stale duplicates
+      // from IDB so this cleanup only has to run once.
+      const byKey = new Map();
+      for (const c of mine) {
+        const key = c.contextName + '|' + (c.participants || []).map(p => p.id).sort().join(',');
+        const existing = byKey.get(key);
+        if (!existing || (c.savedAt || 0) > (existing.savedAt || 0)) byKey.set(key, c);
+      }
+      const deduped = Array.from(byKey.values());
+      const staleIds = mine.filter(c => !deduped.includes(c)).map(c => c.id);
+      for (const id of staleIds) { try { await ChatLib.deleteContext(id); } catch (e) {} }
+      deduped.sort((a, b) => (b.savedAt || 0) - (a.savedAt || 0));
+      this._contexts = deduped.length ? deduped.map(c => ChatLib.TimeIndexedContext.fromJSON(c)) : [this.freshDM(AI_MODELS[0])];
+    } catch (e) {
+      console.error('ChatApp-Signal init failed, falling back to a fresh DM:', e);
+      this._contexts = [this.freshDM(AI_MODELS[0])];
+    }
+    this.setState({ contexts: this._contexts, activeId: this._contexts[0].id });
+    setTimeout(() => this.scrollToBottom(), 0);
+
+    try {
+      const shared = ChatLib.getSharedEngine();
+      if (shared) { this._engine = shared.engineInstance; this._modelId = shared.modelId; }
+    } catch (e) { console.error('Shared engine lookup failed:', e); }
+  }
+
+  componentWillUnmount() { if (this._kernel && this._proc) this._kernel.kill(this._proc.pid); }
+
+  freshDM(aiParticipant) {
+    return new ChatLib.TimeIndexedContext({ contextName: aiParticipant.name, contextType: 'dm', appTag: 'signal',
+      participants: [{ id: 'me', name: 'You', kind: 'human' }, { id: aiParticipant.id, name: aiParticipant.name, kind: 'ai', modelId: aiParticipant.modelId }] });
+  }
+
+  activeContext() { return this._contexts.find(c => c.id === this.state.activeId); }
+
+  onNewDM = () => { const pool = this.allAIModels(); const ctx = this.freshDM(pool[Math.floor(Math.random() * pool.length)]); this._contexts = [ctx, ...this._contexts]; this.setState({ contexts: this._contexts, activeId: ctx.id }); };
+  onNewGroup = () => this.setState({ isNewGroupOpen: true, newGroupName: '', groupSelectedIds: [] });
+  onCloseNewGroup = () => this.setState({ isNewGroupOpen: false });
+  stopClick = (e) => e.stopPropagation();
+  onNewGroupNameChange = (e) => this.setState({ newGroupName: e.target.value });
+  toggleGroupCandidate = (id) => this.setState(s => {
+    const selected = s.groupSelectedIds.includes(id);
+    const groupSelectedIds = selected ? s.groupSelectedIds.filter(x => x !== id) : [...s.groupSelectedIds, id];
+    const groupInstanceCounts = { ...s.groupInstanceCounts };
+    if (selected) delete groupInstanceCounts[id]; else groupInstanceCounts[id] = 1;
+    return { groupSelectedIds, groupInstanceCounts };
+  });
+  adjustInstanceCount = (id, delta) => this.setState(s => ({ groupInstanceCounts: { ...s.groupInstanceCounts, [id]: Math.max(1, Math.min(3, (s.groupInstanceCounts[id] || 1) + delta)) } }));
+  onCreateGroup = () => {
+    const s = this.state;
+    if (!s.newGroupName.trim() || !s.groupSelectedIds.length) return;
+    const allCandidates = [...HUMAN_CONTACTS.map(h => ({ ...h, kind: 'human' })), ...this.allAIModels().map(a => ({ ...a, kind: 'ai' }))];
+    const participants = [{ id: 'me', name: 'You', kind: 'human' }];
+    allCandidates.filter(c => s.groupSelectedIds.includes(c.id)).forEach(c => {
+      const count = c.kind === 'ai' ? (s.groupInstanceCounts[c.id] || 1) : 1;
+      for (let i = 0; i < count; i++) {
+        participants.push({ id: count > 1 ? `${c.id}#${i + 1}` : c.id, name: count > 1 ? `${c.name} #${i + 1}` : c.name, kind: c.kind, modelId: c.modelId });
+      }
+    });
+    const ctx = new ChatLib.TimeIndexedContext({ contextName: s.newGroupName.trim(), contextType: 'group', appTag: 'signal', participants });
+    this._contexts = [ctx, ...this._contexts];
+    this.setState({ contexts: this._contexts, activeId: ctx.id, isNewGroupOpen: false });
+  };
+  onSelectThread = (id) => this.setState({ activeId: id });
+  onSearchChange = (e) => this.setState({ searchQuery: e.target.value });
+  onDraftChange = (e) => {
+    this.setState({ draft: e.target.value });
+    // Auto-grow: reset then measure so it can shrink back down too, not
+    // just grow \u2014 capped at 160px (matches the textarea's max-height).
+    const el = e.target;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 160) + 'px';
+  };
+  onKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.onSend(); } };
+
+  async ensureEngineFor(modelId) {
+    if (this._engine && this._modelId === modelId) return this._engine;
+    const proc = this._kernel ? this._kernel.fork('chat:load:' + modelId, 0) : null;
+    try {
+      const engine = new window.__webllm.MLCEngine();
+      await engine.reload(modelId);
+      this._engine = engine; this._modelId = modelId;
+      return engine;
+    } finally { if (this._kernel && proc) this._kernel.kill(proc.pid); }
+  }
+
+  // One AI participant's turn: builds the prompt from the running
+  // context (so within an AI\u2194AI round, each participant sees every
+  // reply that came before it, human or AI), generates, records the
+  // reply, and runs it through the MSOS protocol check.
+  async runAITurn(ctx, ai, replyToMessageId) {
+    const proc = this._kernel ? this._kernel.fork('chat:generate:' + ai.name, 0) : null;
+    try {
+      const engine = await this.ensureEngineFor(ai.modelId);
+      const { digestBlock, liveMessages, msosPrimer } = ctx.buildPromptContext();
+      // System content is combined into ONE system message, always first
+      // \u2014 WebLLM requires the system prompt to be message[0], and a
+      // second system message pushed later (e.g. after a tool follow-up)
+      // violates that, which is what threw "System prompt should always
+      // be the first message."
+      const systemParts = [`Your name in this conversation is ${ai.name}. When asked your name or referred to by it, respond as ${ai.name}.`, msosPrimer];
+      if (digestBlock) systemParts.push(digestBlock);
+      if (replyToMessageId) {
+        const target = ctx.messages.find(m => m.id === replyToMessageId);
+        if (target) systemParts.push(`The human is replying specifically to this earlier message (from ${target.authorId}): "${target.text}". Address that message directly.`);
+      }
+      // In a group thread, prefix every non-self message with its real
+      // speaker name so an instance can tell a human's line from another
+      // AI participant's line, rather than everything collapsing into an
+      // undifferentiated 'user' role.
+      const speakerName = (id) => {
+        const p = ctx.participants.find(pp => pp.id === id);
+        return p ? p.name : id;
+      };
+      const chatMsgs = [{ role: 'system', content: systemParts.join('\n\n') }];
+      liveMessages.forEach(m => {
+        const isSelf = m.authorId === ai.id;
+        const ts = new Date(m.ts).toISOString();
+        const body = isSelf ? m.text : `${speakerName(m.authorId)}: ${m.text}`;
+        chatMsgs.push({ role: isSelf ? 'assistant' : 'user', content: `${body} [${ts}]` });
+      });
+      // WebLLM requires the array to end on 'user' or 'tool' \u2014 guard
+      // against ending on 'assistant'/'system' (e.g. this AI's own last
+      // turn with no reply since, or an empty history) which throws
+      // "Last message should be from either `user` or `tool`."
+      if (!chatMsgs.length || chatMsgs[chatMsgs.length - 1].role === 'assistant') chatMsgs.push({ role: 'user', content: '(continue)' });
+
+      const useTools = ChatLib.supportsTools(ai.modelId);
+      let reply = await ChatLib.completeWithToolFallback(engine, chatMsgs, useTools);
+      let msg = reply.choices[0].message;
+
+      if (msg.tool_calls && msg.tool_calls.length) {
+        chatMsgs.push(msg);
+        for (const call of msg.tool_calls) {
+          let output = 'msos: malformed tool call.';
+          try {
+            const args = JSON.parse(call.function.arguments);
+            output = await ChatLib.msosDispatch(call.function.name, args, this._kernel, ctx);
+            ctx.addMessage({ authorId: 'msos', text: `${call.function.name}(${JSON.stringify(args)})\n${output}` });
+          } catch (e) { output = 'msos: ' + e.message; }
+          chatMsgs.push({ role: 'tool', tool_call_id: call.id, content: output });
+        }
+        // Follow-up completion so the model can respond in natural
+        // language about what the tool returned, instead of the raw
+        // tool_call being the only "reply."
+        reply = await engine.chat.completions.create({ messages: chatMsgs, logprobs: true, top_logprobs: 5, max_tokens: 800 });
+        msg = reply.choices[0].message;
+      }
+
+      // Real \u0394S from the engine's own per-token logprobs
+      // (pipeline.tokenLogprobArray), per WebLLM Engine Object Map.md \u2014
+      // falls back to the text heuristic inside addMessage() if unavailable.
+      const pipeline = ChatLib.getPipeline(engine, ai.modelId);
+      const realDS = ChatLib.realDeltaSFromPipeline(pipeline);
+
+      // Text-pattern fallback for engines/models that don't support tools.
+      const replyText = msg.content || '';
+      if (replyText) ctx.addMessage({ authorId: ai.id, text: replyText, realDeltaS: realDS ? realDS.avgDeltaS : null, kvCacheLen: pipeline ? pipeline.filledKVCacheLength : null });
+      // A reply can contain several msos:[TOKEN]>run lines (e.g. asked to
+      // "increment a few times") \u2014 dispatch every one found, in order.
+      const allCalls = ChatLib.msosParseAll(replyText);
+      for (const msos of allCalls) {
+        const output = await ChatLib.msosDispatch(msos.toolName, msos.args, this._kernel, ctx);
+        ctx.addMessage({ authorId: 'msos', text: `$ ${msos.toolName} ${JSON.stringify(msos.args)}\n${output}` });
+      }
+      await ChatLib.saveContext(ctx);
+    } catch (e) {
+      ctx.addMessage({ authorId: ai.id, text: 'Error: ' + e.message });
+    } finally { if (this._kernel && proc) this._kernel.kill(proc.pid); }
+  }
+
+  // AI\u2194AI routing: in a group thread with 2+ AI participants, each AI
+  // gets a turn per round (in participant order), seeing every prior
+  // reply including other AIs' new ones this round — real AI-to-AI
+  // conversation, not just AI-to-human. Capped at maxAIRounds so it can't
+  // run forever without a human turn, and stoppable via the Stop control.
+  onSend = async () => {
+    let text = this.state.draft.trim();
+    const attachment = this.state.attachment;
+    if ((!text && !attachment) || this.state.isGenerating) return;
+    const ctx = this.activeContext();
+
+    if (attachment) {
+      try {
+        const relPath = await ChatLib.saveAttachment(attachment);
+        text = (text ? text + '\n\n' : '') + `[Attached file: ${attachment.name} \u2014 read it with msos:[sess1]>run msos_cat {"path":"${relPath}"}]`;
+      } catch (e) {
+        text = (text ? text + '\n\n' : '') + `[Attachment "${attachment.name}" failed to save: ${e.message}]`;
+      }
+    }
+
+    ctx.addMessage({ authorId: 'me', text });
+    this._stopRequested = false;
+    this.setState({ draft: '', attachment: null, isGenerating: true, rev: this.state.rev + 1 });
+    if (this.fileInputRef && this.fileInputRef.current) this.fileInputRef.current.value = '';
+    if (this.composeRef && this.composeRef.current) this.composeRef.current.style.height = 'auto';
+    await ChatLib.saveContext(ctx);
+
+    // If the human is replying to one specific model's message (reply
+    // target set via a message's "Reply" action), only that model
+    // responds \u2014 not the whole group.
+    const replyTarget = this.state.replyToMessageId ? ctx.messages.find(m => m.id === this.state.replyToMessageId) : null;
+    const replyToParticipant = replyTarget ? ctx.participants.find(p => p.id === replyTarget.authorId && p.kind === 'ai') : null;
+
+    const aiParticipants = replyToParticipant ? [replyToParticipant] : ctx.participants.filter(p => p.kind === 'ai');
+    const maxAIRounds = !replyToParticipant && ctx.contextType === 'group' && aiParticipants.length > 1 ? 3 : 1;
+    const rtId = this.state.replyToMessageId;
+    this.setState({ replyToMessageId: null });
+    for (let round = 0; round < maxAIRounds && !this._stopRequested; round++) {
+      for (const ai of aiParticipants) {
+        if (this._stopRequested) break;
+        await this.runAITurn(ctx, ai, rtId);
+        this.setState({ rev: this.state.rev + 1 });
+      }
+    }
+    this.setState({ isGenerating: false, rev: this.state.rev + 1 });
+  };
+
+  onSetReplyTarget = (messageId) => this.setState({ replyToMessageId: messageId });
+  onClearReplyTarget = () => this.setState({ replyToMessageId: null });
+
+  onStop = () => {
+    this._stopRequested = true;
+    // The between-turn check alone can't interrupt a generation already
+    // in flight \u2014 actually abort it via WebLLM's own interrupt call.
+    if (this._engine && typeof this._engine.interruptGenerate === 'function') this._engine.interruptGenerate();
+  };
+
+  renderVals() {
+    const s = this.state;
+    if (!this._contexts) return { threads: [], hasActive: false, noThreadSelected: true, messages: [], searchQuery: '', isNewGroupOpen: false, groupCandidateRows: [] };
+
+    const q = s.searchQuery.trim().toLowerCase();
+    const lastActivity = (c) => c.messages.length ? c.messages[c.messages.length - 1].ts : c.createdAt;
+    const filtered = this._contexts.filter(c => !q || c.contextName.toLowerCase().includes(q)).slice().sort((a, b) => lastActivity(b) - lastActivity(a));
+    const isAdmin = this.isAdmin();
+    const threads = filtered.map(c => ({
+      title: c.contextName, avatarInitial: initials(c.contextName), avatarBg: colorFor(c.id),
+      hasAI: c.participants.some(p => p.kind === 'ai'),
+      preview: c.messages.length ? c.messages[c.messages.length - 1].text.slice(0, 34) : 'No messages yet',
+      timeLabel: c.messages.length ? new Date(c.messages[c.messages.length - 1].ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+      onSelect: () => this.onSelectThread(c.id),
+      rowStyle: `display:flex;align-items:center;padding:10px 14px;cursor:pointer;background:${c.id === s.activeId ? '#1e1e21' : 'transparent'};`,
+      onMenuToggle: (e) => { e.stopPropagation(); this.onToggleMenu(c.id); },
+      menuOpen: s.openMenuId === c.id, isAdmin,
+      onRename: (e) => { e.stopPropagation(); this.openDialog('rename', c.id); },
+      onRestart: (e) => { e.stopPropagation(); this.openDialog('restart', c.id); },
+      onDelete: (e) => { e.stopPropagation(); this.openDialog('delete', c.id); },
+      onAnalyze: (e) => { e.stopPropagation(); this.openDialog('analyze', c.id); }
+    }));
+
+    const ctx = this.activeContext();
+    if (!ctx) return { threads, hasActive: false, noThreadSelected: true, messages: [], searchQuery: s.searchQuery, onSearchChange: this.onSearchChange, onNewDM: this.onNewDM, onNewGroup: this.onNewGroup, isNewGroupOpen: s.isNewGroupOpen, groupCandidateRows: [] };
+
+    let lastAuthor = null;
+    const messages = ctx.messages.map(m => {
+      const isMe = m.authorId === 'me';
+      const isMsos = m.authorId === 'msos';
+      const participant = ctx.participants.find(p => p.id === m.authorId);
+      const showAuthor = !isMsos && ctx.contextType === 'group' && lastAuthor !== m.authorId;
+      lastAuthor = m.authorId;
+      return {
+        rowStyle: `display:flex;margin-bottom:10px;justify-content:${isMe ? 'flex-end' : 'flex-start'};`,
+        bubbleStyle: isMsos
+          ? 'max-width:460px;padding:9px 13px;border-radius:8px;background:#0f1f16;border:1px solid #1f3a28;color:#7ee0a8;'
+          : `max-width:420px;padding:9px 13px;border-radius:16px;background:${isMe ? '#2b7de9' : '#232326'};color:${isMe ? '#fff' : '#e9e9ec'};`,
+        textStyle: isMsos ? 'font-size:12px;line-height:1.5;white-space:pre-wrap;font-family:monospace;' : 'font-size:13px;line-height:1.5;white-space:pre-wrap;',
+        showAuthor, authorLabel: isMsos ? 'msos' : (participant ? participant.name : m.authorId), authorColor: isMsos ? '#7ee0a8' : colorFor(m.authorId),
+        isAI: participant && participant.kind === 'ai', text: m.text, pinned: m.pinned, deltaSLabel: m.deltaS.toFixed(1),
+        canReply: !isMsos && participant && participant.kind === 'ai',
+        onReply: () => this.onSetReplyTarget(m.id), replyLinkAlign: isMe ? 'right' : 'left'
+      };
+    });
+
+    const replyTarget = s.replyToMessageId ? ctx.messages.find(m => m.id === s.replyToMessageId) : null;
+    const replyTargetParticipant = replyTarget ? ctx.participants.find(p => p.id === replyTarget.authorId) : null;
+
+    const allCandidates = [...HUMAN_CONTACTS.map(h => ({ ...h, kind: 'human' })), ...this.allAIModels().map(a => ({ ...a, kind: 'ai' }))];
+    const groupCandidateRows = allCandidates.map(c => ({
+      name: c.name, initial: initials(c.name), avatarBg: colorFor(c.id), isAI: c.kind === 'ai',
+      toolsBadge: c.kind === 'ai' ? (ChatLib.supportsTools(c.modelId) ? '🔧' : '') : '',
+      onToggle: () => this.toggleGroupCandidate(c.id),
+      rowBg: s.groupSelectedIds.includes(c.id) ? '#232326' : 'transparent',
+      checkMark: s.groupSelectedIds.includes(c.id) ? '✓' : '',
+      showInstanceControl: c.kind === 'ai' && s.groupSelectedIds.includes(c.id),
+      instanceCount: s.groupInstanceCounts[c.id] || 1,
+      onDecrement: (e) => { e.stopPropagation(); this.adjustInstanceCount(c.id, -1); },
+      onIncrement: (e) => { e.stopPropagation(); this.adjustInstanceCount(c.id, 1); }
+    }));
+
+    return {
+      threads, searchQuery: s.searchQuery, onSearchChange: this.onSearchChange, onNewDM: this.onNewDM, onNewGroup: this.onNewGroup,
+      hasActive: true, noThreadSelected: false,
+      activeAvatarBg: colorFor(ctx.id), activeAvatarInitial: initials(ctx.contextName), activeTitle: ctx.contextName,
+      activeParticipantsLabel: ctx.participants.map(p => p.name).join(', '),
+      messages, isGenerating: s.isGenerating, draft: s.draft, onDraftChange: this.onDraftChange, onKeyDown: this.onKeyDown, onSend: this.onSend, onStop: this.onStop,
+      sendDisabled: (!s.draft.trim() && !s.attachment) || s.isGenerating, sendOpacity: ((!s.draft.trim() && !s.attachment) || s.isGenerating) ? 0.5 : 1,
+      composeRef: this.composeRef, fileInputRef: this.fileInputRef, scrollRef: this.scrollRef,
+      onMicToggle: this.onMicToggle, micTitle: s.isRecording ? 'Stop recording' : 'Record voice (local Whisper STT)',
+      micIcon: s.isTranscribing ? '⋯' : (s.isRecording ? '■' : '🎙'),
+      micButtonStyle: `background:${s.isRecording ? 'rgba(224,85,85,0.15)' : 'transparent'};border:none;border-radius:50%;color:${s.isRecording ? '#e05555' : '#8a8a92'};cursor:pointer;font-size:15px;flex-shrink:0;padding:4px;`,
+      onAttachClick: this.onAttachClick, onFileSelected: this.onFileSelected,
+      hasAttachment: !!s.attachment, attachmentName: s.attachment ? s.attachment.name : '', onClearAttachment: this.onClearAttachment,
+      hasReplyTarget: !!replyTarget, onClearReplyTarget: this.onClearReplyTarget,
+      replyTargetLabel: replyTargetParticipant ? replyTargetParticipant.name : '', replyTargetPreview: replyTarget ? replyTarget.text.slice(0, 60) : '',
+      composePlaceholder: s.isTranscribing ? 'Transcribing…' : (replyTarget ? 'Reply to ' + (replyTargetParticipant ? replyTargetParticipant.name : '') + '…' : 'Message…'),
+      hasDigest: ctx.digestPointerRefs.length > 0, digestCount: ctx.archivedMessages.length, digestPreview: ctx.digestPointerRefs.map(r => r.summary + (r.kvCachePointer ? ` [kv@${r.kvCachePointer}]` : '')).join(' '),
+      isNewGroupOpen: s.isNewGroupOpen, onCloseNewGroup: this.onCloseNewGroup, stopClick: this.stopClick,
+      newGroupName: s.newGroupName, onNewGroupNameChange: this.onNewGroupNameChange, groupCandidateRows,
+      onCreateGroup: this.onCreateGroup, createGroupDisabled: !s.newGroupName.trim() || !s.groupSelectedIds.length,
+      createGroupOpacity: (!s.newGroupName.trim() || !s.groupSelectedIds.length) ? 0.5 : 1,
+      onOpenAddInstance: this.onOpenAddInstance, onOpenAddInstanceRandomName: this.onOpenAddInstanceRandomName, onCloseAddInstance: this.onCloseAddInstance, isAddInstanceOpen: s.isAddInstanceOpen,
+      newInstanceName: s.newInstanceName, onNewInstanceNameChange: this.onNewInstanceNameChange,
+      newInstanceBaseModel: s.newInstanceBaseModel, onNewInstanceModelChange: this.onNewInstanceModelChange,
+      baseModelOptions: AI_MODELS.map(m => ({ value: m.modelId, label: m.name + (ChatLib.supportsTools(m.modelId) ? ' 🔧' : '') })),
+      onCreateInstance: this.onCreateInstance, createInstanceDisabled: !s.newInstanceName.trim(), createInstanceOpacity: !s.newInstanceName.trim() ? 0.5 : 1,
+      dialog: s.dialog, onCloseDialog: this.onCloseDialog, stopClick: this.stopClick,
+      isRenameDialog: s.dialog === 'rename', isRestartDialog: s.dialog === 'restart', isDeleteDialog: s.dialog === 'delete', isAnalyzeDialog: s.dialog === 'analyze',
+      dialogTitle: s.dialog === 'rename' ? 'Rename Thread' : s.dialog === 'restart' ? 'Restart Thread' : s.dialog === 'delete' ? 'Delete Thread' : 'Analyze',
+      renameDraft: s.renameDraft, onRenameDraftChange: this.onRenameDraftChange, onConfirmRename: this.onConfirmRename,
+      onConfirmRestart: this.onConfirmRestart, onConfirmDelete: this.onConfirmDelete, analyzeOutput: s.analyzeOutput
+    };
+  }
+}
+
+</script>
+</body>
+</html>

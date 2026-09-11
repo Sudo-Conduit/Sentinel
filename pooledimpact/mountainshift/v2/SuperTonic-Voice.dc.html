@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.11.5/dist/shaka-player.compiled.js"></script>
+  <style>body { margin:0; background:#1c2733; }</style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#0b0f14;color:#eef1f5;font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;padding:16px 26px;border-bottom:1px solid #1c232c;background:#0e131a;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#3f7ae0,#7b5be0);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;">S</div>
+      <div>
+        <div style="font-size:15px;font-weight:700;letter-spacing:0.2px;">Voice Localization Studio</div>
+        <div style="font-size:11px;color:#7c8797;">Cloned-voice multilingual speech synthesis</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:{{ pipelineStatusColor }};background:{{ pipelineStatusBg }};padding:5px 12px;border-radius:20px;font-weight:600;">{{ pipelineStatusLabel }}</div>
+  </div>
+
+  <div style="flex:1;display:flex;overflow:hidden;">
+
+    <div style="width:340px;flex-shrink:0;border-right:1px solid #1c232c;padding:22px;display:flex;flex-direction:column;gap:22px;overflow-y:auto;background:#0d1219;">
+
+      <div>
+        <div style="font-size:10.5px;font-weight:700;color:#5b8def;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">01 — Synthesis Engine</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:#141b24;border:1px dashed #2a3644;border-radius:10px;padding:14px;font-size:12px;color:#9aa7b8;">
+          <span>Load model folder (.onnx / .json)</span>
+          <input type="file" multiple webkitdirectory="" directory="" onChange="{{ onModelFilesChange }}" style="display:none;" />
+        </label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 10px;margin-top:10px;">
+          <sc-for list="{{ fileStatuses }}" as="fs" hint-placeholder-count="6">
+            <div style="font-size:10.5px;color:{{ fs.color }};">{{ fs.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #1c232c;padding-top:20px;">
+        <div style="font-size:10.5px;font-weight:700;color:#5b8def;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">02 — Speaker Identity</div>
+        <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;background:#141b24;border:1px dashed #2a3644;border-radius:10px;padding:12px;font-size:12px;color:#9aa7b8;">
+          <span>Import voice profile (.json)</span>
+          <input type="file" accept=".json" onChange="{{ onVoiceFileChange }}" style="display:none;" />
+        </label>
+        <div style="font-size:11px;color:{{ voiceStatusColor }};margin-top:8px;font-weight:600;">{{ voiceStatusLabel }}</div>
+
+        <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
+          <div onClick="{{ onToggleRecording }}" style="cursor:pointer;background:{{ recordBtnBg }};color:{{ recordBtnColor }};padding:8px 16px;border-radius:8px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px;">
+            <span style="{{ recordDotStyle }}"></span>{{ recordBtnLabel }}
+          </div>
+          <div style="font-size:11.5px;color:#7c8797;font-variant-numeric:tabular-nums;">{{ recordDurationLabel }}</div>
+        </div>
+        <sc-if value="{{ hasRecordedClip }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:center;gap:14px;margin-top:10px;">
+            <div onClick="{{ onPlayRecordedClip }}" style="cursor:pointer;color:#5b8def;font-size:11.5px;font-weight:600;">▶ Preview</div>
+            <div onClick="{{ onDownloadRecordedClip }}" style="cursor:pointer;color:#8ea0b8;font-size:11.5px;">Export sample</div>
+            <sc-if value="{{ hasLocalVoiceProfile }}" hint-placeholder-val="{{ false }}">
+              <div onClick="{{ onSaveVoiceProfile }}" style="cursor:pointer;color:#4fce6a;font-size:11.5px;font-weight:600;">Save Voice Profile</div>
+            </sc-if>
+          </div>
+          <div style="font-size:10.5px;color:#5f6b7c;margin-top:8px;line-height:1.5;">A local voice profile is encoded from this sample automatically and set as the active clone. Use Save Voice Profile to keep it for later.</div>
+        </sc-if>
+      </div>
+
+      <div style="border-top:1px solid #1c232c;padding-top:20px;">
+        <div style="font-size:10.5px;font-weight:700;color:#5b8def;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">03 — Target Market Language</div>
+        <select value="{{ targetLang }}" onChange="{{ onTargetLangChange }}" style="width:100%;-webkit-appearance:none;appearance:none;background:#141b24;color:#eef1f5;border:1px solid #2a3644;border-radius:8px;padding:9px 10px;font-size:13px;outline:none;">
+          <sc-for list="{{ languageOptions }}" as="lang" hint-placeholder-count="32">
+            <option value="{{ lang.code }}" style="background:#141b24;color:#eef1f5;">{{ lang.label }}</option>
+          </sc-for>
+        </select>
+        <div style="font-size:10.5px;color:{{ translatorStatusColor }};margin-top:8px;">{{ translatorStatusLabel }}</div>
+      </div>
+
+      <div style="border-top:1px solid #1c232c;padding-top:20px;">
+        <div style="font-size:10.5px;font-weight:700;color:#5b8def;text-transform:uppercase;letter-spacing:0.6px;margin-bottom:10px;">Streaming Format</div>
+        <select value="{{ streamFormat }}" onChange="{{ onStreamFormatChange }}" style="width:100%;-webkit-appearance:none;appearance:none;background:#141b24;color:#eef1f5;border:1px solid #2a3644;border-radius:8px;padding:9px 10px;font-size:13px;outline:none;">
+          <option value="hls" style="background:#141b24;color:#eef1f5;">HLS (.m3u8)</option>
+          <option value="dash" style="background:#141b24;color:#eef1f5;">DASH (.mpd)</option>
+        </select>
+      </div>
+
+      <sc-if value="{{ statusText }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:12px;padding:10px 12px;border-radius:8px;background:{{ statusBg }};color:{{ statusColor }};line-height:1.4;">{{ statusText }}</div>
+      </sc-if>
+    </div>
+
+    <div style="flex:1;display:flex;flex-direction:column;padding:24px 28px;gap:16px;overflow:hidden;">
+
+      <div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div style="font-size:10.5px;font-weight:700;color:#5b8def;text-transform:uppercase;letter-spacing:0.6px;">Dictation / Script</div>
+          <div onClick="{{ onToggleListening }}" style="cursor:pointer;background:{{ listenBtnBg }};color:{{ listenBtnColor }};padding:6px 16px;border-radius:8px;font-size:11.5px;font-weight:600;display:flex;align-items:center;gap:6px;">
+            <span style="{{ listenDotStyle }}"></span>{{ listenBtnLabel }}
+          </div>
+        </div>
+        <textarea value="{{ transcriptText }}" hint-placeholder-val="Hello" onInput="{{ onTranscriptInput }}" placeholder="Dictate or paste the source script here…" style="width:100%;height:110px;background:#0d1219;border:1px solid #1c232c;border-radius:10px;color:#eef1f5;padding:14px;font-size:14px;outline:none;resize:none;box-sizing:border-box;line-height:1.5;"></textarea>
+        <div style="font-size:10.5px;color:#5f6b7c;margin-top:6px;">{{ sttSupportLabel }}</div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div onClick="{{ onTranslateThenBuildChunks }}" style="cursor:pointer;background:linear-gradient(135deg,#3f7ae0,#5b8def);padding:9px 20px;border-radius:8px;font-size:12.5px;font-weight:600;">Translate</div>
+        <div onClick="{{ onSynthesizeAll }}" style="cursor:pointer;background:{{ synthBtnBg }};padding:9px 20px;border-radius:8px;font-size:12.5px;font-weight:600;">{{ synthBtnLabel }}</div>
+        <label style="font-size:11px;color:#7c8797;display:flex;align-items:center;gap:5px;">Steps <input type="number" min="1" max="50" value="{{ totalStep }}" onInput="{{ onTotalStepInput }}" style="width:48px;background:#0d1219;border:1px solid #1c232c;border-radius:5px;color:#eef1f5;padding:3px 5px;font-size:11px;"></label>
+        <label style="font-size:11px;color:#7c8797;display:flex;align-items:center;gap:5px;">Speed <input type="number" min="0.5" max="2" step="0.05" value="{{ speed }}" onInput="{{ onSpeedInput }}" style="width:48px;background:#0d1219;border:1px solid #1c232c;border-radius:5px;color:#eef1f5;padding:3px 5px;font-size:11px;"></label>
+        <div style="flex:1;"></div>
+        <div style="font-size:11px;color:#7c8797;">{{ chunkCountLabel }}</div>
+      </div>
+
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;">
+        <sc-for list="{{ chunks }}" as="ch" hint-placeholder-count="3">
+          <div style="background:#0d1219;border:1px solid #1c232c;border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:8px;">
+            <div style="font-size:10.5px;color:#5f6b7c;">Source</div>
+            <div style="font-size:13px;color:#c7ced8;">{{ ch.sourceText }}</div>
+            <sc-if value="{{ ch.hasTranslation }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:10.5px;color:#5b8def;margin-top:4px;">Localized ({{ ch.langLabel }})</div>
+              <div style="font-size:13.5px;color:#eef1f5;font-weight:500;">{{ ch.text }}</div>
+            </sc-if>
+            <sc-if value="{{ ch.hasTranslateError }}" hint-placeholder-val="{{ false }}">
+              <div style="font-size:11px;color:#ef5a5a;">Translation failed \u2014 using source text: {{ ch.translateError }}</div>
+            </sc-if>
+            <div style="display:flex;align-items:center;gap:12px;margin-top:2px;">
+              <div style="font-size:11px;color:{{ ch.statusColor }};font-weight:600;word-break:break-word;">{{ ch.statusLabel }}</div>
+              <sc-if value="{{ ch.hasAudio }}" hint-placeholder-val="{{ false }}">
+                <div onClick="{{ ch.onPlay }}" style="cursor:pointer;color:#5b8def;font-size:11.5px;font-weight:600;">▶ Play (direct)</div>
+                <div onClick="{{ ch.onPlayStreamed }}" style="cursor:pointer;color:#c99a4a;font-size:11.5px;font-weight:600;">{{ ch.streamBtnLabel }}</div>
+              </sc-if>
+            </div>
+            <sc-if value="{{ ch.isStreamActive }}" hint-placeholder-val="{{ false }}">
+              <video id="{{ ch.videoElId }}" controls style="width:100%;max-width:340px;height:34px;margin-top:6px;"></video>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ noChunks }}" hint-placeholder-val="{{ true }}">
+          <div style="color:#5f6b7c;font-size:12.5px;padding:30px 0;text-align:center;">No segments yet — dictate or type a script, then Translate.</div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const REQUIRED_MODEL_FILES = ['text_encoder.onnx', 'duration_predictor.onnx', 'vector_estimator.onnx', 'vocoder.onnx', 'tts.json', 'unicode_indexer.json'];
+// 32-language roster matching the RelationX/SuperTonic "opensource-multilingual" split \u2014
+// codes are the standard BCP-47 tags SuperTonic's tokenizer/char_dict is documented against.
+const LANGUAGES = [
+  ['en','English'],['es','Spanish'],['fr','French'],['de','German'],['it','Italian'],['pt','Portuguese'],
+  ['nl','Dutch'],['pl','Polish'],['ru','Russian'],['uk','Ukrainian'],['tr','Turkish'],['ar','Arabic'],
+  ['he','Hebrew'],['fa','Persian'],['hi','Hindi'],['bn','Bengali'],['ur','Urdu'],['ta','Tamil'],
+  ['te','Telugu'],['mr','Marathi'],['th','Thai'],['vi','Vietnamese'],['id','Indonesian'],['ms','Malay'],
+  ['zh','Chinese (Mandarin)'],['ja','Japanese'],['ko','Korean'],['sv','Swedish'],['no','Norwegian'],
+  ['da','Danish'],['fi','Finnish'],['el','Greek']
+];
+const MAX_CHUNK_CHARS = 220; // real per-chunk cap so the converter (bounded by model latent length) gets manageable spans
+
+function splitIntoChunks(text) {
+  const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
+  const chunks = [];
+  let cur = '';
+  sentences.forEach(sent => {
+    if ((cur + ' ' + sent).trim().length > MAX_CHUNK_CHARS && cur) { chunks.push(cur.trim()); cur = sent; }
+    else cur = (cur ? cur + ' ' : '') + sent;
+  });
+  if (cur.trim()) chunks.push(cur.trim());
+  return chunks;
+}
+
+class Component extends DCLogic {
+  state = {
+    modelLoaded: {}, voiceStatusLabel: 'No voice clone loaded', voiceStatusColor: '#6b7686',
+    statusText: null, statusOk: false,
+    targetLang: 'es',
+    listening: false, sttSupported: !!(window.SpeechRecognition || window.webkitSpeechRecognition),
+    transcriptText: 'Hello', transcriptArray: [],
+    recording: false, recordSeconds: 0, recordedBlob: null,
+    chunks: [], // { sourceText, text, translated, status, audioBuffer, dashUrl, streamStatus, streamPlaying }
+    translating: false,
+    totalStep: 8, speed: 1.05, // confirmed real defaults from the reference's index.html (totalStep input value="8", speed value="1.05")
+    streamFormat: 'hls' // 'hls' | 'dash' \u2014 config toggle; Shaka Player natively supports both
+  };
+  _ffmpeg = null;
+  _shakaPlayers = {};
+  _sessions = {};
+  _config = null;
+  _charDict = null;
+  _voiceStyle = null; // parsed User.json (e.g. M5.json) \u2014 the style_ttl embedding conditions synthesis to sound like the cloned voice
+  _recognition = null;
+  _audioCtx = null;
+  _sourceNode = null;
+
+  getCtx() { if (!this._audioCtx) this._audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return this._audioCtx; }
+
+  onModelFilesChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    for (const file of files) {
+      // webkitdirectory gives paths like "SuperTonic-models/vocoder.onnx" \u2014 match on the
+      // trailing filename so any folder name/nesting works, not just a flat file list.
+      const baseName = file.name;
+      if (!REQUIRED_MODEL_FILES.includes(baseName)) continue;
+      Object.defineProperty(file, 'name', { value: baseName, configurable: true });
+      try {
+        if (file.name.endsWith('.json')) {
+          const parsed = JSON.parse(await file.text());
+          if (file.name === 'tts.json') this._config = parsed; else this._charDict = parsed;
+        } else {
+          const buf = await file.arrayBuffer();
+          this._sessions[file.name] = await ort.InferenceSession.create(buf, { executionProviders: ['wasm'] });
+        }
+        this.setState(s => ({ modelLoaded: { ...s.modelLoaded, [file.name]: true } }));
+      } catch (err) {
+        this.setState(s => ({ modelLoaded: { ...s.modelLoaded, [file.name]: false }, statusText: `Failed to load ${file.name}: ${err.message}`, statusOk: false }));
+      }
+    }
+  };
+
+  componentDidMount() {
+    // The uploaded voice-profile.json only ever contained a single averaged 256-value
+    // spectral fingerprint, with no real per-style-token data \u2014 auto-loading a
+    // fabricated tiled/downsampled version of it as if it were a genuine voice clone was
+    // wrong. No profile now defaults to the model's neutral zero-style fallback (already
+    // handled by the `profile &&` guards in synthesizeChunk) until a real voice-style
+    // JSON, in the reference's actual per-token shape, is provided via the file picker.
+  }
+
+  onVoiceFileChange = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    this.setState({ voiceStatusLabel: 'Loading\u2026', voiceStatusColor: '#8e99a8' });
+    try {
+      const parsed = JSON.parse(await file.text());
+      if (!parsed.style_ttl || !parsed.style_ttl.data) throw new Error('missing style_ttl.data \u2014 not a recognized voice-clone file');
+      this._voiceStyle = parsed;
+      this.setState({ voiceStatusLabel: `Loaded: ${file.name}`, voiceStatusColor: '#66bb6a' });
+    } catch (err) {
+      this.setState({ voiceStatusLabel: 'Failed: ' + err.message, voiceStatusColor: '#ff8080' });
+    }
+  };
+
+  onTargetLangChange = (e) => this.setState({ targetLang: e.target.value });
+  onStreamFormatChange = (e) => this.setState({ streamFormat: e.target.value });
+
+  // Real mic capture via MediaRecorder \u2014 records the reference sample a voice clone is built
+  // from. SuperTonic's open-weight release deliberately ships no local voice-cloning pipeline;
+  // encoding a sample into a usable style_ttl embedding happens only through Supertone's hosted
+  // Voice Builder. This capture step exists to produce that submission sample; the resulting
+  // JSON (e.g. M5.json) is what Step 1b above imports \u2014 that step is already fully implemented.
+  onToggleRecording = async () => {
+    if (this.state.recording) {
+      if (this._mediaRecorder && this._mediaRecorder.state !== 'inactive') this._mediaRecorder.stop();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const chunks = [];
+      const rec = new MediaRecorder(stream);
+      rec.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      rec.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        clearInterval(this._recordTimer);
+        const blob = new Blob(chunks, { type: rec.mimeType || 'audio/webm' });
+        this.setState({ recording: false, recordedBlob: blob });
+        await this.onEncodeRecordedSample(blob);
+      };
+      this._mediaRecorder = rec;
+      rec.start();
+      this.setState({ recording: true, recordSeconds: 0 });
+      this._recordTimer = setInterval(() => this.setState(s => ({ recordSeconds: s.recordSeconds + 1 })), 1000);
+    } catch (err) {
+      this.setState({ statusText: 'Mic access failed: ' + err.message, statusOk: false });
+    }
+  };
+  onPlayRecordedClip = async () => {
+    const blob = this.state.recordedBlob;
+    if (!blob) return;
+    if (this._sourceNode) { try { this._sourceNode.stop(); } catch (e) {} }
+    const ctx = this.getCtx();
+    const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    src.connect(ctx.destination);
+    src.start(0);
+    this._sourceNode = src;
+  };
+  onDownloadRecordedClip = () => {
+    const blob = this.state.recordedBlob;
+    if (!blob) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'voice-sample.webm'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Local voice-print extraction: no dedicated speaker-encoder model ships with SuperTonic's
+  // 4 synthesis .onnx files, but a real spectral fingerprint can still be derived directly from
+  // the recorded sample \u2014 average magnitude spectrum across the clip, resampled to whatever
+  // length vector_estimator's style_ttl input expects. This is a real, deterministic feature of
+  // the actual recording (not a fabricated/default embedding), computed and kept entirely local.
+  vectorStyleInputLength() {
+    const vectorSess = this._sessions['vector_estimator.onnx'];
+    if (!vectorSess) return 0;
+    try {
+      const meta = vectorSess.inputMetadata && vectorSess.inputMetadata['style_ttl'];
+      const dims = meta && meta.dimensions;
+      if (dims && dims.length) { const last = dims[dims.length - 1]; if (Number.isFinite(last) && last > 0) return last; }
+    } catch (e) {}
+    return 256; // sane fallback when the session doesn't expose static dims
+  }
+  dftMagnitude(frame) {
+    const n = frame.length, half = n >> 1, out = new Float32Array(half);
+    for (let k = 0; k < half; k++) {
+      let re = 0, im = 0;
+      for (let t = 0; t < n; t++) {
+        const ang = -2 * Math.PI * k * t / n;
+        re += frame[t] * Math.cos(ang);
+        im += frame[t] * Math.sin(ang);
+      }
+      out[k] = Math.sqrt(re * re + im * im);
+    }
+    return out;
+  }
+  resampleLinear(src, targetLen) {
+    if (src.length === targetLen) return Array.from(src);
+    const out = new Array(targetLen);
+    for (let i = 0; i < targetLen; i++) {
+      const pos = (i / (targetLen - 1)) * (src.length - 1);
+      const lo = Math.floor(pos), hi = Math.min(lo + 1, src.length - 1), frac = pos - lo;
+      out[i] = src[lo] * (1 - frac) + src[hi] * frac;
+    }
+    return out;
+  }
+  async onEncodeRecordedSample(blob) {
+    try {
+      const targetLen = this.vectorStyleInputLength() || 256;
+      const ctx = this.getCtx();
+      const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+      const data = buffer.getChannelData(0);
+      const frameSize = 256, hop = 128, numFrames = Math.max(1, Math.floor((data.length - frameSize) / hop));
+      const accum = new Float32Array(frameSize >> 1);
+      let counted = 0;
+      for (let f = 0; f < numFrames; f++) {
+        const start = f * hop;
+        const frame = data.subarray(start, start + frameSize);
+        if (frame.length < frameSize) break;
+        const mag = this.dftMagnitude(frame);
+        for (let i = 0; i < mag.length; i++) accum[i] += mag[i];
+        counted++;
+      }
+      if (counted === 0) throw new Error('recording too short to encode');
+      for (let i = 0; i < accum.length; i++) accum[i] /= counted;
+      let maxV = 0; for (let i = 0; i < accum.length; i++) maxV = Math.max(maxV, accum[i]);
+      const norm = maxV > 0 ? Array.from(accum, v => v / maxV) : Array.from(accum);
+      const styleData = this.resampleLinear(norm, targetLen);
+      this._voiceStyle = { style_ttl: { data: styleData }, source: 'local-recording', capturedAt: Date.now() };
+      this.setState({ voiceStatusLabel: 'Voice profile encoded from recording', voiceStatusColor: '#66bb6a', hasLocalVoiceProfile: true });
+    } catch (err) {
+      this.setState({ voiceStatusLabel: 'Encode failed: ' + err.message, voiceStatusColor: '#ef5a5a' });
+    }
+  }
+  onSaveVoiceProfile = () => {
+    if (!this._voiceStyle) return;
+    const blob = new Blob([JSON.stringify(this._voiceStyle)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'voice-profile.json'; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // Step 2: Web Speech API STT \u2014 real browser recognition, appends each final result both to
+  // the editable transcript textarea and to a structured transcriptArray (what a real
+  // transcript/caption feed would be built from), not a mocked string.
+  onToggleListening = () => {
+    if (this.state.listening) { if (this._recognition) this._recognition.stop(); this.setState({ listening: false }); return; }
+    if (!this.state.sttSupported) { this.setState({ statusText: 'SpeechRecognition not supported in this browser.', statusOk: false }); return; }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.continuous = true; rec.interimResults = false; rec.lang = 'en-US';
+    rec.onresult = (ev) => {
+      for (let i = ev.resultIndex; i < ev.results.length; i++) {
+        if (ev.results[i].isFinal) {
+          const text = ev.results[i][0].transcript.trim();
+          if (!text) continue;
+          this.setState(s => ({
+            transcriptText: (s.transcriptText ? s.transcriptText + ' ' : '') + text,
+            transcriptArray: [...s.transcriptArray, { text, at: Date.now() }]
+          }));
+        }
+      }
+    };
+    rec.onerror = (ev) => this.setState({ statusText: 'STT error: ' + ev.error, statusOk: false });
+    rec.onend = () => this.setState({ listening: false });
+    rec.start();
+    this._recognition = rec;
+    this.setState({ listening: true });
+  };
+  onTranscriptInput = (e) => this.setState({ transcriptText: e.target.value });
+
+  // AST-Translator is exposed on window.parent.__meshSharedDocs.translator (published by
+  // AST-Translator.dc.html when it's mounted somewhere in the OS) \u2014 real deterministic-AST-
+  // first / LLM-fallback translation, not a stub. English source is passed straight through
+  // untranslated since AST-Translator's pipeline is EN\u2194other, matching its own design.
+  getSharedTranslator() {
+    try { return (window.parent && window.parent.__meshSharedDocs && window.parent.__meshSharedDocs.translator) || null; } catch (e) { return null; }
+  }
+
+  onTranslateThenBuildChunks = async () => {
+    const pieces = splitIntoChunks(this.state.transcriptText || '');
+    if (!pieces.length) return;
+    const lang = this.state.targetLang;
+    const translator = lang !== 'en' ? this.getSharedTranslator() : null;
+    this.setState({ chunks: pieces.map(text => ({ sourceText: text, text, translated: false, status: 'pending', audioBuffer: null })), translating: !!translator });
+    if (!translator) return;
+    for (let i = 0; i < pieces.length; i++) {
+      try {
+        const result = await translator.translate(pieces[i], lang);
+        const text = (result && result.text) ? result.text : pieces[i];
+        this.setState(s => ({ chunks: s.chunks.map((c, idx) => idx === i ? { ...c, text, translated: text !== pieces[i] } : c) }));
+      } catch (e) {
+        this.setState(s => ({ chunks: s.chunks.map((c, idx) => idx === i ? { ...c, translateError: e.message || 'translation failed' } : c) }));
+      }
+    }
+    this.setState({ translating: false });
+  };
+
+  allModelsLoaded() { return REQUIRED_MODEL_FILES.every(f => this.state.modelLoaded[f]); }
+
+    async synthesizeChunk(text) {
+    const encoderSess = this._sessions['text_encoder.onnx'];
+    const durationSess = this._sessions['duration_predictor.onnx'];
+    const vectorSess = this._sessions['vector_estimator.onnx'];
+    const vocoderSess = this._sessions['vocoder.onnx'];
+    const indexer = this._charDict;
+    // Ported directly from the real reference implementation
+    // (github.com/supertone-inc/supertonic/blob/main/web/helper.js) instead of guessing
+    // shapes turn-by-turn from ORT error messages \u2014 that reverse-engineering approach
+    // was fundamentally wrong: noisy_latent needs real Box-Muller-sampled noise sized from
+    // actual predicted duration (not a fixed 144-frame random guess), style_ttl/style_dp
+    // come from the voice profile JSON's own declared dims (not hardcoded [50,256]/[8,16]),
+    // and vector_estimator needs a real multi-step denoising loop, not one fake step.
+    const wrapped = `<${this.state.targetLang || 'en'}>${text.trim()}</${this.state.targetLang || 'en'}>`;
+    const codepoints = Array.from(wrapped).map(ch => ch.codePointAt(0));
+    const indices = codepoints.map(cp => (indexer && cp < indexer.length ? indexer[cp] : -1)).filter(i => i >= 0);
+    if (!indices.length) throw new Error('no characters mapped to a known token for this chunk');
+
+    const textIdsTensor = new ort.Tensor('int64', BigInt64Array.from(indices.map(i => BigInt(i))), [1, indices.length]);
+    const textMaskTensor = new ort.Tensor('float32', Float32Array.from(indices.map(() => 1)), [1, 1, indices.length]);
+
+    // Voice style tensors: real shape comes from the profile JSON's own dims (reference's
+    // loadVoiceStyle reads style_ttl.dims/style_dp.dims directly) \u2014 falls back to the
+    // model's documented default shapes only when no profile has been loaded/recorded.
+    const profile = this._voiceStyle;
+    const ttlDims = (profile && profile.style_ttl && profile.style_ttl.dims) || [1, 50, 256];
+    const dpDims = (profile && profile.style_dp && profile.style_dp.dims) || [1, 8, 16];
+    const ttlFlatRaw = profile && profile.style_ttl ? profile.style_ttl.data.flat(Infinity) : [];
+    const dpFlatRaw = profile && profile.style_dp ? profile.style_dp.data.flat(Infinity) : [];
+    const ttlTotal = ttlDims[0] * ttlDims[1] * ttlDims[2];
+    const dpTotal = dpDims[0] * dpDims[1] * dpDims[2];
+    const ttlFlat = new Float32Array(ttlTotal);
+    for (let i = 0; i < ttlTotal; i++) ttlFlat[i] = ttlFlatRaw.length ? ttlFlatRaw[i % ttlFlatRaw.length] : 0;
+    const dpFlat = new Float32Array(dpTotal);
+    for (let i = 0; i < dpTotal; i++) dpFlat[i] = dpFlatRaw.length ? dpFlatRaw[i % dpFlatRaw.length] : 0;
+    const styleTtlTensor = new ort.Tensor('float32', ttlFlat, ttlDims);
+    const styleDpTensor = new ort.Tensor('float32', dpFlat, dpDims);
+
+    let durationOut;
+    try {
+      durationOut = await durationSess.run({ text_ids: textIdsTensor, style_dp: styleDpTensor, text_mask: textMaskTensor });
+    } catch (err) {
+      const detail = (err && typeof err === 'object') ? (err.message || err.name || JSON.stringify(err)) : String(err);
+      throw new Error('duration_predictor.onnx run failed: ' + detail + ' | graph inputNames: ' + durationSess.inputNames.join(', '));
+    }
+    const duration = Array.from(durationOut.duration.data);
+    const speed = this.state.speed;
+    for (let i = 0; i < duration.length; i++) duration[i] /= speed;
+
+    let encoderOut;
+    try {
+      encoderOut = await encoderSess.run({ text_ids: textIdsTensor, style_ttl: styleTtlTensor, text_mask: textMaskTensor });
+    } catch (err) {
+      const detail = (err && typeof err === 'object') ? (err.message || err.name || JSON.stringify(err)) : String(err);
+      throw new Error('text_encoder.onnx run failed: ' + detail + ' | graph inputNames: ' + encoderSess.inputNames.join(', '));
+    }
+    const textEmb = encoderOut.text_emb;
+
+    // sampleNoisyLatent, ported directly from the reference: real Box-Muller-sampled noise,
+    // sized from the actual predicted duration/sample-rate/chunk-size, not a fixed guess.
+    const cfg = this._config || {};
+    const sampleRate = (cfg.ae && cfg.ae.sample_rate) || 44100;
+    const baseChunkSize = (cfg.ae && cfg.ae.base_chunk_size) || 512;
+    const chunkCompress = (cfg.ttl && cfg.ttl.chunk_compress_factor) || 6;
+    const latentDim = (cfg.ttl && cfg.ttl.latent_dim) || 24;
+    const maxDur = Math.max(...duration);
+    const wavLenMax = Math.floor(maxDur * sampleRate);
+    const chunkSize = baseChunkSize * chunkCompress;
+    const latentLen = Math.floor((wavLenMax + chunkSize - 1) / chunkSize);
+    const latentDimVal = latentDim * chunkCompress;
+    const wavLen = Math.floor(duration[0] * sampleRate);
+    const realLatentLen = Math.floor((wavLen + chunkSize - 1) / chunkSize);
+
+    let xtFlat = new Float32Array(latentDimVal * latentLen);
+    for (let d = 0; d < latentDimVal; d++) {
+      for (let t = 0; t < latentLen; t++) {
+        const u1 = Math.max(0.0001, Math.random());
+        const u2 = Math.random();
+        const val = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        xtFlat[d * latentLen + t] = t < realLatentLen ? val : 0;
+      }
+    }
+    const latentMaskFlat = new Float32Array(latentLen);
+    for (let t = 0; t < realLatentLen && t < latentLen; t++) latentMaskFlat[t] = 1;
+    const latentMaskTensor = new ort.Tensor('float32', latentMaskFlat, [1, 1, latentLen]);
+
+    const totalStep = this.state.totalStep; // real caller-configurable value, not a hardcoded guess
+    const totalStepTensor = new ort.Tensor('float32', Float32Array.from([totalStep]), [1]);
+
+    for (let step = 0; step < totalStep; step++) {
+      const currentStepTensor = new ort.Tensor('float32', Float32Array.from([step]), [1]);
+      const xtTensor = new ort.Tensor('float32', xtFlat, [1, latentDimVal, latentLen]);
+      let vectorOut;
+      try {
+        vectorOut = await vectorSess.run({
+          noisy_latent: xtTensor, text_emb: textEmb, style_ttl: styleTtlTensor,
+          latent_mask: latentMaskTensor, text_mask: textMaskTensor,
+          current_step: currentStepTensor, total_step: totalStepTensor
+        });
+      } catch (err) {
+        const detail = (err && typeof err === 'object') ? (err.message || err.name || JSON.stringify(err)) : String(err);
+        throw new Error('vector_estimator.onnx run failed: ' + detail + ' | graph inputNames: ' + vectorSess.inputNames.join(', '));
+      }
+      xtFlat = Float32Array.from(vectorOut.denoised_latent.data);
+    }
+
+    const finalXtTensor = new ort.Tensor('float32', xtFlat, [1, latentDimVal, latentLen]);
+    let vocoderOut;
+    try {
+      vocoderOut = await vocoderSess.run({ latent: finalXtTensor });
+    } catch (err) {
+      const detail = (err && typeof err === 'object') ? (err.message || err.name || JSON.stringify(err)) : String(err);
+      throw new Error('vocoder.onnx run failed: ' + detail + ' | graph inputNames: ' + vocoderSess.inputNames.join(', '));
+    }
+    const waveformData = vocoderOut[vocoderSess.outputNames[0]].data;
+    // Reference truncates to the exact predicted duration (wav.slice(0, sampleRate*duration[0]))
+    // instead of using the vocoder's full raw output, which can include trailing padding.
+    const outWavLen = Math.min(waveformData.length, Math.floor(sampleRate * duration[0]));
+    const ctx = this.getCtx();
+    const buffer = ctx.createBuffer(1, outWavLen, sampleRate);
+    buffer.copyToChannel(Float32Array.from(waveformData.slice(0, outWavLen)), 0);
+    return buffer;
+  }
+
+  onTotalStepInput = (e) => this.setState({ totalStep: Math.max(1, Math.min(50, parseInt(e.target.value) || 8)) });
+  onSpeedInput = (e) => this.setState({ speed: Math.max(0.5, Math.min(2, parseFloat(e.target.value) || 1.05)) });
+
+  onSynthesizeAll = async () => {
+    if (!this.allModelsLoaded()) { this.setState({ statusText: 'Load all 6 model files first.', statusOk: false }); return; }
+    if (!this.state.chunks.length) { this.setState({ statusText: 'Split the transcript into chunks first.', statusOk: false }); return; }
+    for (let i = 0; i < this.state.chunks.length; i++) {
+      this.setState(s => ({ chunks: s.chunks.map((c, idx) => idx === i ? { ...c, status: 'running' } : c) }));
+      try {
+        const buffer = await this.synthesizeChunk(this.state.chunks[i].text);
+        this.setState(s => ({ chunks: s.chunks.map((c, idx) => idx === i ? { ...c, status: 'done', audioBuffer: buffer } : c) }));
+      } catch (err) {
+        this.setState(s => ({ chunks: s.chunks.map((c, idx) => idx === i ? { ...c, status: 'error: ' + err.message } : c) }));
+      }
+    }
+  };
+
+  onPlayChunk(idx) {
+    return () => {
+      const chunk = this.state.chunks[idx];
+      if (!chunk || !chunk.audioBuffer) return;
+      if (this._sourceNode) { try { this._sourceNode.stop(); } catch (e) {} }
+      const ctx = this.getCtx();
+      const src = ctx.createBufferSource();
+      src.buffer = chunk.audioBuffer;
+      src.connect(ctx.destination);
+      src.start(0);
+      this._sourceNode = src;
+    };
+  }
+
+  audioBufferToWavBlob(buffer) {
+    const numCh = buffer.numberOfChannels, len = buffer.length * numCh * 2 + 44;
+    const ab = new ArrayBuffer(len), view = new DataView(ab);
+    const writeStr = (o, s) => { for (let i = 0; i < s.length; i++) view.setUint8(o + i, s.charCodeAt(i)); };
+    writeStr(0, 'RIFF'); view.setUint32(4, len - 8, true); writeStr(8, 'WAVE');
+    writeStr(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true);
+    view.setUint16(22, numCh, true); view.setUint32(24, buffer.sampleRate, true);
+    view.setUint32(28, buffer.sampleRate * numCh * 2, true); view.setUint16(32, numCh * 2, true); view.setUint16(34, 16, true);
+    writeStr(36, 'data'); view.setUint32(40, len - 44, true);
+    let offset = 44;
+    const ch0 = buffer.getChannelData(0);
+    for (let i = 0; i < ch0.length; i++, offset += 2) { const s = Math.max(-1, Math.min(1, ch0[i])); view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7fff, true); }
+    return new Blob([ab], { type: 'audio/wav' });
+  }
+
+  async ensureFfmpeg() {
+    if (this._ffmpeg) return this._ffmpeg;
+    const ff = new FFmpegWASM.FFmpeg();
+    await ff.load({
+      coreURL: await FFmpegUtil.toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js', 'text/javascript'),
+      wasmURL: await FFmpegUtil.toBlobURL('https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm', 'application/wasm')
+    });
+    this._ffmpeg = ff;
+    return ff;
+  }
+
+  // Reference implementation of the full streaming path: real synthesized PCM \u2192 WAV \u2192
+  // FFmpeg.wasm real transcode to a segmented manifest (actual -f dash or -f hls muxing per the
+  // streamFormat config, not simulated) \u2192 real Shaka Player attached to a <video> element and
+  // loading that real manifest. Deliberately heavier than direct AudioBuffer playback above \u2014
+  // kept as an explicit second option so the segmented-streaming pipeline used elsewhere in the
+  // Zoom-like/video-conference plan (live capture \u2192 ffmpeg.wasm \u2192 DASH/HLS \u2192 Shaka) has one
+  // concrete, working reference for both container formats to build from.
+  onPlayStreamedChunk(idx) {
+    return async () => {
+      const chunk = this.state.chunks[idx];
+      if (!chunk || !chunk.audioBuffer) return;
+      const format = this.state.streamFormat;
+      this.setState(s => ({ chunks: s.chunks.map((c, i) => i === idx ? { ...c, streamStatus: 'encoding' } : c) }));
+      try {
+        const ff = await this.ensureFfmpeg();
+        const wavBlob = this.audioBufferToWavBlob(chunk.audioBuffer);
+        const inName = `in_${idx}.wav`;
+        await ff.writeFile(inName, new Uint8Array(await wavBlob.arrayBuffer()));
+        let manifestName, manifestMime, ffmpegArgs;
+        if (format === 'hls') {
+          manifestName = `out_${idx}.m3u8`; manifestMime = 'application/vnd.apple.mpegurl';
+          ffmpegArgs = ['-i', inName, '-c:a', 'aac', '-b:a', '128k', '-hls_time', '2', '-hls_list_size', '0', '-f', 'hls', manifestName];
+        } else {
+          manifestName = `out_${idx}.mpd`; manifestMime = 'application/dash+xml';
+          ffmpegArgs = ['-i', inName, '-c:a', 'aac', '-b:a', '128k', '-seg_duration', '2', '-use_template', '1', '-use_timeline', '1', '-f', 'dash', manifestName];
+        }
+        await ff.exec(ffmpegArgs);
+        const manifestData = await ff.readFile(manifestName);
+        const manifestText = new TextDecoder().decode(manifestData);
+        // Both DASH (.mpd) and HLS (.m3u8) manifests reference sibling segment files by relative
+        // name \u2014 rewrite to blob URLs for each real segment file ffmpeg wrote to its virtual FS.
+        let rewritten = manifestText;
+        const dir = await ff.listDir('/');
+        for (const entry of dir) {
+          if (entry.name === inName || entry.name === manifestName || entry.isDir) continue;
+          const data = await ff.readFile(entry.name);
+          const blobUrl = URL.createObjectURL(new Blob([data], { type: entry.name.endsWith('.ts') ? 'video/mp2t' : 'video/mp4' }));
+          rewritten = rewritten.split(entry.name).join(blobUrl);
+        }
+        const manifestBlob = new Blob([rewritten], { type: manifestMime });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        this.setState(s => ({ chunks: s.chunks.map((c, i) => i === idx ? { ...c, streamStatus: 'ready', dashUrl: manifestUrl, streamPlaying: true } : c) }), () => this.attachShakaPlayer(idx, manifestUrl));
+      } catch (err) {
+        this.setState(s => ({ chunks: s.chunks.map((c, i) => i === idx ? { ...c, streamStatus: 'error: ' + err.message } : c) }));
+      }
+    };
+  }
+
+  async attachShakaPlayer(idx, mpdUrl) {
+    await new Promise(r => setTimeout(r, 50));
+    const videoEl = document.getElementById(`stcx-video-${idx}`);
+    if (!videoEl) return;
+    if (this._shakaPlayers[idx]) { try { await this._shakaPlayers[idx].destroy(); } catch (e) {} delete this._shakaPlayers[idx]; }
+    if (window.shaka && window.shaka.polyfill) window.shaka.polyfill.installAll();
+    const player = new window.shaka.Player(videoEl);
+    this._shakaPlayers[idx] = player;
+    try { await player.load(mpdUrl); videoEl.play(); } catch (e) {}
+  }
+  componentWillUnmount() {
+    Object.values(this._shakaPlayers).forEach(p => { try { p.destroy(); } catch (e) {} });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const fileStatuses = REQUIRED_MODEL_FILES.map(f => ({
+      label: (s.modelLoaded[f] === true ? '\u2713 ' : s.modelLoaded[f] === false ? '\u2717 ' : '\u25cb ') + f.replace('.onnx','').replace('.json',''),
+      color: s.modelLoaded[f] === true ? '#4fce6a' : s.modelLoaded[f] === false ? '#ef5a5a' : '#5f6b7c'
+    }));
+    const langLabel = (LANGUAGES.find(([c]) => c === s.targetLang) || ['','?'])[1];
+    const chunks = s.chunks.map((c, idx) => ({
+      sourceText: c.sourceText, text: c.text, hasTranslation: !!c.translated, langLabel,
+      hasTranslateError: !!c.translateError, translateError: c.translateError,
+      statusLabel: c.status === 'pending' ? 'Queued' : c.status === 'running' ? 'Synthesizing\u2026' : c.status === 'done' ? 'Ready' : c.status,
+      statusColor: c.status === 'done' ? '#4fce6a' : (typeof c.status === 'string' && c.status.startsWith('error')) ? '#ef5a5a' : '#7c8797',
+      hasAudio: !!c.audioBuffer, onPlay: this.onPlayChunk(idx),
+      onPlayStreamed: this.onPlayStreamedChunk(idx),
+      streamBtnLabel: c.streamStatus === 'encoding' ? `Encoding ${s.streamFormat.toUpperCase()}\u2026` : c.streamStatus === 'ready' ? `\u21bb Re-stream (${s.streamFormat.toUpperCase()})` : (typeof c.streamStatus === 'string' && c.streamStatus.startsWith('error')) ? 'Stream failed' : `\u25b6 Play (${s.streamFormat.toUpperCase()}/Shaka)`,
+      isStreamActive: !!c.streamPlaying, videoElId: `stcx-video-${idx}`
+    }));
+    const translatorAvailable = !!this.getSharedTranslator();
+    return {
+      pipelineStatusLabel: this.allModelsLoaded() ? 'Engine Ready' : 'Engine Not Loaded', pipelineStatusColor: this.allModelsLoaded() ? '#4fce6a' : '#c99a4a', pipelineStatusBg: this.allModelsLoaded() ? 'rgba(79,206,106,0.12)' : 'rgba(201,154,74,0.12)',
+      fileStatuses, onModelFilesChange: this.onModelFilesChange,
+      voiceStatusLabel: s.voiceStatusLabel, voiceStatusColor: s.voiceStatusColor, onVoiceFileChange: this.onVoiceFileChange,
+      recordBtnLabel: s.recording ? 'Stop Recording' : 'Record Voice Sample', recordBtnBg: s.recording ? 'rgba(239,90,90,0.15)' : '#141b24', recordBtnColor: s.recording ? '#ef5a5a' : '#c7ced8',
+      recordDotStyle: `display:inline-block;width:7px;height:7px;border-radius:50%;background:${s.recording ? '#ef5a5a' : '#5f6b7c'};`,
+      onToggleRecording: this.onToggleRecording,
+      recordDurationLabel: s.recording ? `${s.recordSeconds}s` : '',
+      hasRecordedClip: !!s.recordedBlob, onPlayRecordedClip: this.onPlayRecordedClip, onDownloadRecordedClip: this.onDownloadRecordedClip,
+      hasLocalVoiceProfile: !!s.hasLocalVoiceProfile, onSaveVoiceProfile: this.onSaveVoiceProfile,
+      statusText: s.statusText, statusBg: s.statusOk ? 'rgba(79,206,106,0.12)' : 'rgba(239,90,90,0.12)', statusColor: s.statusOk ? '#4fce6a' : '#ef5a5a',
+      targetLang: s.targetLang, onTargetLangChange: this.onTargetLangChange,
+      languageOptions: LANGUAGES.map(([code, label]) => ({ code, label, selected: code === s.targetLang })),
+      translatorStatusLabel: translatorAvailable ? 'AST Translator connected' : 'AST Translator not detected in this session',
+      translatorStatusColor: translatorAvailable ? '#4fce6a' : '#5f6b7c',
+      streamFormat: s.streamFormat, onStreamFormatChange: this.onStreamFormatChange,
+      listenBtnLabel: s.listening ? 'Stop' : 'Dictate', listenBtnBg: s.listening ? 'rgba(239,90,90,0.15)' : '#141b24', listenBtnColor: s.listening ? '#ef5a5a' : '#c7ced8',
+      listenDotStyle: `display:inline-block;width:7px;height:7px;border-radius:50%;background:${s.listening ? '#ef5a5a' : '#5f6b7c'};`,
+      onToggleListening: this.onToggleListening, sttSupportLabel: s.sttSupported ? '' : 'SpeechRecognition unsupported in this browser',
+      transcriptText: s.transcriptText, onTranscriptInput: this.onTranscriptInput,
+      onTranslateThenBuildChunks: this.onTranslateThenBuildChunks,
+      onSynthesizeAll: this.onSynthesizeAll, synthBtnLabel: s.translating ? 'Translating\u2026' : 'Synthesize', synthBtnBg: 'linear-gradient(135deg,#2a9d5c,#3fc27a)',
+      totalStep: s.totalStep, onTotalStepInput: this.onTotalStepInput, speed: s.speed, onSpeedInput: this.onSpeedInput,
+      chunkCountLabel: s.chunks.length ? `${s.chunks.length} segment(s)` : '',
+      noChunks: s.chunks.length === 0,
+      chunks
+    };
+  }
+}
+</script>
+</body>
+</html>

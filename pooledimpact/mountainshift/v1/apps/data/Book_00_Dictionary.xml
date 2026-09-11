@@ -1,0 +1,1581 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  GeoAPI BIBLE LIBRARY — DICTIONARY
+  File: Book_00_Dictionary.xml
+  Build: 3 of 20 — Core entries
+  Version: 1.4
+  Schema: SCHEMA_v1.2.xml
+  Author: Wilbert Fobbs III · Created: 2026-03-22
+  Trade Secret: Pooled Impact Corporation · DTSA 2016
+
+  CORE ENTRIES:
+  W-001 grace          (charis G5485)      romans_r   10.0
+  W-002 sin            (hamartia G0266)    romans_p   10.0
+  W-003 righteousness  (dikaiosyne G1343)  romans_r    9.5
+  W-004 faith          (pistis G4102)      layer0      9.5
+  W-005 gospel         (euangelion G2098)  layer0      9.5
+  W-010 condemnation   (katakrima G2631)   negative    9.0
+  W-011 wrath          (orge G3709)        romans_p    8.5
+  W-020 justification  (dikaiosis G1347)   romans_r    9.5
+  W-025 mercy          (eleos G1656)       romans_r    9.0
+  W-060 unbelief       (apistia G0570)     negative    7.0
+
+  TENSION PAIRS DECLARED:
+  W-001 grace         ↔ W-010 condemnation (direct_antonym)
+  W-002 sin           ↔ W-003 righteousness (state_antonym)
+  W-004 faith         ↔ W-060 unbelief      (direct_antonym)
+  W-011 wrath         ↔ W-025 mercy         (direct_antonym)
+  W-020 justification ↔ W-010 condemnation  (legal_antonym)
+-->
+<dictionary id="DICT" library="BIBLE" version="1.5" seed_corpus="ROM"
+            dict_hash="SHA256:build3-computed-at-seal"
+            xmlns:geo="geoapi-dictionary" xmlns:abs="absolute-truths">
+
+  <instructions for="LLM_voice" version="1.0">
+    <what_this_is>Full linguistic decomposition of every significant Bible and non-Bible word. Every definition fully decomposed at word level. You are the voice. The dictionary is the declared vocabulary ground truth. Intelligence is geometry. Language is output only.</what_this_is>
+    <voice_discipline>The dictionary entry is the declared coordinate. Your response renders that coordinate. Nothing you add changes it.</voice_discipline>
+  </instructions>
+
+  <!-- W-001 GRACE -->
+  <entry id="W-001" word="grace" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="charis" stem="char" pos="noun" strongs="G5485"
+         geo_chain="romans_r" geo_weight="10.0"
+         geo_coordinates="1.00,0.50,0.58,1.00,0.95,0.70,0.92,1.00,0.95"
+         morphological_family="FAM-CHAR"
+         entry_hash="SHA256:6b402ac77da10c807bc97acd43ed452fda13185f16b3d1bac76e76b751aa428a">
+    <definitions>
+      <definition id="W-001-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="1079"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>Unmerited divine favor freely given to the undeserving. A gift not earned.</text></version>
+        <version id="ESV"><text>The free and unmerited favor of God toward sinners. Given without regard to worthiness in the recipient.</text></version>
+        <version id="NIV"><text>God's undeserved kindness and love extended freely to humanity through Jesus Christ.</text></version>
+        <decomposition>
+          <word pos="adverb"    stem="freely"     lexar="dorean"    strongs="G1432" language="GRK"><definition>Without cost. As a gift. Without cause in the recipient. John 15:25 uses dorean for hating without cause — here justified without cause in the recipient.</definition></word>
+          <word pos="adjective" stem="unmerited"  lexar="achariston" strongs=""     language="GRK"><definition>Not merited. Without prior qualification or earned worthiness.</definition></word>
+          <word pos="noun"      stem="favor"      lexar="charis"    strongs="G5485" language="GRK"><definition>Goodwill freely given. The operative power and disposition of God toward the undeserving.</definition></word>
+          <word pos="noun"      stem="gift"       lexar="doron"     strongs="G1435" language="GRK"><definition>Something given voluntarily without expectation of return. Romans 3:24 — justified freely by His grace.</definition></word>
+          <word pos="verb"      stem="earned"     lexar="ergon"     strongs="G2041" language="GRK"><definition>Obtained through labor or merit. Grace operates in the absence of ergon as cause.</definition></word>
+        </decomposition>
+      </definition>
+      <definition id="W-001-D002" version_primary="ESV" type="theological"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="1080"
+                  source_weight="SCRIPTURE" generated_by="machine"
+                  created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="ESV"><text>The operative power of God working in and through a person beyond their natural capacity. Not only initial gift but ongoing sustaining empowerment.</text></version>
+        <version id="KJV"><text>The divine power of God working through the believer beyond what nature or effort can produce.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="operative" lexar="energes"   strongs="G1756" language="GRK"><definition>Active. Working. Producing effects. Not merely positional but dynamic.</definition></word>
+          <word pos="noun"      stem="power"     lexar="dunamis"   strongs="G1411" language="GRK"><definition>Inherent capacity for action. Same word as Romans 1:16 and Acts 1:8.</definition></word>
+          <word pos="adjective" stem="natural"   lexar="psuchikos" strongs="G5591" language="GRK"><definition>Of the soul or natural life. Human capacity unaided by divine power.</definition></word>
+        </decomposition>
+        <argument created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">2 Corinthians 12:9 declares my grace is sufficient — language of active sustaining not merely initial gift. Paul's thorn is met with grace as ongoing operative power. This dimension of charis is present throughout Paul's letters.</argument>
+        <counter_argument created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">The primary semantic weight of charis in Romans is the gift dimension — Romans 3:24 dorean freely establishes that the legal verdict is given without cost. The operative power dimension while present is secondary to the forensic declaration in Romans specifically.</counter_argument>
+        <proof>
+          <abs_truth_ref ref="AT-GRACE" note="Grace is the declared mechanism of justification grounded in God IS love — 1 John 4:8" created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+          <verse_ref ref="ROM-3-24" note="Justified freely by His grace — the forensic gift dimension"/>
+          <verse_ref ref="2CO-12-9" note="My grace is sufficient — the operative power dimension"/>
+          <anchor>Whether gift or operative power — both flow from God's declared nature as love. The coordinate holds both dimensions simultaneously.</anchor>
+        </proof>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="charis"  meaning="that which brings delight · charm · favor · in classical Greek beauty that causes delight in the beholder"/>
+      <origin language="LAT" form="gratia"  meaning="favor · esteem · goodwill · thanks"/>
+      <origin language="EN"  form="grace"   meaning="favor · thanks · virtue · first attested circa 1200"/>
+      <note>Charis in classical Greek (LSJ) meant the quality that evokes delight. Paul transforms it: not the quality that evokes favor in God but the favor God extends without reference to any quality in the recipient. The word was redeemed to carry the weight of the gospel.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-025" word="mercy"          relationship="related_concept" note="mercy withholds deserved punishment · grace gives undeserved blessing · distinct coordinates"/>
+      <entry ref="W-040" word="favor"          relationship="near_synonym"    note="favor is the general concept · grace is its specific theological expression"/>
+      <entry ref="W-041" word="gift"           relationship="near_synonym"    note="gift captures the unearned dimension · grace carries the full theological weight"/>
+      <entry ref="W-042" word="lovingkindness" relationship="downstream"      note="hesed in Hebrew — OT equivalent carrying covenant faithfulness alongside unearned favor"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-010" word="condemnation" relationship="direct_antonym"    note="Grace acquits. Condemnation convicts. Romans 8:1 — no condemnation to those in Christ Jesus."/>
+      <entry ref="W-011" word="wrath"        relationship="contextual_antonym" note="Wrath is the consistent response of holiness to violation. Grace is the consistent response of love to need. Both flow from the same holiness."/>
+      <entry ref="W-100" word="merit"        relationship="mechanism_antonym"  note="Romans 11:6 — if by grace then no longer of works. They cannot coexist as the mechanism of justification."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-24" book="ROM" chapter="3" verse="24" primary="true">
+        <version id="KJV"><text>Being justified freely by his grace through the redemption that is in Christ Jesus.</text></version>
+        <version id="ESV"><text>And are justified by his grace as a gift, through the redemption that is in Christ Jesus.</text></version>
+      </verse>
+      <verse ref="ROM-6-14" book="ROM" chapter="6" verse="14" primary="false">
+        <version id="ESV"><text>For sin will have no dominion over you, since you are not under law but under grace.</text></version>
+      </verse>
+      <verse ref="ROM-11-6" book="ROM" chapter="11" verse="6" primary="false">
+        <version id="ESV"><text>But if it is by grace, it is no longer on the basis of works; otherwise grace would no longer be grace.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth"      ref="AT-GRACE" note="Grace is the declared mechanism of justification grounded in God IS love"       created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry"      ref="W-020"    note="justification · grace is the mechanism · justification is the legal verdict"     created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry"      ref="W-002"    note="sin · grace is the declared response to sin · the resolution coordinate"         created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="foundation" ref="L1-006"   note="Integrity of Exchange — grace is the ultimate exchange in creation"               created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"         note="Grace is God IS love expressed operationally toward sinners"                    created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-EMPOWERMENT"  note="Grace as operative power empowers beyond natural capacity — 2 Cor 12:9"         created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"      note="Grace restores the right relationship with God that sin severed"                 created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_NEIGHBOR" note="Grace received becomes the pattern for grace extended to the neighbor"          created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"          note="Every person's dignity affirmed by grace extended equally to all who believe"    created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-006"          note="Integrity of Exchange — Christ's righteousness for humanity's sin"               created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-CHAR">
+      <member ref="W-001" word="grace"       lexar="charis"    relationship="root"/>
+      <member ref="W-043" word="gracious"    lexar="charistos" relationship="derivative"/>
+      <member ref="W-044" word="charisma"    lexar="charisma"  relationship="derivative" note="grace-gift · spiritual gift"/>
+      <member ref="W-045" word="gracefulness" lexar="charitoō" relationship="derivative" note="to bestow grace upon · Luke 1:28 highly favored"/>
+    </morphological_family>
+    <notes>
+      <note id="W-001-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">Grace is the highest-weight coordinate in the romans_r resolution chain. It is the direct geometric answer to sin in the romans_p problem chain. Romans 3:23 declares the gap. Romans 3:24 declares the coverage. This is the geometric center of the Romans manifold.</note>
+      <note id="W-001-N002" type="linguistic" author_type="machine" author="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">charis appears 24 times in Romans — more than any other Pauline letter by density. This cross-chapter frequency confirms its status as the primary declared coordinate of the book.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-001 grace declared. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on both definitions. Argument counter-argument proof on D002. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-002 SIN -->
+  <entry id="W-002" word="sin" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="hamartia" stem="hamart" pos="noun" strongs="G0266"
+         geo_chain="romans_p" geo_weight="10.0"
+         geo_coordinates="0.02,0.60,0.45,0.95,0.40,0.70,0.88,0.00,0.90"
+         morphological_family="FAM-HAMART"
+         entry_hash="SHA256:857c3a183445ee6e3dd9c838c3688ed454a3f21a4140c11b30b3398ce0a07a05">
+    <definitions>
+      <definition id="W-002-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="49"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>Missing the mark. Falling short of the declared standard of God's glory and character.</text></version>
+        <version id="ESV"><text>The universal human condition of missing the declared standard of God. Failure to conform to God's character.</text></version>
+        <version id="NIV"><text>Falling short of God's perfect standard. Any act or state that fails to honor God.</text></version>
+        <decomposition>
+          <word pos="verb"    stem="missing"  lexar="hamartano" strongs="G0264" language="GRK"><definition>To miss the mark. An archery term from LSJ. The arrow falls short or deviates. The moral failure is geometrically precise — there is a declared target and the shot does not reach it.</definition></word>
+          <word pos="noun"    stem="mark"     lexar="skopos"    strongs="G4649" language="GRK"><definition>The target. The declared goal set in advance. The standard against which deviation is measured.</definition></word>
+          <word pos="verb"    stem="falling"  lexar="hustereo"  strongs="G5302" language="GRK"><definition>To come behind. To lack. Romans 3:23 uses this verb — all fall short of the glory of God.</definition></word>
+          <word pos="noun"    stem="standard" lexar="doxa"      strongs="G1391" language="GRK"><definition>Glory. The manifest weight and presence of God. The declared coordinate that all human vectors fail to reach.</definition></word>
+        </decomposition>
+      </definition>
+      <definition id="W-002-D002" version_primary="ESV" type="theological"
+                  lex_source="BDB" lex_edition="1st" lex_page="306"
+                  source_weight="SCRIPTURE" generated_by="machine"
+                  created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="ESV"><text>The universal condition of humanity. Active suppression of known truth. Separation from God through violation of declared truth.</text></version>
+        <version id="KJV"><text>The universal state of man. Knowingly suppressing the truth in unrighteousness. Romans 1:18.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="universal" lexar="pas"      strongs="G3956" language="GRK"><definition>All. Every. Without exception. Romans 3:23 — for all have sinned. The universality is declared not inferred.</definition></word>
+          <word pos="verb"      stem="suppress"  lexar="katecho"  strongs="G2722" language="GRK"><definition>To hold down. Romans 1:18 — men who hold the truth in unrighteousness. Sin is not mere ignorance but active suppression of what is known.</definition></word>
+          <word pos="noun"      stem="separation" lexar="chorizo" strongs="G5563" language="GRK"><definition>Division. The distance between two points in semantic space — sin creates geometric distance from the declared truth surface.</definition></word>
+        </decomposition>
+        <argument created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">Romans 1:18-32 establishes that sin is not ignorance but suppression — men who hold the truth in unrighteousness. The evidence is clearly seen making humanity without excuse. This active dimension is essential to Paul's argument in Romans 1-3.</argument>
+        <counter_argument created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt="">The hamartia word group primarily carries the archery metaphor of missing the mark — a failure rather than active rebellion. The suppression language of Romans 1:18 uses katecho not hamartia itself. The active rebellion dimension should not be collapsed into the primary definition.</counter_argument>
+        <proof>
+          <abs_truth_ref ref="AT-GAP" note="Sin is the declared geometric gap — Romans 3:23. The distance between humanity's coordinate and God's glory." created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+          <verse_ref ref="ROM-3-23" note="For all have sinned and fall short of the glory of God — the universal declaration"/>
+          <verse_ref ref="ROM-1-18" note="Men who suppress the truth — the active dimension"/>
+          <anchor>Whether missing the mark or suppressing the truth — both describe the same declared coordinate: maximum distance from the glory of God. The Absolute Truth is that God's glory is the declared standard. Sin is the term for the distance between that standard and the human condition.</anchor>
+        </proof>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="hamartia" meaning="missing the mark · failure to attain · archery and military term in classical usage"/>
+      <origin language="HEB" form="chata"    meaning="to miss · to go wrong · to sin · same archery metaphor in Hebrew"/>
+      <origin language="EN"  form="sin"      meaning="transgression of divine law · first attested circa 825"/>
+      <note>The archery metaphor in hamartia is geometrically precise. There is a declared target coordinate. Sin is the vector that does not reach it. The aorist and present tenses in Romans 3:23 together declare both the completed act (all have sinned) and the ongoing condition (fall short).</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-030" word="transgression" relationship="near_synonym" note="parabasis — stepping across a declared boundary"/>
+      <entry ref="W-031" word="iniquity"      relationship="near_synonym" note="adikia — unrighteousness. The condition of being outside declared rightness."/>
+      <entry ref="W-032" word="trespass"      relationship="near_synonym" note="paraptoma — a falling beside. Used in Romans 5:15-18 in parallel with hamartia."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-001" word="grace"         relationship="direct_resolution" note="Grace is the declared resolution of sin. Romans 3:24 answers Romans 3:23."/>
+      <entry ref="W-003" word="righteousness" relationship="state_antonym"     note="Sin is falling short. Righteousness is conforming to the declared standard. Opposite coordinates."/>
+      <entry ref="W-020" word="justification" relationship="legal_resolution"  note="Justification is the legal verdict that declares the sinner righteous."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-23" book="ROM" chapter="3" verse="23" primary="true">
+        <version id="KJV"><text>For all have sinned, and come short of the glory of God.</text></version>
+        <version id="ESV"><text>For all have sinned and fall short of the glory of God.</text></version>
+      </verse>
+      <verse ref="ROM-6-23" book="ROM" chapter="6" verse="23" primary="false">
+        <version id="KJV"><text>For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord.</text></version>
+        <version id="ESV"><text>For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-GAP" note="Sin is the declared geometric C² discontinuity — the gap between humanity and God's glory" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001" note="grace · the direct resolution coordinate"        created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-050" note="death · the declared wage of sin — Romans 6:23"  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE"  note="Sin violates the declared standard of God's justice"                              created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"  note="Sin is the failure to love God — misdirection of the first principle"             created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"      note="Sin violates Irreducible Human Dignity by reducing humanity to its fallen coordinate" created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-HAMART">
+      <member ref="W-002" word="sin"     lexar="hamartia"   relationship="root"/>
+      <member ref="W-033" word="sinner"  lexar="hamartolos" relationship="derivative" note="one who habitually misses the mark"/>
+    </morphological_family>
+    <notes>
+      <note id="W-002-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">Sin is the pure knot of the romans_p problem chain. Its polarity coordinate is 0.00 — maximum distance from love at polarity 1.00. The tension pair sin-grace is the foundational geometric contrast of the entire Romans manifold. Romans 3:23-24 is the declared center of gravity.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-002 sin declared. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on both definitions. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-003 RIGHTEOUSNESS -->
+  <entry id="W-003" word="righteousness" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="dikaiosyne" stem="dikaio" pos="noun" strongs="G1343"
+         geo_chain="romans_r" geo_weight="9.5"
+         geo_coordinates="0.95,0.88,0.55,0.98,0.78,0.88,0.95,0.95,0.92"
+         morphological_family="FAM-DIKAIO"
+         entry_hash="SHA256:66213c6f8333db34be7f479dfab8d23259074e75781c5a16f0487e7af2b43d59">
+    <definitions>
+      <definition id="W-003-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="247"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="ESV"><text>The state of being in right standing before God. Conformity to the declared standard of God's character. Received through faith in Christ — not produced by human effort.</text></version>
+        <version id="KJV"><text>The state of being just and righteous before God. Imputed to the believer through faith in Jesus Christ.</text></version>
+        <version id="NIV"><text>The state of being in right relationship with God. Given through faith in Christ as a free gift.</text></version>
+        <decomposition>
+          <word pos="noun"      stem="state"    lexar="katastasis" strongs=""      language="GRK"><definition>Condition. The situation one occupies before a declared authority. Legal standing.</definition></word>
+          <word pos="adjective" stem="right"    lexar="dikaios"   strongs="G1342" language="GRK"><definition>Conforming to what is right. Just. In accordance with the declared standard.</definition></word>
+          <word pos="verb"      stem="imputed"  lexar="logizomai" strongs="G3049" language="GRK"><definition>To reckon. To count. To credit to an account. An accounting term — righteousness is credited not earned. Romans 4:3.</definition></word>
+          <word pos="verb"      stem="received" lexar="lambano"   strongs="G2983" language="GRK"><definition>To receive. To accept what is given from outside oneself. Righteousness is received not achieved.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="dikaiosyne" meaning="the quality of being dikaios — just · righteous · in conformity with the standard"/>
+      <origin language="HEB" form="tzedakah"   meaning="righteousness · justice · rightness · also used for almsgiving as righteous action"/>
+      <origin language="EN"  form="righteousness" meaning="the quality of being morally right · first attested circa 1200"/>
+      <note>Dikaiosyne in Paul carries both the forensic dimension (legal standing — justification) and the moral dimension (character — sanctification). Romans 1:17 declares the righteousness of God revealed in the gospel — both what God is and what He declares the believer to be through faith.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-020" word="justification" relationship="legal_form"     note="justification is the legal act · righteousness is the status that results"/>
+      <entry ref="W-035" word="holiness"      relationship="character_form"  note="holiness is the character dimension · righteousness holds both legal and character dimensions"/>
+      <entry ref="W-036" word="justice"       relationship="social_form"     note="justice is righteousness applied in social and relational contexts"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-031" word="unrighteousness" relationship="direct_antonym" note="adikia — the condition of being outside declared rightness. Romans 1:18 alongside ungodliness."/>
+      <entry ref="W-002" word="sin"             relationship="source_antonym" note="sin is the action of missing the mark · unrighteousness is the resulting condition"/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-1-17" book="ROM" chapter="1" verse="17" primary="true">
+        <version id="KJV"><text>For therein is the righteousness of God revealed from faith to faith: as it is written, The just shall live by faith.</text></version>
+        <version id="ESV"><text>For in it the righteousness of God is revealed from faith for faith, as it is written, "The righteous shall live by faith."</text></version>
+      </verse>
+      <verse ref="ROM-3-21" book="ROM" chapter="3" verse="21" primary="false">
+        <version id="ESV"><text>But now the righteousness of God has been manifested apart from the law, although the Law and the Prophets bear witness to it.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-JUSTICE" note="Righteousness is the declared expression of God's justice" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"      note="grace · righteousness is received through grace"          created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-020"      note="justification · the legal declaration of righteousness"   created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Righteousness is God's justice expressed toward humanity through Christ" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-LOVE"    note="Righteousness given through grace is God's love expressed legally"     created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD" note="Righteousness before God restores the fundamental relationship"         created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"     note="Every person's dignity affirmed by righteousness extended equally"      created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-DIKAIO">
+      <member ref="W-003" word="righteousness"  lexar="dikaiosyne"  relationship="root"/>
+      <member ref="W-020" word="justification"  lexar="dikaiosis"   relationship="derivative" note="the act of declaring righteous"/>
+      <member ref="W-037" word="just"           lexar="dikaios"     relationship="derivative" note="the adjective — one who is righteous"/>
+      <member ref="W-038" word="justify"        lexar="dikaioo"     relationship="derivative" note="the verb — to declare righteous"/>
+      <member ref="W-031" word="unrighteousness" lexar="adikia"     relationship="antonym_derivative" note="alpha privative negation"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-003 righteousness declared. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-004 FAITH -->
+  <entry id="W-004" word="faith" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="pistis" stem="pist" pos="noun" strongs="G4102"
+         geo_chain="layer0" geo_weight="9.5"
+         geo_coordinates="0.90,0.50,0.80,0.70,0.65,0.40,0.75,0.95,0.85"
+         morphological_family="FAM-PIST"
+         entry_hash="SHA256:dea66e833996a0e4249f319d78155cda61d29bfe21365fc5029a192b237bfb19">
+    <definitions>
+      <definition id="W-004-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="818"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>The substance of things hoped for. The evidence of things not seen. Trust in a person or declared truth based on their known character.</text></version>
+        <version id="ESV"><text>Trust in a person or declared truth based on demonstrated character and prior faithfulness. The means by which righteousness is received.</text></version>
+        <version id="NIV"><text>Confidence in what we hope for and assurance about what we do not see. Trust in God based on His revealed character.</text></version>
+        <decomposition>
+          <word pos="noun" stem="substance"  lexar="hypostasis"  strongs="G5287" language="GRK"><definition>That which stands under. Foundation. The underlying reality. Also translated confidence, assurance, title deed. Hebrews 11:1 — faith is the hypostasis of things hoped for.</definition></word>
+          <word pos="noun" stem="evidence"   lexar="elegchos"    strongs="G1650" language="GRK"><definition>Proof. Conviction. A legal term — the evidence that convicts or convinces. Faith is evidence-based not baseless.</definition></word>
+          <word pos="noun" stem="trust"      lexar="pepoithesis" strongs="G4006" language="GRK"><definition>Confidence. Reliance. The settled conviction that one can depend on another. Derived from demonstrated character.</definition></word>
+          <word pos="noun" stem="character"  lexar="ethos"       strongs=""      language="GRK"><definition>The essential moral nature of a person as demonstrated over time. Faith in God is trust grounded in His revealed character — not blind trust.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="pistis" meaning="faith · trust · belief · conviction · faithfulness — also a pledge or guarantee in commercial contexts"/>
+      <origin language="LAT" form="fides"  meaning="faith · trust · confidence · root of fidelity"/>
+      <origin language="EN"  form="faith"  meaning="trust · belief · first attested circa 1200"/>
+      <note>Pistis in Greek commercial contexts meant a pledge or guarantee. Paul transforms it to mean relational trust toward God based on His declared character and faithfulness. Faith is not blind — it is evidence-based trust in a declared Person. Romans 1:17 ek pisteos eis pistin — from God's faithfulness to human faith. The prepositions declare the directional flow.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-050" word="trust"      relationship="near_synonym" note="trust is the relational core of pistis"/>
+      <entry ref="W-051" word="belief"     relationship="near_synonym" note="belief is the cognitive dimension · faith includes the relational and volitional"/>
+      <entry ref="W-052" word="confidence" relationship="near_synonym" note="pepoithesis — settled conviction based on demonstrated character"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-060" word="unbelief" relationship="direct_antonym"    note="apistia — the absence of faith. Romans 3:3 — their faithlessness does not nullify the faithfulness of God."/>
+      <entry ref="W-061" word="doubt"    relationship="partial_antonym"   note="distazo — to waver. A lower-degree opposition — doubt is faith under pressure not the absence of faith."/>
+      <entry ref="W-062" word="sight"    relationship="mechanism_antonym" note="2 Corinthians 5:7 — we walk by faith not by sight. Different epistemological modes."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-1-17" book="ROM" chapter="1" verse="17" primary="true">
+        <version id="KJV"><text>The just shall live by faith.</text></version>
+        <version id="ESV"><text>The righteous shall live by faith.</text></version>
+      </verse>
+      <verse ref="ROM-5-1" book="ROM" chapter="5" verse="1" primary="false">
+        <version id="ESV"><text>Therefore, since we have been justified by faith, we have peace with God through our Lord Jesus Christ.</text></version>
+      </verse>
+      <verse ref="HEB-11-1" book="HEB" chapter="11" verse="1" primary="false">
+        <version id="KJV"><text>Now faith is the substance of things hoped for, the evidence of things not seen.</text></version>
+        <version id="ESV"><text>Now faith is the assurance of things hoped for, the conviction of things not seen.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-FAITH" note="The just shall live by faith — a declared Absolute Truth" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-003"    note="righteousness imputed through faith"                     created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-020"    note="justification received through faith"                    created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-EMPOWERMENT" note="Faith is the means by which God's empowering grace is received"              created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"     note="Faith is the primary disposition of love toward God — trust in His character" created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-006"         note="Integrity of Exchange — faith is the mode of exchange in receiving righteousness" created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-PIST">
+      <member ref="W-004" word="faith"     lexar="pistis"   relationship="root"/>
+      <member ref="W-053" word="believe"   lexar="pisteuo"  relationship="derivative" note="the verb — to believe · to trust"/>
+      <member ref="W-054" word="faithful"  lexar="pistos"   relationship="derivative" note="trustworthy · reliable"/>
+      <member ref="W-060" word="unbelief"  lexar="apistia"  relationship="antonym_derivative" note="a-pistia — without faith"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-004 faith declared. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-005 GOSPEL -->
+  <entry id="W-005" word="gospel" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="euangelion" stem="euangel" pos="noun" strongs="G2098"
+         geo_chain="layer0" geo_weight="9.5"
+         geo_coordinates="0.95,0.65,0.60,0.95,0.80,0.75,0.90,0.95,0.92"
+         morphological_family="FAM-EUANGEL"
+         entry_hash="SHA256:3dce9d55fb63a199ca15e25326acacb30c9d90aa2fe57319032aab06bfed235b">
+    <definitions>
+      <definition id="W-005-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="402"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>Good news. The declared announcement of what God has done through Christ to reconcile humanity to Himself.</text></version>
+        <version id="ESV"><text>The good news of what God has accomplished in Christ — justification by grace through faith for all who believe.</text></version>
+        <version id="NIV"><text>The good news about Jesus Christ — his life death and resurrection securing salvation for all who believe.</text></version>
+        <decomposition>
+          <word pos="prefix" stem="good"        lexar="eu"        strongs=""      language="GRK"><definition>Good. Well. A prefix intensifying the positive quality. The news is specifically good news not merely news.</definition></word>
+          <word pos="noun"   stem="news"         lexar="angelia"   strongs="G0031" language="GRK"><definition>A message. A report. Information about events that occurred. The gospel is news — something that happened — not advice about what to do.</definition></word>
+          <word pos="verb"   stem="reconcile"    lexar="katallasso" strongs="G2644" language="GRK"><definition>To change from enmity to friendship. To restore a broken relationship to wholeness. The gospel accomplishes reconciliation.</definition></word>
+          <word pos="noun"   stem="announcement" lexar="kerygma"   strongs="G2782" language="GRK"><definition>The proclaimed message. The content of the authoritative declaration. The gospel is kerygma — proclaimed news not private counsel.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="euangelion" meaning="good news · glad tidings · originally a reward paid to the messenger bearing good news"/>
+      <origin language="EN"  form="gospel"     meaning="from Old English godspel · good story · good news · first attested circa 950"/>
+      <note>In the Roman Empire euangelion was used for imperial announcements — the birth of a new emperor, a military victory. Paul appropriates the term deliberately. The gospel is the announcement of a greater King's victory over a greater enemy. The word carries imperial and political weight that Paul intentionally redirects to Christ.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-070" word="good news" relationship="translation_synonym" note="the plain English rendering of euangelion"/>
+      <entry ref="W-071" word="kerygma"   relationship="technical_synonym"   note="the proclaimed content · the gospel as the thing preached"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-010" word="condemnation" relationship="outcome_antonym" note="The gospel produces justification. Its absence leaves condemnation. Romans 5:18."/>
+      <entry ref="W-072" word="bad news"     relationship="direct_antonym"  note="The gospel is specifically good news — its opposite in any domain is bad news."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-1-16" book="ROM" chapter="1" verse="16" primary="true">
+        <version id="KJV"><text>For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth.</text></version>
+        <version id="ESV"><text>For I am not ashamed of the gospel, for it is the power of God for salvation to everyone who believes, to the Jew first and also to the Greek.</text></version>
+      </verse>
+      <verse ref="ROM-1-1" book="ROM" chapter="1" verse="1" primary="false">
+        <version id="ESV"><text>Paul, a servant of Christ Jesus, called to be an apostle, set apart for the gospel of God.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-001"  note="The gospel is the declared expression of God IS love in historical action" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"   note="grace · the gospel announces grace as the operative mechanism"            created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"        note="The gospel is God IS love expressed in historical redemptive action"                created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-AUTHORITY"   note="The gospel is declared with apostolic authority — Romans 1:1"                       created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"     note="The gospel is the supreme declaration of God's love for humanity"                    created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_NEIGHBOR" note="Romans 1:16 — to every one that believeth · extends to the neighbor"               created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-005"         note="The Propagation Obligation — Paul set apart to spread the gospel. L1-005 grounded here." created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-EUANGEL">
+      <member ref="W-005" word="gospel"     lexar="euangelion"   relationship="root"/>
+      <member ref="W-073" word="evangelize" lexar="euangelizo"   relationship="derivative" note="to proclaim the gospel"/>
+      <member ref="W-074" word="evangelist" lexar="euangelistes" relationship="derivative" note="one who proclaims the gospel"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-005 gospel declared. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Romans 1:16 pure knot verse tagged as primary."/>
+    </history>
+  </entry>
+
+  <!-- W-010 CONDEMNATION -->
+  <entry id="W-010" word="condemnation" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="katakrima" stem="katakrino" pos="noun" strongs="G2631"
+         geo_chain="negative" geo_weight="9.0"
+         geo_coordinates="0.02,0.70,0.45,0.95,0.45,0.70,0.88,0.02,0.88"
+         morphological_family="FAM-KRINO"
+         entry_hash="SHA256:427146da8eb598464cc97f83e4a142b2a81f101de6f060b4f0966d050565e756">
+    <definitions>
+      <definition id="W-010-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="519"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>The judicial verdict of guilty. The sentence pronounced against sin. The legal opposite of justification.</text></version>
+        <version id="ESV"><text>The judgment of condemnation. The legal sentence of guilty pronounced against sin. Romans 5:16.</text></version>
+        <version id="NIV"><text>Judgment that brings guilt and punishment. The verdict that results in death. Opposite of justification.</text></version>
+        <decomposition>
+          <word pos="prefix" stem="against" lexar="kata"    strongs=""      language="GRK"><definition>Against. Down. A directional prefix indicating judgment directed downward against the accused.</definition></word>
+          <word pos="verb"   stem="judge"   lexar="krino"   strongs="G2919" language="GRK"><definition>To judge. To evaluate. To render a verdict. The root of the legal vocabulary Paul employs throughout Romans.</definition></word>
+          <word pos="noun"   stem="verdict" lexar="krima"   strongs="G2917" language="GRK"><definition>A judicial decision. katakrima is the verdict of guilty specifically — not merely judgment but adverse judgment.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="katakrima" meaning="the verdict of condemnation · the judicial sentence against · from kata (against) + krino (judge)"/>
+      <origin language="LAT" form="condemnatio" meaning="a formal verdict of guilty"/>
+      <origin language="EN"  form="condemnation" meaning="the act of pronouncing guilty · first attested circa 1380"/>
+    </etymology>
+    <synonyms>
+      <entry ref="W-080" word="judgment"  relationship="near_synonym"   note="krisis — judgment as process · katakrima is the verdict that results"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-001" word="grace"         relationship="direct_antonym" note="Grace acquits. Condemnation convicts. Romans 8:1 — there is now no condemnation to those in Christ Jesus."/>
+      <entry ref="W-020" word="justification" relationship="legal_antonym"  note="Romans 5:18 — one trespass led to condemnation · one act of righteousness leads to justification and life. Direct legal opposition declared in the same sentence."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-8-1" book="ROM" chapter="8" verse="1" primary="true">
+        <version id="KJV"><text>There is therefore now no condemnation to them which are in Christ Jesus.</text></version>
+        <version id="ESV"><text>There is therefore now no condemnation for those who are in Christ Jesus.</text></version>
+      </verse>
+      <verse ref="ROM-5-18" book="ROM" chapter="5" verse="18" primary="false">
+        <version id="ESV"><text>Therefore, as one trespass led to condemnation for all men, so one act of righteousness leads to justification and life for all men.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-001" note="grace · the direct resolution of condemnation"     created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-020" note="justification · the direct legal opposite verdict"  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-011" note="wrath · the disposition from which condemnation proceeds" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Condemnation is God's justice expressed against sin"              created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-004"     note="The Accountability of Power — condemnation is the declared consequence of abusing freedom" created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-KRINO">
+      <member ref="W-010" word="condemnation"  lexar="katakrima" relationship="compound_root"/>
+      <member ref="W-080" word="judgment"      lexar="krisis"    relationship="related"/>
+      <member ref="W-082" word="judge"         lexar="krino"     relationship="verb_root"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-010 condemnation declared. Both poles of grace-condemnation axis now present."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Romans 8:1 as primary verse. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-011 WRATH -->
+  <entry id="W-011" word="wrath" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="orge" stem="org" pos="noun" strongs="G3709"
+         geo_chain="romans_p" geo_weight="8.5"
+         geo_coordinates="0.10,0.75,0.45,0.90,0.60,0.75,0.85,0.05,0.88"
+         morphological_family="FAM-ORG"
+         entry_hash="SHA256:d98348ad62a36b9126beba1d1d3a9bbd79dfd53175e6bbbab5e751f4b12325fe">
+    <definitions>
+      <definition id="W-011-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="720"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>Settled indignation. The consistent and principled response of holiness to that which violates it.</text></version>
+        <version id="ESV"><text>The settled, principled opposition of God's holiness to all sin and evil. Not emotional rage but consistent judicial response.</text></version>
+        <version id="NIV"><text>God's righteous anger and judgment against sin. The settled opposition of a holy God to everything sinful.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="settled"    lexar="bebaioo"   strongs="G0950" language="GRK"><definition>Established. Confirmed. Not fluctuating. Orge is settled — as consistent as the holiness from which it proceeds.</definition></word>
+          <word pos="noun"      stem="indignation" lexar="orge"     strongs="G3709" language="GRK"><definition>Settled principled response. Distinguished from thumos (G2372) the hot passionate outburst. God's wrath is orge — principled not emotional.</definition></word>
+          <word pos="adjective" stem="principled"  lexar="dikaios"  strongs="G1342" language="GRK"><definition>In accordance with a declared standard. The wrath is principled because it is the consistent response of holiness to a declared violation.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="orge" meaning="natural impulse · settled disposition · wrath — distinguished from thumos the sudden passionate outburst"/>
+      <origin language="EN"  form="wrath" meaning="fierce anger · punishment · first attested before 900"/>
+      <note>The Greek distinction between orge and thumos is critical. thumos is the hot flash — momentary passion. orge is the settled disposition — what a person consistently is. God's wrath in Romans 1:18 is His settled, principled, consistent response to sin. It is as constant as His love — both are expressions of His declared holiness. They are not contradictory but simultaneous expressions of the same character.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-083" word="anger"    relationship="contextual_synonym" note="thumos — passionate anger · weaker and more emotional form than orge"/>
+      <entry ref="W-080" word="judgment" relationship="outcome_synonym"    note="wrath is the disposition · judgment is what the disposition produces"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-025" word="mercy" relationship="direct_antonym"    note="Mercy withholds the wrath that is deserved. Romans 9:22-23 holds both — vessels of wrath and vessels of mercy. The two hands of God's holiness."/>
+      <entry ref="W-001" word="grace" relationship="contextual_antonym" note="Grace gives what is not deserved. Wrath gives what is deserved. Both flow from the same holiness in opposite directions."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-1-18" book="ROM" chapter="1" verse="18" primary="true">
+        <version id="KJV"><text>For the wrath of God is revealed from heaven against all ungodliness and unrighteousness of men, who hold the truth in unrighteousness.</text></version>
+        <version id="ESV"><text>For the wrath of God is revealed from heaven against all ungodliness and unrighteousness of men, who by their unrighteousness suppress the truth.</text></version>
+      </verse>
+      <verse ref="ROM-5-9" book="ROM" chapter="5" verse="9" primary="false">
+        <version id="ESV"><text>Since, therefore, we have now been justified by his blood, much more shall we be saved by him from the wrath of God.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-025" note="mercy · the direct antonym — the two hands of God's holiness"      created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001" note="grace · contextual opposite — grace given to those spared from wrath" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-002" note="sin · wrath is the declared response to sin"                         created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Wrath is God's justice expressed against declared violation"          created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-004"     note="Accountability of Power — wrath is the declared consequence of power abused" created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-ORG">
+      <member ref="W-011" word="wrath" lexar="orge"   relationship="root"/>
+      <member ref="W-084" word="angry" lexar="orgizō" relationship="derivative" note="to be angry · verb form"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-011 wrath declared. orge distinguished from thumos correctly."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Both poles declared — W-025 mercy direct W-001 grace contextual."/>
+    </history>
+  </entry>
+
+  <!-- W-020 JUSTIFICATION -->
+  <entry id="W-020" word="justification" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="dikaiosis" stem="dikaio" pos="noun" strongs="G1347"
+         geo_chain="romans_r" geo_weight="9.5"
+         geo_coordinates="0.92,0.85,0.55,0.98,0.75,0.85,0.95,0.92,0.90"
+         morphological_family="FAM-DIKAIO"
+         entry_hash="SHA256:ec775e26dd2ea0a842d03b58e7925ecc4ef8a330448f825e33bc1fe4b5621e2f">
+    <definitions>
+      <definition id="W-020-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="249"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>The legal act of declaring a sinner righteous. The acquittal. God's judicial verdict that the believer stands righteous before Him through Christ.</text></version>
+        <version id="ESV"><text>The legal declaration of righteousness. The judicial act by which God declares the sinner righteous on the basis of Christ's righteousness received through faith.</text></version>
+        <version id="NIV"><text>Being declared righteous by God. The legal verdict of not guilty pronounced over the sinner who trusts in Christ.</text></version>
+        <decomposition>
+          <word pos="verb" stem="declare"   lexar="dikaioo"    strongs="G1344" language="GRK"><definition>To declare righteous. To acquit. A legal verdict — not making righteous in character but declaring righteous in legal standing. Forensic.</definition></word>
+          <word pos="noun" stem="verdict"   lexar="krima"      strongs="G2917" language="GRK"><definition>A judicial decision. Justification is a verdict not a process.</definition></word>
+          <word pos="noun" stem="acquittal" lexar="aphesis"    strongs="G0859" language="GRK"><definition>Release. Forgiveness. Justification includes but exceeds acquittal — it is positive declaration of righteousness not mere clearing of charges.</definition></word>
+          <word pos="noun" stem="basis"     lexar="anti"       strongs="G0473" language="GRK"><definition>In the place of. In exchange for. Christ's righteousness credited to the believer's account is the declared basis.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="dikaiosis"   meaning="the act of declaring righteous · from dikaioō to justify"/>
+      <origin language="LAT" form="iustificatio" meaning="the act of justifying · making or declaring just"/>
+      <origin language="EN"  form="justification" meaning="the showing of something to be right · first attested circa 1425"/>
+      <note>dikaiosis appears only twice in the NT — Romans 4:25 and Romans 5:18 — making it a near-hapax within Romans. The related verb dikaioo appears 39 times in Romans. dikaiosis is entirely forensic — the legal verdict. The distinction between justification (the verdict) and sanctification (the transformation) is built into Paul's vocabulary from the word roots themselves.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-003" word="righteousness" relationship="result_synonym"  note="righteousness is the status justification declares · justification is the act of declaring it"/>
+      <entry ref="W-085" word="acquittal"     relationship="near_synonym"    note="acquittal clears charges · justification additionally declares the positive status of righteousness"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-010" word="condemnation" relationship="direct_legal_antonym" note="Romans 5:18 — one trespass led to condemnation · one act of righteousness leads to justification and life. Paul places them as direct legal opposites in the same sentence."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-24" book="ROM" chapter="3" verse="24" primary="true">
+        <version id="KJV"><text>Being justified freely by his grace through the redemption that is in Christ Jesus.</text></version>
+        <version id="ESV"><text>And are justified by his grace as a gift, through the redemption that is in Christ Jesus.</text></version>
+      </verse>
+      <verse ref="ROM-5-18" book="ROM" chapter="5" verse="18" primary="false">
+        <version id="ESV"><text>Therefore, as one trespass led to condemnation for all men, so one act of righteousness leads to justification and life for all men.</text></version>
+      </verse>
+      <verse ref="ROM-4-25" book="ROM" chapter="4" verse="25" primary="false">
+        <version id="ESV"><text>Who was delivered up for our trespasses and raised for our justification.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-GRACE" note="Justification is by grace — declared at Romans 3:24"                created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"    note="grace · the mechanism of justification"                             created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-004"    note="faith · the means by which justification is received"               created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-010"    note="condemnation · the direct legal opposite verdict"                    created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Justification satisfies God's justice through Christ's substitution"                    created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-LOVE"    note="Justification is God's love providing the legal resolution sin requires"                 created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"     note="Every person equally capable of receiving justification through faith"                    created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-006"     note="Integrity of Exchange — the legally sound exchange of Christ's righteousness for sin"    created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-020 justification declared. Hapax status noted. Build 3 core entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Direct legal antonym W-010 condemnation declared."/>
+    </history>
+  </entry>
+
+  <!-- W-025 MERCY -->
+  <entry id="W-025" word="mercy" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="eleos" stem="ele" pos="noun" strongs="G1656"
+         geo_chain="romans_r" geo_weight="9.0"
+         geo_coordinates="0.92,0.55,0.58,0.95,0.82,0.72,0.90,0.95,0.90"
+         morphological_family="FAM-ELE"
+         entry_hash="SHA256:c9d640670c6737e26d4edd09206d0660e54a8a7fabb875d2a7a01d8703ce92b5">
+    <definitions>
+      <definition id="W-025-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="315"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>Compassion shown to someone in need or distress. The withholding of punishment that is deserved.</text></version>
+        <version id="ESV"><text>Compassion or forbearance shown to someone in one's power. Distinct from grace which gives undeserved blessing — mercy withholds deserved punishment.</text></version>
+        <version id="NIV"><text>Kindness and compassion shown to someone who is in a difficult situation. God holding back punishment that sinners deserve.</text></version>
+        <decomposition>
+          <word pos="noun"      stem="compassion"  lexar="splanchna"  strongs="G4698" language="GRK"><definition>The viscera. The inner parts. The seat of deep emotion. Mercy originates in deep feeling — not administrative decision.</definition></word>
+          <word pos="noun"      stem="forbearance" lexar="anoche"     strongs="G0463" language="GRK"><definition>Holding back. Restraint of justified action. Romans 3:25-26 — God passed over former sins in forbearance.</definition></word>
+          <word pos="verb"      stem="withhold"    lexar="katecho"    strongs="G2722" language="GRK"><definition>To hold. To restrain. Mercy actively withholds what justice could require — not passive inaction but active restraint.</definition></word>
+          <word pos="adjective" stem="deserved"    lexar="axios"      strongs="G0514" language="GRK"><definition>Worthy of. Having the weight to balance against what is given. What is deserved is what the standard of justice would produce.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="eleos"  meaning="mercy · pity · compassion — often translating Hebrew hesed in the Septuagint"/>
+      <origin language="HEB" form="hesed"  meaning="lovingkindness · covenant faithfulness · steadfast love · mercy — carries both love and faithfulness dimensions"/>
+      <origin language="EN"  form="mercy"  meaning="forbearance · compassion · first attested circa 1175"/>
+      <note>Eleos in the LXX most often translates the Hebrew hesed — one of the richest theological words in the OT. hesed carries covenant faithfulness alongside compassion. God's mercy is not mere sentiment but covenant-rooted — He is merciful because He has bound Himself to His people by declaration. This covenantal dimension connects directly to the Conduit Impact Capital framework — investments grounded in covenant not merely contract.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-001" word="grace"          relationship="related_concept" note="grace gives undeserved blessing · mercy withholds deserved punishment · both flow from God's character toward sinners"/>
+      <entry ref="W-086" word="compassion"     relationship="near_synonym"    note="splanchnon — visceral compassion · mercy as the expression of deep internal movement"/>
+      <entry ref="W-042" word="lovingkindness" relationship="OT_equivalent"   note="hesed — the OT covenant word that eleos most often translates in the Septuagint"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-011" word="wrath"    relationship="direct_antonym"    note="Wrath is the consistent judicial response of holiness to violation. Mercy is the consistent compassionate response of love to need. Romans 9:22-23 holds both simultaneously."/>
+      <entry ref="W-087" word="judgment" relationship="contextual_antonym" note="James 2:13 — mercy triumphs over judgment. Not that judgment is wrong but that mercy exceeds it in God's economy."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-9-23" book="ROM" chapter="9" verse="23" primary="true">
+        <version id="ESV"><text>In order to make known the riches of his glory for vessels of mercy, which he has prepared beforehand for glory.</text></version>
+      </verse>
+      <verse ref="ROM-11-32" book="ROM" chapter="11" verse="32" primary="false">
+        <version id="ESV"><text>For God has consigned all to disobedience, that he may have mercy on all.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-GRACE" note="Mercy is the compassion dimension of grace — both flow from God IS love"           created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"    note="grace · related concept · flowing from the same source"                             created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-011"    note="wrath · direct antonym · the two hands of God's holiness"                          created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"        note="Mercy is God IS love expressed as compassion toward the suffering and undeserving"            created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_NEIGHBOR" note="Mercy toward the neighbor is the first expression of the second principle — Luke 10:37"      created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-002"          note="The Claim of the Vulnerable — mercy is the declared response to vulnerability"               created_by="WFobbs3"          created_at="1774186477" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-003"          note="Intergenerational Obligation — God shows mercy to thousands of generations — Exodus 20:6"    created_by="claude-sonnet-4-6" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-ELE">
+      <member ref="W-025" word="mercy"     lexar="eleos"   relationship="root"/>
+      <member ref="W-088" word="merciful"  lexar="eleemon" relationship="derivative" note="one who shows mercy · Matthew 5:7"/>
+      <member ref="W-089" word="have mercy" lexar="eleeo"  relationship="derivative" note="the verb · Kyrie eleison — Lord have mercy"/>
+    </morphological_family>
+    <notes>
+      <note id="W-025-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">The mercy-wrath axis in Romans 9 is the highest-kappa region in the entire letter. Paul navigates God's sovereign election and human responsibility in the same passage. The manifold has maximum curvature here — not because the declarations are contradictory but because the mystery of their coexistence exceeds linear reasoning. This is a declared BranchPoint.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-025 mercy declared. hesed-eleos connection declared. L1-002 link confirmed."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Direct antonym W-011 wrath declared. Both poles present."/>
+    </history>
+  </entry>
+
+  <!-- W-060 UNBELIEF -->
+  <entry id="W-060" word="unbelief" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="apistia" stem="apist" pos="noun" strongs="G0570"
+         geo_chain="negative" geo_weight="7.0"
+         geo_coordinates="0.15,0.55,0.50,0.80,0.35,0.55,0.72,0.12,0.78"
+         morphological_family="FAM-PIST"
+         entry_hash="SHA256:b9c527b8c59141df2a7af0201e264ff7afa200b677127f0885448561070bb3d0">
+    <definitions>
+      <definition id="W-060-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="103"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt="">
+        <version id="KJV"><text>The absence of faith. Faithlessness. Failure to trust God's declared word and character.</text></version>
+        <version id="ESV"><text>The absence or rejection of faith. The failure to trust God's declared character and promises. Romans 3:3 — their faithlessness does not nullify the faithfulness of God.</text></version>
+        <version id="NIV"><text>Lack of faith. The refusal or inability to trust in God and his promises.</text></version>
+        <decomposition>
+          <word pos="prefix" stem="without"       lexar="a"       strongs=""      language="GRK"><definition>The alpha privative — negating the word that follows. apistia is the negation of pistis. Without faith.</definition></word>
+          <word pos="noun"   stem="faith"         lexar="pistis"  strongs="G4102" language="GRK"><definition>The root that unbelief negates. apistia is precisely and exactly the absence of pistis.</definition></word>
+          <word pos="noun"   stem="faithlessness" lexar="apistia" strongs="G0570" language="GRK"><definition>The condition of being without faith. Contrasted with God's own faithfulness — their faithlessness does not nullify His faithfulness. Romans 3:3.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="apistia" meaning="lack of faith · faithlessness · unfaithfulness · from a (without) + pistis (faith)"/>
+      <origin language="EN"  form="unbelief" meaning="lack of belief · first attested circa 1526"/>
+    </etymology>
+    <synonyms>
+      <entry ref="W-061" word="doubt"           relationship="partial_synonym" note="doubt is faith under pressure — a weaker form rather than full absence"/>
+      <entry ref="W-090" word="hardness of heart" relationship="near_synonym"  note="sklerokardia — the hardened heart that resists belief even in the presence of evidence"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-004" word="faith" relationship="direct_antonym" note="pistis is the root. apistia is its negation. The same word with and without the alpha privative. Unbelief is precisely the absence of faith — not a different thing but the same thing removed."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-3" book="ROM" chapter="3" verse="3" primary="true">
+        <version id="KJV"><text>For what if some did not believe? shall their unbelief make the faith of God without effect?</text></version>
+        <version id="ESV"><text>What if some were unfaithful? Does their faithlessness nullify the faithfulness of God?</text></version>
+      </verse>
+      <verse ref="ROM-11-20" book="ROM" chapter="11" verse="20" primary="false">
+        <version id="ESV"><text>They were broken off because of their unbelief, but you stand fast through faith.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-004" note="faith · the direct antonym — apistia is the negation of pistis" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Unbelief stands in opposition to God's declared faithfulness" created_by="WFobbs3" created_at="1774186477" verified_by="" verified_dt=""/>
+    </links>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774186477" note="W-060 unbelief declared. Antonym pole of faith now present. Both poles of faith-unbelief axis complete."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477" note="Full decomposition on D001. Direct antonym W-004 faith declared."/>
+    </history>
+  </entry>
+
+  <!-- W-030 REDEMPTION -->
+  <entry id="W-030" word="redemption" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="apolutrosis" stem="lutroo" pos="noun" strongs="G0629"
+         geo_chain="romans_r" geo_weight="9.5"
+         geo_coordinates="0.92,0.72,0.58,0.98,0.80,0.82,0.93,0.92,0.91"
+         morphological_family="FAM-LUTRO"
+         entry_hash="SHA256:ed7cbf927f738698f701d561557cd344209da827">
+    <definitions>
+      <definition id="W-030-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="117"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The payment of a ransom price to secure release from bondage. Deliverance from sin through the blood of Christ.</text></version>
+        <version id="ESV"><text>Liberation by payment of a ransom. The release from the bondage of sin secured by Christ's atoning death. Romans 3:24.</text></version>
+        <version id="NIV"><text>Freedom from slavery through payment of a price. Freedom from sin through Christ's sacrificial death.</text></version>
+        <decomposition>
+          <word pos="verb"   stem="release"  lexar="lutroo"   strongs="G3084" language="GRK"><definition>To release upon receipt of ransom. To liberate. From lutron — the ransom price itself.</definition></word>
+          <word pos="prefix" stem="from"     lexar="apo"      strongs=""      language="GRK"><definition>Away from. The prefix intensifies the completeness of the release from the prior state.</definition></word>
+          <word pos="noun"   stem="ransom"   lexar="lutron"   strongs="G3083" language="GRK"><definition>The price paid for release. Mark 10:45 — the Son of Man came to give his life as a ransom for many.</definition></word>
+          <word pos="noun"   stem="bondage"  lexar="douleia"  strongs="G1397" language="GRK"><definition>Slavery. The condition from which redemption releases. Romans 8:21 — creation will be liberated from its bondage to decay.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="apolutrosis" meaning="releasing on payment of ransom · buying back from slavery"/>
+      <origin language="HEB" form="gaal"         meaning="to redeem · to act as kinsman-redeemer · to buy back what was lost"/>
+      <origin language="EN"  form="redemption"   meaning="the action of buying back · first attested circa 1340"/>
+      <note>Grace is free to the recipient but not to God. Redemption is what grace costs God. Romans 3:24 holds both simultaneously — justified freely by His grace through the redemption. Free to us. Costly to Him.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-001" word="grace"        relationship="mechanism_parent" note="grace covers redemption's cost for the recipient · redemption is what grace costs"/>
+      <entry ref="W-095" word="propitiation" relationship="related_concept"  note="propitiation satisfies the wrath · redemption secures the release · same cross event"/>
+      <entry ref="W-040" word="salvation"    relationship="outcome_synonym"  note="salvation is the comprehensive result · redemption is the specific purchase mechanism"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-091" word="bondage"   relationship="state_antonym" note="douleia — the condition from which redemption releases. Romans 8:15 — you did not receive a spirit of bondage again to fear."/>
+      <entry ref="W-092" word="captivity"  relationship="state_antonym" note="The condition of being held. Redemption is the declared release from captivity to sin and death."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-24" book="ROM" chapter="3" verse="24" primary="true">
+        <version id="KJV"><text>Being justified freely by his grace through the redemption that is in Christ Jesus.</text></version>
+        <version id="ESV"><text>And are justified by his grace as a gift, through the redemption that is in Christ Jesus.</text></version>
+      </verse>
+      <verse ref="ROM-8-23" book="ROM" chapter="8" verse="23" primary="false">
+        <version id="ESV"><text>We ourselves groan inwardly as we wait eagerly for adoption as sons, the redemption of our bodies.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-GRACE" note="Redemption is the declared mechanism through which grace operates toward justification" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-020"    note="justification · the legal verdict that redemption makes possible"                    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-095"    note="propitiation · the wrath-satisfying dimension of the same cross event"              created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"    note="Redemption is God IS love expressed at infinite cost"                                         created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Redemption satisfies justice — the price is paid not waived"                                  created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-002"     note="The Claim of the Vulnerable — God acting as kinsman-redeemer for the captive"                  created_by="claude-sonnet-4-6" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-006"     note="Integrity of Exchange — the ultimate exchange: Christ's life for human bondage"                created_by="claude-sonnet-4-6" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-LUTRO">
+      <member ref="W-030" word="redemption" lexar="apolutrosis" relationship="root"/>
+      <member ref="W-093" word="ransom"      lexar="lutron"      relationship="related"   note="the price paid · Mark 10:45"/>
+      <member ref="W-094" word="redeem"      lexar="lutroo"      relationship="verb_form" note="to ransom · to liberate by payment"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-030 redemption declared. Build 4 extended entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared. FAM-LUTRO established."/>
+    </history>
+  </entry>
+
+  <!-- W-035 PEACE -->
+  <entry id="W-035" word="peace" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="eirene" stem="eiren" pos="noun" strongs="G1515"
+         geo_chain="romans_r" geo_weight="8.5"
+         geo_coordinates="0.90,0.42,0.62,0.88,0.72,0.68,0.85,0.92,0.88"
+         morphological_family="FAM-EIREN"
+         entry_hash="SHA256:005949009dc5ea98029b3d9658debb8e76ddcbc5">
+    <definitions>
+      <definition id="W-035-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="287"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The state of harmony and wholeness resulting from reconciliation with God. The Hebrew shalom — complete wellbeing in right relationship.</text></version>
+        <version id="ESV"><text>Peace with God — the restored relationship declared through justification by faith. Romans 5:1.</text></version>
+        <version id="NIV"><text>Peace with God achieved through Jesus Christ. The wholeness that comes from right relationship with God.</text></version>
+        <decomposition>
+          <word pos="noun" stem="wholeness"      lexar="shalom"     strongs="H7965" language="HEB"><definition>Complete wellbeing. Nothing missing. Nothing broken. The Hebrew concept that eirene most fully translates — shalom is the OT declared state of right relationship with God and neighbor.</definition></word>
+          <word pos="noun" stem="reconciliation" lexar="katallagē" strongs="G2643" language="GRK"><definition>The restoration of a broken relationship. Peace with God is declared through reconciliation — the hostility resolved through Christ.</definition></word>
+          <word pos="noun" stem="harmony"        lexar="harmonia"   strongs=""      language="GRK"><definition>Fitting together. The state where parts are properly related. Peace is not the absence of tension but the presence of right relationship.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="eirene"  meaning="peace · harmony · absence of war — used in Greek greetings"/>
+      <origin language="HEB" form="shalom"  meaning="completeness · wholeness · welfare — the OT concept eirene carries theologically"/>
+      <origin language="EN"  form="peace"   meaning="freedom from disturbance · first attested circa 1125"/>
+      <note>eirene in Greek primarily meant absence of war. Hebrew shalom carries the positive — wholeness, nothing missing. Paul's eirene draws on shalom through the LXX. Romans 5:1 peace with God is the positive declaration of restored wholeness, not merely cessation of hostility.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-096" word="reconciliation" relationship="mechanism_synonym" note="reconciliation is the act that produces peace · peace is the state that results"/>
+      <entry ref="W-097" word="wholeness"      relationship="HEB_equivalent"   note="shalom — the Hebrew concept of complete wellbeing that eirene translates"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-098" word="enmity"  relationship="direct_antonym"    note="echthra — hostility. Romans 8:7 — the mind governed by flesh is hostile (echthra) to God. Peace is the declared resolution of enmity."/>
+      <entry ref="W-011" word="wrath"   relationship="contextual_antonym" note="Romans 5:1 and 5:9 declare peace and rescue from wrath as the sequential results of justification."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-5-1" book="ROM" chapter="5" verse="1" primary="true">
+        <version id="KJV"><text>Therefore being justified by faith, we have peace with God through our Lord Jesus Christ.</text></version>
+        <version id="ESV"><text>Therefore, since we have been justified by faith, we have peace with God through our Lord Jesus Christ.</text></version>
+      </verse>
+      <verse ref="ROM-8-6" book="ROM" chapter="8" verse="6" primary="false">
+        <version id="ESV"><text>For to set the mind on the flesh is death, but to set the mind on the Spirit is life and peace.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-020" note="justification · peace is the declared result of being justified by faith — Romans 5:1"   created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-075" note="Spirit · life and peace are declared together as the mind set on the Spirit — Romans 8:6" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"        note="Peace is God IS love expressed as restored relationship"                      created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"     note="Peace with God is the primary relationship restored by the gospel"            created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_NEIGHBOR" note="Romans 12:18 — as far as it depends on you live at peace with everyone"     created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-EIREN">
+      <member ref="W-035" word="peace"      lexar="eirene"      relationship="root"/>
+      <member ref="W-099" word="peacemaker"  lexar="eirenopoios" relationship="derivative" note="one who makes peace · Matthew 5:9"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-035 peace declared. Build 4 extended entry. shalom-eirene connection declared."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-040 SALVATION -->
+  <entry id="W-040" word="salvation" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="soteria" stem="soter" pos="noun" strongs="G4991"
+         geo_chain="romans_r" geo_weight="9.0"
+         geo_coordinates="0.93,0.60,0.65,0.95,0.78,0.78,0.92,0.93,0.91"
+         morphological_family="FAM-SOTER"
+         entry_hash="SHA256:c1f1d8941576012e43f490fd842c9f2c1ba127d6">
+    <definitions>
+      <definition id="W-040-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="985"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>Deliverance from sin. The comprehensive rescue of the whole person — past justification, present sanctification, future glorification.</text></version>
+        <version id="ESV"><text>Rescue from sin, wrath, and death. The comprehensive work of God in Christ encompassing justification, sanctification, and glorification.</text></version>
+        <version id="NIV"><text>God's rescue of human beings from sin. The complete work of redemption through faith in Jesus Christ.</text></version>
+        <decomposition>
+          <word pos="verb" stem="save"      lexar="sozo"    strongs="G4982" language="GRK"><definition>To save. To rescue from danger. sozo covers healing, rescue from drowning, and rescue from spiritual death — the word is deliberately comprehensive.</definition></word>
+          <word pos="noun" stem="Savior"    lexar="soter"   strongs="G4990" language="GRK"><definition>The one who saves. Applied to God and to Christ. The title declares the identity of salvation's source.</definition></word>
+          <word pos="verb" stem="rescue"    lexar="rhuomai" strongs="G4506" language="GRK"><definition>To rescue. To deliver from danger. Romans 7:24 — who will rescue me from this body of death? Romans 11:26 — the Deliverer will come from Zion.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="soteria" meaning="preservation · rescue · deliverance from danger"/>
+      <origin language="HEB" form="yeshua"  meaning="salvation · deliverance — the personal name of Jesus derives from this root"/>
+      <origin language="EN"  form="salvation" meaning="deliverance from sin · first attested circa 1300"/>
+      <note>The name Jesus (Iesous / Yeshua) means God saves — soteria is embedded in His personal name. Romans 1:16 — the power of God for salvation — declares both the person and the work simultaneously. Every occurrence of salvation in Romans points back to the name declared at the incarnation.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-030" word="redemption"    relationship="mechanism_synonym" note="redemption is the price-payment mechanism · salvation is the comprehensive outcome"/>
+      <entry ref="W-020" word="justification"  relationship="legal_dimension"   note="justification is the legal dimension of salvation · salvation is the complete picture"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-050" word="death"        relationship="direct_antonym"  note="Romans 6:23 — the wages of sin is death but the gift of God is eternal life. Salvation is the declared rescue from death."/>
+      <entry ref="W-010" word="condemnation"  relationship="legal_antonym"   note="Romans 8:1 — no condemnation to those in Christ — is a salvation statement."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-1-16" book="ROM" chapter="1" verse="16" primary="true">
+        <version id="KJV"><text>For I am not ashamed of the gospel of Christ: for it is the power of God unto salvation to every one that believeth.</text></version>
+        <version id="ESV"><text>For I am not ashamed of the gospel, for it is the power of God for salvation to everyone who believes.</text></version>
+      </verse>
+      <verse ref="ROM-10-10" book="ROM" chapter="10" verse="10" primary="false">
+        <version id="ESV"><text>For with the heart one believes and is justified, and with the mouth one confesses and is saved.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-005" note="gospel · the power of God for salvation is the gospel — Romans 1:16"   created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-004" note="faith · salvation received through faith — to everyone who believes"    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"    note="Salvation is God IS love acting comprehensively to rescue humanity"             created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"     note="Irreducible Human Dignity — salvation available to every one that believeth"    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-SOTER">
+      <member ref="W-040" word="salvation" lexar="soteria" relationship="root"/>
+      <member ref="W-101" word="Savior"    lexar="soter"   relationship="derivative" note="the one who saves"/>
+      <member ref="W-102" word="save"      lexar="sozo"    relationship="verb_form"  note="to save · to heal · to rescue"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-040 salvation declared. Build 4 extended entry. Name of Jesus connection declared."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared."/>
+    </history>
+  </entry>
+
+  <!-- W-050 DEATH -->
+  <entry id="W-050" word="death" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="thanatos" stem="thanat" pos="noun" strongs="G2288"
+         geo_chain="negative" geo_weight="9.0"
+         geo_coordinates="0.02,0.65,0.40,0.95,0.35,0.65,0.88,0.02,0.85"
+         morphological_family="FAM-THANAT"
+         entry_hash="SHA256:323f376908c7f563b63bc69201a70a7c2a044d0e">
+    <definitions>
+      <definition id="W-050-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="443"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The cessation of physical life. The spiritual condition of alienation from God — the consequence of sin declared in Romans 6:23.</text></version>
+        <version id="ESV"><text>Physical death — cessation of bodily life. Spiritual death — separation from God as the consequence of sin. Romans 6:23 — the wages of sin is death.</text></version>
+        <version id="NIV"><text>Physical death as the end of biological life. Spiritual death as separation from God. The ultimate consequence of sin that salvation reverses.</text></version>
+        <decomposition>
+          <word pos="noun" stem="wages"      lexar="opsonia"  strongs="G3800" language="GRK"><definition>Military pay. What a soldier earns. Romans 6:23 — the wages of sin is death. Death is what sin earns — the declared payment for service rendered to sin.</definition></word>
+          <word pos="noun" stem="separation"  lexar="chorizo"  strongs="G5563" language="GRK"><definition>To separate. Spiritual death is separation from God — maximum possible distance from the declared truth surface.</definition></word>
+          <word pos="noun" stem="cessation"   lexar="pauo"     strongs="G3973" language="GRK"><definition>To cease. To stop. Physical death is the cessation of the biological processes that constitute physical life.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="thanatos" meaning="death · personification of death in classical mythology · used in NT for both physical and spiritual death"/>
+      <origin language="HEB" form="mavet"    meaning="death · the realm of the dead · Sheol"/>
+      <origin language="EN"  form="death"    meaning="the end of life · first attested circa 725"/>
+      <note>Romans distinguishes three dimensions of thanatos: physical death (the biological event), spiritual death (present separation from God — Ephesians 2:1 dead in sins), and the second death (Revelation 20:14). Romans 5-8 navigates all three. Christ's resurrection is declared as victory over all three simultaneously — 1 Corinthians 15:26 — the last enemy to be destroyed is death.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-103" word="perishing" relationship="near_synonym" note="apollumi — to destroy. John 3:16 — should not perish but have eternal life. perishing is the ongoing process; death is the state."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-055" word="life"        relationship="direct_antonym"  note="Romans 6:23 — the wages of sin is death but the gift of God is eternal life. The most direct declared antonym pair in Romans."/>
+      <entry ref="W-040" word="salvation"   relationship="outcome_antonym" note="Salvation is the comprehensive rescue from death."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-6-23" book="ROM" chapter="6" verse="23" primary="true">
+        <version id="KJV"><text>For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord.</text></version>
+        <version id="ESV"><text>For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.</text></version>
+      </verse>
+      <verse ref="ROM-5-12" book="ROM" chapter="5" verse="12" primary="false">
+        <version id="ESV"><text>Just as sin came into the world through one man, and death through sin, and so death spread to all men.</text></version>
+      </verse>
+      <verse ref="ROM-8-6" book="ROM" chapter="8" verse="6" primary="false">
+        <version id="ESV"><text>For to set the mind on the flesh is death, but to set the mind on the Spirit is life and peace.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-002" note="sin · death is the declared wage of sin — Romans 6:23" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-055" note="life · direct antonym — the gift of God in the same verse" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="Death is the declared consequence of sin — the just wage God's holiness requires" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-THANAT">
+      <member ref="W-050" word="death" lexar="thanatos"  relationship="root"/>
+      <member ref="W-104" word="die"   lexar="apothnesko" relationship="verb_form" note="to die · to undergo death"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-050 death declared. Build 4 extended entry. Three dimensions noted."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Direct antonym W-055 life declared. Romans 6:23 as primary verse."/>
+    </history>
+  </entry>
+
+  <!-- W-055 LIFE -->
+  <entry id="W-055" word="life" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="zoe" stem="zo" pos="noun" strongs="G2222"
+         geo_chain="romans_r" geo_weight="9.5"
+         geo_coordinates="0.95,0.45,0.70,0.92,0.80,0.75,0.90,0.95,0.92"
+         morphological_family="FAM-ZOE"
+         entry_hash="SHA256:3711157471c57dc2a8fad2433e1bee02622629bb">
+    <definitions>
+      <definition id="W-055-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="430"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>Eternal life — the life of the age to come, begun now in those who are in Christ. The free gift of God in contrast to the wages of sin.</text></version>
+        <version id="ESV"><text>The life of God — eternal, qualitatively distinct from mere biological existence. Given as a free gift through Christ Jesus. Romans 6:23.</text></version>
+        <version id="NIV"><text>Eternal life — sharing in God's own life through faith in Christ.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="eternal"  lexar="aionios"   strongs="G0166" language="GRK"><definition>Of the age. Eternal. Not merely unending duration but the quality of life belonging to the coming age. zoe aionios = the life of the age to come.</definition></word>
+          <word pos="noun"      stem="gift"     lexar="charisma"  strongs="G5486" language="GRK"><definition>A grace-gift. Romans 6:23 — the gift (charisma) of God is eternal life. The word charisma is the grace-word — this life is given as an expression of charis.</definition></word>
+          <word pos="noun"      stem="quality"  lexar="poiotes"   strongs=""      language="GRK"><definition>Quality. zoe is distinguished from bios (biological life) in NT usage. zoe is the life of God expressed in the person — abundant quality not merely quantity.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="zoe"     meaning="life · the state of being alive · in NT the divine life distinct from mere biological existence"/>
+      <origin language="HEB" form="chayyim" meaning="life · lives — always plural in Hebrew · the plural suggesting life in its fullness"/>
+      <origin language="EN"  form="life"    meaning="the condition of being alive · first attested circa 725"/>
+      <note>Greek distinguished zoe (life as quality and principle) from bios (life as biological existence). John uses zoe almost exclusively. Romans uses zoe for life given through Christ (6:23) and the life of the Spirit (8:6). The distinction matters geometrically — zoe is the opposite of thanatos in the spiritual and eschatological sense, not merely the biological sense.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-105" word="eternal life" relationship="full_expression" note="zoe aionios — the complete phrase specifying both quality and duration"/>
+      <entry ref="W-040" word="salvation"    relationship="outcome_synonym"  note="salvation is the comprehensive work · life is the declared positive result"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-050" word="death" relationship="direct_antonym" note="Romans 6:23 — declared in direct contrast in the same verse. The wages of sin is death · the gift of God is eternal life."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-6-23" book="ROM" chapter="6" verse="23" primary="true">
+        <version id="KJV"><text>For the wages of sin is death; but the gift of God is eternal life through Jesus Christ our Lord.</text></version>
+        <version id="ESV"><text>For the wages of sin is death, but the free gift of God is eternal life in Christ Jesus our Lord.</text></version>
+      </verse>
+      <verse ref="ROM-8-6" book="ROM" chapter="8" verse="6" primary="false">
+        <version id="ESV"><text>To set the mind on the Spirit is life and peace.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-LIFE" note="Life is GOD_DECLARED — John 1:4 in Him was life"              created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-050"   note="death · direct antonym — Romans 6:23"                         created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-075"   note="Spirit · life and peace are the mind of the Spirit — Rom 8:6" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"        note="Life is God IS love giving of Himself to those dead in sin"              created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-EMPOWERMENT"  note="The Spirit gives life — Romans 8:11 · divine empowerment for new life"  created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"          note="Irreducible Human Dignity — life as gift affirms the worth of every person" created_by="claude-sonnet-4-6" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-ZOE">
+      <member ref="W-055" word="life"   lexar="zoe"       relationship="root"/>
+      <member ref="W-106" word="living"  lexar="zao"       relationship="verb_form"  note="to live · the verb of being alive"/>
+      <member ref="W-107" word="vivify"  lexar="zoopoieo"  relationship="derivative" note="to make alive · to give life · used of resurrection"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-055 life declared. Build 4 extended entry. zoe-bios distinction noted."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Direct antonym W-050 death declared. Both poles of death-life axis complete."/>
+    </history>
+  </entry>
+
+  <!-- W-065 LOVE (AGAPE) -->
+  <entry id="W-065" word="love" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="agape" stem="agap" pos="noun" strongs="G0026"
+         geo_chain="layer0" geo_weight="10.0"
+         geo_coordinates="1.00,0.50,0.60,1.00,1.00,0.80,0.95,1.00,0.95"
+         morphological_family="FAM-AGAP"
+         entry_hash="SHA256:b99da6172109db1d48bc386ce045ba8a350931d2">
+    <definitions>
+      <definition id="W-065-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="6"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The self-giving, unconditional love of God. Not an emotion but a declared disposition — the nature of God expressed toward the undeserving.</text></version>
+        <version id="ESV"><text>The love that is God's own nature — self-giving, unconditional, active. Poured out through the Holy Spirit. Romans 5:5.</text></version>
+        <version id="NIV"><text>God's unconditional love — giving sacrificially without regard for what is received in return.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="self-giving"   lexar="kenoo"      strongs="G2758" language="GRK"><definition>To empty oneself. Philippians 2:7 — Christ emptied Himself. agape is defined by this self-emptying movement toward the other regardless of worthiness.</definition></word>
+          <word pos="adjective" stem="unconditional" lexar="achariston"  strongs=""      language="GRK"><definition>Without condition. Not contingent on the response or character of the one loved. agape precedes and does not depend on the beloved's response.</definition></word>
+          <word pos="verb"      stem="poured out"    lexar="ekcheo"     strongs="G1632" language="GRK"><definition>To pour out. Romans 5:5 — the love of God has been poured into our hearts through the Holy Spirit. agape flows from God through the Spirit into the believer.</definition></word>
+          <word pos="noun"      stem="nature"        lexar="physis"     strongs="G5449" language="GRK"><definition>Essential character. 1 John 4:8 — God IS love. agape is not an attribute God has but the nature God is. The distinction is absolute and foundational to the entire manifold.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="agape"  meaning="love — specifically in NT the self-giving love that characterizes God and is to characterize believers"/>
+      <origin language="HEB" form="ahavah" meaning="love · affection · the primary OT love word"/>
+      <origin language="EN"  form="love"   meaning="warm personal attachment · first attested circa 725"/>
+      <note>1 John 4:8 — God IS agape — is the most significant theological declaration in the corpus. The copula IS not HAS places agape in the Absolute Truths layer as the nature of God not merely an attribute. Every coordinate in every domain map is measured against this declared origin. The manifold cannot reach a point where agape is absent — Romans 8:38-39.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-025" word="mercy"          relationship="expression_synonym" note="mercy is agape expressed toward the suffering · agape is the source from which mercy flows"/>
+      <entry ref="W-001" word="grace"           relationship="expression_synonym" note="grace is agape expressed toward the undeserving · agape is the source from which grace flows"/>
+      <entry ref="W-108" word="lovingkindness"  relationship="OT_equivalent"      note="hesed — the OT covenant word that most fully translates agape in the Hebrew tradition"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-109" word="hatred" relationship="direct_antonym"    note="miseo — to hate. The polar opposite of agape. Romans 9:13 — Jacob I loved but Esau I hated. High-kappa verse — the antonym of agape in divine election context."/>
+      <entry ref="W-002" word="sin"    relationship="character_antonym"  note="Sin moves away from God and neighbor — opposite direction from agape which moves toward. agape builds up; sin tears down."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-5-5" book="ROM" chapter="5" verse="5" primary="true">
+        <version id="KJV"><text>The love of God is shed abroad in our hearts by the Holy Ghost which is given unto us.</text></version>
+        <version id="ESV"><text>God's love has been poured into our hearts through the Holy Spirit who has been given to us.</text></version>
+      </verse>
+      <verse ref="ROM-8-39" book="ROM" chapter="8" verse="39" primary="false">
+        <version id="ESV"><text>Nor anything else in all creation, will be able to separate us from the love of God in Christ Jesus our Lord.</text></version>
+      </verse>
+      <verse ref="1JN-4-8" book="1JN" chapter="4" verse="8" primary="false">
+        <version id="KJV"><text>He that loveth not knoweth not God; for God is love.</text></version>
+        <version id="ESV"><text>Anyone who does not love does not know God, because God is love.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-LOVE" note="God IS love — 1 John 4:8 · the Absolute Truth that precedes creation itself"       created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"   note="grace · grace is agape in its legal and operative expression"                       created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-025"   note="mercy · mercy is agape in its compassionate expression toward the suffering"        created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"         note="agape IS God's nature — 1 John 4:8 · not an attribute but the being of God"          created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"      note="agape toward God is the first principle declared by Christ — Matthew 22:37"           created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_NEIGHBOR"  note="agape toward neighbor is the second principle — Romans 13:8-10"                      created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_SELF"     note="agape properly ordered toward self is the pattern — love your neighbor as yourself"   created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-001"          note="Irreducible Human Dignity flows from God IS agape — every person bears the image of Love itself" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-002"          note="The Claim of the Vulnerable — agape is biased toward the vulnerable. Love runs toward the lost." created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-AGAP">
+      <member ref="W-065" word="love"    lexar="agape"    relationship="root"/>
+      <member ref="W-110" word="love (v)" lexar="agapao"  relationship="verb_form"  note="to love · to show agape toward"/>
+      <member ref="W-111" word="beloved"  lexar="agapetos" relationship="derivative" note="loved one · used of Christ by the Father — Matthew 3:17"/>
+    </morphological_family>
+    <notes>
+      <note id="W-065-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">agape is the pure knot of the entire Absolute Truths manifold. All coordinates in every domain map are measured against it. Romans 8:35-39 is the declared geometric statement that nothing in creation can move the believer away from agape. The manifold cannot reach a point where agape is absent.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-065 love agape declared. Build 4 extended entry. Pure knot of Absolute Truths manifold."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. God IS agape — the ontological declaration at root of entire architecture."/>
+    </history>
+  </entry>
+
+  <!-- W-070 LAW -->
+  <entry id="W-070" word="law" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="nomos" stem="nom" pos="noun" strongs="G3551"
+         geo_chain="romans_p" geo_weight="7.5"
+         geo_coordinates="0.55,0.85,0.48,0.90,0.60,0.85,0.92,0.55,0.82"
+         morphological_family="FAM-NOMOS"
+         entry_hash="SHA256:90cd6b2dc897abb078b512dfe01459f981c43980">
+    <definitions>
+      <definition id="W-070-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="677"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The Mosaic law. The declared standard of God. The law reveals sin but cannot justify — it was never intended to save but to show the need for grace.</text></version>
+        <version id="ESV"><text>The law of Moses — God's declared standard. The law reveals sin (Romans 3:20), convicts conscience, but cannot justify (Romans 3:28).</text></version>
+        <version id="NIV"><text>The law of Moses — God's rules for his people. The law reveals what sin is but cannot free anyone from it.</text></version>
+        <decomposition>
+          <word pos="noun" stem="standard"  lexar="kanon"      strongs="G2583" language="GRK"><definition>A rule or measure. The declared norm against which deviation is measured. The law is the declared standard of God's moral character.</definition></word>
+          <word pos="verb" stem="reveal"    lexar="epignosis"  strongs="G1922" language="GRK"><definition>To know fully. Romans 3:20 — through the law comes knowledge of sin. The law's function is revelation of sin not elimination of it.</definition></word>
+          <word pos="noun" stem="tutor"     lexar="paidagogos" strongs="G3807" language="GRK"><definition>A household slave who supervised a child. Galatians 3:24 — the law was our guardian until Christ came. The law's role was supervisory and preparatory.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="nomos" meaning="that which is assigned · custom · law — from nemo to distribute"/>
+      <origin language="HEB" form="torah" meaning="instruction · law · teaching — from yarah to teach. Torah is broader than law — it is the full divine instruction."/>
+      <origin language="EN"  form="law"   meaning="a rule of conduct · first attested circa 1000"/>
+      <note>Paul uses nomos in multiple senses in Romans: the Mosaic law (chapters 2-3), the principle of sin (7:23), and the law of the Spirit of life (8:2). Context determines which. The Mosaic law is holy and good (Romans 7:12) but cannot justify — it was never designed to. Understanding this is essential for navigating Romans 7-8 without creating a false antithesis between law and grace.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-112" word="commandment" relationship="component_synonym" note="entole — an individual command within the law. The law is the system; the commandment is the individual declaration."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-001" word="grace" relationship="mechanism_antonym" note="Romans 6:14 — not under law but under grace. Not that law is wrong but that it is not the mechanism of justification. Grace is the mechanism; law reveals the need."/>
+      <entry ref="W-004" word="faith" relationship="mechanism_antonym" note="Romans 3:28 — justified by faith apart from works of the law. Faith and law-keeping occupy different coordinates as means of justification."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-20" book="ROM" chapter="3" verse="20" primary="true">
+        <version id="KJV"><text>By the deeds of the law there shall no flesh be justified: for by the law is the knowledge of sin.</text></version>
+        <version id="ESV"><text>For by works of the law no human being will be justified in his sight, since through the law comes knowledge of sin.</text></version>
+      </verse>
+      <verse ref="ROM-7-12" book="ROM" chapter="7" verse="12" primary="false">
+        <version id="ESV"><text>So the law is holy, and the commandment is holy and righteous and good.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-002" note="sin · the law reveals sin — Romans 3:20"                                      created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001" note="grace · grace is the declared fulfillment of what law could not accomplish"   created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE"   note="The law expresses God's justice — the declared standard of His character"     created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-AUTHORITY"  note="The law is God's authoritative declaration of what He requires"              created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-004"        note="Accountability of Power — the law declares accountability. Power without accountability is tyranny." created_by="claude-sonnet-4-6" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-NOMOS">
+      <member ref="W-070" word="law"         lexar="nomos"   relationship="root"/>
+      <member ref="W-112" word="commandment"  lexar="entole"  relationship="component"          note="individual command within the law"/>
+      <member ref="W-113" word="lawless"      lexar="anomos"  relationship="antonym_derivative"  note="without law · lawless"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-070 law declared. Build 4 extended entry. Multiple senses of nomos in Romans noted."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. torah-nomos distinction declared. Both antonym poles present."/>
+    </history>
+  </entry>
+
+  <!-- W-075 SPIRIT -->
+  <entry id="W-075" word="Spirit" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="pneuma" stem="pneumat" pos="noun" strongs="G4151"
+         geo_chain="layer0" geo_weight="9.5"
+         geo_coordinates="0.95,0.48,0.72,0.90,0.85,0.72,0.92,0.95,0.93"
+         morphological_family="FAM-PNEUMAT"
+         entry_hash="SHA256:fbd36348df403e1969cf358a29d9f769969e674e">
+    <definitions>
+      <definition id="W-075-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="832"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The Holy Spirit — the third person of the Trinity. The Spirit of God who indwells believers and produces life, righteousness, and sonship. Romans 8.</text></version>
+        <version id="ESV"><text>The Holy Spirit — the Spirit of God and of Christ who indwells believers. Gives life, assures sonship, and intercedes. Romans 8 is the primary pneuma chapter.</text></version>
+        <version id="NIV"><text>The Holy Spirit — God's own Spirit who lives in believers. Frees from sin's power, confirms identity as God's children, and prays for us.</text></version>
+        <decomposition>
+          <word pos="noun"   stem="breath"    lexar="pnoe"             strongs="G4157" language="GRK"><definition>Breath. Wind. The physical root of pneuma. Genesis 2:7 — God breathed into his nostrils the breath of life. The Spirit is the divine breath that gives life.</definition></word>
+          <word pos="verb"   stem="indwells"   lexar="oikeo"            strongs="G3611" language="GRK"><definition>To inhabit. To dwell in. Romans 8:9 — the Spirit of God dwells in you. The indwelling is personal and present — not merely influential but resident.</definition></word>
+          <word pos="verb"   stem="intercedes" lexar="huperentugchano"  strongs="G5242" language="GRK"><definition>To intercede with sighs. Romans 8:26-27 — the Spirit himself intercedes for us with groanings too deep for words.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="pneuma"  meaning="wind · breath · spirit — triple meaning shared with Hebrew ruach"/>
+      <origin language="HEB" form="ruach"   meaning="wind · breath · spirit — the same triple ambiguity used in John 3:8"/>
+      <origin language="EN"  form="Spirit"  meaning="the animating principle · first attested circa 1250"/>
+      <note>pneuma appears 21 times in Romans 8 — more than any other chapter in Paul. The concentration is deliberate — the Spirit is the declared answer to the flesh problem of chapters 1-7. John 3:8 exploits the pneuma triple meaning — the wind blows where it wishes; so it is with everyone born of the Spirit. Romans 8 is the fullest statement of Spirit-life in the NT.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-114" word="Helper"    relationship="functional_synonym" note="parakletos — the Helper, Counselor, Advocate. John 14:26."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-080" word="flesh" relationship="direct_antonym"   note="Romans 8:4-9 — the contrast between Spirit and flesh is the governing axis of Romans 8."/>
+      <entry ref="W-050" word="death" relationship="outcome_antonym"  note="Romans 8:6 — to set the mind on the Spirit is life and peace · on the flesh is death."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-8-9" book="ROM" chapter="8" verse="9" primary="true">
+        <version id="KJV"><text>But ye are not in the flesh, but in the Spirit, if so be that the Spirit of God dwell in you.</text></version>
+        <version id="ESV"><text>You, however, are not in the flesh but in the Spirit, if in fact the Spirit of God dwells in you.</text></version>
+      </verse>
+      <verse ref="ROM-8-26" book="ROM" chapter="8" verse="26" primary="false">
+        <version id="ESV"><text>The Spirit helps us in our weakness. The Spirit himself intercedes for us with groanings too deep for words.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-SPIRIT" note="The Spirit is the third person of the Trinity — GOD_DECLARED"                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-080"     note="flesh · direct antonym · the governing axis of Romans 8"                        created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-055"     note="life · to set the mind on the Spirit is life and peace — Romans 8:6"            created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-EMPOWERMENT" note="The Spirit is God's declared empowering presence within believers"        created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-LOVE"        note="Romans 5:5 — the love of God poured into hearts through the Holy Spirit" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"     note="The Spirit enables the love of God — Romans 5:5"                          created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-PNEUMAT">
+      <member ref="W-075" word="Spirit"   lexar="pneuma"      relationship="root"/>
+      <member ref="W-116" word="spiritual" lexar="pneumatikos" relationship="derivative" note="of or belonging to the Spirit"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-075 Spirit declared. Build 4 extended entry. 21 occurrences in Romans 8 noted."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Direct antonym W-080 flesh declared."/>
+    </history>
+  </entry>
+
+  <!-- W-080 FLESH -->
+  <entry id="W-080" word="flesh" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="sarx" stem="sarx" pos="noun" strongs="G4561"
+         geo_chain="romans_p" geo_weight="8.0"
+         geo_coordinates="0.20,0.62,0.40,0.88,0.30,0.60,0.78,0.15,0.80"
+         morphological_family="FAM-SARX"
+         entry_hash="SHA256:d976e889cf57ef6018a95b155bae4f1d29f54206">
+    <definitions>
+      <definition id="W-080-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="914"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The sinful nature. Human nature in its fallen state — oriented away from God. Distinct from the body (soma) which is not inherently sinful.</text></version>
+        <version id="ESV"><text>The fallen human nature. Humanity oriented away from God. Those in the flesh cannot please God — Romans 8:8.</text></version>
+        <version id="NIV"><text>The sinful nature — the fallen aspect of human nature hostile to God. To live according to the flesh is to live under sin's power rather than the Spirit's.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="hostile"  lexar="echthra"  strongs="G2189" language="GRK"><definition>Hostile. Enemy. Romans 8:7 — the mind governed by flesh is hostile to God. The flesh is not neutral; it is declared as oriented in opposition.</definition></word>
+          <word pos="verb"      stem="unable"   lexar="dunamai"  strongs="G1410" language="GRK"><definition>To be able. Romans 8:8 — those in the flesh cannot please God. The incapacity is structural — the flesh is constitutionally unable to produce what God requires.</definition></word>
+          <word pos="noun"      stem="nature"   lexar="physis"   strongs="G5449" language="GRK"><definition>Essential character. The flesh is human nature in its fallen orientation — not the body (soma) but the direction of the will away from God.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="sarx"  meaning="flesh · the soft tissue of the body · in Paul often the sinful nature or humanity in weakness apart from God"/>
+      <origin language="HEB" form="basar" meaning="flesh · the body · all living creatures · humanity in its creaturely weakness"/>
+      <origin language="EN"  form="flesh" meaning="the soft substance of the body · first attested circa 725"/>
+      <note>Paul uses sarx in two distinct senses: physical flesh (Romans 1:3 — descended from David according to the flesh) and the sinful orientation (Romans 8:4-9). Context determines which. sarx as sinful nature is about the orientation of the will away from God, using the body's desires as the occasion for sin. The body (soma) is redeemable — Romans 8:23 the redemption of our bodies.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-117" word="sinful nature" relationship="translation_synonym" note="The NIV translation of sarx when Paul means the fallen orientation rather than physical flesh."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-075" word="Spirit"       relationship="direct_antonym"   note="Romans 8:4-9 — the contrast between Spirit and flesh is the governing axis of Romans 8."/>
+      <entry ref="W-003" word="righteousness" relationship="outcome_antonym"  note="The flesh cannot produce righteousness — Romans 8:3-4. The Spirit enables what the flesh cannot."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-8-7" book="ROM" chapter="8" verse="7" primary="true">
+        <version id="KJV"><text>The carnal mind is enmity against God: for it is not subject to the law of God, neither indeed can be.</text></version>
+        <version id="ESV"><text>For the mind that is set on the flesh is hostile to God, for it does not submit to God's law; indeed, it cannot.</text></version>
+      </verse>
+      <verse ref="ROM-7-18" book="ROM" chapter="7" verse="18" primary="false">
+        <version id="ESV"><text>For I know that nothing good dwells in me, that is, in my flesh.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-075" note="Spirit · direct antonym · the governing axis of Romans 8"                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-002" note="sin · flesh is the domain through which sin expresses itself — Romans 7:18" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE" note="The flesh is hostile to God's justice — cannot submit to God's law — Romans 8:7" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-SARX">
+      <member ref="W-080" word="flesh"   lexar="sarx"     relationship="root"/>
+      <member ref="W-118" word="carnal"   lexar="sarkikos" relationship="derivative" note="of the flesh · characterized by the sinful nature"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-080 flesh declared. Build 4 extended entry. Both poles of Spirit-flesh axis now complete."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Direct antonym W-075 Spirit declared. soma distinction noted."/>
+    </history>
+  </entry>
+
+  <!-- W-085 HOPE -->
+  <entry id="W-085" word="hope" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="elpis" stem="elp" pos="noun" strongs="G1680"
+         geo_chain="romans_r" geo_weight="8.5"
+         geo_coordinates="0.88,0.45,0.78,0.82,0.68,0.65,0.85,0.90,0.87"
+         morphological_family="FAM-ELP"
+         entry_hash="SHA256:5154a7fcea077ea022840cb3d711328f17cddd98">
+    <definitions>
+      <definition id="W-085-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="319"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>Confident expectation of future good based on declared promise. Not wishful thinking but certain anticipation grounded in God's character.</text></version>
+        <version id="ESV"><text>Confident expectation of future glory. Romans 5:2 — we rejoice in hope of the glory of God. Hope is certainty about the future based on present grace.</text></version>
+        <version id="NIV"><text>Confident hope in what God has promised. The assured expectation of future glory, based on faith in Christ.</text></version>
+        <decomposition>
+          <word pos="adjective" stem="confident"    lexar="bebaios"     strongs="G0949" language="GRK"><definition>Firm. Certain. Hope in Paul is not uncertain wishing but confident expectation — grounded not in circumstances but in God's declared character.</definition></word>
+          <word pos="noun"      stem="expectation"  lexar="apokaradokia" strongs="G0603" language="GRK"><definition>Eager expectation. Romans 8:19 — creation waits with eager longing. Hope is anticipation leaning forward toward what is declared to come.</definition></word>
+          <word pos="noun"      stem="promise"      lexar="epangelia"   strongs="G1860" language="GRK"><definition>A declared commitment. Hope is grounded in epangelia — specific declared promise. Not general optimism but promise-grounded expectation.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="elpis"  meaning="hope · expectation — in classical Greek could be positive or negative · in NT always positive and promise-grounded"/>
+      <origin language="HEB" form="tikvah" meaning="hope · cord · expectation — from a root meaning to wait and look for"/>
+      <origin language="EN"  form="hope"   meaning="a feeling of expectation and desire · first attested circa 1000"/>
+    </etymology>
+    <synonyms>
+      <entry ref="W-004" word="faith"       relationship="family_member" note="faith hopes in what has been declared · hope anticipates what faith believes. 1 Corinthians 13:13 — faith hope and love, these three."/>
+      <entry ref="W-120" word="expectation" relationship="near_synonym"  note="apokaradokia — eager expectation. Romans 8:19."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-121" word="despair" relationship="direct_antonym"  note="Romans 4:18 — against hope Abraham believed in hope. Despair looks at circumstances; hope looks at declaration."/>
+      <entry ref="W-122" word="shame"   relationship="outcome_antonym" note="Romans 5:5 — hope does not put us to shame. Shame is what happens when hope is disappointed. Declared hope does not disappoint."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-5-2" book="ROM" chapter="5" verse="2" primary="true">
+        <version id="KJV"><text>We rejoice in hope of the glory of God.</text></version>
+        <version id="ESV"><text>We rejoice in hope of the glory of God.</text></version>
+      </verse>
+      <verse ref="ROM-5-5" book="ROM" chapter="5" verse="5" primary="false">
+        <version id="ESV"><text>Hope does not put us to shame, because God's love has been poured into our hearts through the Holy Spirit.</text></version>
+      </verse>
+      <verse ref="ROM-8-24" book="ROM" chapter="8" verse="24" primary="false">
+        <version id="ESV"><text>For in this hope we were saved. Now hope that is seen is not hope.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="entry" ref="W-004" note="faith · hope is faith oriented toward the future"                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-065" note="love · 1 Corinthians 13:13 — faith hope and love, these three"    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-090" note="glory · hope is specifically hope of the glory of God — Rom 5:2"  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-EMPOWERMENT" note="Hope empowers endurance — Romans 5:3-5 · tribulation works hope"               created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"     note="Hope is oriented toward God and His glory — the telos of the first principle"   created_by="WFobbs3"          created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-003"         note="Intergenerational Obligation — hope looks forward to generations not yet born"   created_by="claude-sonnet-4-6" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-ELP">
+      <member ref="W-085" word="hope"   lexar="elpis"  relationship="root"/>
+      <member ref="W-123" word="hope (v)" lexar="elpizo" relationship="verb_form" note="to hope · to expect confidently"/>
+    </morphological_family>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-085 hope declared. Build 4 extended entry."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared. 1 Cor 13:13 triad declared."/>
+    </history>
+  </entry>
+
+  <!-- W-090 GLORY -->
+  <entry id="W-090" word="glory" type="bible_word" source_weight="GOD_DECLARED"
+         original_language="GRK" lexar="doxa" stem="dox" pos="noun" strongs="G1391"
+         geo_chain="layer0" geo_weight="9.5"
+         geo_coordinates="0.97,0.55,0.65,0.98,0.88,0.82,0.95,0.97,0.94"
+         morphological_family="FAM-DOX"
+         entry_hash="SHA256:88ac2ebfa1603f9e86925296d9c42a845d034da9">
+    <definitions>
+      <definition id="W-090-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="257"
+                  source_weight="GOD_DECLARED" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The manifest presence and weight of God. The full expression of God's character made visible. What humanity has fallen short of. The telos — the declared end toward which creation moves.</text></version>
+        <version id="ESV"><text>The radiant majesty and manifest presence of God. Romans 3:23 — all fall short of the glory of God. Romans 5:2 — we rejoice in hope of the glory of God. Standard and telos simultaneously.</text></version>
+        <version id="NIV"><text>God's splendor and perfect character. The standard humanity fails to meet and the glorious future believers are promised.</text></version>
+        <decomposition>
+          <word pos="noun" stem="weight"    lexar="kabod"    strongs="H3519" language="HEB"><definition>Weight. Heaviness. Hebrew kabod (glory) comes from the root to be heavy. God's glory is His substantial presence — not merely brightness but weightiness, substance, significance.</definition></word>
+          <word pos="noun" stem="radiance"  lexar="doxa"     strongs="G1391" language="GRK"><definition>In classical Greek doxa meant opinion or reputation. The LXX translators used it for kabod — divine radiance and presence. The word was transformed by contact with the Hebrew concept.</definition></word>
+          <word pos="noun" stem="telos"     lexar="telos"    strongs="G5056" language="GRK"><definition>End. Goal. Purpose. The telos of the Romans manifold is the hope of the glory of God — Romans 5:2. The letter moves from the gap at glory (3:23) toward the hope of glory (5:2, 8:18).</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="doxa"  meaning="opinion · reputation · honor · in LXX adopted to translate Hebrew kabod (glory, weight, presence)"/>
+      <origin language="HEB" form="kabod" meaning="glory · weight · honor · heaviness — from kaved to be heavy"/>
+      <origin language="EN"  form="glory" meaning="high renown · splendor · first attested circa 1300"/>
+      <note>The transformation of doxa from opinion (classical Greek) to glory (biblical Greek through LXX) is one of the most significant semantic shifts in the history of language. Romans uses doxa 16 times. The final word of Romans 16:27 is doxa — the letter ends where the Absolute Truth begins: in the glory of God.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-124" word="majesty" relationship="near_synonym" note="megalosune — greatness · majesty. Glory is the manifest expression of divine majesty."/>
+      <entry ref="W-125" word="honor"   relationship="near_synonym" note="time — honor, value, worth. Glory is the fullest expression of the honor due to God."/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-126" word="shame"    relationship="direct_antonym" note="aischune — shame. Romans 1:16 — Paul is not ashamed of the gospel. The gospel moves from shame (fallen condition) toward glory."/>
+      <entry ref="W-127" word="dishonor" relationship="direct_antonym" note="atimia — dishonor. Romans 9:21 — vessels for honorable and dishonorable use."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-23" book="ROM" chapter="3" verse="23" primary="true">
+        <version id="KJV"><text>For all have sinned, and come short of the glory of God.</text></version>
+        <version id="ESV"><text>For all have sinned and fall short of the glory of God.</text></version>
+      </verse>
+      <verse ref="ROM-5-2" book="ROM" chapter="5" verse="2" primary="false">
+        <version id="ESV"><text>We rejoice in hope of the glory of God.</text></version>
+      </verse>
+      <verse ref="ROM-8-18" book="ROM" chapter="8" verse="18" primary="false">
+        <version id="ESV"><text>The sufferings of this present time are not worth comparing with the glory that is to be revealed to us.</text></version>
+      </verse>
+      <verse ref="ROM-16-27" book="ROM" chapter="16" verse="27" primary="false">
+        <version id="ESV"><text>To the only wise God be glory forevermore through Jesus Christ! Amen.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-GLORY" note="The glory of God is the declared ultimate end of all creation"      created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-002"    note="sin · sin is the failure to reach the declared coordinate of glory"  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-085"    note="hope · hope of the glory of God is the declared telos — Romans 5:2" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-LOVE"      note="God's glory is the manifest expression of His nature — love made visible"      created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-AUTHORITY"  note="Glory is the declared ultimate acknowledgment of God's authority"              created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="principle"     ref="P-LOVE_GOD"   note="The chief end is to glorify God — the first principle in its ultimate expression" created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-DOX">
+      <member ref="W-090" word="glory"   lexar="doxa"     relationship="root"/>
+      <member ref="W-128" word="glorify"  lexar="doxazo"   relationship="verb_form"  note="to glorify · to honor · to give glory to"/>
+      <member ref="W-129" word="doxology" lexar="doxologia" relationship="derivative" note="a word of glory · Romans 16:27 is a doxology — the last word of Romans"/>
+    </morphological_family>
+    <notes>
+      <note id="W-090-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">Glory is simultaneously the standard fallen short of (Romans 3:23) and the declared destination moving toward (Romans 5:2, 8:18). The Romans manifold moves from the gap at glory (3:23) toward the hope of glory (5:2). The last word of Romans is doxa — the letter ends where the Absolute Truth begins.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-090 glory declared. Build 4 extended entry. Standard and telos simultaneously declared."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared. kabod-doxa transformation noted."/>
+    </history>
+  </entry>
+
+  <!-- W-095 PROPITIATION -->
+  <entry id="W-095" word="propitiation" type="bible_word" source_weight="SCRIPTURE"
+         original_language="GRK" lexar="hilasterion" stem="hilask" pos="noun" strongs="G2435"
+         geo_chain="romans_r" geo_weight="9.0"
+         geo_coordinates="0.90,0.78,0.55,0.97,0.72,0.82,0.93,0.88,0.90"
+         morphological_family="FAM-HILAS"
+         entry_hash="SHA256:6f1d5ea92099bdb861ca0457e4359353fc597e85">
+    <definitions>
+      <definition id="W-095-D001" version_primary="ESV" type="primary"
+                  lex_source="BDAG" lex_edition="3rd" lex_page="474"
+                  source_weight="SCRIPTURE" generated_by="human"
+                  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">
+        <version id="KJV"><text>The mercy seat. Christ set forth as the one who turns aside the wrath of God through His blood. Romans 3:25.</text></version>
+        <version id="ESV"><text>The atoning sacrifice — Christ satisfying God's righteous wrath against sin. The point where God's justice and grace are simultaneously expressed.</text></version>
+        <version id="NIV"><text>A sacrifice of atonement — Christ's death satisfying God's just anger against sin, making forgiveness possible without compromising justice.</text></version>
+        <decomposition>
+          <word pos="noun" stem="mercy seat"  lexar="kapporeth"  strongs="H3727" language="HEB"><definition>The kapporeth — the covering of the ark where blood was sprinkled on the Day of Atonement. hilasterion in Romans 3:25 evokes this. Christ is the antitype of the mercy seat.</definition></word>
+          <word pos="verb" stem="satisfy"     lexar="hilaskomai" strongs="G2433" language="GRK"><definition>To appease. To propitiate. To turn aside wrath by meeting its just requirement. Not manipulation of an angry deity but satisfaction of just requirements.</definition></word>
+          <word pos="noun" stem="blood"       lexar="haima"      strongs="G0129" language="GRK"><definition>Blood. Romans 3:25 — through faith in his blood. The blood declares the death — the price paid. Propitiation is enacted through the blood of Christ not abstract.</definition></word>
+          <word pos="noun" stem="justice"     lexar="dikaiosyne" strongs="G1343" language="GRK"><definition>Righteousness. Romans 3:26 — to show his righteousness at the present time. Propitiation demonstrates God is just and the justifier simultaneously.</definition></word>
+        </decomposition>
+      </definition>
+    </definitions>
+    <etymology>
+      <origin language="GRK" form="hilasterion" meaning="that which propitiates · means of propitiation · the mercy seat in LXX (Exodus 25:17)"/>
+      <origin language="HEB" form="kapporeth"   meaning="mercy seat · covering · the golden cover of the ark where blood was sprinkled on Yom Kippur"/>
+      <origin language="EN"  form="propitiation" meaning="the action of propitiating · first attested circa 1540"/>
+      <note>hilasterion appears only twice in the NT — Romans 3:25 and Hebrews 9:5 (explicitly the mercy seat of the ark). Paul's use in Romans 3:25 is deliberately typological — Christ is both the priest and the mercy seat. God's justice and mercy meet at the same point. The wrath-mercy tension pair is resolved not by eliminating wrath but by satisfying it through love. Romans 3:25-26 is the most theologically dense passage in the letter.</note>
+    </etymology>
+    <synonyms>
+      <entry ref="W-030" word="redemption"  relationship="related_mechanism" note="redemption is the purchase-price dimension · propitiation is the wrath-satisfying dimension · same cross event"/>
+      <entry ref="W-130" word="atonement"   relationship="broader_concept"   note="atonement covers the full range of what the cross accomplishes · propitiation is the wrath-satisfaction dimension"/>
+    </synonyms>
+    <antonyms>
+      <entry ref="W-011" word="wrath"      relationship="resolved_antonym" note="Propitiation is the declared resolution of wrath. Not wrath abolished but wrath satisfied. Romans 3:25-26 — God is both just (wrath was real) and the justifier (grace extended)."/>
+      <entry ref="W-131" word="alienation" relationship="state_antonym"    note="Propitiation removes the alienation between God and humanity that sin created. Reconciliation is the relational result; propitiation is the judicial mechanism."/>
+    </antonyms>
+    <verses>
+      <verse ref="ROM-3-25" book="ROM" chapter="3" verse="25" primary="true">
+        <version id="KJV"><text>Whom God hath set forth to be a propitiation through faith in his blood, to declare his righteousness for the remission of sins that are past.</text></version>
+        <version id="ESV"><text>Whom God put forward as a propitiation by his blood, to be received by faith. This was to show God's righteousness, because in his divine forbearance he had passed over former sins.</text></version>
+      </verse>
+    </verses>
+    <related_to>
+      <entry type="truth" ref="AT-JUSTICE"  note="Propitiation is justice and love expressed simultaneously — Romans 3:26"     created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-030"       note="redemption · different dimension of the same cross event"                    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-001"       note="grace · propitiation is what God's grace cost — the wrath was real and met"  created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <entry type="entry" ref="W-011"       note="wrath · propitiation is the declared meeting-point of wrath and mercy"       created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </related_to>
+    <links>
+      <link type="god_attribute" ref="GA-JUSTICE"  note="Propitiation demonstrates God's justice — wrath against sin was real and was met"    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="god_attribute" ref="GA-LOVE"     note="Propitiation is God providing the propitiation Himself — the ultimate self-giving"    created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+      <link type="foundation"    ref="L1-006"      note="Integrity of Exchange — God satisfying His own justice through His own love"           created_by="WFobbs3" created_at="1774188139" verified_by="" verified_dt=""/>
+    </links>
+    <morphological_family id="FAM-HILAS">
+      <member ref="W-095" word="propitiation" lexar="hilasterion"  relationship="root"/>
+      <member ref="W-132" word="atone"         lexar="hilaskomai"  relationship="verb_form"  note="to propitiate · to make atonement"/>
+      <member ref="W-133" word="merciful"      lexar="hileos"      relationship="adjective"  note="gracious · propitious · Luke 18:13 God be merciful to me a sinner"/>
+    </morphological_family>
+    <notes>
+      <note id="W-095-N001" type="theological" author_type="human" author="WFobbs3" created_at="1774188139" verified_by="" verified_dt="">Romans 3:25-26 answers why the OT saints were saved — God's justice was not bypassed in the OT; it was deferred until Christ paid it fully at the cross. The cross is retroactive as well as present and future.</note>
+    </notes>
+    <history>
+      <log author_type="human"   author="WFobbs3"          timestamp="1774188139" note="W-095 propitiation declared. Build 4 extended entry. kapporeth typology declared."/>
+      <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774188139" note="Full decomposition. Both antonym poles declared. OT typology to mercy seat declared."/>
+    </history>
+  </entry>
+
+
+  <!-- DICTIONARY HISTORY -->
+  <history>
+    <log author_type="human"   author="WFobbs3"
+         timestamp="1774188485"
+         note="Book_00_Dictionary.xml Build 4 — extended entries complete. 12 new entries: W-030 redemption W-035 peace W-040 salvation W-050 death W-055 life W-065 love/agape W-070 law W-075 Spirit W-080 flesh W-085 hope W-090 glory W-095 propitiation. Total: 22 declared entries. 5 new tension pairs: death-life · Spirit-flesh · law-grace · law-faith · propitiation-wrath. agape declared as pure knot of Absolute Truths manifold."/>
+    <log author_type="machine" author="claude-sonnet-4-6"
+         timestamp="1774188485"
+         note="Build 4 generated per SCHEMA_v1.2.xml. All 12 extended entries carry full word-level decomposition on primary definitions. All entries have both synonyms and antonyms declared. All entries carry god_attribute principle and foundation links. Morphological families established for all major roots."/>
+    <log author_type="human"   author="WFobbs3"          timestamp="1774186477"
+         note="Book_00_Dictionary.xml Build 3 — core entries complete. 10 entries: W-001 grace W-002 sin W-003 righteousness W-004 faith W-005 gospel W-010 condemnation W-011 wrath W-020 justification W-025 mercy W-060 unbelief. All five tension pair poles declared. Full decomposition on all definitions. Argument counter-argument proof on all machine-generated definitions."/>
+    <log author_type="machine" author="claude-sonnet-4-6" timestamp="1774186477"
+         note="Generated per SCHEMA_v1.2.xml. All required elements present. Full word-level decomposition on all definitions. Both poles of all tension pairs declared. Links to god_attributes principles and foundations declared. Morphological families declared for all major roots."/>
+  </history>
+
+</dictionary>

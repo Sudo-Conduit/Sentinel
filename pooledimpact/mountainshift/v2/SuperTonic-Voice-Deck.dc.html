@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@600;700&family=Inter:wght@400;500;600;700;800&display=swap');
+    body{margin:0;}
+  </style>
+</helmet>
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%">
+
+<section data-label="Title" data-speaker-notes="Open on the human promise, not the tech." style="background:#0b0f14;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:140px;color:#eef1f5;font-family:Inter,sans-serif;">
+  <div style="font-size:24px;font-weight:700;color:#5b8def;letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;">Voice Localization</div>
+  <div style="font-family:Fraunces,serif;font-size:96px;font-weight:700;line-height:1.05;max-width:1400px;">Your voice.<br/>Every language.<br/>Everywhere.</div>
+  <div style="font-size:28px;color:#9aa7b8;margin-top:40px;max-width:1100px;">The person you trust, speaking directly to the person you're trying to reach — no matter what language they speak.</div>
+</section>
+
+<section data-label="Problem" data-speaker-notes="The real cost of the language barrier — lost trust, lost deals, lost people." style="background:#0e131a;display:flex;flex-direction:column;justify-content:center;padding:140px;color:#eef1f5;font-family:Inter,sans-serif;">
+  <div style="font-size:24px;font-weight:700;color:#ef5a5a;letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;">The Problem</div>
+  <div style="font-family:Fraunces,serif;font-size:64px;font-weight:700;line-height:1.15;max-width:1500px;margin-bottom:50px;">A translated message never sounds like you. And people trust who they know, not a subtitle.</div>
+  <div style="display:flex;gap:60px;margin-top:20px;">
+    <div style="flex:1;"><div style="font-size:56px;font-weight:800;color:#ef5a5a;">$0</div><div style="font-size:24px;color:#9aa7b8;margin-top:10px;">Deals closed by a stranger reading your words in a robotic voice</div></div>
+    <div style="flex:1;"><div style="font-size:56px;font-weight:800;color:#c99a4a;">Hours</div><div style="font-size:24px;color:#9aa7b8;margin-top:10px;">Lost re-recording the same video, sermon, or lesson for every market</div></div>
+    <div style="flex:1;"><div style="font-size:56px;font-weight:800;color:#5b8def;">Millions</div><div style="font-size:24px;color:#9aa7b8;margin-top:10px;">Of people who never hear from you because they don't speak your language</div></div>
+  </div>
+</section>
+
+<!-- 20 use case slides -->
+<sc-for list="{{ useCases }}" as="uc" hint-placeholder-count="20">
+  <section data-label="{{ uc.label }}" data-speaker-notes="{{ uc.notes }}" style="{{ uc.bg }};display:flex;flex-direction:column;justify-content:center;padding:140px;color:#eef1f5;font-family:Inter,sans-serif;position:relative;">
+    <div style="font-size:24px;font-weight:700;color:{{ uc.accent }};letter-spacing:2px;text-transform:uppercase;margin-bottom:24px;">Use Case {{ uc.num }} of 20</div>
+    <div style="font-family:Fraunces,serif;font-size:72px;font-weight:700;line-height:1.1;max-width:1500px;margin-bottom:36px;">{{ uc.title }}</div>
+    <div style="font-size:30px;color:#c7ced8;max-width:1300px;line-height:1.5;">{{ uc.desc }}</div>
+    <div style="position:absolute;bottom:100px;right:140px;font-size:220px;opacity:0.08;font-weight:800;color:{{ uc.accent }};">{{ uc.num }}</div>
+  </section>
+</sc-for>
+
+<section data-label="Get Started" data-speaker-notes="Clear, simple call to action." style="background:#0b0f14;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:140px;color:#eef1f5;font-family:Inter,sans-serif;">
+  <div style="font-size:24px;font-weight:700;color:#4fce6a;letter-spacing:2px;text-transform:uppercase;margin-bottom:28px;">Get Started</div>
+  <div style="font-family:Fraunces,serif;font-size:76px;font-weight:700;line-height:1.15;max-width:1400px;margin-bottom:44px;">Speak once. Be understood everywhere.</div>
+  <div style="font-size:28px;color:#9aa7b8;max-width:1100px;margin-bottom:56px;">Bring your voice, your message, and your people together — in any language, on your terms.</div>
+  <div style="background:linear-gradient(135deg,#3f7ae0,#5b8def);padding:22px 48px;border-radius:12px;font-size:26px;font-weight:700;">MountainShift.com</div>
+</section>
+
+<section data-label="Thank You" data-speaker-notes="Close warmly." style="background:#0e131a;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:140px;color:#eef1f5;font-family:Inter,sans-serif;text-align:center;">
+  <div style="font-family:Fraunces,serif;font-size:100px;font-weight:700;">Thank You</div>
+  <div style="font-size:26px;color:#9aa7b8;margin-top:30px;">Every voice deserves to be heard — in every language.</div>
+</section>
+
+</x-import>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PALETTE = ['#5b8def','#4fce6a','#c99a4a','#ef5a5a','#7b5be0'];
+const BGS = ['#0b0f14','#0e131a','#0c1117'];
+const RAW = [
+  ['Cross-Border Business, In Your Own Voice','Close deals and build trust with partners abroad — they hear you, not a stranger reading your words.'],
+  ['Investor Decks That Sound Like You','Pitch every market in its own language, narrated in your voice, without hiring a single actor.'],
+  ['Faith Communities Without Borders','A pastor\u2019s sermon reaches congregations worldwide in their own language, in his own voice.'],
+  ['Customer Support That Feels Personal','Your brand\u2019s voice answers every customer, in every region, in their native language.'],
+  ['Audiobooks, One Voice, Every Language','Authors narrate once and reach global readers without a single re-recording.'],
+  ['Onboarding People Everywhere, Instantly','New users learn your product from a voice they trust, no matter where they live.'],
+  ['Language Learning From a Voice You Know','Lessons taught by someone real, not a generic narrator, in the learner\u2019s own tongue.'],
+  ['Podcasts That Travel the World','Turn one recording into dozens of markets without re-recording a single episode.'],
+  ['Everyday Notes, Instantly Understood','Dictate a thought and share it with colleagues anywhere, in their language.'],
+  ['Training Partners Across Continents','Train solar and energy partners once; every region hears it in their own language.'],
+  ['Property Tours That Welcome Every Guest','Hotel and property tours narrated in each visitor\u2019s native language.'],
+  ['Contracts Explained, Not Just Translated','Clients hear their agreements read aloud in the language they\u2019re most comfortable in.'],
+  ['Safety Messages Everyone Understands','Emergency and safety announcements reach every person in the language they know best.'],
+  ['Education That Adapts to the Learner','Courses narrated and understood in a student\u2019s own language, wherever they are.'],
+  ['A Digital Assistant With a Human Voice','Your assistant speaks with warmth and familiarity, not a robotic default.'],
+  ['Marketing That Speaks Every Market','Launch campaigns worldwide without hiring voice talent for every language.'],
+  ['Museums and Heritage, Told to Everyone','Visitors experience history and culture narrated in their own language.'],
+  ['Healthcare Conversations, Built on Trust','Patients hear guidance in their own language, from a voice that feels familiar.'],
+  ['Live Events, Understood by All','Conferences and keynotes reach every attendee live, in their own language.'],
+  ['One Voice. Every Person. Everywhere.','The technology fades into the background — what remains is being understood.']
+];
+class Component extends DCLogic {
+  renderVals() {
+    const useCases = RAW.map(([title, desc], i) => ({
+      num: i + 1, title, desc,
+      label: 'Use Case ' + (i + 1),
+      notes: title,
+      accent: PALETTE[i % PALETTE.length],
+      bg: 'background:' + BGS[i % BGS.length]
+    }));
+    return { useCases };
+  }
+}
+</script>
+</body>
+</html>

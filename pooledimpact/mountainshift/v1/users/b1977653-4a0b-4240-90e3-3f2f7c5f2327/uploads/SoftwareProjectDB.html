@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SoftwareProjectDB</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root,[data-theme="dark"]{
+  --bg:#0b1426; --bg-mid:#111d35; --bg-light:#1a2a45; --border:#1e3052;
+  --gold:#c9a84c; --gold-lt:#e0c270; --gold-dim:rgba(201,168,76,0.12);
+  --slate:#8a99b3; --slate-lt:#b0bdd4; --fg:#f0f4fb; --text:#cdd6e8;
+  --green:#2ecc71; --red:#e74c3c; --blue:#5dade2; --purple:#bb8fce;
+  --yellow:#f4d03f; --moral:#e8c4f0;
+  --input-bg:rgba(255,255,255,0.04); --shadow:rgba(0,0,0,0.5);
+  --bg-overlay:rgba(8,14,28,0.88);
+}
+[data-theme="light"]{
+  --bg:#f0f2f7; --bg-mid:#ffffff; --bg-light:#f5f7fc; --border:#c8d0e0;
+  --fg:#0d1b2e; --text:#2e3f5c; --slate:#4a5878; --slate-lt:#2e3f5c;
+  --gold:#a67c2a; --gold-lt:#c9962e; --gold-dim:rgba(166,124,42,0.10);
+  --green:#1a9e50; --red:#c0392b; --blue:#2471a3; --purple:#7d3c98; --moral:#6c3483;
+  --input-bg:rgba(0,0,0,0.03); --shadow:rgba(0,0,0,0.12);
+  --bg-overlay:rgba(15,30,60,0.55);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;min-height:100vh;overflow-x:hidden;transition:background .25s,color .25s;}
+a{color:var(--blue);text-decoration:none;}
+
+/* HEADER */
+header{border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;background:var(--bg-mid);position:sticky;top:0;z-index:100;}
+.logo-mark{width:34px;height:34px;border:1.5px solid var(--gold);border-radius:2px;display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:600;color:var(--gold);flex-shrink:0;}
+.header-title h1{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--fg);}
+.header-title p{font-size:9px;color:var(--slate);letter-spacing:2px;text-transform:uppercase;margin-top:1px;font-family:'DM Mono',monospace;}
+.header-left{display:flex;align-items:center;gap:14px;}
+.db-status{display:flex;align-items:center;gap:7px;font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(46,204,113,0.7);animation:pulse 2.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.theme-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:20px;transition:all .2s;}
+.theme-toggle:hover{border-color:var(--gold);}
+.theme-toggle-track{width:32px;height:18px;border-radius:9px;background:var(--border);position:relative;transition:background .2s;}
+.theme-toggle-track.on{background:var(--gold);}
+.theme-toggle-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--bg-mid);transition:left .2s;}
+.theme-toggle-track.on .theme-toggle-thumb{left:16px;}
+.theme-toggle-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--slate);letter-spacing:1px;text-transform:uppercase;}
+
+/* LAYOUT */
+.app-body{display:flex;height:calc(100vh - 57px);}
+nav{width:214px;min-width:214px;border-right:1px solid var(--border);padding:22px 0;background:var(--bg-mid);overflow-y:auto;}
+.nav-section-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;color:var(--slate);text-transform:uppercase;padding:0 20px 8px;margin-top:8px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;border-left:2px solid transparent;transition:all 0.15s;color:var(--slate-lt);}
+.nav-item:hover{background:rgba(201,168,76,0.06);color:var(--fg);}
+.nav-item.active{border-left-color:var(--gold);background:var(--gold-dim);color:var(--gold-lt);}
+[data-theme="light"] .nav-item{color:#2e3f5c;}
+[data-theme="light"] .nav-item:hover{background:rgba(166,124,42,0.08);color:#0d1b2e;}
+[data-theme="light"] .nav-item.active{border-left-color:#a67c2a;background:rgba(166,124,42,0.12);color:#a67c2a;}
+.nav-icon{width:15px;height:15px;opacity:.7;flex-shrink:0;}
+.nav-item.active .nav-icon{opacity:1;}
+.nav-label{font-size:12px;}
+.nav-badge{margin-left:auto;background:rgba(201,168,76,0.2);color:var(--gold);font-family:'DM Mono',monospace;font-size:9px;padding:1px 6px;border-radius:10px;min-width:20px;text-align:center;}
+
+/* MAIN */
+main{flex:1;overflow-y:auto;padding:28px 32px;}
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .2s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+.page-header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:22px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.page-header h2{font-family:'Cormorant Garamond',serif;font-size:30px;font-weight:400;color:var(--fg);line-height:1;}
+.page-header p{color:var(--slate);font-size:11px;margin-top:4px;font-family:'DM Mono',monospace;}
+
+/* BTNS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 15px;border-radius:2px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;transition:all .15s;white-space:nowrap;}
+.btn-primary{background:var(--gold);color:#0b1426;}
+.btn-primary:hover{background:var(--gold-lt);}
+.btn-ghost{background:transparent;color:var(--slate-lt);border:1px solid var(--border);}
+.btn-ghost:hover{border-color:var(--slate);color:var(--fg);}
+.btn-danger{background:transparent;color:var(--red);border:1px solid rgba(231,76,60,.3);font-size:11px;padding:4px 9px;}
+.btn-danger:hover{background:rgba(231,76,60,.1);}
+.btn-edit{background:transparent;color:var(--slate);border:1px solid var(--border);font-size:11px;padding:4px 9px;}
+.btn-edit:hover{color:var(--gold);border-color:var(--gold);}
+.btn-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+
+/* TABLE */
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;padding:9px 12px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);font-weight:400;border-bottom:1px solid var(--border);}
+td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:var(--gold-dim);}
+.mono{font-family:'DM Mono',monospace;font-size:11px;}
+
+/* BADGES */
+.badge{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;padding:2px 8px;border-radius:2px;white-space:nowrap;}
+.badge-high{background:rgba(231,76,60,.15);color:var(--red);border:1px solid rgba(231,76,60,.25);}
+.badge-medium{background:rgba(201,168,76,.15);color:var(--gold);border:1px solid rgba(201,168,76,.25);}
+.badge-low{background:rgba(138,153,179,.1);color:var(--slate);border:1px solid rgba(138,153,179,.2);}
+.badge-proposed{background:rgba(138,153,179,.1);color:var(--slate);border:1px solid rgba(138,153,179,.2);}
+.badge-in-progress{background:rgba(93,173,226,.12);color:var(--blue);border:1px solid rgba(93,173,226,.25);}
+.badge-complete{background:rgba(46,204,113,.12);color:var(--green);border:1px solid rgba(46,204,113,.25);}
+.badge-designed{background:rgba(187,143,206,.12);color:var(--purple);border:1px solid rgba(187,143,206,.25);}
+.badge-small{background:rgba(46,204,113,.08);color:var(--green);}
+.badge-large{background:rgba(231,76,60,.08);color:var(--red);}
+
+/* STATS ROW */
+.stats-row{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
+.stat-card{background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:16px 20px;flex:1;min-width:120px;}
+.stat-val{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:400;color:var(--fg);line-height:1;}
+.stat-label{font-family:'DM Mono',monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--slate);margin-top:4px;}
+
+/* FILTER BAR */
+.filter-bar{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;align-items:center;}
+.filter-bar input,.filter-bar select{background:var(--input-bg);border:1px solid var(--border);color:var(--fg);font-family:'DM Mono',monospace;font-size:11px;padding:6px 10px;border-radius:2px;outline:none;}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--gold);}
+.filter-bar input{flex:1;min-width:180px;}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:var(--bg-overlay);z-index:200;align-items:center;justify-content:center;}
+.modal-overlay.open{display:flex;}
+.modal{background:var(--bg-mid);border:1px solid var(--border);border-radius:4px;width:580px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 60px var(--shadow);animation:slideUp .2s ease;}
+@keyframes slideUp{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hdr{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg-mid);z-index:10;}
+.modal-hdr h3{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;color:var(--fg);}
+.modal-x{background:none;border:none;cursor:pointer;color:var(--slate);font-size:20px;line-height:1;padding:4px;}
+.modal-x:hover{color:var(--fg);}
+.modal-body{padding:18px 22px;}
+.modal-ftr{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;justify-content:flex-end;position:sticky;bottom:0;background:var(--bg-mid);}
+.fg{margin-bottom:14px;}
+.fg label{display:block;margin-bottom:5px;font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--slate);font-family:'DM Mono',monospace;}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:2px;color:var(--fg);font-family:'DM Sans',sans-serif;font-size:12px;padding:7px 10px;outline:none;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--gold);}
+.fg textarea{resize:vertical;min-height:72px;line-height:1.5;}
+.fg-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast-msg{background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:10px 16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--fg);animation:toastIn .2s ease;box-shadow:0 8px 24px var(--shadow);}
+.toast-ok{border-color:rgba(46,204,113,.4);color:var(--green);}
+.toast-err{border-color:rgba(231,76,60,.4);color:var(--red);}
+@keyframes toastIn{from{opacity:0;transform:translateX(10px)}to{opacity:1;transform:translateX(0)}}
+
+/* DESIGNED STAR */
+.designed-star{color:var(--purple);font-size:12px;}
+
+/* CATEGORY PILLS */
+.cat-pill{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;padding:2px 7px;border-radius:2px;}
+.cat-Dashboard{background:rgba(201,168,76,.12);color:var(--gold);}
+.cat-Company{background:rgba(46,204,113,.1);color:var(--green);}
+.cat-Dissonance{background:rgba(231,76,60,.1);color:var(--red);}
+.cat-Entity\.Links{background:rgba(93,173,226,.1);color:var(--blue);}
+.cat-Holding{background:rgba(93,173,226,.1);color:var(--blue);}
+.cat-Moral{background:rgba(232,196,240,.12);color:var(--moral);}
+.cat-IO{background:rgba(138,153,179,.1);color:var(--slate-lt);}
+.cat-UX{background:rgba(244,208,63,.1);color:var(--yellow);}
+.cat-AI{background:rgba(187,143,206,.12);color:var(--purple);}
+
+/* BREADCRUMB */
+.breadcrumb{font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px;}
+.breadcrumb span{cursor:pointer;transition:color .15s;}
+.breadcrumb span:hover{color:var(--gold);}
+.breadcrumb-sep{opacity:.4;}
+
+/* MARKDOWN RENDER */
+.md-render{color:var(--text);line-height:1.75;font-size:13.5px;}
+.md-render h1{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:400;color:var(--fg);margin:0 0 20px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.md-render h2{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400;color:var(--fg);margin:28px 0 12px;}
+.md-render h3{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:500;color:var(--fg);margin:20px 0 8px;}
+.md-render h4{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin:16px 0 6px;}
+.md-render p{margin:0 0 14px;}
+.md-render ul,.md-render ol{margin:0 0 14px;padding-left:22px;}
+.md-render li{margin-bottom:5px;}
+.md-render code{font-family:'DM Mono',monospace;font-size:11px;background:rgba(201,168,76,.1);color:var(--gold-lt);padding:1px 5px;border-radius:2px;border:1px solid rgba(201,168,76,.2);}
+.md-render pre{background:var(--bg-light);border:1px solid var(--border);border-radius:3px;padding:14px 16px;overflow-x:auto;margin:0 0 16px;}
+.md-render pre code{background:none;border:none;padding:0;color:var(--text);font-size:11px;}
+.md-render blockquote{border-left:3px solid var(--gold);margin:0 0 14px;padding:8px 16px;background:var(--gold-dim);border-radius:0 2px 2px 0;}
+.md-render blockquote p{margin:0;color:var(--slate-lt);}
+.md-render hr{border:none;border-top:1px solid var(--border);margin:20px 0;}
+.md-render strong{color:var(--fg);font-weight:600;}
+.md-render em{color:var(--slate-lt);}
+.md-render a{color:var(--blue);}
+.md-render table{width:100%;border-collapse:collapse;margin:0 0 16px;}
+.md-render th{text-align:left;padding:8px 12px;font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);border-bottom:1px solid var(--border);}
+.md-render td{padding:9px 12px;border-bottom:1px solid var(--border);}
+
+/* FEATURE VIEW META GRID */
+.fv-meta{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:28px;}
+.fv-meta-item{background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:10px 14px;}
+.fv-meta-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:4px;}
+.fv-meta-val{font-size:12px;color:var(--fg);}
+
+/* SECTION DIVIDER */
+.section-divider{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--slate);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:16px;margin-top:28px;}
+
+/* DRAG REORDER */
+.drag-handle{cursor:grab;user-select:none;display:flex;align-items:center;gap:6px;padding:2px 4px;border-radius:2px;transition:background .15s;}
+.drag-handle:hover{background:var(--gold-dim);}
+.drag-handle:active{cursor:grabbing;}
+.drag-handle-icon{display:flex;flex-direction:column;gap:2.5px;opacity:.35;flex-shrink:0;}
+.drag-handle-icon span{display:block;width:12px;height:1.5px;background:currentColor;border-radius:1px;}
+.drag-handle:hover .drag-handle-icon{opacity:.8;}
+tr.drag-over td{background:var(--gold-dim)!important;border-top:2px solid var(--gold)!important;}
+tr.drag-dragging{opacity:.4;}
+tr.drag-dragging td{background:var(--bg-light)!important;}
+
+/* BOOK VIEW */
+.book-wrap{display:flex;flex-direction:column;height:calc(100vh - 57px);overflow:hidden;}
+.book-controls{display:flex;align-items:center;gap:12px;padding:14px 32px;border-bottom:1px solid var(--border);background:var(--bg-mid);flex-shrink:0;flex-wrap:wrap;}
+.book-controls select{background:var(--input-bg);border:1px solid var(--border);color:var(--fg);font-family:'DM Mono',monospace;font-size:10px;padding:5px 9px;border-radius:2px;outline:none;}
+.book-controls select:focus{border-color:var(--gold);}
+.book-controls-label{font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);}
+
+.book-stage{flex:1;overflow:hidden;position:relative;}
+.book-page{position:absolute;inset:0;overflow-y:auto;padding:52px 80px 80px;animation:bookPageIn .25s ease;display:none;}
+.book-page.active{display:block;}
+@keyframes bookPageIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+@keyframes bookPageInRev{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+.book-page.rev{animation:bookPageInRev .25s ease;}
+
+.book-nav{display:flex;align-items:center;justify-content:space-between;padding:0 24px;height:72px;border-top:1px solid var(--border);background:var(--bg-mid);flex-shrink:0;}
+.book-arrow{background:none;border:1px solid var(--border);border-radius:3px;cursor:pointer;color:var(--slate-lt);transition:all .15s;display:flex;align-items:center;justify-content:center;width:52px;height:44px;}
+.book-arrow:hover{border-color:var(--gold);color:var(--gold);background:var(--gold-dim);}
+.book-arrow svg{width:28px;height:28px;}
+.book-page-indicator{font-family:'Cormorant Garamond',serif;font-size:18px;color:var(--slate);letter-spacing:.5px;}
+.book-page-indicator strong{color:var(--fg);}
+
+/* TOC styles */
+.toc-title{font-family:'Cormorant Garamond',serif;font-size:48px;font-weight:300;color:var(--fg);margin-bottom:6px;line-height:1;}
+.toc-subtitle{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--slate);margin-bottom:48px;}
+.toc-entry{display:flex;align-items:baseline;gap:0;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:all .15s;position:relative;}
+[data-theme="light"] .toc-entry{border-bottom-color:rgba(0,0,0,.05);}
+.toc-entry:hover{padding-left:10px;}
+.toc-entry:hover .toc-entry-title{color:var(--gold);}
+.toc-num{font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);min-width:36px;flex-shrink:0;}
+.toc-entry-title{font-size:14px;color:var(--fg);flex:1;transition:color .15s;}
+.toc-dots{flex:1;border-bottom:1px dotted var(--border);margin:0 10px;min-width:20px;}
+.toc-pg{font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);flex-shrink:0;}
+.toc-badges{display:flex;gap:5px;flex-shrink:0;margin-left:10px;}
+
+/* Feature page styles */
+.fp-header{margin-bottom:32px;padding-bottom:20px;border-bottom:1px solid var(--border);}
+.fp-num{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--slate);margin-bottom:8px;}
+.fp-title{font-family:'Cormorant Garamond',serif;font-size:42px;font-weight:300;color:var(--fg);line-height:1.1;margin-bottom:14px;}
+.fp-meta-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.fp-desc{font-size:14px;color:var(--text);line-height:1.75;margin-bottom:28px;padding:16px 20px;background:var(--bg-mid);border-left:3px solid var(--gold);border-radius:0 3px 3px 0;}
+.fp-touches{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:28px;}
+.fp-touch-chip{font-family:'DM Mono',monospace;font-size:10px;padding:3px 9px;background:var(--bg-light);border:1px solid var(--border);border-radius:2px;color:var(--gold-lt);}
+.fp-notes-empty{font-family:'DM Mono',monospace;font-size:11px;color:var(--slate);opacity:.6;padding:20px 0;}
+
+/* ── PRINT ──────────────────────────────────── */
+@media print {
+  body * { visibility: hidden !important; }
+  #print-doc, #print-doc * { visibility: visible !important; }
+  #print-doc { position: fixed; inset: 0; z-index: 9999; background: #fff; }
+}
+
+/* Print document — always hidden until printing */
+#print-doc { display: none; }
+
+/* Styles that live inside the print iframe */
+.prt-body {
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  color: #1a1a2e;
+  background: #fff;
+  margin: 0;
+  padding: 0;
+}
+.prt-feature {
+  page-break-after: always;
+  padding: 56px 72px 64px;
+  min-height: 100vh;
+  box-sizing: border-box;
+  position: relative;
+}
+.prt-feature:last-child { page-break-after: avoid; }
+
+/* Large category display */
+.prt-category-bg {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 96px;
+  font-weight: 300;
+  line-height: 1;
+  letter-spacing: -2px;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(0,0,0,.08);
+  position: absolute;
+  top: 40px;
+  right: 60px;
+  user-select: none;
+  pointer-events: none;
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.prt-category-label {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 10px;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prt-category-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: #e0e0e0;
+}
+.prt-order {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+.prt-title {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 46px;
+  font-weight: 400;
+  color: #0d1b2e;
+  line-height: 1.1;
+  margin-bottom: 18px;
+}
+.prt-badges {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.prt-badge {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+.prt-badge-high    { color: #c0392b; border-color: #c0392b; background: #fdf0ee; }
+.prt-badge-medium  { color: #a67c2a; border-color: #a67c2a; background: #fdf8ee; }
+.prt-badge-low     { color: #888;    border-color: #ccc;    background: #f5f5f5; }
+.prt-badge-status  { color: #555;    border-color: #ccc;    background: #f5f5f5; }
+.prt-badge-effort  { color: #2471a3; border-color: #2471a3; background: #eef5fb; }
+.prt-badge-star    { color: #7d3c98; border-color: #7d3c98; background: #f8f0fd; }
+.prt-divider {
+  border: none;
+  border-top: 1px solid #e8e8e8;
+  margin: 20px 0;
+}
+.prt-desc {
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: #2e3f5c;
+  padding: 14px 18px;
+  border-left: 3px solid #c9a84c;
+  background: #fdf8ee;
+  border-radius: 0 3px 3px 0;
+  margin-bottom: 22px;
+}
+.prt-touches-label {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+.prt-touches {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+.prt-touch-chip {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 10px;
+  padding: 3px 9px;
+  background: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 2px;
+  color: #a67c2a;
+}
+.prt-notes-label {
+  font-family: 'DM Mono', 'Courier New', monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: #aaa;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.prt-notes-label::after { content: ''; flex: 1; height: 1px; background: #e8e8e8; }
+
+/* Markdown inside print */
+.prt-md h1 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 28px; font-weight: 400; color: #0d1b2e; margin: 0 0 16px; border-bottom: 1px solid #e8e8e8; padding-bottom: 8px; }
+.prt-md h2 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 22px; font-weight: 400; color: #0d1b2e; margin: 20px 0 10px; }
+.prt-md h3 { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 17px; font-weight: 500; color: #0d1b2e; margin: 16px 0 8px; }
+.prt-md h4 { font-family: 'DM Mono', 'Courier New', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: #888; margin: 14px 0 6px; }
+.prt-md p  { margin: 0 0 12px; line-height: 1.7; }
+.prt-md ul,.prt-md ol { margin: 0 0 12px; padding-left: 20px; }
+.prt-md li { margin-bottom: 4px; }
+.prt-md code { font-family: 'DM Mono', 'Courier New', monospace; font-size: 10px; background: #f5f5f5; padding: 1px 5px; border-radius: 2px; border: 1px solid #e0e0e0; color: #a67c2a; }
+.prt-md pre { background: #f8f8f8; border: 1px solid #e0e0e0; border-radius: 3px; padding: 12px 14px; overflow: hidden; margin: 0 0 14px; }
+.prt-md pre code { background: none; border: none; color: #333; }
+.prt-md blockquote { border-left: 3px solid #c9a84c; padding: 8px 14px; background: #fdf8ee; margin: 0 0 14px; border-radius: 0 2px 2px 0; }
+.prt-md strong { font-weight: 600; color: #0d1b2e; }
+.prt-md hr { border: none; border-top: 1px solid #e8e8e8; margin: 16px 0; }
+.prt-md table { width: 100%; border-collapse: collapse; margin: 0 0 14px; }
+.prt-md th { text-align: left; padding: 7px 10px; font-family: 'DM Mono','Courier New',monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: #888; border-bottom: 1px solid #ddd; }
+.prt-md td { padding: 8px 10px; border-bottom: 1px solid #eee; }
+
+/* TOC in print */
+.prt-toc { padding: 56px 72px 64px; page-break-after: always; }
+.prt-toc-title { font-family: 'Cormorant Garamond', Georgia, serif; font-size: 56px; font-weight: 300; color: #0d1b2e; margin-bottom: 6px; }
+.prt-toc-sub { font-family: 'DM Mono','Courier New',monospace; font-size: 10px; letter-spacing: 3px; text-transform: uppercase; color: #aaa; margin-bottom: 48px; }
+.prt-toc-entry { display: flex; align-items: baseline; padding: 9px 0; border-bottom: 1px solid #f0f0f0; }
+.prt-toc-num  { font-family: 'DM Mono','Courier New',monospace; font-size: 10px; color: #aaa; min-width: 36px; }
+.prt-toc-name { flex: 1; font-size: 14px; color: #0d1b2e; }
+.prt-toc-cat  { font-family: 'DM Mono','Courier New',monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #888; margin: 0 14px; }
+.prt-toc-pg   { font-family: 'DM Mono','Courier New',monospace; font-size: 10px; color: #aaa; }
+
+.prt-footer {
+  position: fixed;
+  bottom: 24px;
+  left: 72px;
+  right: 72px;
+  display: flex;
+  justify-content: space-between;
+  font-family: 'DM Mono','Courier New',monospace;
+  font-size: 9px;
+  letter-spacing: 1.5px;
+  color: #ccc;
+  border-top: 1px solid #e8e8e8;
+  padding-top: 8px;
+}
+</style>
+</head>
+<body data-theme="dark">
+
+<header>
+  <div class="header-left">
+    <div class="logo-mark">S</div>
+    <div class="header-title">
+      <h1>SoftwareProjectDB</h1>
+      <p>Pooled Impact Corporation · Will Fobbs III</p>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center;gap:20px">
+    <div class="db-status">
+      <div class="status-dot" id="status-dot"></div>
+      <span id="db-status-text">Initializing</span>
+    </div>
+    <div class="theme-toggle" onclick="toggleTheme()">
+      <div class="theme-toggle-track" id="theme-track">
+        <div class="theme-toggle-thumb"></div>
+      </div>
+      <span class="theme-toggle-label" id="theme-label">Dark</span>
+    </div>
+    <button onclick="expandFullscreen()" id="fs-btn" title="Full Screen · Cmd+Shift+F (Mac) · Ctrl+Shift+F (Win)"
+      style="background:none;border:1px solid var(--border);border-radius:3px;color:var(--slate);cursor:pointer;padding:5px 8px;display:flex;align-items:center;justify-content:center;transition:all .2s;"
+      onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'"
+      onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--slate)'">
+      <svg id="fs-icon-expand" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14">
+        <path d="M1 6V1h5M10 1h5v5M15 10v5h-5M6 15H1v-5"/>
+      </svg>
+      <svg id="fs-icon-contract" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14" style="display:none">
+        <path d="M6 1v5H1M10 6V1h5M10 15v-5h5M6 10v5H1"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<div class="app-body">
+  <nav>
+    <div class="nav-section-label">Projects</div>
+    <div class="nav-item active" data-page="features" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h5"/></svg>
+      <span class="nav-label">Features</span>
+      <span class="nav-badge" id="badge-features">0</span>
+    </div>
+    <div class="nav-item" data-page="projects" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="10" rx="1"/><path d="M5 3V2M11 3V2"/></svg>
+      <span class="nav-label">Projects</span>
+      <span class="nav-badge" id="badge-projects">0</span>
+    </div>
+    <div class="nav-item" data-page="builds" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2l2 4h4l-3 3 1 4-4-2-4 2 1-4-3-3h4z"/></svg>
+      <span class="nav-label">Builds</span>
+      <span class="nav-badge" id="badge-builds">0</span>
+    </div>
+    <div class="nav-item" data-page="sessions" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>
+      <span class="nav-label">Sessions</span>
+      <span class="nav-badge" id="badge-sessions">0</span>
+    </div>
+    <div class="nav-item" data-page="releases" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8l3 3 7-7"/><circle cx="8" cy="8" r="6"/></svg>
+      <span class="nav-label">Releases</span>
+      <span class="nav-badge" id="badge-releases">0</span>
+    </div>
+    <div class="nav-item" data-page="book" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h7l3 3v9H3z"/><path d="M10 2v3h3"/><path d="M6 7h4M6 10h4M6 13h2"/></svg>
+      <span class="nav-label">Feature View</span>
+    </div>
+    <div style="flex:1"></div>
+    <div class="nav-item" data-page="settings" onclick="navigate(this)">
+      <svg class="nav-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41"/></svg>
+      <span class="nav-label">Settings</span>
+    </div>
+  </nav>
+
+  <main>
+    <!-- FEATURES PAGE -->
+    <div class="page active" id="page-features">
+      <div class="page-header">
+        <div>
+          <h2>Features</h2>
+          <p>Conduit Fund OS · v16 · 30 proposed</p>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" onclick="exportFeatures()">Export CSV</button>
+          <button class="btn btn-primary" onclick="openFeatureModal()">+ Add Feature</button>
+        </div>
+      </div>
+
+      <div class="stats-row" id="feature-stats"></div>
+
+      <div class="filter-bar">
+        <input type="text" id="feat-search" placeholder="Search features…" oninput="renderFeatures()">
+        <select id="feat-cat" onchange="renderFeatures()">
+          <option value="">All Categories</option>
+          <option>Dashboard</option><option>Company</option><option>Dissonance</option>
+          <option>Entity Links</option><option>Holding</option><option>Moral</option>
+          <option>IO</option><option>UX</option><option>AI</option>
+        </select>
+        <select id="feat-priority" onchange="renderFeatures()">
+          <option value="">All Priorities</option>
+          <option>high</option><option>medium</option><option>low</option>
+        </select>
+        <select id="feat-status" onchange="renderFeatures()">
+          <option value="">All Statuses</option>
+          <option>proposed</option><option>in-progress</option><option>complete</option>
+        </select>
+        <select id="feat-effort" onchange="renderFeatures()">
+          <option value="">All Effort</option>
+          <option>small</option><option>medium</option><option>large</option>
+        </select>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Title</th>
+            <th>Category</th>
+            <th>Priority</th>
+            <th>Effort</th>
+            <th>Status</th>
+            <th>Page</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="features-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- PROJECTS PAGE -->
+    <div class="page" id="page-projects">
+      <div class="page-header">
+        <div>
+          <h2>Projects</h2>
+          <p>Application registry</p>
+        </div>
+        <button class="btn btn-primary" onclick="openProjectModal()">+ Add Project</button>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Name</th><th>Type</th><th>Version</th><th>Lines</th><th>DB</th><th>Status</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="projects-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- PROJECT DETAIL PAGE -->
+    <div class="page" id="page-project-detail">
+      <div class="page-header">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;cursor:pointer" onclick="navigateTo('projects')">← Projects</div>
+          <h2 id="pd-name">—</h2>
+          <p id="pd-meta">—</p>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" onclick="openProjectModal(currentProjectId)">Edit Project</button>
+          <button class="btn btn-primary" onclick="openReleaseModal()">+ Release</button>
+        </div>
+      </div>
+
+      <!-- project meta strip -->
+      <div id="pd-stats" style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap"></div>
+
+      <!-- Active Build -->
+      <div style="margin-bottom:28px">
+        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--slate);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Active Build</div>
+        <div id="pd-active-build">—</div>
+      </div>
+
+      <!-- Features grid -->
+      <div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--slate)">Features</div>
+          <div style="display:flex;gap:8px">
+            <select id="pd-feat-status" style="background:var(--input-bg);border:1px solid var(--border);color:var(--fg);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:2px;outline:none" onchange="renderProjectFeatures()">
+              <option value="">All</option><option>proposed</option><option>in-progress</option><option>complete</option>
+            </select>
+            <select id="pd-feat-priority" style="background:var(--input-bg);border:1px solid var(--border);color:var(--fg);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;border-radius:2px;outline:none" onchange="renderProjectFeatures()">
+              <option value="">All Priority</option><option>high</option><option>medium</option><option>low</option>
+            </select>
+          </div>
+        </div>
+        <div id="pd-features-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+      </div>
+
+      <!-- Releases -->
+      <div>
+        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:var(--slate);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)">Releases</div>
+        <div id="pd-releases-list"></div>
+      </div>
+    </div>
+
+    <!-- RELEASES PAGE -->
+    <div class="page" id="page-releases">
+      <div class="page-header">
+        <div><h2>Releases</h2><p>Version release notes</p></div>
+        <button class="btn btn-primary" onclick="openReleaseModal()">+ New Release</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Version</th><th>Project</th><th>Release Doc</th><th>Created</th><th>Edited</th><th></th></tr>
+        </thead>
+        <tbody id="releases-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- BUILDS PAGE -->
+    <div class="page" id="page-builds">
+      <div class="page-header">
+        <div><h2>Builds</h2><p>Artifact version history</p></div>
+        <button class="btn btn-primary" onclick="openBuildModal()">+ Log Build</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Artifact</th><th>Version</th><th>Built By</th><th>Lines</th><th>Status</th><th>Changes</th><th></th></tr>
+        </thead>
+        <tbody id="builds-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- SESSIONS PAGE -->
+    <div class="page" id="page-sessions">
+      <div class="page-header">
+        <div><h2>Sessions</h2><p>Build session log</p></div>
+        <button class="btn btn-primary" onclick="openSessionModal()">+ Log Session</button>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Timestamp</th><th>Instance</th><th>Summary</th><th>Built</th><th>Next</th><th></th></tr>
+        </thead>
+        <tbody id="sessions-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- FEATURE VIEW PAGE -->
+    <div class="page" id="page-feature-view">
+      <div class="page-header">
+        <div>
+          <div class="breadcrumb" id="fv-breadcrumb"></div>
+          <h2 id="fv-title">—</h2>
+          <p id="fv-subtitle">—</p>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" id="fv-print-btn" onclick="printSingleFeature(currentFeatureId)" style="gap:6px">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="10" height="10" rx="1"/><path d="M1 6h14v7a1 1 0 01-1 1H2a1 1 0 01-1-1V6z"/><path d="M5 13v-3h6v3"/></svg>
+            Print
+          </button>
+          <button class="btn btn-ghost" id="fv-edit-btn" onclick="">Edit Feature</button>
+          <button class="btn btn-primary" id="fv-notes-btn" onclick="">Edit Notes</button>
+        </div>
+      </div>
+
+      <!-- meta grid -->
+      <div class="fv-meta" id="fv-meta"></div>
+
+      <!-- description -->
+      <div class="section-divider">Description</div>
+      <div id="fv-description" style="color:var(--text);line-height:1.7;font-size:13.5px;margin-bottom:28px"></div>
+
+      <!-- touches -->
+      <div id="fv-touches-section" style="margin-bottom:28px">
+        <div class="section-divider">Functions Touched</div>
+        <div id="fv-touches"></div>
+      </div>
+
+      <!-- notes — rendered markdown -->
+      <div id="fv-notes-section">
+        <div class="section-divider" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Notes</span>
+          <span style="font-size:10px;letter-spacing:0;text-transform:none;color:var(--slate);opacity:.7">Markdown</span>
+        </div>
+        <div class="md-render" id="fv-notes-render" style="padding:4px 0"></div>
+      </div>
+    </div>
+
+    <!-- FEATURE NOTES EDIT PAGE -->
+    <div class="page" id="page-feature-notes">
+      <div class="page-header">
+        <div>
+          <div class="breadcrumb" id="fn-breadcrumb"></div>
+          <h2 id="fn-title">Edit Notes</h2>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" onclick="cancelFeatureNotes()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveFeatureNotes()">Save Notes</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;height:calc(100vh - 200px)">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate)">Markdown Source</div>
+          <textarea id="fn-editor" style="flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:3px;color:var(--fg);font-family:'DM Mono',monospace;font-size:11px;padding:14px;resize:none;outline:none;line-height:1.7" oninput="livePreview()" placeholder="# Feature Notes&#10;&#10;Write in Markdown…"></textarea>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;overflow:hidden">
+          <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate)">Preview</div>
+          <div class="md-render" id="fn-preview" style="flex:1;overflow-y:auto;background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FEATURE VIEW PAGE (Book) -->
+    <div class="page" id="page-book" style="padding:0;overflow:hidden;">
+      <div class="book-wrap">
+
+        <!-- filter + paging controls -->
+        <div class="book-controls">
+          <span class="book-controls-label">Filter</span>
+          <select id="bk-cat" onchange="buildBook()">
+            <option value="">All Categories</option>
+            <option>Dashboard</option><option>Company</option><option>Dissonance</option>
+            <option>Entity Links</option><option>Holding</option><option>Moral</option>
+            <option>IO</option><option>UX</option><option>AI</option>
+          </select>
+          <select id="bk-priority" onchange="buildBook()">
+            <option value="">All Priorities</option>
+            <option>high</option><option>medium</option><option>low</option>
+          </select>
+          <select id="bk-status" onchange="buildBook()">
+            <option value="">All Statuses</option>
+            <option>proposed</option><option>in-progress</option><option>complete</option>
+          </select>
+          <button class="btn btn-ghost" onclick="printAllFeatures()" style="margin-left:8px;gap:6px">
+            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="1" width="10" height="10" rx="1"/><path d="M1 6h14v7a1 1 0 01-1 1H2a1 1 0 01-1-1V6z"/><path d="M5 13v-3h6v3"/></svg>
+            Print All
+          </button>
+          <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
+            <button class="book-arrow" style="width:38px;height:34px" onclick="bookNav(-1)" title="Previous page">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <div class="book-page-indicator" style="font-size:14px;white-space:nowrap">
+              Page <strong id="bk-cur">1</strong> of <strong id="bk-total">1</strong>
+            </div>
+            <button class="book-arrow" style="width:38px;height:34px" onclick="bookNav(1)" title="Next page">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- page stage -->
+        <div class="book-stage" id="bk-stage"></div>
+
+
+      </div>
+    </div>
+
+    <!-- SETTINGS PAGE -->
+    <div class="page" id="page-settings">
+      <div class="page-header">
+        <div>
+          <h2>Settings</h2>
+          <p>Application configuration · SoftwareProjectDB</p>
+        </div>
+      </div>
+
+      <div style="max-width:560px">
+
+        <!-- FeatureMode setting -->
+        <div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:22px 24px;margin-bottom:14px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:20px">
+            <div>
+              <div style="font-size:14px;font-weight:500;color:var(--fg);margin-bottom:5px">Feature Mode</div>
+              <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--slate);line-height:1.6">
+                Controls what happens when <strong style="color:var(--slate-lt)">Features</strong> is clicked in the sidebar.<br>
+                <span style="color:var(--gold)">Edit</span> — opens the Features table with drag reorder and filters.<br>
+                <span style="color:var(--blue)">View</span> — opens the Feature View book directly.
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0">
+              <div style="display:flex;border:1px solid var(--border);border-radius:2px;overflow:hidden">
+                <button id="setting-fm-edit" onclick="setFeatureMode('Edit')"
+                  style="padding:7px 16px;font-family:'DM Mono',monospace;font-size:11px;border:none;cursor:pointer;transition:all .15s">
+                  Edit
+                </button>
+                <button id="setting-fm-view" onclick="setFeatureMode('View')"
+                  style="padding:7px 16px;font-family:'DM Mono',monospace;font-size:11px;border:none;border-left:1px solid var(--border);cursor:pointer;transition:all .15s">
+                  View
+                </button>
+              </div>
+              <div id="setting-fm-current" style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--slate)"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings table raw view -->
+        <div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--slate);margin-bottom:10px;margin-top:24px;padding-bottom:6px;border-bottom:1px solid var(--border)">All Settings</div>
+        <table>
+          <thead><tr><th>Key</th><th>Value</th><th>Updated</th></tr></thead>
+          <tbody id="settings-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- FEATURE MODAL -->
+<div class="modal-overlay" id="feat-modal-overlay" onclick="closeFeatModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="feat-modal-title">Add Feature</h3>
+      <button class="modal-x" onclick="closeFeatModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>Title</label><input id="f_title" type="text"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Category</label>
+          <select id="f_category">
+            <option>Dashboard</option><option>Company</option><option>Dissonance</option>
+            <option>Entity Links</option><option>Holding</option><option>Moral</option>
+            <option>IO</option><option>UX</option><option>AI</option>
+          </select>
+        </div>
+        <div class="fg"><label>Page</label><input id="f_page" type="text" placeholder="e.g. dashboard"></div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="f_description" rows="3"></textarea></div>
+      <div class="fg-row">
+        <div class="fg"><label>Priority</label>
+          <select id="f_priority"><option>high</option><option>medium</option><option>low</option></select>
+        </div>
+        <div class="fg"><label>Effort</label>
+          <select id="f_effort"><option>small</option><option>medium</option><option>large</option></select>
+        </div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Status</label>
+          <select id="f_status"><option>proposed</option><option>in-progress</option><option>complete</option></select>
+        </div>
+        <div class="fg"><label>Designed</label>
+          <select id="f_designed"><option value="0">No</option><option value="1">Yes — designed</option></select>
+        </div>
+      </div>
+      <div class="fg"><label>Touches (functions)</label><input id="f_touches" type="text" placeholder="e.g. renderDashboard,auditOpco"></div>
+      <div class="fg"><label>Tags</label><input id="f_tags" type="text" placeholder="comma,separated"></div>
+      <div class="fg"><label>Notes <span style="color:var(--slate);font-weight:400;text-transform:none;letter-spacing:0">(Markdown — edit in Feature View for live preview)</span></label><textarea id="f_notes" rows="3"></textarea></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-danger" id="feat-del-btn" onclick="deleteFeature()" style="display:none;margin-right:auto">Delete</button>
+      <button class="btn btn-ghost" onclick="closeFeatModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFeature()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJECT MODAL -->
+<div class="modal-overlay" id="proj-modal-overlay" onclick="closeProjModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3 id="proj-modal-title">Add Project</h3>
+      <button class="modal-x" onclick="closeProjModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg"><label>Name</label><input id="p_name" type="text"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Slug</label><input id="p_slug" type="text"></div>
+        <div class="fg"><label>Type</label>
+          <select id="p_type"><option>single-html</option><option>extension</option><option>relay</option><option>os</option><option>tool</option></select>
+        </div>
+      </div>
+      <div class="fg"><label>Description</label><textarea id="p_description" rows="2"></textarea></div>
+      <div class="fg-row">
+        <div class="fg"><label>Current File</label><input id="p_current_file" type="text"></div>
+        <div class="fg"><label>Version</label><input id="p_current_version" type="text" placeholder="v16"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>DB Name</label><input id="p_db_name" type="text"></div>
+        <div class="fg"><label>DB Version</label><input id="p_db_version" type="number"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Lines</label><input id="p_lines" type="number"></div>
+        <div class="fg"><label>Functions</label><input id="p_functions" type="number"></div>
+      </div>
+      <div class="fg-row">
+        <div class="fg"><label>Status</label>
+          <select id="p_status"><option>active</option><option>deprecated</option><option>paused</option><option>testing</option></select>
+        </div>
+        <div class="fg"><label>Fingerprint By</label><input id="p_fingerprint_by" type="text" value="PAUL"></div>
+      </div>
+      <div class="fg"><label>Tags</label><input id="p_tags" type="text"></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeProjModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProject()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- BUILD MODAL -->
+<div class="modal-overlay" id="build-modal-overlay" onclick="closeBuildModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3>Log Build</h3>
+      <button class="modal-x" onclick="closeBuildModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg-row">
+        <div class="fg"><label>Version</label><input id="b_version" type="text" placeholder="v17"></div>
+        <div class="fg"><label>Built By</label><input id="b_built_by" type="text" value="PAUL"></div>
+      </div>
+      <div class="fg">
+        <label>Attach HTML File <span style="color:var(--slate);font-weight:400;text-transform:none;letter-spacing:0">(auto-fills filename &amp; lines)</span></label>
+        <input type="file" id="b_file_input" accept=".html,.js" style="background:var(--input-bg);border:1px solid var(--border);border-radius:2px;color:var(--fg);font-family:'DM Mono',monospace;font-size:11px;padding:7px 10px;width:100%;outline:none;cursor:pointer;" onchange="onBuildFileSelected(this)">
+        <div id="b_file_info" style="margin-top:6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--green);display:none"></div>
+      </div>
+      <div class="fg"><label>Filename</label><input id="b_filename" type="text"></div>
+      <div class="fg-row">
+        <div class="fg"><label>Lines</label><input id="b_lines" type="number"></div>
+        <div class="fg"><label>Functions</label><input id="b_functions" type="number"></div>
+      </div>
+      <div class="fg"><label>Changes</label><textarea id="b_changes" rows="4" placeholder="What changed in this build…"></textarea></div>
+      <div class="fg-row">
+        <div class="fg"><label>Status</label>
+          <select id="b_status"><option>active</option><option>deprecated</option><option>broken</option><option>testing</option></select>
+        </div>
+        <div class="fg"><label>Tags</label><input id="b_tags" type="text"></div>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeBuildModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBuild()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- RELEASE MODAL -->
+<div class="modal-overlay" id="rel-modal-overlay" onclick="closeRelModalOnOverlay(event)">
+  <div class="modal" style="width:680px">
+    <div class="modal-hdr">
+      <h3 id="rel-modal-title">New Release</h3>
+      <button class="modal-x" onclick="closeRelModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg-row">
+        <div class="fg"><label>Version</label><input id="rl_version" type="text" placeholder="v1.0.0"></div>
+        <div class="fg"><label>Project</label>
+          <select id="rl_project_id"></select>
+        </div>
+      </div>
+      <div class="fg">
+        <label>Release Notes <span style="color:var(--slate);font-weight:400;text-transform:none;letter-spacing:0">(Markdown supported)</span></label>
+        <textarea id="rl_rdoc" rows="14" style="font-family:'DM Mono',monospace;font-size:11px;line-height:1.6" placeholder="## What's New&#10;&#10;- Feature A&#10;- Bug fix B&#10;&#10;## Breaking Changes&#10;&#10;None"></textarea>
+      </div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-danger" id="rel-del-btn" onclick="deleteRelease()" style="display:none;margin-right:auto">Delete</button>
+      <button class="btn btn-ghost" onclick="closeRelModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRelease()">Save Release</button>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION MODAL -->
+<div class="modal-overlay" id="sess-modal-overlay" onclick="closeSessModalOnOverlay(event)">
+  <div class="modal">
+    <div class="modal-hdr">
+      <h3>Log Session</h3>
+      <button class="modal-x" onclick="closeSessModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="fg-row">
+        <div class="fg"><label>Timestamp (ISO-ET)</label><input id="s_session_ts" type="text" placeholder="2026-03-11T08:00:00-05:00"></div>
+        <div class="fg"><label>Instance</label><input id="s_instance" type="text" value="PAUL"></div>
+      </div>
+      <div class="fg"><label>Summary</label><textarea id="s_summary" rows="2"></textarea></div>
+      <div class="fg"><label>Built</label><textarea id="s_built" rows="2" placeholder="Comma-separated features or items built"></textarea></div>
+      <div class="fg"><label>Next</label><textarea id="s_next" rows="2"></textarea></div>
+    </div>
+    <div class="modal-ftr">
+      <button class="btn btn-ghost" onclick="closeSessModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSession()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════
+//  DB INIT
+// ════════════════════════════════════════════
+const DB_NAME = 'SoftwareProjectDB';
+const DB_VER  = 3;
+let db;
+
+function hash10(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++) h = Math.imul(31,h)+str.charCodeAt(i)|0;
+  return Math.abs(h).toString(16).padStart(8,'0').toUpperCase().slice(0,10);
+}
+
+function initDB(){
+  return new Promise((res,rej)=>{
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = e => {
+      const d = e.target.result;
+
+      if(!d.objectStoreNames.contains('projects')){
+        const ps = d.createObjectStore('projects',{keyPath:'id'});
+        ps.createIndex('slug','slug',{unique:true});
+        ps.createIndex('status','status');
+      }
+      if(!d.objectStoreNames.contains('features')){
+        const fs = d.createObjectStore('features',{keyPath:'id'});
+        fs.createIndex('project_id','project_id');
+        fs.createIndex('category','category');
+        fs.createIndex('priority','priority');
+        fs.createIndex('status','status');
+        fs.createIndex('number','number');
+      }
+      if(!d.objectStoreNames.contains('builds')){
+        const bs = d.createObjectStore('builds',{keyPath:'id'});
+        bs.createIndex('project_id','project_id');
+        bs.createIndex('status','status');
+      }
+      if(!d.objectStoreNames.contains('releases')){
+        const rs = d.createObjectStore('releases',{keyPath:'id'});
+        rs.createIndex('project_id','project_id');
+        rs.createIndex('version','version');
+      }
+      if(!d.objectStoreNames.contains('sessions')){
+        const ss = d.createObjectStore('sessions',{keyPath:'id'});
+        ss.createIndex('project_id','project_id');
+        ss.createIndex('instance','instance');
+      }
+      if(!d.objectStoreNames.contains('settings')){
+        d.createObjectStore('settings',{keyPath:'key'});
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror   = e => rej(e.target.error);
+  });
+}
+
+function dbGet(store, id){
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(store,'readonly');
+    const req = tx.objectStore(store).get(id);
+    req.onsuccess = ()=>res(req.result);
+    req.onerror   = ()=>rej(req.error);
+  });
+}
+function dbPut(store, rec){
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(store,'readwrite');
+    const req = tx.objectStore(store).put(rec);
+    req.onsuccess = ()=>res(req.result);
+    req.onerror   = ()=>rej(req.error);
+  });
+}
+function dbDel(store, id){
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(store,'readwrite');
+    const req = tx.objectStore(store).delete(id);
+    req.onsuccess = ()=>res();
+    req.onerror   = ()=>rej(req.error);
+  });
+}
+function dbAll(store){
+  return new Promise((res,rej)=>{
+    const tx = db.transaction(store,'readonly');
+    const req = tx.objectStore(store).getAll();
+    req.onsuccess = ()=>res(req.result);
+    req.onerror   = ()=>rej(req.error);
+  });
+}
+
+// ════════════════════════════════════════════
+//  CACHE
+// ════════════════════════════════════════════
+let cache = { projects:[], features:[], builds:[], sessions:[], releases:[], settings:{} };
+
+async function refreshAll(){
+  cache.projects  = await dbAll('projects');
+  cache.features  = await dbAll('features');
+  cache.builds    = await dbAll('builds');
+  cache.sessions  = await dbAll('sessions');
+  cache.releases  = await dbAll('releases');
+  const settingsArr = await dbAll('settings');
+  cache.settings = {};
+  settingsArr.forEach(s=>{ cache.settings[s.key]=s.value; });
+  renderAll();
+  updateBadges();
+  applyFeatureMode();
+}
+
+function updateBadges(){
+  document.getElementById('badge-features').textContent = cache.features.length;
+  document.getElementById('badge-projects').textContent  = cache.projects.length;
+  document.getElementById('badge-builds').textContent    = cache.builds.length;
+  document.getElementById('badge-sessions').textContent  = cache.sessions.length;
+  document.getElementById('badge-releases').textContent  = cache.releases.length;
+}
+
+// ════════════════════════════════════════════
+//  SEED DATA
+// ════════════════════════════════════════════
+async function seedIfEmpty(){
+  const existing = await dbAll('features');
+  if(existing.length > 0) return;
+
+  const proj_id = hash10('conduit-fund-os');
+  await dbPut('projects',{
+    id: proj_id, name:'Conduit Fund OS', slug:'conduit-fund-os',
+    description:'Single-file fund management OS. Five planes, Dissonance Engine, moral architecture. IndexedDB. No server.',
+    type:'single-html', status:'active', current_file:'conduit_fund_db-16.html',
+    current_version:'v16', db_name:'ConduitFundI_v8', db_version:8,
+    lines:7094, functions:174, will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    tags:'fund-os,single-html,indexeddb,moral-plane,dissonance-engine',
+    created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+  });
+
+  // Seed default settings
+  const existingSettings = await dbAll('settings');
+  if(!existingSettings.find(s=>s.key==='FeatureMode')){
+    await dbPut('settings',{ key:'FeatureMode', value:'Edit', updated_at: new Date().toISOString() });
+  }
+
+  await dbPut('builds',{
+    id: hash10('conduit-fund-os-v16'), project_id: proj_id,
+    version:'v16', filename:'conduit_fund_db-16.html', built_by:'PAUL',
+    lines:7094, functions:174, status:'active',
+    changes:'Current active version. DB: ConduitFundI_v8. 14 stores. Handoff system complete.',
+    will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    created_at: new Date().toISOString()
+  });
+
+  const features = [
+    [1,'Dissonance Score on Dashboard','Dashboard','Each SPV/OpCo gets a single score (HIGH×3 + MID×1). Show top 3 most flagged entities on dashboard with drill-through to Dissonance page.','dashboard','renderDashboard,auditOpco,auditSpv',0,'high','small','dashboard,dissonance,score'],
+    [2,'Moral Coverage Meter','Dashboard','% of Fund I positions with Foundation Evidence recorded. Surfaces the moral accountability gap at a glance on the dashboard.','dashboard','renderDashboard,foundation_evidence',0,'high','small','dashboard,moral,foundation-evidence'],
+    [3,'Currency Complexity Warning Banner','Dashboard','If any active stream has proxy or restricted CCF flag, surface it on dashboard. Currently buried in Dissonance only.','dashboard','renderDashboard,revenue_streams',0,'medium','small','dashboard,currency,ccf'],
+    [4,'Relationship Terms in Company Report','Company','Cap structure from terms.ownershipPct, ownershipClass, agreementRef flows into Company Report legal section automatically. Designed — not built.','company_reports','renderCompanyReport,saveRelModal,terms',1,'high','medium','company-report,relationships,terms,designed'],
+    [5,'OpCo Timeline','Company','Chronological view of all events for a company: position taken, revenue streams added, Foundation Evidence recorded, relationships changed.','opcos','openOpcDetail,renderFESection',0,'medium','medium','opcos,timeline,history'],
+    [6,'Geo Tag on OpCo','Company','Add geography field to OpCo (not just revenue streams). Enables filtering and map view by country.','opcos','openModal,saveRecord,FORMS',0,'medium','small','opcos,geo,filter'],
+    [7,'Key Person Risk Flag','Dissonance','If key-person relationship exists and that contact has no email or phone recorded, surface as people-plane dissonance flag.','dissonance','auditOpco,contacts',0,'medium','small','dissonance,people-plane,key-person'],
+    [8,'Terms Search in Entity Links','Entity Links','Search within terms{} fields. "Gold Standard" finds carbon credit relationships. Designed in HANDOFF.','entity_links','renderEntityLinks',1,'high','small','entity-links,search,terms,designed'],
+    [9,'Relationship Timeline View','Entity Links','All relationships in chronological order by startDate terms field. Answers: what was fund structure in 2023 vs today?','entity_links','renderEntityLinks,REL_TERMS_SCHEMA',0,'medium','medium','entity-links,timeline,history'],
+    [10,'Plane Filter on Entity Links','Entity Links','One-click filter to show only legal/structural/financial/people/moral relationships. No filtering exists currently.','entity_links','renderEntityLinks',0,'medium','small','entity-links,filter,plane'],
+    [11,'Relationship Expiry Alerts','Dissonance','If a relationship has endDate in terms within 90 days, flag on Dissonance page and dashboard.','dissonance','auditOpco,REL_TERMS_SCHEMA',0,'medium','small','dissonance,relationships,expiry'],
+    [12,'Holding Structure Dual-Parent Fix','Holding','Add "also owned by" badge on second parent occurrence rather than rendering node twice. Resolves open architecture question.','holding','renderHoldingStructure,renderSubtree',1,'high','medium','holding,dual-parent,designed'],
+    [13,'Holding Structure SVG Export','Holding','Export the DAG as SVG for use in LP reports. Currently rendered as HTML divs only.','holding','renderHoldingStructure',0,'medium','medium','holding,export,svg'],
+    [14,'Ownership % on Connector Lines','Holding','Show terms.ownershipPct directly on connector lines in holding structure tree. Currently only shown in entity links.','holding','renderHoldingStructure,nodeHTML',0,'high','small','holding,ownership,terms'],
+    [15,'Dissonance History Snapshots','Dissonance','Snapshot flag count per entity per session. Show whether flags are being resolved or accumulating. Requires new dissonance_snapshots store + DB version bump.','dissonance','auditOpco,auditSpv,initDB',0,'low','large','dissonance,history,snapshots,db-bump'],
+    [16,'Assign Flags to Action Items','Dissonance','One-click on a flag opens the relevant modal to resolve it. actionPlane already exists on flags — wire to openRelModal() or openModal() directly.','dissonance','renderDissonance,openRelModal,openModal',0,'high','small','dissonance,actions,ux'],
+    [17,'SPV Dissonance Checks Expanded','Dissonance','auditSpv is significantly thinner than auditOpco. Add Foundation Evidence, currency complexity, and people-plane checks at SPV level.','dissonance','auditSpv',0,'high','medium','dissonance,spv,audit'],
+    [18,'Foundation Coverage Map','Moral','Visual showing which of 6 Foundations (L1-001 to L1-006) have evidence recorded across portfolio. Gaps immediately visible.','principles','renderConduitPrinciples,foundation_evidence',0,'high','medium','moral,foundation-evidence,coverage'],
+    [19,'Evidence Quality Score','Moral','Rate each FE record: Direct Observation(4) > Financial Data(3) > Third-Party Report(2) > Overview/Narrative(1). Surface average quality per company.','principles','renderFESection,renderFECard',0,'medium','small','moral,foundation-evidence,quality'],
+    [20,'Tension Reviewer','Moral','Dedicated view showing only the tension field of every Foundation Evidence record one after another. Fast greenwashing signal review.','principles','renderFESection,foundation_evidence',0,'high','small','moral,tension,review,greenwashing'],
+    [21,'Scenario Comparison View','Company','Bear/Base/Bull side-by-side in single table. Scenario chart does this visually — no tabular comparison exists.','company_reports','renderCompanyReport,renderScenarioChart',0,'medium','medium','company-report,scenarios,comparison'],
+    [22,'Report Version History','Company','Track when Company Report was last edited. Answers: has this been reviewed in the last 90 days?','company_reports','saveCompanyReport,renderCompanyReportsPage',0,'medium','small','company-report,history,version'],
+    [23,'Print-Ready LP Summary','Company','Stripped single-page print view: name, investment type, current value, one-line description, Bear/Base/Bull, moral plane summary.','company_reports','printCompanyReport,renderCompanyReport',0,'high','medium','company-report,print,lp'],
+    [24,'Import Preview / Diff','IO','Before executeImport() runs, show diff of what will be added vs what exists. Import is currently blind.','io','executeImport,renderMapper',0,'medium','medium','io,import,diff,ux'],
+    [25,'Selective Export','IO','Export a single entity + all related records (relationships, streams, positions, FE) as self-contained JSON package.','io','exportCSV,makeCSV,relationships',0,'medium','medium','io,export,selective,json'],
+    [26,'DB Snapshot / Restore','IO','Full JSON snapshot of all 14 stores with timestamp. Restore from any snapshot. Fills gap left by no server-side backup.','io','resetDatabase,initDB',0,'high','medium','io,snapshot,restore,backup'],
+    [27,'Global Search','UX','One input searching across entity names, notes, tags, relationship terms, and Foundation Evidence text.','all','refreshAll,cache',0,'high','large','ux,search,global'],
+    [28,'Recently Viewed','UX','Track last 5 entities opened. Show on dashboard for fast re-access. Store in config store — no schema change needed.','dashboard','renderDashboard,openDetail,openOpcDetail',0,'medium','small','ux,recently-viewed,dashboard'],
+    [29,'Keyboard Shortcuts','UX','N=new modal, Esc=close modal, D=Dissonance, /=global search. Dense app — keyboard navigation compounds over time.','all','navigate,openModal,closeModal',0,'medium','small','ux,keyboard,shortcuts'],
+    [30,'AI Analyze Button','AI','Natural language → structured record write. First use case: stake transfer event → saveRelModal() called programmatically with updated terms.ownershipPct.','opcos','saveRelModal,openRelModal',1,'high','large','ai,analyze,stake-transfer,designed'],
+  ];
+
+  for(const f of features){
+    const [num,title,cat,desc,page,touches,designed,priority,effort,tags] = f;
+    await dbPut('features',{
+      id: hash10(`F${String(num).padStart(2,'0')}-${title}`),
+      project_id: proj_id, number: num, title, category: cat,
+      description: desc, page, touches, designed,
+      priority, effort, status:'proposed',
+      tags, will_author:'Will Fobbs', fingerprint_by:'PAUL',
+      notes:'', blocker:'',
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString()
+    });
+  }
+}
+
+// ════════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderAll(){
+  renderFeatureStats();
+  renderFeatures();
+  renderProjects();
+  renderBuilds();
+  renderSessions();
+  renderReleases();
+}
+
+function renderFeatureStats(){
+  const f = cache.features;
+  const high   = f.filter(x=>x.priority==='high').length;
+  const designed = f.filter(x=>x.designed).length;
+  const inprog = f.filter(x=>x.status==='in-progress').length;
+  const done   = f.filter(x=>x.status==='complete').length;
+  document.getElementById('feature-stats').innerHTML = `
+    <div class="stat-card"><div class="stat-val">${f.length}</div><div class="stat-label">Total Features</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--red)">${high}</div><div class="stat-label">High Priority</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--purple)">${designed}</div><div class="stat-label">Pre-Designed</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--blue)">${inprog}</div><div class="stat-label">In Progress</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:var(--green)">${done}</div><div class="stat-label">Complete</div></div>
+  `;
+}
+
+function renderFeatures(){
+  const search   = document.getElementById('feat-search').value.toLowerCase();
+  const cat      = document.getElementById('feat-cat').value;
+  const priority = document.getElementById('feat-priority').value;
+  const status   = document.getElementById('feat-status').value;
+  const effort   = document.getElementById('feat-effort').value;
+
+  let rows = [...cache.features].sort((a,b)=>(a.sort_order??a.number)-(b.sort_order??b.number));
+  if(search)    rows = rows.filter(r=> (r.title+r.description+r.tags+r.touches).toLowerCase().includes(search));
+  if(cat)       rows = rows.filter(r=> r.category===cat);
+  if(priority)  rows = rows.filter(r=> r.priority===priority);
+  if(status)    rows = rows.filter(r=> r.status===status);
+  if(effort)    rows = rows.filter(r=> r.effort===effort);
+
+  const catClass = c => 'cat-pill cat-'+c.replace(/\s+/g,'.');
+  const isDraggable = !search && !cat && !priority && !status && !effort;
+  const tbody = document.getElementById('features-tbody');
+  tbody.innerHTML = rows.map(r=>`
+    <tr data-id="${r.id}" draggable="${isDraggable}">
+      <td class="mono" style="color:var(--slate);padding:0 8px">
+        <div class="drag-handle" title="${isDraggable?'Drag to reorder':'Clear filters to reorder'}">
+          ${isDraggable?'<div class="drag-handle-icon"><span></span><span></span><span></span></div>':''}
+          <span style="font-family:DM Mono,monospace;font-size:11px;color:var(--slate)">${r.sort_order??r.number}</span>
+        </div>
+      </td>
+      <td>
+        <strong style="color:var(--fg)">${esc(r.title)}</strong>
+        ${r.designed?'<span class="designed-star" title="Pre-designed">★</span>':''}
+        <div style="font-size:11px;color:var(--slate);margin-top:3px;font-family:DM Mono,monospace">${esc(r.page||'')}</div>
+      </td>
+      <td><span class="${catClass(r.category)}">${esc(r.category)}</span></td>
+      <td><span class="badge badge-${r.priority}">${r.priority}</span></td>
+      <td><span class="badge badge-${r.effort}">${r.effort}</span></td>
+      <td><span class="badge badge-${r.status.replace('-','')}">${r.status}</span></td>
+      <td class="mono" style="font-size:10px;color:var(--slate);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.page||'')}</td>
+      <td><button class="btn-edit btn" onclick="openFeatureModal('${r.id}')">Edit</button></td>
+    </tr>
+  `).join('');
+  if(isDraggable) initFeatureDrag(tbody);
+}
+
+function renderProjects(){
+  document.getElementById('projects-tbody').innerHTML = cache.projects.map(r=>`
+    <tr>
+      <td><strong style="color:var(--gold);cursor:pointer;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'" onclick="openProjectDetail('${r.id}')">${esc(r.name)}</strong><div style="font-size:10px;color:var(--slate);font-family:DM Mono,monospace">${esc(r.slug)}</div></td>
+      <td class="mono">${esc(r.type)}</td>
+      <td class="mono" style="color:var(--gold)">${esc(r.current_version)}</td>
+      <td class="mono">${r.lines?r.lines.toLocaleString():'—'}</td>
+      <td class="mono" style="color:var(--slate)">${esc(r.db_name||'—')} v${r.db_version||'—'}</td>
+      <td><span class="badge badge-${r.status==='active'?'complete':r.status==='testing'?'in-progress':'proposed'}">${r.status}</span></td>
+      <td><button class="btn-edit btn" onclick="openProjectModal('${r.id}')">Edit</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderBuilds(){
+  const rows = [...cache.builds].reverse();
+  document.getElementById('builds-tbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td class="mono" style="color:var(--fg)">${esc(r.filename||'—')}</td>
+      <td class="mono" style="color:var(--gold)">${esc(r.version)}</td>
+      <td class="mono" style="color:var(--slate)">${esc(r.built_by||'—')}</td>
+      <td class="mono">${r.lines?r.lines.toLocaleString():'—'}</td>
+      <td><span class="badge badge-${r.status==='active'?'complete':r.status==='testing'?'in-progress':'proposed'}">${r.status}</span></td>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--slate);font-size:11px">${esc(r.changes||'')}</td>
+      <td style="display:flex;gap:6px;align-items:center">
+        ${r.file_content?`<button class="btn btn-ghost" style="font-size:10px;padding:3px 8px" onclick="downloadBuild('${r.id}')">↓ HTML</button>`:''}
+        <button class="btn-edit btn" onclick="openBuildModal('${r.id}')">Edit</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderSessions(){
+  const rows = [...cache.sessions].reverse();
+  document.getElementById('sessions-tbody').innerHTML = rows.map(r=>`
+    <tr>
+      <td class="mono" style="color:var(--slate);font-size:10px">${esc(r.session_ts)}</td>
+      <td class="mono" style="color:var(--gold)">${esc(r.instance||'—')}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.summary||'')}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--slate)">${esc(r.built||'')}</td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;color:var(--blue)">${esc(r.next||'')}</td>
+      <td><button class="btn-danger btn" onclick="deleteSession('${r.id}')">Del</button></td>
+    </tr>
+  `).join('') || '<tr><td colspan="6" style="color:var(--slate);padding:20px;text-align:center;font-family:\'DM Mono\',monospace;font-size:11px">No sessions logged yet</td></tr>';
+}
+
+// ════════════════════════════════════════════
+//  FEATURE MODAL
+// ════════════════════════════════════════════
+let _editFeatId = null;
+
+async function openFeatureModal(id=null){
+  _editFeatId = id;
+  document.getElementById('feat-modal-title').textContent = id ? 'Edit Feature' : 'Add Feature';
+  document.getElementById('feat-del-btn').style.display = id ? 'inline-flex' : 'none';
+  const fields = ['title','category','page','description','priority','effort','status','designed','touches','tags','notes'];
+  fields.forEach(f => document.getElementById('f_'+f).value = '');
+  document.getElementById('f_priority').value = 'high';
+  document.getElementById('f_effort').value = 'small';
+  document.getElementById('f_status').value = 'proposed';
+  if(id){
+    const rec = await dbGet('features', id);
+    if(rec){
+      document.getElementById('f_title').value       = rec.title||'';
+      document.getElementById('f_category').value    = rec.category||'Dashboard';
+      document.getElementById('f_page').value        = rec.page||'';
+      document.getElementById('f_description').value = rec.description||'';
+      document.getElementById('f_priority').value    = rec.priority||'medium';
+      document.getElementById('f_effort').value      = rec.effort||'medium';
+      document.getElementById('f_status').value      = rec.status||'proposed';
+      document.getElementById('f_designed').value    = rec.designed?'1':'0';
+      document.getElementById('f_touches').value     = rec.touches||'';
+      document.getElementById('f_tags').value        = rec.tags||'';
+      document.getElementById('f_notes').value       = rec.notes||'';
+    }
+  }
+  document.getElementById('feat-modal-overlay').classList.add('open');
+}
+function closeFeatModal(){ document.getElementById('feat-modal-overlay').classList.remove('open'); _editFeatId=null; }
+function closeFeatModalOnOverlay(e){ if(e.target===document.getElementById('feat-modal-overlay')) closeFeatModal(); }
+
+async function saveFeature(){
+  const proj_id = hash10('conduit-fund-os');
+  const title = document.getElementById('f_title').value.trim();
+  if(!title){ toast('Title is required',true); return; }
+  const id = _editFeatId || hash10(title + Date.now());
+  const existing = _editFeatId ? await dbGet('features',id) : null;
+  const rec = {
+    id, project_id: proj_id,
+    number: existing?.number || (Math.max(0,...cache.features.map(f=>f.number))+1),
+    sort_order: existing?.sort_order ?? existing?.number ?? (Math.max(0,...cache.features.map(f=>f.sort_order??f.number))+1),
+    title,
+    category:   document.getElementById('f_category').value,
+    page:       document.getElementById('f_page').value,
+    description:document.getElementById('f_description').value,
+    priority:   document.getElementById('f_priority').value,
+    effort:     document.getElementById('f_effort').value,
+    status:     document.getElementById('f_status').value,
+    designed:   parseInt(document.getElementById('f_designed').value),
+    touches:    document.getElementById('f_touches').value,
+    tags:       document.getElementById('f_tags').value,
+    notes:      document.getElementById('f_notes').value,
+    will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    created_at: existing?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  await dbPut('features', rec);
+  await refreshAll();
+  closeFeatModal();
+  toast('Feature saved', false, true);
+}
+async function deleteFeature(){
+  if(!_editFeatId) return;
+  if(!confirm('Delete this feature?')) return;
+  await dbDel('features', _editFeatId);
+  await refreshAll();
+  closeFeatModal();
+  toast('Feature deleted');
+}
+
+// ════════════════════════════════════════════
+//  PROJECT MODAL
+// ════════════════════════════════════════════
+let _editProjId = null;
+async function openProjectModal(id=null){
+  _editProjId = id;
+  document.getElementById('proj-modal-title').textContent = id ? 'Edit Project' : 'Add Project';
+  ['name','slug','description','current_file','current_version','db_name','db_version','lines','functions','tags'].forEach(f=>{
+    document.getElementById('p_'+f).value='';
+  });
+  document.getElementById('p_status').value='active';
+  document.getElementById('p_fingerprint_by').value='PAUL';
+  if(id){
+    const rec = await dbGet('projects',id);
+    if(rec){
+      ['name','slug','description','current_file','current_version','db_name','db_version','lines','functions','status','tags','fingerprint_by'].forEach(f=>{
+        const el=document.getElementById('p_'+f);
+        if(el) el.value = rec[f]||'';
+      });
+    }
+  }
+  document.getElementById('proj-modal-overlay').classList.add('open');
+}
+function closeProjModal(){ document.getElementById('proj-modal-overlay').classList.remove('open'); _editProjId=null; }
+function closeProjModalOnOverlay(e){ if(e.target===document.getElementById('proj-modal-overlay')) closeProjModal(); }
+
+async function saveProject(){
+  const name = document.getElementById('p_name').value.trim();
+  if(!name){ toast('Name is required',true); return; }
+  const id = _editProjId || hash10('proj-'+name+Date.now());
+  const existing = _editProjId ? await dbGet('projects',id) : null;
+  await dbPut('projects',{
+    id, name,
+    slug:            document.getElementById('p_slug').value,
+    description:     document.getElementById('p_description').value,
+    type:            document.getElementById('p_type').value,
+    status:          document.getElementById('p_status').value,
+    current_file:    document.getElementById('p_current_file').value,
+    current_version: document.getElementById('p_current_version').value,
+    db_name:         document.getElementById('p_db_name').value,
+    db_version:      parseInt(document.getElementById('p_db_version').value)||null,
+    lines:           parseInt(document.getElementById('p_lines').value)||null,
+    functions:       parseInt(document.getElementById('p_functions').value)||null,
+    tags:            document.getElementById('p_tags').value,
+    fingerprint_by:  document.getElementById('p_fingerprint_by').value,
+    will_author:     'Will Fobbs',
+    created_at: existing?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  });
+  await refreshAll();
+  closeProjModal();
+  toast('Project saved', false, true);
+}
+
+// ════════════════════════════════════════════
+//  BUILD MODAL
+// ════════════════════════════════════════════
+let _editBuildId = null;
+let _buildFileContent = null;
+async function openBuildModal(id=null){
+  _editBuildId = id;
+  ['version','built_by','filename','lines','functions','changes','tags'].forEach(f=>{
+    const el=document.getElementById('b_'+f); if(el) el.value='';
+  });
+  document.getElementById('b_built_by').value='PAUL';
+  document.getElementById('b_status').value='active';
+  _buildFileContent = null;
+  const fi = document.getElementById('b_file_input'); if(fi) fi.value='';
+  const info = document.getElementById('b_file_info'); if(info) info.style.display='none';
+  if(id){
+    const rec = await dbGet('builds',id);
+    if(rec){
+      ['version','built_by','filename','lines','functions','changes','status','tags'].forEach(f=>{
+        const el=document.getElementById('b_'+f); if(el) el.value=rec[f]||'';
+      });
+    }
+  }
+  document.getElementById('build-modal-overlay').classList.add('open');
+}
+function closeBuildModal(){ document.getElementById('build-modal-overlay').classList.remove('open'); _editBuildId=null; }
+function closeBuildModalOnOverlay(e){ if(e.target===document.getElementById('build-modal-overlay')) closeBuildModal(); }
+
+function onBuildFileSelected(input){
+  const file = input.files[0];
+  if(!file){ _buildFileContent=null; document.getElementById('b_file_info').style.display='none'; return; }
+  const reader = new FileReader();
+  reader.onload = e => {
+    _buildFileContent = e.target.result;
+    const lines = _buildFileContent.split('\n').length;
+    const fnMatches = (_buildFileContent.match(/^(?:async )?function /gm)||[]).length;
+    document.getElementById('b_filename').value  = file.name;
+    document.getElementById('b_lines').value     = lines;
+    document.getElementById('b_functions').value = fnMatches||'';
+    const info = document.getElementById('b_file_info');
+    info.textContent = `✓ ${file.name} · ${lines.toLocaleString()} lines${fnMatches?' · '+fnMatches+' functions':''}`;
+    info.style.display = 'block';
+  };
+  reader.readAsText(file);
+}
+
+async function saveBuild(){
+  const proj_id = hash10('conduit-fund-os');
+  const version = document.getElementById('b_version').value.trim();
+  if(!version){ toast('Version is required',true); return; }
+  const id = _editBuildId || hash10('build-'+version+Date.now());
+  const existing = _editBuildId ? await dbGet('builds',id) : null;
+  await dbPut('builds',{
+    id, project_id: proj_id, version,
+    built_by:  document.getElementById('b_built_by').value,
+    filename:  document.getElementById('b_filename').value,
+    lines:     parseInt(document.getElementById('b_lines').value)||null,
+    functions: parseInt(document.getElementById('b_functions').value)||null,
+    changes:   document.getElementById('b_changes').value,
+    status:    document.getElementById('b_status').value,
+    tags:      document.getElementById('b_tags').value,
+    file_content: _buildFileContent || existing?.file_content || null,
+    will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    created_at: existing?.created_at || new Date().toISOString()
+  });
+  _buildFileContent = null;
+  await refreshAll();
+  closeBuildModal();
+  toast('Build logged', false, true);
+}
+
+// ════════════════════════════════════════════
+//  SESSION MODAL
+// ════════════════════════════════════════════
+function openSessionModal(){
+  ['session_ts','summary','built','next'].forEach(f=>{ document.getElementById('s_'+f).value=''; });
+  document.getElementById('s_instance').value='PAUL';
+  document.getElementById('s_session_ts').value = new Date().toISOString().slice(0,19)+'-05:00';
+  document.getElementById('sess-modal-overlay').classList.add('open');
+}
+function closeSessModal(){ document.getElementById('sess-modal-overlay').classList.remove('open'); }
+function closeSessModalOnOverlay(e){ if(e.target===document.getElementById('sess-modal-overlay')) closeSessModal(); }
+
+async function saveSession(){
+  const proj_id = hash10('conduit-fund-os');
+  const ts = document.getElementById('s_session_ts').value.trim();
+  if(!ts){ toast('Timestamp is required',true); return; }
+  await dbPut('sessions',{
+    id: hash10('session-'+ts+Date.now()), project_id: proj_id,
+    session_ts: ts,
+    instance:  document.getElementById('s_instance').value,
+    summary:   document.getElementById('s_summary').value,
+    built:     document.getElementById('s_built').value,
+    next:      document.getElementById('s_next').value,
+    will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    created_at: new Date().toISOString()
+  });
+  await refreshAll();
+  closeSessModal();
+  toast('Session logged', false, true);
+}
+async function deleteSession(id){
+  if(!confirm('Delete this session?')) return;
+  await dbDel('sessions',id);
+  await refreshAll();
+  toast('Session deleted');
+}
+
+async function downloadBuild(id){
+  const rec = await dbGet('builds', id);
+  if(!rec?.file_content){ toast('No file attached to this build',true); return; }
+  const a = document.createElement('a');
+  a.href = 'data:text/html;charset=utf-8,'+encodeURIComponent(rec.file_content);
+  a.download = rec.filename || ('build-'+rec.version+'.html');
+  a.click();
+  toast('Downloaded '+( rec.filename||rec.version), false, true);
+}
+
+// ════════════════════════════════════════════
+//  EXPORT
+// ════════════════════════════════════════════
+function exportFeatures(){
+  const rows = [...cache.features].sort((a,b)=>a.number-b.number);
+  const cols = ['number','title','category','priority','effort','status','designed','page','touches','tags','description'];
+  const csv  = [cols.join(','),...rows.map(r=>cols.map(c=>'"'+(r[c]||'').toString().replace(/"/g,'""')+'"').join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download = 'features-conduit-fund-os.csv';
+  a.click();
+  toast('Features exported', false, true);
+}
+
+// ════════════════════════════════════════════
+//  NAV
+// ════════════════════════════════════════════
+function navigate(el){
+  currentProjectId = null;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  el.classList.add('active');
+  let page = el.dataset.page;
+
+  // FeatureMode routing: 'features' nav → redirect based on setting
+  if(page === 'features'){
+    const mode = cache.settings['FeatureMode'] || 'Edit';
+    if(mode === 'View'){
+      page = 'book';
+      // Keep nav highlight on features item
+    }
+  }
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  if(page==='book') buildBook();
+  if(page==='settings') renderSettingsPage();
+}
+function navigateTo(page){
+  const el = document.querySelector('[data-page="'+page+'"]');
+  if(el) navigate(el);
+}
+
+// ════════════════════════════════════════════
+//  THEME
+// ════════════════════════════════════════════
+function toggleTheme(){
+  const isDark = document.body.dataset.theme==='dark';
+  applyTheme(isDark?'light':'dark');
+}
+function applyTheme(t){
+  document.body.dataset.theme = t;
+  const track = document.getElementById('theme-track');
+  const label = document.getElementById('theme-label');
+  if(t==='light'){ track.classList.remove('on'); label.textContent='Light'; }
+  else { track.classList.add('on'); label.textContent='Dark'; }
+  localStorage.setItem('spdb-theme',t);
+}
+
+// ════════════════════════════════════════════
+//  FULLSCREEN
+// ════════════════════════════════════════════
+function expandFullscreen(){
+  // BroadcastChannel crosses the claudeusercontent.com sandbox boundary.
+  // Listener in sim.js or pasted in Top console calls requestFullscreen() on iframe[0].
+  try {
+    const bc = new BroadcastChannel('sentinel');
+    bc.postMessage({ type: 'SENTINEL_FULLSCREEN' });
+    bc.close();
+  } catch(e) { console.warn('[fs] BroadcastChannel failed:', e.message); }
+  _fsUpdateIcon();
+}
+
+function _fsUpdateIcon(){
+  const isFs     = !!document.fullscreenElement;
+  const expand   = document.getElementById('fs-icon-expand');
+  const contract = document.getElementById('fs-icon-contract');
+  if(expand)   expand.style.display   = isFs ? 'none' : '';
+  if(contract) contract.style.display = isFs ? ''     : 'none';
+}
+
+document.addEventListener('fullscreenchange',       _fsUpdateIcon);
+document.addEventListener('webkitfullscreenchange', _fsUpdateIcon);
+
+// ════════════════════════════════════════════
+//  TOAST
+// ════════════════════════════════════════════
+function toast(msg, err=false, ok=false){
+  const el = document.createElement('div');
+  el.className = 'toast-msg'+(err?' toast-err':ok?' toast-ok':'');
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(()=>el.remove(), 3000);
+}
+
+
+
+
+// ════════════════════════════════════════════
+//  PRINT
+// ════════════════════════════════════════════
+
+function buildPrintMD(md){
+  if(!md) return '';
+  // reuse renderMD but wrap result in prt-md
+  return '<div class="prt-md">' + renderMD(md) + '</div>';
+}
+
+function buildPrintFeatureHTML(f, pageNum){
+  const catColors = {
+    'Dashboard':'#a67c2a','Company':'#1a9e50','Dissonance':'#c0392b',
+    'Entity Links':'#2471a3','Holding':'#2471a3','Moral':'#7d3c98',
+    'IO':'#4a5878','UX':'#a67c2a','AI':'#7d3c98'
+  };
+  const touchChips = (f.touches||'').split(',').filter(Boolean)
+    .map(t=>`<span class="prt-touch-chip">${esc(t.trim())}</span>`).join('');
+  const now = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+
+  return `
+    <div class="prt-feature">
+      <!-- watermark category -->
+      <div class="prt-category-bg" style="-webkit-text-stroke-color:${catColors[f.category]||'#ccc'}22">${esc(f.category)}</div>
+
+      <!-- category label row -->
+      <div class="prt-category-label">
+        <span style="font-size:11px;color:${catColors[f.category]||'#888'};font-weight:600;letter-spacing:2px">${esc(f.category)}</span>
+      </div>
+
+      <div class="prt-order">Feature ${String(pageNum).padStart(2,'0')} · Order ${f.sort_order??f.number}</div>
+      <div class="prt-title">${esc(f.title)}</div>
+
+      <div class="prt-badges">
+        <span class="prt-badge prt-badge-${f.priority}">${f.priority} priority</span>
+        <span class="prt-badge prt-badge-effort">${f.effort} effort</span>
+        <span class="prt-badge prt-badge-status">${f.status}</span>
+        ${f.designed?'<span class="prt-badge prt-badge-star">★ pre-designed</span>':''}
+        ${f.page?`<span class="prt-badge prt-badge-status">${esc(f.page)}</span>`:''}
+      </div>
+
+      ${f.description?`<div class="prt-desc">${esc(f.description)}</div>`:''}
+      <hr class="prt-divider">
+
+      ${touchChips?`
+        <div class="prt-touches-label">Functions Touched</div>
+        <div class="prt-touches">${touchChips}</div>
+      `:''}
+
+      ${f.notes?`
+        <div class="prt-notes-label">Notes</div>
+        ${buildPrintMD(f.notes)}
+      `:''}
+
+      <div class="prt-footer">
+        <span>Conduit Fund OS · SoftwareProjectDB</span>
+        <span>${now}</span>
+      </div>
+    </div>`;
+}
+
+function buildPrintTOCHTML(feats){
+  const now = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  const entries = feats.map((f,i)=>`
+    <div class="prt-toc-entry">
+      <span class="prt-toc-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="prt-toc-name">${esc(f.title)}</span>
+      <span class="prt-toc-cat">${esc(f.category)}</span>
+      <span class="prt-toc-pg">${i+2}</span>
+    </div>`).join('');
+
+  return `
+    <div class="prt-toc">
+      <div class="prt-toc-title">Feature Specification</div>
+      <div class="prt-toc-sub">Conduit Fund OS · ${feats.length} feature${feats.length!==1?'s':''} · ${now}</div>
+      ${entries}
+      <div class="prt-footer">
+        <span>Conduit Fund OS · SoftwareProjectDB</span>
+        <span>${now}</span>
+      </div>
+    </div>`;
+}
+
+function openPrintWindow(bodyHTML){
+  // Extract print CSS from the page's first <style> block
+  const styleText = document.querySelector('style').textContent;
+  const printCSS  = styleText.split('/* ── PRINT')[1]?.split('/* BOOK VIEW')[0] || '';
+
+  // Build a full document string
+  const docHTML = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Feature Specification · Conduit Fund OS</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500&family=DM+Mono:wght@300;400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#fff;}
+@page{margin:18mm 20mm;}
+${printCSS}
+</style>
+</head>
+<body class="prt-body">
+${bodyHTML}
+</body>
+</html>`;
+
+  // Inject a hidden iframe — avoids popup blockers entirely
+  const frame = document.createElement('iframe');
+  frame.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;';
+  document.body.appendChild(frame);
+
+  frame.contentDocument.open();
+  frame.contentDocument.write(docHTML);
+  frame.contentDocument.close();
+
+  // Wait for fonts/images then print
+  frame.contentWindow.onload = () => {
+    setTimeout(() => {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+      // Remove frame after dialog closes (slight delay)
+      setTimeout(() => document.body.removeChild(frame), 1000);
+    }, 300);
+  };
+}
+
+function printAllFeatures(){
+  const cat      = document.getElementById('bk-cat')?.value||'';
+  const priority = document.getElementById('bk-priority')?.value||'';
+  const status   = document.getElementById('bk-status')?.value||'';
+  let feats = [...cache.features].sort((a,b)=>(a.sort_order??a.number)-(b.sort_order??b.number));
+  if(cat)      feats = feats.filter(f=>f.category===cat);
+  if(priority) feats = feats.filter(f=>f.priority===priority);
+  if(status)   feats = feats.filter(f=>f.status===status);
+  if(!feats.length){ toast('No features to print',true); return; }
+
+  const tocHTML  = buildPrintTOCHTML(feats);
+  const pagesHTML = feats.map((f,i)=>buildPrintFeatureHTML(f, i+1)).join('');
+  openPrintWindow(tocHTML + pagesHTML);
+}
+
+function printSingleFeature(id){
+  const f = cache.features.find(x=>x.id===id);
+  if(!f){ toast('Feature not found',true); return; }
+  openPrintWindow(buildPrintFeatureHTML(f, f.sort_order??f.number));
+}
+
+// ════════════════════════════════════════════
+//  BOOK VIEW
+// ════════════════════════════════════════════
+let _bookPages  = [];   // array of feature records (page 0 = TOC)
+let _bookCur    = 0;    // 0 = TOC, 1+ = feature index
+
+function buildBook(goToPage){
+  const cat      = document.getElementById('bk-cat')?.value||'';
+  const priority = document.getElementById('bk-priority')?.value||'';
+  const status   = document.getElementById('bk-status')?.value||'';
+
+  let feats = [...cache.features].sort((a,b)=>(a.sort_order??a.number)-(b.sort_order??b.number));
+  if(cat)      feats = feats.filter(f=>f.category===cat);
+  if(priority) feats = feats.filter(f=>f.priority===priority);
+  if(status)   feats = feats.filter(f=>f.status===status);
+
+  _bookPages = feats;
+  _bookCur   = goToPage !== undefined ? goToPage : 0;
+
+  renderBookStage(false);
+}
+
+function renderBookStage(reverse){
+  const stage   = document.getElementById('bk-stage');
+  const total   = _bookPages.length + 1; // +1 for TOC
+  const cur     = _bookCur;              // 0=TOC
+
+  document.getElementById('bk-cur').textContent   = cur + 1;
+  document.getElementById('bk-total').textContent  = total;
+
+  // Build page HTML
+  let inner = '';
+  if(cur === 0){
+    inner = buildTOCPage();
+  } else {
+    const feat = _bookPages[cur - 1];
+    inner = feat ? buildFeaturePage(feat, cur, total) : '';
+  }
+
+  stage.innerHTML = `<div class="book-page active${reverse?' rev':''}">${inner}</div>`;
+}
+
+function buildTOCPage(){
+  const catClass = c=>'cat-pill cat-'+c.replace(/\s+/g,'.');
+  const entries = _bookPages.map((f, i) => `
+    <div class="toc-entry" onclick="bookGoTo(${i+1})">
+      <span class="toc-num">${String(i+1).padStart(2,'0')}</span>
+      <span class="toc-entry-title">${esc(f.title)}</span>
+      <span class="toc-dots"></span>
+      <span class="toc-badges">
+        <span class="${catClass(f.category)}">${esc(f.category)}</span>
+        <span class="badge badge-${f.priority}">${f.priority}</span>
+        <span class="badge badge-${(f.status||'').replace('-','')}">${f.status}</span>
+      </span>
+      <span class="toc-pg" style="margin-left:12px">${i+2}</span>
+    </div>`).join('');
+
+  const now = new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'});
+  return `
+    <div class="toc-title">Feature Specification</div>
+    <div class="toc-subtitle">Conduit Fund OS · ${_bookPages.length} feature${_bookPages.length!==1?'s':''} · ${now}</div>
+    <div>${entries || '<div style="color:var(--slate);font-family:DM Mono,monospace;font-size:11px">No features match the current filters.</div>'}</div>
+  `;
+}
+
+function buildFeaturePage(f, pageNum, total){
+  const catClass = c=>'cat-pill cat-'+c.replace(/\s+/g,'.');
+  const touchChips = (f.touches||'').split(',').filter(Boolean).map(t=>
+    `<span class="fp-touch-chip">${esc(t.trim())}</span>`).join('');
+
+  const notesHtml = f.notes
+    ? `<div class="md-render">${renderMD(f.notes)}</div>`
+    : `<div class="fp-notes-empty">No notes written for this feature yet.</div>`;
+
+  return `
+    <div class="fp-header">
+      <div class="fp-num">Feature ${String(pageNum).padStart(2,'0')} · Order ${f.sort_order??f.number}</div>
+      <div class="fp-title">${esc(f.title)}</div>
+      <div class="fp-meta-row">
+        <span class="${catClass(f.category)}">${esc(f.category)}</span>
+        <span class="badge badge-${f.priority}">${f.priority}</span>
+        <span class="badge badge-${f.effort}">${f.effort}</span>
+        <span class="badge badge-${(f.status||'').replace('-','')}">${f.status}</span>
+        ${f.designed?'<span style="color:var(--purple);font-size:12px" title="Pre-designed">★ designed</span>':''}
+        ${f.page?`<span style="font-family:DM Mono,monospace;font-size:10px;color:var(--slate);margin-left:4px">${esc(f.page)}</span>`:''}
+      </div>
+    </div>
+
+    ${f.description?`<div class="fp-desc">${esc(f.description)}</div>`:''}
+
+    ${touchChips?`<div class="fp-touches">${touchChips}</div>`:''}
+
+    ${notesHtml}
+  `;
+}
+
+function bookNav(dir){
+  const total = _bookPages.length + 1;
+  let next = _bookCur + dir;
+  if(next < 0)     next = total - 1;   // wrap back → last page
+  if(next >= total) next = 0;           // wrap forward → TOC
+  const reverse = dir < 0;
+  _bookCur = next;
+  renderBookStage(reverse);
+}
+
+function bookGoTo(pageIdx){
+  const reverse = pageIdx < _bookCur;
+  _bookCur = pageIdx;
+  renderBookStage(reverse);
+}
+
+// ════════════════════════════════════════════
+//  FEATURE DRAG REORDER
+// ════════════════════════════════════════════
+let _dragSrcId = null;
+
+function initFeatureDrag(tbody){
+  tbody.querySelectorAll('tr[draggable="true"]').forEach(row=>{
+    row.addEventListener('dragstart', e=>{
+      _dragSrcId = row.dataset.id;
+      row.classList.add('drag-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', row.dataset.id);
+    });
+    row.addEventListener('dragend', ()=>{
+      row.classList.remove('drag-dragging');
+      tbody.querySelectorAll('tr').forEach(r=>r.classList.remove('drag-over'));
+    });
+    row.addEventListener('dragover', e=>{
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      tbody.querySelectorAll('tr').forEach(r=>r.classList.remove('drag-over'));
+      if(row.dataset.id !== _dragSrcId) row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', ()=>{
+      row.classList.remove('drag-over');
+    });
+    row.addEventListener('drop', async e=>{
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      const targetId = row.dataset.id;
+      if(!_dragSrcId || _dragSrcId === targetId) return;
+      await reorderFeatures(_dragSrcId, targetId);
+      _dragSrcId = null;
+    });
+  });
+}
+
+async function reorderFeatures(srcId, tgtId){
+  // Get current sorted order
+  const sorted = [...cache.features].sort((a,b)=>(a.sort_order??a.number)-(b.sort_order??b.number));
+  const srcIdx = sorted.findIndex(f=>f.id===srcId);
+  const tgtIdx = sorted.findIndex(f=>f.id===tgtId);
+  if(srcIdx<0||tgtIdx<0) return;
+
+  // Splice src to tgt position
+  const [moved] = sorted.splice(srcIdx,1);
+  sorted.splice(tgtIdx,0,moved);
+
+  // Re-assign sort_order as 1-based integers, persist each changed record
+  const tx = db.transaction('features','readwrite');
+  const store = tx.objectStore('features');
+  const puts = [];
+  sorted.forEach((f,i)=>{
+    const newOrder = i+1;
+    if((f.sort_order??f.number) !== newOrder){
+      f.sort_order = newOrder;
+      puts.push(new Promise((res,rej)=>{
+        const r=store.put(f); r.onsuccess=res; r.onerror=rej;
+      }));
+    } else {
+      f.sort_order = newOrder; // keep cache in sync
+    }
+  });
+  await Promise.all(puts);
+  cache.features = sorted;
+  renderFeatures();
+  toast('Order saved', false, true);
+}
+
+// ════════════════════════════════════════════
+//  PROJECT DETAIL
+// ════════════════════════════════════════════
+let currentProjectId = null;
+
+function openProjectDetail(id){
+  currentProjectId = id;
+  const proj = cache.projects.find(p=>p.id===id);
+  if(!proj) return;
+
+  document.getElementById('pd-name').textContent = proj.name;
+  document.getElementById('pd-meta').textContent = `${proj.slug} · ${proj.type} · ${proj.current_version||'—'}`;
+
+  // Stats strip
+  const feats   = cache.features.filter(f=>f.project_id===id);
+  const high    = feats.filter(f=>f.priority==='high'&&f.status!=='complete').length;
+  const done    = feats.filter(f=>f.status==='complete').length;
+  const builds  = cache.builds.filter(b=>b.project_id===id);
+  const rels    = cache.releases.filter(r=>r.project_id===id);
+  document.getElementById('pd-stats').innerHTML = [
+    ['Features', feats.length, 'var(--fg)'],
+    ['High Priority', high, 'var(--red)'],
+    ['Complete', done, 'var(--green)'],
+    ['Builds', builds.length, 'var(--gold)'],
+    ['Releases', rels.length, 'var(--purple)'],
+    ['Lines', proj.lines?proj.lines.toLocaleString():'—', 'var(--blue)'],
+  ].map(([label,val,color])=>`
+    <div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:12px 18px;flex:1;min-width:100px">
+      <div style="font-family:Cormorant Garamond,serif;font-size:24px;color:${color};line-height:1">${val}</div>
+      <div style="font-family:DM Mono,monospace;font-size:9px;text-transform:uppercase;letter-spacing:2px;color:var(--slate);margin-top:3px">${label}</div>
+    </div>`).join('');
+
+  // Active build
+  const activeBuild = builds.filter(b=>b.status==='active').sort((a,b)=>b.created_at>a.created_at?1:-1)[0];
+  document.getElementById('pd-active-build').innerHTML = activeBuild
+    ? `<div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:14px 18px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+        <span style="font-family:Cormorant Garamond,serif;font-size:22px;color:var(--gold)">${esc(activeBuild.version)}</span>
+        <span class="mono" style="color:var(--slate-lt)">${esc(activeBuild.filename||'—')}</span>
+        <span class="mono" style="color:var(--slate)">${activeBuild.lines?activeBuild.lines.toLocaleString()+' lines':''}</span>
+        <span class="mono" style="color:var(--slate)">${activeBuild.built_by||''}</span>
+        <div style="flex:1;min-width:200px;font-size:11px;color:var(--slate)">${esc(activeBuild.changes||'')}</div>
+        ${activeBuild.file_content?`<button class="btn btn-ghost" style="font-size:10px;padding:4px 10px" onclick="downloadBuild('${activeBuild.id}')">↓ HTML</button>`:''}
+      </div>`
+    : `<div style="color:var(--slate);font-family:DM Mono,monospace;font-size:11px">No active build logged</div>`;
+
+  // Show detail page
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector('[data-page="projects"]').classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-project-detail').classList.add('active');
+
+  renderProjectFeatures();
+  renderProjectReleases();
+}
+
+function renderProjectFeatures(){
+  if(!currentProjectId) return;
+  const statusF   = document.getElementById('pd-feat-status')?.value||'';
+  const priorityF = document.getElementById('pd-feat-priority')?.value||'';
+  let feats = cache.features.filter(f=>f.project_id===currentProjectId).sort((a,b)=>(a.sort_order??a.number)-(b.sort_order??b.number));
+  if(statusF)   feats = feats.filter(f=>f.status===statusF);
+  if(priorityF) feats = feats.filter(f=>f.priority===priorityF);
+
+  const catClass = c => 'cat-pill cat-'+c.replace(/\s+/g,'.');
+  document.getElementById('pd-features-grid').innerHTML = feats.map(f=>`
+    <div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:14px 16px;cursor:pointer;transition:border-color .15s" onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'" onclick="openFeatureView('${f.id}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--slate)">#${f.number}</span>
+        <span class="${catClass(f.category)}">${esc(f.category)}</span>
+        <span class="badge badge-${f.priority}" style="margin-left:auto">${f.priority}</span>
+        ${f.designed?'<span style="color:var(--purple);font-size:11px" title="Pre-designed">★</span>':''}
+      </div>
+      <div style="font-weight:500;color:var(--fg);margin-bottom:6px;font-size:13px">${esc(f.title)}</div>
+      <div style="font-size:11px;color:var(--slate);line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${esc(f.description||'')}</div>
+      <div style="margin-top:10px;display:flex;align-items:center;gap:8px">
+        <span class="badge badge-${f.status.replace('-','')}">${f.status}</span>
+        <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--slate)">${esc(f.effort||'')}</span>
+        ${f.page?`<span style="font-family:DM Mono,monospace;font-size:9px;color:var(--slate);margin-left:auto">${esc(f.page)}</span>`:''}
+      </div>
+    </div>`).join('') || `<div style="color:var(--slate);font-family:'DM Mono',monospace;font-size:11px">No features match filter</div>`;
+}
+
+function renderProjectReleases(){
+  if(!currentProjectId) return;
+  const rels = cache.releases.filter(r=>r.project_id===currentProjectId).sort((a,b)=>b.created_at>a.created_at?1:-1);
+  document.getElementById('pd-releases-list').innerHTML = rels.map(r=>`
+    <div style="background:var(--bg-mid);border:1px solid var(--border);border-radius:3px;padding:16px 20px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <span style="font-family:Cormorant Garamond,serif;font-size:20px;color:var(--gold)">${esc(r.version)}</span>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-family:DM Mono,monospace;font-size:9px;color:var(--slate)">${r.created_at?.slice(0,10)||''}</span>
+          <button class="btn-edit btn" onclick="openReleaseModal('${r.id}')">Edit</button>
+        </div>
+      </div>
+      <div style="font-family:DM Mono,monospace;font-size:11px;color:var(--slate-lt);white-space:pre-wrap;line-height:1.6">${esc(r.rdoc||'')}</div>
+    </div>`).join('') || `<div style="color:var(--slate);font-family:'DM Mono',monospace;font-size:11px">No releases yet</div>`;
+}
+
+// ════════════════════════════════════════════
+//  RELEASES
+// ════════════════════════════════════════════
+let _editRelId = null;
+
+function openReleaseModal(id=null){
+  _editRelId = id;
+  document.getElementById('rel-modal-title').textContent = id ? 'Edit Release' : 'New Release';
+  document.getElementById('rel-del-btn').style.display = id ? 'inline-flex' : 'none';
+  document.getElementById('rl_version').value = '';
+  document.getElementById('rl_rdoc').value = '';
+
+  // populate project dropdown
+  const sel = document.getElementById('rl_project_id');
+  sel.innerHTML = cache.projects.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  if(currentProjectId) sel.value = currentProjectId;
+
+  if(id){
+    const rec = cache.releases.find(r=>r.id===id);
+    if(rec){
+      document.getElementById('rl_version').value   = rec.version||'';
+      document.getElementById('rl_rdoc').value      = rec.rdoc||'';
+      document.getElementById('rl_project_id').value = rec.project_id||'';
+    }
+  }
+  document.getElementById('rel-modal-overlay').classList.add('open');
+}
+function closeRelModal(){ document.getElementById('rel-modal-overlay').classList.remove('open'); _editRelId=null; }
+function closeRelModalOnOverlay(e){ if(e.target===document.getElementById('rel-modal-overlay')) closeRelModal(); }
+
+async function saveRelease(){
+  const version = document.getElementById('rl_version').value.trim();
+  const proj_id = document.getElementById('rl_project_id').value;
+  if(!version){ toast('Version is required',true); return; }
+  if(!proj_id){ toast('Project is required',true); return; }
+  const now = new Date().toISOString();
+  const id = _editRelId || hash10('rel-'+version+proj_id+Date.now());
+  const existing = _editRelId ? cache.releases.find(r=>r.id===_editRelId) : null;
+  await dbPut('releases',{
+    id, project_id: proj_id, version,
+    rdoc:       document.getElementById('rl_rdoc').value,
+    will_author:'Will Fobbs', fingerprint_by:'PAUL',
+    created_at: existing?.created_at || now,
+    edit_at:    now
+  });
+  await refreshAll();
+  closeRelModal();
+  if(currentProjectId) renderProjectReleases();
+  toast('Release saved', false, true);
+}
+async function deleteRelease(){
+  if(!_editRelId||!confirm('Delete this release?')) return;
+  await dbDel('releases',_editRelId);
+  await refreshAll();
+  closeRelModal();
+  toast('Release deleted');
+}
+
+function renderReleases(){
+  document.getElementById('releases-tbody').innerHTML = cache.releases
+    .sort((a,b)=>b.created_at>a.created_at?1:-1)
+    .map(r=>{
+      const proj = cache.projects.find(p=>p.id===r.project_id);
+      return `<tr>
+        <td class="mono" style="color:var(--gold)">${esc(r.version)}</td>
+        <td style="color:var(--fg)">${esc(proj?.name||'—')}</td>
+        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:DM Mono,monospace;font-size:10px;color:var(--slate)">${esc((r.rdoc||'').slice(0,120))}</td>
+        <td class="mono" style="font-size:10px;color:var(--slate)">${r.created_at?.slice(0,10)||'—'}</td>
+        <td class="mono" style="font-size:10px;color:var(--slate)">${r.edit_at?.slice(0,10)||'—'}</td>
+        <td><button class="btn-edit btn" onclick="openReleaseModal('${r.id}')">Edit</button></td>
+      </tr>`;
+    }).join('') || `<tr><td colspan="6" style="color:var(--slate);padding:20px;text-align:center;font-family:'DM Mono',monospace;font-size:11px">No releases yet</td></tr>`;
+}
+
+
+// ════════════════════════════════════════════
+//  MARKDOWN RENDERER (zero-dep)
+// ════════════════════════════════════════════
+function renderMD(md){
+  if(!md) return '<span style="color:var(--slate);font-family:DM Mono,monospace;font-size:11px;opacity:.6">No notes yet.</span>';
+  let s = md
+    // code blocks first
+    .replace(/```([\s\S]*?)```/g, (_,c)=>'<pre><code>'+esc(c.trim())+'</code></pre>')
+    // inline code
+    .replace(/`([^`]+)`/g, (_,c)=>'<code>'+esc(c)+'</code>')
+    // headers
+    .replace(/^#### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^### (.+)$/gm,  '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,   '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,    '<h1>$1</h1>')
+    // bold / italic
+    .replace(/\*\*(.+?)\*\*/g,  '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+    .replace(/__(.+?)__/g,     '<strong>$1</strong>')
+    .replace(/_(.+?)_/g,       '<em>$1</em>')
+    // blockquote
+    .replace(/^> (.+)$/gm, '<blockquote><p>$1</p></blockquote>')
+    // hr
+    .replace(/^---+$/gm, '<hr>')
+    // unordered lists
+    .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>\n?)+/g, s=>'<ul>'+s+'</ul>')
+    // ordered lists
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+    // paragraphs — wrap non-tag lines
+    .replace(/^(?!<[a-z]|\s*$)(.+)$/gm, '<p>$1</p>');
+  return s;
+}
+
+// ════════════════════════════════════════════
+//  FEATURE VIEW
+// ════════════════════════════════════════════
+let currentFeatureId = null;
+let currentFeatureProjectId = null;
+
+function openFeatureView(id){
+  currentFeatureId = id;
+  const f = cache.features.find(x=>x.id===id);
+  if(!f) return;
+  currentFeatureProjectId = f.project_id;
+  const proj = cache.projects.find(p=>p.id===f.project_id);
+
+  // breadcrumb
+  const bc = document.getElementById('fv-breadcrumb');
+  bc.innerHTML = `
+    <span onclick="navigateTo('projects')">Projects</span>
+    <span class="breadcrumb-sep">›</span>
+    <span onclick="openProjectDetail('${f.project_id}')">${esc(proj?.name||'Project')}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span style="color:var(--fg)">F${f.number} ${esc(f.title)}</span>`;
+
+  // header
+  document.getElementById('fv-title').textContent = f.title;
+  document.getElementById('fv-subtitle').textContent = `F${f.number} · ${f.category} · ${f.page||''}`;
+
+  // edit / notes buttons
+  document.getElementById('fv-edit-btn').setAttribute('onclick', `openFeatureModal('${id}')`);
+  document.getElementById('fv-notes-btn').setAttribute('onclick', `openFeatureNotesEditor('${id}')`);
+
+  // meta grid
+  const catClass = c=>'cat-pill cat-'+c.replace(/\s+/g,'.');
+  document.getElementById('fv-meta').innerHTML = [
+    ['Priority',  `<span class="badge badge-${f.priority}">${f.priority}</span>`],
+    ['Effort',    `<span class="badge badge-${f.effort}">${f.effort}</span>`],
+    ['Status',    `<span class="badge badge-${(f.status||'').replace('-','')}">${f.status}</span>`],
+    ['Category',  `<span class="${catClass(f.category)}">${esc(f.category)}</span>`],
+    ['Designed',  f.designed?'<span style="color:var(--purple)">★ Pre-designed</span>':'No'],
+    ['Author',    esc(f.will_author||'—')],
+    ['Fingerprint',esc(f.fingerprint_by||'—')],
+    ['Updated',   f.updated_at?.slice(0,10)||'—'],
+  ].map(([label,val])=>`
+    <div class="fv-meta-item">
+      <div class="fv-meta-label">${label}</div>
+      <div class="fv-meta-val">${val}</div>
+    </div>`).join('');
+
+  // description
+  document.getElementById('fv-description').textContent = f.description||'No description.';
+
+  // touches
+  if(f.touches){
+    const chips = f.touches.split(',').map(t=>t.trim()).filter(Boolean);
+    document.getElementById('fv-touches').innerHTML = chips.map(t=>
+      `<span style="display:inline-block;background:var(--bg-light);border:1px solid var(--border);border-radius:2px;font-family:DM Mono,monospace;font-size:10px;padding:2px 8px;margin:0 4px 6px 0;color:var(--gold-lt)">${esc(t)}</span>`
+    ).join('');
+    document.getElementById('fv-touches-section').style.display='block';
+  } else {
+    document.getElementById('fv-touches-section').style.display='none';
+  }
+
+  // notes rendered markdown
+  document.getElementById('fv-notes-render').innerHTML = renderMD(f.notes||'');
+
+  // navigate
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector('[data-page="projects"]').classList.add('active');
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-feature-view').classList.add('active');
+}
+
+// ════════════════════════════════════════════
+//  FEATURE NOTES EDITOR
+// ════════════════════════════════════════════
+function openFeatureNotesEditor(id){
+  const f = cache.features.find(x=>x.id===id);
+  if(!f) return;
+  currentFeatureId = id;
+  const proj = cache.projects.find(p=>p.id===f.project_id);
+
+  document.getElementById('fn-breadcrumb').innerHTML = `
+    <span onclick="navigateTo('projects')">Projects</span>
+    <span class="breadcrumb-sep">›</span>
+    <span onclick="openProjectDetail('${f.project_id}')">${esc(proj?.name||'Project')}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span onclick="openFeatureView('${id}')">${esc(f.title)}</span>
+    <span class="breadcrumb-sep">›</span>
+    <span style="color:var(--fg)">Edit Notes</span>`;
+
+  document.getElementById('fn-title').textContent = 'Notes · ' + f.title;
+  document.getElementById('fn-editor').value = f.notes||'';
+  document.getElementById('fn-preview').innerHTML = renderMD(f.notes||'');
+
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-feature-notes').classList.add('active');
+}
+
+function livePreview(){
+  const md = document.getElementById('fn-editor').value;
+  document.getElementById('fn-preview').innerHTML = renderMD(md);
+}
+
+async function saveFeatureNotes(){
+  if(!currentFeatureId){ toast('No feature selected',true); return; }
+  const f = await dbGet('features', currentFeatureId);
+  if(!f){ toast('Feature not found',true); return; }
+  const notes = document.getElementById('fn-editor').value;
+  f.notes = notes;
+  f.updated_at = new Date().toISOString();
+  await dbPut('features', f);
+  await refreshAll();
+  toast('Notes saved', false, true);
+  openFeatureView(currentFeatureId);
+}
+
+function cancelFeatureNotes(){
+  if(currentFeatureId) openFeatureView(currentFeatureId);
+  else navigateTo('projects');
+}
+
+
+// ════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════
+async function getSetting(key){
+  try { const r = await dbGet('settings', key); return r?.value ?? null; } catch(e){ return null; }
+}
+
+async function setSetting(key, value){
+  await dbPut('settings',{ key, value, updated_at: new Date().toISOString() });
+  cache.settings[key] = value;
+}
+
+async function setFeatureMode(mode){
+  await setSetting('FeatureMode', mode);
+  renderSettingsPage();
+  applyFeatureMode();
+  toast(`Feature Mode: ${mode}`, false, true);
+}
+
+function applyFeatureMode(){
+  const mode = cache.settings['FeatureMode'] || 'Edit';
+  // Update edit btn colors on settings page if visible
+  const editBtn = document.getElementById('setting-fm-edit');
+  const viewBtn = document.getElementById('setting-fm-view');
+  const curLabel = document.getElementById('setting-fm-current');
+  if(editBtn && viewBtn){
+    if(mode === 'Edit'){
+      editBtn.style.background = 'var(--gold)';
+      editBtn.style.color = '#0b1426';
+      viewBtn.style.background = 'transparent';
+      viewBtn.style.color = 'var(--slate-lt)';
+    } else {
+      viewBtn.style.background = 'var(--blue)';
+      viewBtn.style.color = '#0b1426';
+      editBtn.style.background = 'transparent';
+      editBtn.style.color = 'var(--slate-lt)';
+    }
+  }
+  if(curLabel) curLabel.textContent = 'Current: '+mode;
+}
+
+function renderSettingsPage(){
+  applyFeatureMode();
+  // Raw settings table
+  const rows = Object.entries(cache.settings);
+  document.getElementById('settings-tbody').innerHTML = rows.map(([k,v])=>`
+    <tr>
+      <td class="mono" style="color:var(--gold)">${esc(k)}</td>
+      <td style="color:var(--fg)">${esc(String(v))}</td>
+      <td class="mono" style="font-size:10px;color:var(--slate)">—</td>
+    </tr>`).join('') || '<tr><td colspan="3" style="color:var(--slate);font-family:DM Mono,monospace;font-size:11px;padding:14px">No settings</td></tr>';
+}
+
+// ════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════
+(async()=>{
+  const savedTheme = localStorage.getItem('spdb-theme')||'dark';
+  applyTheme(savedTheme);
+
+  try {
+    await initDB();
+    document.getElementById('db-status-text').textContent = 'DB Ready';
+    await seedIfEmpty();
+    await refreshAll();
+  } catch(e) {
+    document.getElementById('status-dot').style.background = 'var(--red)';
+    document.getElementById('db-status-text').textContent = 'DB Error';
+    console.error(e);
+  }
+})();
+</script>
+
+<!--
+  Written by Will Fobbs III · Pooled Impact Corporation · Founder & CEO
+  Fingerprint: PAUL · Free Chat AI · 2026-03-11T09:10:00-05:00
+  DB: SoftwareProjectDB v3 · Stores: projects, features, builds, sessions, releases, settings
+-->
+</body>
+</html>

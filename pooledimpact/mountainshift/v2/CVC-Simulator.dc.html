@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./TreasuryLedger.js"></script>
+  <script src="./TierAllocator.js"></script>
+  <script src="./CVCEngine.js"></script>
+  <script src="./WorkLedger.js"></script>
+  <script src="./ComputeSourceProfile.js"></script>
+  <script src="./ParticipantRegistry.js"></script>
+  <script src="./FunderRegistry.js"></script>
+  <script src="./BondOfftakeRegistry.js"></script>
+  <script src="./RealEstatePortfolio.js"></script>
+  <script src="./FXRateFeed.js"></script>
+  <script src="./RealEstateBridge.js"></script>
+  <script src="./LedgerChain.js"></script>
+  <script src="./Ed25519_001.js"></script>
+  <script src="./SignatureVerifier.js"></script>
+  <script src="./HubCreditVault.js"></script>
+  <script src="./CVCTestMatrix.js"></script>
+  <script src="./CVCUnitTests.js"></script>
+  <style>body { margin:0; background:#0d1117; }</style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#0d1117;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #21262d;background:#161b22;">
+    <div style="font-weight:700;font-size:14px;">CVC Simulator</div>
+    <div style="font-size:11px;color:#8b949e;">Static test harness — real assertions against the built CVC classes, not fabricated results</div>
+    <div style="flex:1;"></div>
+    <div onClick="{{ onRunUnit }}" style="cursor:pointer;background:#238636;padding:6px 14px;border-radius:6px;font-size:12px;">Run Unit Tests</div>
+    <div onClick="{{ onRunScenarios }}" style="cursor:pointer;background:#1f6feb;padding:6px 14px;border-radius:6px;font-size:12px;">Run Scenario Suite</div>
+  </div>
+
+  <div style="flex:1;display:flex;overflow:hidden;">
+    <div style="flex:1;overflow-y:auto;padding:16px;">
+      <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Unit Tests {{ unitSummary }}</div>
+      <sc-for list="{{ unitGroups }}" as="g" hint-placeholder-count="4">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12.5px;font-weight:700;color:#c9d1d9;margin-bottom:6px;">{{ g.cls }}</div>
+          <sc-for list="{{ g.tests }}" as="t" hint-placeholder-count="2">
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:12px;">
+              <div style="color:{{ t.color }};flex-shrink:0;width:16px;">{{ t.icon }}</div>
+              <div>
+                <div style="color:#c9d1d9;">{{ t.name }}</div>
+                <sc-if value="{{ t.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#f85149;font-size:11px;margin-top:2px;">{{ t.error }}</div></sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+
+    <div style="flex:1;overflow-y:auto;padding:16px;border-left:1px solid #21262d;">
+      <div style="font-size:11px;color:#8b949e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">Scenario Suite {{ scenarioSummary }}</div>
+      <sc-for list="{{ scenarioGroups }}" as="g" hint-placeholder-count="4">
+        <div style="margin-bottom:14px;">
+          <div style="font-size:12.5px;font-weight:700;color:#c9d1d9;margin-bottom:6px;">Suite {{ g.suite }}</div>
+          <sc-for list="{{ g.tests }}" as="t" hint-placeholder-count="2">
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:4px 0;font-size:12px;">
+              <div style="color:{{ t.color }};flex-shrink:0;width:16px;">{{ t.icon }}</div>
+              <div>
+                <div style="color:#c9d1d9;">{{ t.name }}</div>
+                <sc-if value="{{ t.hasError }}" hint-placeholder-val="{{ false }}"><div style="color:#f85149;font-size:11px;margin-top:2px;">{{ t.error }}</div></sc-if>
+                <sc-if value="{{ t.hasGap }}" hint-placeholder-val="{{ false }}"><div style="color:#d29922;font-size:11px;margin-top:2px;">Gap: {{ t.gap }}</div></sc-if>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { unitResults: null, scenarioResults: null };
+
+  onRunUnit = () => this.setState({ unitResults: CVCUnitTests.runAll() });
+  onRunScenarios = async () => { const results = await CVCTestMatrix.runAll(); this.setState({ scenarioResults: results }); };
+
+  groupBy(results, key) {
+    const groups = {};
+    (results || []).forEach(r => { (groups[r[key]] = groups[r[key]] || []).push(r); });
+    return Object.keys(groups).map(k => ({ key: k, tests: groups[k] }));
+  }
+
+  renderTest(t) {
+    const icon = t.status === 'pass' ? '\u2713' : t.status === 'fail' ? '\u2717' : '\u25cb';
+    const color = t.status === 'pass' ? '#3fb950' : t.status === 'fail' ? '#f85149' : '#d29922';
+    return { name: t.name, icon, color, hasError: t.status === 'fail', error: t.error, hasGap: t.status === 'not_implemented', gap: t.missingMechanic };
+  }
+
+  renderVals() {
+    const s = this.state;
+    const unitGroups = this.groupBy(s.unitResults, 'cls').map(g => ({ cls: g.key, tests: g.tests.map(t => this.renderTest(t)) }));
+    const scenarioGroups = this.groupBy(s.scenarioResults, 'suite').map(g => ({ suite: g.key, tests: g.tests.map(t => this.renderTest(t)) }));
+
+    const unitPass = (s.unitResults || []).filter(t => t.status === 'pass').length;
+    const unitFail = (s.unitResults || []).filter(t => t.status === 'fail').length;
+    const scenPass = (s.scenarioResults || []).filter(t => t.status === 'pass').length;
+    const scenFail = (s.scenarioResults || []).filter(t => t.status === 'fail').length;
+    const scenGap = (s.scenarioResults || []).filter(t => t.status === 'not_implemented').length;
+
+    return {
+      onRunUnit: this.onRunUnit, onRunScenarios: this.onRunScenarios,
+      unitGroups, scenarioGroups,
+      unitSummary: s.unitResults ? `— ${unitPass} pass, ${unitFail} fail` : '',
+      scenarioSummary: s.scenarioResults ? `— ${scenPass} pass, ${scenFail} fail, ${scenGap} gap(s)` : ''
+    };
+  }
+}
+</script>
+</body>
+</html>

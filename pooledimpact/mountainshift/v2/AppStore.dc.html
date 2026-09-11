@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet>
+  <style>
+    @keyframes asSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  </style>
+  <script src="./image-slot.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</helmet>
+<div style="display:flex;height:100vh;background:#030f17;color:#fff;font-family:'Noto Sans',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;">
+  <div style="width:230px;flex-shrink:0;background:#272e3680;border-right:1px solid #2c2c2e;display:flex;flex-direction:column;padding:16px 12px;">
+    <div style="position:relative;margin-bottom:18px;">
+      <input value="{{ query }}" onInput="{{ onQueryChange }}" placeholder="Search" style="width:100%;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px 8px 30px;color:#fff;font-size:13px;outline:none;" />
+      <span style="position:absolute;left:9px;top:50%;transform:translateY(-50%);color:#8e8e93;font-size:13px;">⌕</span>
+    </div>
+    <sc-for list="{{ navItems }}" as="item" hint-placeholder-count="2">
+      <div onClick="{{ item.onClick }}" style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:7px;cursor:pointer;font-size:13.5px;margin-bottom:2px;background:{{ item.bg }};color:{{ item.color }};">
+        <span style="width:18px;text-align:center;">{{ item.icon }}</span>
+        <span style="flex:1;">{{ item.label }}</span>
+        <sc-if value="{{ item.badge }}" hint-placeholder-val="{{ false }}"><span style="background:#3a3a3c;color:#fff;border-radius:9px;padding:1px 7px;font-size:11px;">{{ item.badge }}</span></sc-if>
+      </div>
+    </sc-for>
+    <div style="flex:1;"></div>
+    <div style="padding:8px 6px;border-top:1px solid #2c2c2e;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:#5b7fe0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;">{{ userInitial }}</div>
+        <div style="font-size:12.5px;color:#fff;">{{ userName }}</div>
+      </div>
+      <div onClick="{{ onOpenAddMoney }}" style="display:flex;align-items:center;justify-content:space-between;background:#2c2c2e;border-radius:8px;padding:6px 10px;margin-bottom:10px;cursor:pointer;">
+        <div style="font-size:11px;color:#98989d;">Balance</div>
+        <div style="font-size:12px;font-weight:700;color:#fff;">{{ accountBalanceLabel }}</div>
+      </div>
+      <div onClick="{{ onOpenRedeem }}" style="display:flex;align-items:center;justify-content:space-between;background:#2c2c2e;border-radius:8px;padding:6px 10px;margin-bottom:10px;cursor:pointer;">
+        <div style="font-size:11px;color:#98989d;">Points</div>
+        <div style="font-size:12px;font-weight:700;color:#f5c563;">{{ pointsBalanceLabel }}</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <sc-for list="{{ roleOptions }}" as="r" hint-placeholder-count="3">
+          <div onClick="{{ r.onClick }}" style="flex:1;text-align:center;padding:4px 0;border-radius:6px;font-size:10.5px;font-weight:700;cursor:pointer;background:{{ r.bg }};color:{{ r.color }};">{{ r.label }}</div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <div style="flex:1;overflow-y:auto;padding:32px 40px;min-width:0;">
+    <sc-if value="{{ showBack }}" hint-placeholder-val="{{ false }}">
+      <div onClick="{{ onBack }}" style="display:inline-flex;align-items:center;gap:4px;color:#0a84ff;cursor:pointer;font-size:14px;margin-bottom:18px;">‹ Back</div>
+    </sc-if>
+
+    <sc-if value="{{ isDiscover }}" hint-placeholder-val="{{ true }}">
+      <div style="font-size:2.4em;font-weight:800;margin-bottom:24px;">Discover</div>
+      <div onClick="{{ discoverHero.onOpen }}" style="position:relative;border-radius:18px;overflow:hidden;min-height:230px;margin-bottom:24px;cursor:pointer;background:{{ discoverHero.gradient }};display:flex;align-items:center;">
+        <div style="flex:1;min-width:0;padding:28px 40px;position:relative;z-index:1;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.8);margin-bottom:10px;">{{ discoverHero.kicker }}</div>
+          <div style="font-size:1.7em;font-weight:800;color:#fff;margin-bottom:10px;line-height:1.2;">{{ discoverHero.title }}</div>
+          <div style="font-size:14px;color:rgba(255,255,255,0.85);max-width:380px;line-height:1.5;">{{ discoverHero.blurb }}</div>
+        </div>
+        <image-slot id="discover-hero-art" style="width:300px;align-self:stretch;flex-shrink:0;" shape="rect" placeholder="Drop hero art"></image-slot>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:36px;">
+        <sc-for list="{{ discoverTiles }}" as="tile" hint-placeholder-count="2">
+          <div onClick="{{ tile.onOpen }}" style="border-radius:16px;overflow:hidden;background:{{ tile.gradient }};padding:22px;display:flex;align-items:center;gap:16px;cursor:pointer;min-height:150px;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.7);margin-bottom:6px;">{{ tile.kicker }}</div>
+              <div style="font-size:1.3em;font-weight:800;color:#fff;margin-bottom:6px;">{{ tile.title }}</div>
+              <div style="font-size:12.5px;color:rgba(255,255,255,0.8);">{{ tile.blurb }}</div>
+            </div>
+            <image-slot id="{{ tile.id }}-art" style="width:100px;height:100px;flex-shrink:0;" shape="circle" placeholder="Art"></image-slot>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:1.5em;font-weight:700;">Best New Apps and Updates</div>
+        <div onClick="{{ onSeeAll }}" style="color:#0a84ff;font-size:13px;cursor:pointer;">See All</div>
+      </div>
+      <sc-for list="{{ bestNewApps }}" as="app" hint-placeholder-count="3">
+        <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+          <div style="width:52px;height:52px;border-radius:12px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14.5px;font-weight:600;">{{ app.name }}</div>
+            <div style="font-size:12.5px;color:#98989d;">{{ app.tagline }}</div>
+          </div>
+          <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:14px;padding:6px 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-width:64px;">{{ app.actionLabel }}</button>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isArticle }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;">
+        <div style="width:320px;flex-shrink:0;border-radius:18px;overflow:hidden;background:{{ article.gradient }};padding:24px;display:flex;flex-direction:column;height:520px;">
+          <div style="font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:rgba(255,255,255,0.8);margin-bottom:8px;">{{ article.kicker }}</div>
+          <div style="font-size:1.6em;font-weight:800;color:#fff;margin-bottom:16px;line-height:1.25;">{{ article.title }}</div>
+          <image-slot id="{{ article.id }}-hero" style="flex:1;width:100%;" shape="rounded" radius="14" placeholder="Drop article art"></image-slot>
+        </div>
+        <div style="flex:1;min-width:360px;">
+          <div style="font-size:1.3em;font-weight:700;color:#fff;margin-bottom:14px;line-height:1.4;">{{ article.lead }}</div>
+          <div style="color:#c7c7cc;font-size:14px;line-height:1.7;margin-bottom:24px;max-width:640px;">{{ article.body }}</div>
+          <sc-for list="{{ article.sections }}" as="sec" hint-placeholder-count="2">
+            <div style="border-top:1px solid #2c2c2e;padding-top:22px;margin-bottom:26px;">
+              <div style="font-size:1.2em;font-weight:700;margin-bottom:8px;">{{ sec.heading }}</div>
+              <div style="color:#c7c7cc;font-size:13.5px;line-height:1.6;margin-bottom:16px;max-width:640px;">{{ sec.body }}</div>
+              <sc-for list="{{ sec.apps }}" as="app" hint-placeholder-count="2">
+                <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:9px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+                  <div style="width:44px;height:44px;border-radius:10px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+                  <div style="flex:1;min-width:0;">
+                    <div style="font-size:13.5px;font-weight:600;">{{ app.name }}</div>
+                    <div style="font-size:12px;color:#98989d;">{{ app.tagline }}</div>
+                  </div>
+                  <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:12px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;min-width:58px;">{{ app.actionLabel }}</button>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCategories }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:2.4em;font-weight:800;margin-bottom:24px;">Categories</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:0 32px;margin-bottom:40px;">
+        <sc-for list="{{ categoryList }}" as="cat" hint-placeholder-count="8">
+          <div onClick="{{ cat.onClick }}" style="display:flex;align-items:center;gap:12px;padding:11px 0;cursor:{{ cat.cursor }};border-bottom:1px solid #1c1c1e;">
+            <div style="width:30px;height:30px;border-radius:8px;background:{{ cat.iconBg }};display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">{{ cat.icon }}</div>
+            <div style="font-size:14px;color:{{ cat.nameColor }};">{{ cat.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="font-size:1.5em;font-weight:700;margin-bottom:16px;">Discover Amazing Apps</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-bottom:40px;">
+        <sc-for list="{{ discoverCards }}" as="card" hint-placeholder-count="3">
+          <div onClick="{{ card.onOpen }}" style="cursor:pointer;">
+            <image-slot id="{{ card.id }}-art" style="width:100%;height:180px;" shape="rounded" radius="14" placeholder="Drop art"></image-slot>
+            <div style="font-size:10.5px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#8e8e93;margin-top:12px;margin-bottom:4px;">{{ card.kicker }}</div>
+            <div style="font-size:1.15em;font-weight:700;margin-bottom:4px;">{{ card.title }}</div>
+            <div style="font-size:12.5px;color:#98989d;line-height:1.4;">{{ card.blurb }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:1.5em;font-weight:700;">Top Free Apps</div>
+        <div onClick="{{ onSeeAll }}" style="color:#0a84ff;font-size:13px;cursor:pointer;">See All</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,auto);grid-auto-flow:column;column-gap:32px;margin-bottom:40px;">
+        <sc-for list="{{ topFreeApps }}" as="app" hint-placeholder-count="9">
+          <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+            <div style="width:18px;text-align:center;color:#8e8e93;font-size:13px;font-weight:600;flex-shrink:0;">{{ app.rank }}</div>
+            <div style="width:44px;height:44px;border-radius:10px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.name }}</div>
+              <div style="font-size:11.5px;color:#98989d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.tagline }}</div>
+            </div>
+            <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:12px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;flex-shrink:0;">{{ app.actionLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:1.5em;font-weight:700;">Trending Now</div>
+        <div onClick="{{ onSeeAll }}" style="color:#0a84ff;font-size:13px;cursor:pointer;">See All</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,auto);grid-auto-flow:column;column-gap:32px;margin-bottom:20px;">
+        <sc-for list="{{ trendingApps }}" as="app" hint-placeholder-count="9">
+          <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+            <div style="width:18px;text-align:center;color:#8e8e93;font-size:13px;font-weight:600;flex-shrink:0;">{{ app.rank }}</div>
+            <div style="width:44px;height:44px;border-radius:10px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.name }}</div>
+              <div style="font-size:11.5px;color:#98989d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.tagline }}</div>
+            </div>
+            <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:12px;padding:5px 12px;font-size:11.5px;font-weight:700;cursor:pointer;flex-shrink:0;">{{ app.actionLabel }}</button>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div style="font-size:1.5em;font-weight:700;">Top Paid Apps</div>
+        <div onClick="{{ onSeeAll }}" style="color:#0a84ff;font-size:13px;cursor:pointer;">See All</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,auto);grid-auto-flow:column;column-gap:32px;margin-bottom:36px;">
+        <sc-for list="{{ topPaidApps }}" as="app" hint-placeholder-count="9">
+          <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+            <div style="width:18px;text-align:center;color:#8e8e93;font-size:13px;font-weight:600;flex-shrink:0;">{{ app.rank }}</div>
+            <div style="width:44px;height:44px;border-radius:10px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.name }}</div>
+              <div style="font-size:11.5px;color:#98989d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ app.tagline }}</div>
+            </div>
+            <div style="text-align:center;flex-shrink:0;">
+              <div style="background:#e8e8ed;color:#000;border-radius:12px;padding:5px 12px;font-size:11.5px;font-weight:700;">{{ app.priceLabel }}</div>
+            </div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="display:flex;gap:16px;justify-content:center;margin:8px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isCategory }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:2em;font-weight:800;margin-bottom:22px;">{{ activeCategoryName }}</div>
+      <sc-for list="{{ categoryApps }}" as="app" hint-placeholder-count="4">
+        <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+          <div style="width:52px;height:52px;border-radius:12px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14.5px;font-weight:600;">{{ app.name }}</div>
+            <div style="font-size:12.5px;color:#98989d;">{{ app.tagline }}</div>
+          </div>
+          <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:14px;padding:6px 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-width:64px;">{{ app.actionLabel }}</button>
+        </div>
+      </sc-for>
+      <sc-if value="{{ categoryEmpty }}" hint-placeholder-val="{{ false }}"><div style="color:#8e8e93;font-size:13.5px;padding:20px 0;">No apps in this category yet.</div></sc-if>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isSearch }}" hint-placeholder-val="{{ false }}">
+      <div style="font-size:1.8em;font-weight:800;margin-bottom:6px;">Results for "{{ query }}"</div>
+      <div style="color:#8e8e93;font-size:13px;margin-bottom:22px;">{{ searchCount }} app{{ searchPlural }}</div>
+      <sc-for list="{{ searchResults }}" as="app" hint-placeholder-count="3">
+        <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+          <div style="width:52px;height:52px;border-radius:12px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14.5px;font-weight:600;">{{ app.name }}</div>
+            <div style="font-size:12.5px;color:#98989d;">{{ app.tagline }}</div>
+          </div>
+          <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:14px;padding:6px 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-width:64px;">{{ app.actionLabel }}</button>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isAppPage }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;gap:24px;margin-bottom:24px;align-items:flex-start;">
+        <div style="width:110px;height:110px;border-radius:22px;background:{{ selApp.color }};display:flex;align-items:center;justify-content:center;font-size:40px;font-weight:800;color:#fff;flex-shrink:0;">{{ selApp.initials }}</div>
+        <div style="flex:1;min-width:0;padding-top:4px;">
+          <div style="font-size:1.9em;font-weight:800;">{{ selApp.name }}</div>
+          <div style="color:#98989d;font-size:14px;margin:4px 0 14px;">{{ selApp.tagline }}</div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button onClick="{{ selApp.onAction }}" style="background:{{ selApp.actionBg }};color:{{ selApp.actionColor }};border:none;border-radius:16px;padding:8px 26px;font-size:13.5px;font-weight:700;cursor:pointer;">{{ selApp.actionLabel }}</button>
+            <div style="color:#8e8e93;font-size:12px;">Free · In-App Purchases</div>
+            <sc-if value="{{ canEditApp }}" hint-placeholder-val="{{ false }}">
+              <button onClick="{{ onStartEditApp }}" style="background:transparent;color:#0a84ff;border:1px solid #0a84ff;border-radius:14px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;">Edit Listing</button>
+            </sc-if>
+          </div>
+        </div>
+        <div style="color:#8e8e93;font-size:20px;padding-top:8px;">⤴</div>
+      </div>
+
+      <sc-if value="{{ selApp.showPendingBanner }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#3a2f14;border:1px solid #6b5220;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="font-size:13px;color:#f5c563;">Pending review — edits submitted, awaiting admin approval.</div>
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+              <button onClick="{{ onApproveApp }}" style="background:#34c759;color:#000;border:none;border-radius:10px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Approve</button>
+              <button onClick="{{ onRejectApp }}" style="background:#3a3a3c;color:#fff;border:none;border-radius:10px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Reject</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEditingApp }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#1c1c1e;border-radius:12px;padding:18px 20px;margin-bottom:26px;">
+          <div style="font-size:1.05em;font-weight:700;margin-bottom:14px;">Editing listing (draft — not public)</div>
+          <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">Tagline</div>
+          <input value="{{ draftForm.tagline }}" onInput="{{ onDraftField_tagline }}" style="width:100%;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;margin-bottom:12px;" />
+          <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">Description</div>
+          <textarea value="{{ draftForm.description }}" onInput="{{ onDraftField_description }}" style="width:100%;height:70px;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;margin-bottom:12px;font-family:inherit;resize:vertical;"></textarea>
+          <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">What's New</div>
+          <textarea value="{{ draftForm.whatsNew }}" onInput="{{ onDraftField_whatsNew }}" style="width:100%;height:50px;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;margin-bottom:12px;font-family:inherit;resize:vertical;"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+            <div>
+              <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">Free features (one per line)</div>
+              <textarea value="{{ draftForm.freeFeatures }}" onInput="{{ onDraftField_freeFeatures }}" style="width:100%;height:60px;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:12.5px;font-family:inherit;resize:vertical;"></textarea>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">OS-unlocked features (one per line)</div>
+              <textarea value="{{ draftForm.osFeatures }}" onInput="{{ onDraftField_osFeatures }}" style="width:100%;height:60px;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:12.5px;font-family:inherit;resize:vertical;"></textarea>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button onClick="{{ onSaveApp }}" style="background:#0a84ff;color:#fff;border:none;border-radius:12px;padding:7px 18px;font-size:12.5px;font-weight:700;cursor:pointer;">{{ saveAppLabel }}</button>
+            <button onClick="{{ onCancelEditApp }}" style="background:#3a3a3c;color:#fff;border:none;border-radius:12px;padding:7px 18px;font-size:12.5px;font-weight:700;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <div style="background:linear-gradient(135deg,#1c1c1e,#232326);border-radius:14px;padding:18px 22px;margin-bottom:26px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+          <div style="font-size:1.05em;font-weight:700;">A doorway into Mountain Shift OS</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+          <div>
+            <div style="color:#8ee08e;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Included Free</div>
+            <sc-for list="{{ selApp.freeFeatures }}" as="f" hint-placeholder-count="2">
+              <div style="display:flex;gap:8px;font-size:13px;color:#e5e5ea;margin-bottom:6px;"><span style="color:#34c759;">✓</span>{{ f }}</div>
+            </sc-for>
+          </div>
+          <div>
+            <div style="color:#f5c563;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Unlock with the OS</div>
+            <sc-for list="{{ selApp.osFeatures }}" as="f" hint-placeholder-count="2">
+              <div style="display:flex;gap:8px;font-size:13px;color:#98989d;margin-bottom:6px;"><span>🔒</span>{{ f }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <button style="margin-top:16px;background:#0a84ff;color:#fff;border:none;border-radius:14px;padding:7px 18px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap;">Get Mountain Shift OS →</button>
+      </div>
+
+      <div style="display:flex;gap:0;border-top:1px solid #2c2c2e;border-bottom:1px solid #2c2c2e;padding:18px 0;margin-bottom:24px;">
+        <div style="flex:1;text-align:center;border-right:1px solid #2c2c2e;">
+          <div style="color:#98989d;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">Rating</div>
+          <div style="font-size:16px;font-weight:700;margin-top:4px;">{{ selApp.rating }} ★</div>
+          <div style="color:#8e8e93;font-size:11px;">{{ selApp.ratingsCount }} Ratings</div>
+        </div>
+        <div style="flex:1;text-align:center;border-right:1px solid #2c2c2e;">
+          <div style="color:#98989d;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">Category</div>
+          <div style="font-size:14px;font-weight:600;margin-top:6px;">{{ selApp.category }}</div>
+        </div>
+        <div style="flex:1;text-align:center;border-right:1px solid #2c2c2e;">
+          <div style="color:#98989d;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">Developer</div>
+          <div onClick="{{ selApp.onDeveloper }}" style="font-size:14px;font-weight:600;margin-top:6px;color:#0a84ff;cursor:pointer;">{{ selApp.developer }}</div>
+        </div>
+        <div style="flex:1;text-align:center;">
+          <div style="color:#98989d;font-size:11px;text-transform:uppercase;letter-spacing:0.04em;">Size</div>
+          <div style="font-size:14px;font-weight:600;margin-top:6px;">{{ selApp.size }}</div>
+        </div>
+      </div>
+
+      <div style="font-size:1.2em;font-weight:700;margin-bottom:10px;">Preview</div>
+      <div style="display:flex;gap:16px;margin-bottom:28px;">
+        <image-slot id="{{ selApp.id }}-shot1" style="width:340px;height:212px;flex-shrink:0;" shape="rounded" radius="14" placeholder="Drop a screenshot"></image-slot>
+        <image-slot id="{{ selApp.id }}-shot2" style="width:340px;height:212px;flex-shrink:0;" shape="rounded" radius="14" placeholder="Drop a screenshot"></image-slot>
+      </div>
+
+      <div style="font-size:1.2em;font-weight:700;margin-bottom:10px;">Description</div>
+      <div style="color:#c7c7cc;font-size:14px;line-height:1.6;margin-bottom:26px;max-width:720px;">{{ selApp.description }}</div>
+      <div style="font-size:1.2em;font-weight:700;margin-bottom:10px;">What's New</div>
+      <div style="color:#c7c7cc;font-size:13.5px;line-height:1.7;margin-bottom:26px;">{{ selApp.whatsNew }}</div>
+
+      <div style="font-size:1.2em;font-weight:700;margin-bottom:14px;">Ratings & Reviews</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;">
+        <sc-for list="{{ selApp.reviews }}" as="rv" hint-placeholder-count="2">
+          <div style="background:#1c1c1e;border-radius:12px;padding:14px 16px;">
+            <div style="font-size:12px;color:#f5c563;margin-bottom:4px;">{{ rv.stars }}</div>
+            <div style="font-size:13.5px;font-weight:700;margin-bottom:4px;">{{ rv.title }}</div>
+            <div style="font-size:11.5px;color:#8e8e93;margin-bottom:8px;">{{ rv.author }}</div>
+            <div style="font-size:12.5px;color:#c7c7cc;line-height:1.5;">{{ rv.body }}</div>
+          </div>
+        </sc-for>
+      </div>
+
+      <div style="font-size:1.2em;font-weight:700;margin-bottom:10px;">Information</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px 24px;margin-bottom:30px;">
+        <div><div style="color:#8e8e93;font-size:11px;">Seller</div><div style="font-size:13.5px;margin-top:3px;">{{ selApp.developer }}</div></div>
+        <div><div style="color:#8e8e93;font-size:11px;">Size</div><div style="font-size:13.5px;margin-top:3px;">{{ selApp.size }}</div></div>
+        <div><div style="color:#8e8e93;font-size:11px;">Category</div><div style="font-size:13.5px;margin-top:3px;">{{ selApp.category }}</div></div>
+        <div><div style="color:#8e8e93;font-size:11px;">Compatibility</div><div style="font-size:13.5px;margin-top:3px;">Works on this OS</div></div>
+        <div><div style="color:#8e8e93;font-size:11px;">Language</div><div style="font-size:13.5px;margin-top:3px;">English</div></div>
+        <div><div style="color:#8e8e93;font-size:11px;">Age Rating</div><div style="font-size:13.5px;margin-top:3px;">{{ selApp.ageRating }}</div></div>
+      </div>
+
+      <sc-if value="{{ selApp.hasMoreByDev }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:1.2em;font-weight:700;margin-bottom:12px;">More by {{ selApp.developer }}</div>
+        <sc-for list="{{ selApp.moreByDev }}" as="app" hint-placeholder-count="2">
+          <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+            <div style="width:52px;height:52px;border-radius:12px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:14.5px;font-weight:600;">{{ app.name }}</div>
+              <div style="font-size:12.5px;color:#98989d;">{{ app.tagline }}</div>
+            </div>
+            <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:14px;padding:6px 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-width:64px;">{{ app.actionLabel }}</button>
+          </div>
+        </sc-for>
+      </sc-if>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ isDeveloperPage }}" hint-placeholder-val="{{ false }}">
+      <div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:14px;">
+        <div style="width:64px;height:64px;border-radius:14px;background:#3a3a3c;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;">👤</div>
+        <div style="min-width:0;flex:1;">
+          <div style="font-size:1.7em;font-weight:800;line-height:1.15;">{{ devName }}</div>
+          <div style="color:#98989d;font-size:13px;margin-top:6px;">{{ devAppCount }} app{{ devPlural }} on Mountain Shift</div>
+        </div>
+        <sc-if value="{{ canEditDev }}" hint-placeholder-val="{{ false }}">
+          <button onClick="{{ onStartEditDev }}" style="background:transparent;color:#0a84ff;border:1px solid #0a84ff;border-radius:14px;padding:6px 16px;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;">Edit Profile</button>
+        </sc-if>
+      </div>
+      <div style="color:#c7c7cc;font-size:13.5px;line-height:1.6;margin-bottom:20px;max-width:640px;">{{ devBio }}</div>
+
+      <sc-if value="{{ devShowPendingBanner }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#3a2f14;border:1px solid #6b5220;border-radius:10px;padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+          <div style="font-size:13px;color:#f5c563;">Pending review — profile edit awaiting admin approval.</div>
+          <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+            <div style="display:flex;gap:8px;flex-shrink:0;">
+              <button onClick="{{ onApproveDev }}" style="background:#34c759;color:#000;border:none;border-radius:10px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Approve</button>
+              <button onClick="{{ onRejectDev }}" style="background:#3a3a3c;color:#fff;border:none;border-radius:10px;padding:5px 14px;font-size:12px;font-weight:700;cursor:pointer;">Reject</button>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isEditingDev }}" hint-placeholder-val="{{ false }}">
+        <div style="background:#1c1c1e;border-radius:12px;padding:18px 20px;margin-bottom:24px;">
+          <div style="font-size:1.05em;font-weight:700;margin-bottom:14px;">Editing profile (draft — not public)</div>
+          <div style="font-size:11px;color:#8e8e93;margin-bottom:4px;">Bio</div>
+          <textarea value="{{ draftDevBio }}" onInput="{{ onDraftDevField }}" style="width:100%;height:70px;background:#2c2c2e;border:none;border-radius:8px;padding:8px 10px;color:#fff;font-size:13px;margin-bottom:14px;font-family:inherit;resize:vertical;"></textarea>
+          <div style="display:flex;gap:10px;">
+            <button onClick="{{ onSaveDev }}" style="background:#0a84ff;color:#fff;border:none;border-radius:12px;padding:7px 18px;font-size:12.5px;font-weight:700;cursor:pointer;">{{ saveDevLabel }}</button>
+            <button onClick="{{ onCancelEditDev }}" style="background:#3a3a3c;color:#fff;border:none;border-radius:12px;padding:7px 18px;font-size:12.5px;font-weight:700;cursor:pointer;">Cancel</button>
+          </div>
+        </div>
+      </sc-if>
+
+      <sc-for list="{{ devApps }}" as="app" hint-placeholder-count="2">
+        <div onClick="{{ app.onOpen }}" style="display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:1px solid #1c1c1e;cursor:pointer;">
+          <div style="width:52px;height:52px;border-radius:12px;background:{{ app.color }};display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:#fff;flex-shrink:0;">{{ app.initials }}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14.5px;font-weight:600;">{{ app.name }}</div>
+            <div style="font-size:12.5px;color:#98989d;">{{ app.tagline }}</div>
+          </div>
+          <button onClick="{{ app.onAction }}" style="background:{{ app.actionBg }};color:{{ app.actionColor }};border:none;border-radius:14px;padding:6px 16px;font-size:12.5px;font-weight:700;cursor:pointer;min-width:64px;">{{ app.actionLabel }}</button>
+        </div>
+      </sc-for>
+      <div style="display:flex;gap:16px;justify-content:center;margin:32px 0 8px;">
+        <button onClick="{{ onOpenRedeem }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Redeem</button>
+        <button onClick="{{ onOpenAddMoney }}" style="background:#2c2c2e;color:#0a84ff;border:none;border-radius:22px;padding:14px 36px;font-size:14.5px;font-weight:700;cursor:pointer;">Add Money to Account</button>
+      </div>
+      <div style="border-top:1px solid #2c2c2e;margin-top:20px;padding-top:16px;">
+        <div style="color:#98989d;font-size:13px;">Terms & Conditions ›</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <sc-if value="{{ isRedeemOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseRedeem }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:50;">
+      <div onClick="{{ stopClick }}" style="background:#1c1c1e;border-radius:16px;padding:26px 28px;width:420px;max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-size:1.3em;font-weight:800;">Redeem Points</div>
+          <div onClick="{{ onCloseRedeem }}" style="color:#8e8e93;cursor:pointer;font-size:18px;">✕</div>
+        </div>
+        <div style="color:#98989d;font-size:12.5px;margin-bottom:18px;">Like airline miles — earn points on subscription renewals and app purchases, redeem for credit or unlocks.</div>
+        <div style="background:#2c2c2e;border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:12px;color:#98989d;">Your balance</div>
+          <div style="font-size:15px;font-weight:700;color:#f5c563;">{{ pointsBalanceLabel }}</div>
+        </div>
+        <sc-for list="{{ rewardOptions }}" as="rw" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #2c2c2e;">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13.5px;font-weight:600;">{{ rw.name }}</div>
+              <div style="font-size:11.5px;color:#98989d;">{{ rw.desc }}</div>
+            </div>
+            <button onClick="{{ rw.onRedeem }}" disabled="{{ rw.disabled }}" style="background:{{ rw.btnBg }};color:{{ rw.btnColor }};border:none;border-radius:12px;padding:6px 14px;font-size:12px;font-weight:700;cursor:{{ rw.cursor }};white-space:nowrap;">{{ rw.costLabel }}</button>
+          </div>
+        </sc-for>
+        <sc-if value="{{ redeemMessage }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:14px;color:#34c759;font-size:12.5px;">{{ redeemMessage }}</div>
+        </sc-if>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ isAddMoneyOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseAddMoney }}" style="position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:50;">
+      <div onClick="{{ stopClick }}" style="background:#1c1c1e;border-radius:16px;padding:26px 28px;width:400px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <div style="font-size:1.3em;font-weight:800;">Add Money to Account</div>
+          <div onClick="{{ onCloseAddMoney }}" style="color:#8e8e93;cursor:pointer;font-size:18px;">✕</div>
+        </div>
+        <div style="color:#98989d;font-size:12.5px;margin-bottom:18px;line-height:1.5;">Loading a balance up front means fewer, larger transactions — most of what you'd lose to card-processing fees on lots of small purchases stays with you instead.</div>
+        <div style="background:#2c2c2e;border-radius:10px;padding:10px 14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div style="font-size:12px;color:#98989d;">Current balance</div>
+          <div style="font-size:15px;font-weight:700;">{{ accountBalanceLabel }}</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px;">
+          <sc-for list="{{ addMoneyPresets }}" as="p" hint-placeholder-count="4">
+            <button onClick="{{ p.onClick }}" style="background:{{ p.bg }};color:{{ p.color }};border:none;border-radius:10px;padding:10px 0;font-size:13.5px;font-weight:700;cursor:pointer;">{{ p.label }}</button>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input value="{{ addMoneyCustom }}" onInput="{{ onAddMoneyCustomChange }}" placeholder="Custom amount" style="flex:1;background:#2c2c2e;border:none;border-radius:10px;padding:10px 12px;color:#fff;font-size:13.5px;outline:none;" />
+          <button onClick="{{ onAddMoneyCustomSubmit }}" style="background:#0a84ff;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;">Add</button>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const CATEGORIES = [
+  { key:'business', name:'Business', icon:'💼', color:'#c9822f' },
+  { key:'devtools', name:'Developer Tools', icon:'🛠', color:'#5b7fe0' },
+  { key:'education', name:'Education', icon:'🎓', color:'#4a63b8' },
+  { key:'entertainment', name:'Entertainment', icon:'🍿', color:'#e0666e' },
+  { key:'finance', name:'Finance', icon:'📁', color:'#3fae5a' },
+  { key:'games', name:'Games', icon:'🚀', color:'#e0526e' },
+  { key:'graphics', name:'Graphics & Design', icon:'▦', color:'#e0666e' },
+  { key:'health', name:'Health & Fitness', icon:'🏃', color:'#34c759' },
+  { key:'lifestyle', name:'Lifestyle', icon:'🪑', color:'#c9822f' },
+  { key:'medical', name:'Medical', icon:'⚕', color:'#a34ee0' },
+  { key:'music', name:'Music', icon:'🎵', color:'#3fae5a' },
+  { key:'news', name:'News', icon:'📰', color:'#8e8e93' },
+  { key:'osext', name:'OS Extensions', icon:'🧩', color:'#5b7fe0' },
+  { key:'photo', name:'Photo & Video', icon:'📷', color:'#8e8e93' },
+  { key:'productivity', name:'Productivity', icon:'✈', color:'#5ac8fa' },
+  { key:'reference', name:'Reference', icon:'"', color:'#8e8e93' },
+  { key:'social', name:'Social Networking', icon:'💬', color:'#e0666e' },
+  { key:'sports', name:'Sports', icon:'🏆', color:'#3fae5a' },
+  { key:'travel', name:'Travel', icon:'✈', color:'#5ac8fa' },
+  { key:'utilities', name:'Utilities', icon:'🧮', color:'#8e8e93' },
+  { key:'weather', name:'Weather', icon:'☁', color:'#5ac8fa' }
+];
+
+const DISCOVER_HERO = { kicker:'APPS WE LOVE', title:'Two Apps, One Doorway', blurb:'Every app on this store runs great on its own — and unlocks more the moment you bring Mountain Shift OS into the picture.', gradient:'linear-gradient(135deg,#ff9d4d 0%,#e0526e 55%,#6b3fa0 100%)', articleId:'doorway-essentials' };
+const DISCOVER_TILES = [
+  { id:'tile-smatrix', kicker:'ONLY ON THE OS', title:'Run Models, Not Just Chats', blurb:'S-Matrix keeps inference on your machine.', gradient:'linear-gradient(135deg,#1c1c1e,#3a1c4a)', articleId:'smatrix-local' },
+  { id:'tile-essentials', kicker:'GET STARTED', title:'Mountain Shift Essentials', blurb:'The starter set for every new install.', gradient:'linear-gradient(135deg,#232326,#123a2a)', articleId:'doorway-essentials' }
+];
+const BEST_NEW_IDS = ['terminal','slides','langpack-bg','asttranslator'];
+const REWARDS = [
+  { id:'credit5', name:'$5 Account Credit', cost:500, kind:'credit', amount:5, desc:'Redeem for account credit.' },
+  { id:'credit20', name:'$20 Account Credit', cost:1800, kind:'credit', amount:20, desc:'Redeem for account credit.' },
+  { id:'extunlock', name:'Unlock 1 OS Extension', cost:800, kind:'extunlock', desc:'Any single OS Extension, free.' },
+  { id:'subcredit', name:'1 Month Subscription Credit', cost:2000, kind:'subcredit', desc:'Applied toward your next Mountain Shift OS renewal.' }
+];
+const ADD_MONEY_PRESETS = [10,25,50,100];
+const CATEGORY_DISCOVER_CARDS = [
+  { id:'catd-1', articleId:'doorway-essentials', kicker:'ESSENTIALS', title:'Mountain Shift Essentials', blurb:'Make the most of your first install.' },
+  { id:'catd-2', articleId:'smatrix-local', kicker:'APPS WE LOVE', title:'Run Models, Not Just Chats', blurb:'Local inference that stays on your machine.' },
+  { id:'catd-3', articleId:'devtools-lineup', kicker:'TRY SOMETHING NEW', title:'Build Your Own Toolchain', blurb:'Terminal, the IDE, and macros that share one Kernel.' }
+];
+const ARTICLES = {
+  'doorway-essentials': {
+    kicker:'GET STARTED', title:'Mountain Shift Essentials', gradient:'linear-gradient(135deg,#ff9d4d 0%,#e0526e 55%,#6b3fa0 100%)',
+    lead:'The starter set for every new install — free apps that stand on their own, with a clear path to more.',
+    body:'Every app on Mountain Shift is designed the same way: fully useful for free, with a second tier of capability that only shows up once the OS itself is installed. These are the apps that make that doorway obvious the fastest.',
+    sections:[
+      { heading:'Included free, everywhere', body:'These run standalone — no OS required — and are the best way to get a feel for the platform.', appIds:['terminal','smatrix','slides'] },
+      { heading:'What unlocks with the OS', body:'Install Mountain Shift OS and these same apps gain cross-device sync, larger models, and deeper integration.', appIds:['vb6ide','orgreports'] }
+    ]
+  },
+  'smatrix-local': {
+    kicker:'ONLY ON THE OS', title:'Run Models, Not Just Chats', gradient:'linear-gradient(135deg,#1c1c1e,#3a1c4a)',
+    lead:'S-Matrix runs real language models locally via WebGPU — no round trip to a server for every token.',
+    body:'Local-first inference means your session, your telemetry, and your hardware are doing the work. Model Adapters extend that further, letting you swap in alternate local weights instead of being locked to one fixed model.',
+    sections:[
+      { heading:'Local-first inference', body:'Start with a single local session and live telemetry, no account required.', appIds:['smatrix','model-adapter-smatrix'] }
+    ]
+  },
+  'devtools-lineup': {
+    kicker:'TRY SOMETHING NEW', title:'Build Your Own Toolchain', gradient:'linear-gradient(135deg,#232326,#1a2a3a)',
+    lead:'Terminal, the VB6 IDE, and Dev Macros all share the same Kernel process table — nothing here is a simulation.',
+    body:'Open a shell, edit a Form Class, and record a macro, and every one of those actions shows up as a real scheduled process. It is one toolchain wearing three different windows.',
+    sections:[
+      { heading:'The core toolchain', body:'Start with the shell and the IDE — both free, both talking to the same process table.', appIds:['terminal','vb6ide','macro-devtools'] }
+    ]
+  }
+};
+const CATALOG = [
+  { id:'terminal', name:'Terminal', tagline:'Real POSIX shell over the Kernel', initials:'T', color:'#2c2c2e', category:'devtools',
+    developer:'Mountain Shift OS', rating:'4.9', ratingsCount:'214', size:'12.4 MB', price:'Get', ageRating:'4+',
+    description:'A real POSIX-style shell wired directly to the Kernel process table — ps, top, jobs, fg/bg all reflect actual scheduled processes, not a simulation.',
+    whatsNew:'Added llm.chat and llm.session commands backed by the shared llmd daemon.',
+    freeFeatures:['Full POSIX command set','Session history & job control'],
+    osFeatures:['Persistent filesystem across devices','Remote / SSH-style connection to your OS'] },
+  { id:'vb6ide', name:'VB6 IDE', tagline:'Classic-style development environment', initials:'ID', color:'#4a63b8', category:'devtools',
+    developer:'Mountain Shift OS', rating:'4.7', ratingsCount:'98', size:'34.1 MB', price:'Get', ageRating:'4+',
+    description:'A retro-styled IDE with a Navigator, Code editor, Toolbox, and an integrated Terminal sharing the same Kernel-backed command set.',
+    whatsNew:'Members panel and cascading Form Class delete with confirmation.',
+    freeFeatures:['Single-project editing','Code Analyze report'],
+    osFeatures:['Multi-project workspace sync','Cloud build & versioned deploy'] },
+  { id:'orgreports', name:'Org Reports', tagline:'Nonprofit reporting for HOPE Shelters', initials:'OR', color:'#3fae5a', category:'business',
+    developer:'Mountain Shift OS', rating:'4.5', ratingsCount:'41', size:'8.9 MB', price:'Get', ageRating:'4+',
+    description:'Payroll, budget, staffing coverage, and grant reporting over a schema-tracked domain model, with quick filters and saved views.',
+    whatsNew:'Quick Filter with per-report Group By, saved per report key.',
+    freeFeatures:['3 report types','Quick Filter & Group By'],
+    osFeatures:['Full report catalog + Data Entry','PDF export with org public key'] },
+  { id:'smatrix', name:'S-Matrix', tagline:'Local WebLLM inference engine', initials:'SM', color:'#a34ee0', category:'productivity',
+    developer:'Mountain Shift OS', rating:'4.6', ratingsCount:'77', size:'0.4 MB + model', price:'Get', ageRating:'4+',
+    description:'Runs a real language model locally via WebGPU, with session save/load, live telemetry, and the Lasagna Limit diagnostic demo.',
+    whatsNew:'Kernel process registration — model download and inference now show up in ps/top.',
+    freeFeatures:['Single local session','Live telemetry'],
+    osFeatures:['Larger hosted models','Cross-device session sync'] },
+  { id:'slides', name:'Slides', tagline:'Keynote-style presentation editor', initials:'SL', color:'#e0a13f', category:'productivity',
+    developer:'Mountain Shift OS', rating:'4.8', ratingsCount:'63', size:'6.2 MB', price:'Get', ageRating:'4+',
+    description:'Direct-manipulation slide editor with an SVG shape library, path editing, transitions, and real PDF export with editable-deck attachment.',
+    whatsNew:'Insert → Shape submenu with 8 vector primitives, plus click-to-edit path anchors.',
+    freeFeatures:['Core shape & path tools','PDF export'],
+    osFeatures:['Shape Customization presets','Remote co-editing'] },
+  { id:'asttranslator', name:'AST Translator', tagline:'Meaning-based English ⇄ Bulgarian', initials:'AT', color:'#5ac8fa', category:'reference',
+    developer:'Will Fobbs Labs', rating:'4.4', ratingsCount:'19', size:'1.1 MB', price:'Get', ageRating:'4+',
+    description:'Parses utterances into a language-agnostic Universal Meaning Node (speech act, tense/aspect, mood, entities) and re-synthesizes in the other language — not word-for-word MT.',
+    whatsNew:'Per-word tooltips show a literal gloss in your native language on every re-synthesized word.',
+    freeFeatures:['Text-to-text translation','Per-word gloss tooltips'],
+    osFeatures:['Live speech STT → AST → TTS','OCR of photographed text'] },
+  { id:'financeportal', name:'Finance Portal Pro', tagline:'Fund & Family Office reporting', initials:'FP', color:'#2f9e6e', category:'finance',
+    developer:'Conduit Impact Capital', rating:'4.3', ratingsCount:'27', size:'9.8 MB', price:'Get', paidPrice:19.99, ageRating:'4+',
+    description:'Reporting surface for the $150M/yr infrastructure fund — positions, capital calls, and distributions over the same schema-tracked domain model pattern.',
+    whatsNew:'Initial Beta release.',
+    freeFeatures:['Fund summary dashboard'],
+    osFeatures:['Family Office multi-entity reporting','Adhoc SQL/GraphQL queries'] },
+  { id:'crmnetwork', name:'Network CRM', tagline:'Relationship & deal tracking', initials:'CR', color:'#e0666e', category:'business',
+    developer:'ABF Holdings', rating:'4.1', ratingsCount:'15', size:'5.4 MB', price:'Get', paidPrice:6.99, ageRating:'4+',
+    description:'Contact and deal pipeline tracking with the same left-nav/report surface pattern used across Mountain Shift OS apps.',
+    whatsNew:'Initial Beta release.',
+    freeFeatures:['Contact & deal list'],
+    osFeatures:['People Bazaar profile & listings','Direct messaging & payments'] },
+  { id:'langpack-bg', name:'Bulgarian Language Pack', tagline:'System-wide Bulgarian localization', initials:'BG', color:'#5b7fe0', category:'osext',
+    developer:'Mountain Shift OS', rating:'4.7', ratingsCount:'22', size:'18.2 MB', price:'Get', ageRating:'4+',
+    description:'Adds Bulgarian to OS menus, system dialogs, and AST Translator vocabulary — installs like any other app but extends the OS itself rather than running standalone.',
+    whatsNew:'Expanded AST Translator glossary coverage.',
+    freeFeatures:['UI translation pack'],
+    osFeatures:['Deep AST Translator integration','Offline voice pack'] },
+  { id:'macro-devtools', name:'Dev Macros Pack', tagline:'Recorded IDE macros for repetitive tasks', initials:'MP', color:'#5b7fe0', category:'osext',
+    developer:'Mountain Shift OS', rating:'4.5', ratingsCount:'11', size:'2.1 MB', price:'Get', paidPrice:4.99, ageRating:'4+',
+    description:'A library of recorded VB6 IDE macros — boilerplate scaffolding, refactor patterns, and cascading-delete helpers — installed as an OS Extension rather than bundled in the IDE itself.',
+    whatsNew:'Added Form Class cascade-delete macro.',
+    freeFeatures:['5 starter macros'],
+    osFeatures:['Full macro library','Macro recorder & sharing'] },
+  { id:'model-adapter-smatrix', name:'S-Matrix Model Adapter', tagline:'Swap in alternate local models', initials:'MA', color:'#5b7fe0', category:'osext',
+    developer:'Mountain Shift OS', rating:'4.6', ratingsCount:'9', size:'0.6 MB', price:'Get', paidPrice:9.99, ageRating:'4+',
+    description:'Lets S-Matrix load alternate local WebGPU model weights — this is the extension point that turns S-Matrix from a single fixed model into a pluggable inference engine.',
+    whatsNew:'Initial release.',
+    freeFeatures:['One additional model slot'],
+    osFeatures:['Unlimited model slots','Hosted model catalog access'] },
+  { id:'desktop-gallery', name:'Curated Desktop Gallery', tagline:'Rotating desktop & lock screen imagery', initials:'CG', color:'#5b7fe0', category:'osext',
+    developer:'Mountain Shift OS', rating:'4.4', ratingsCount:'14', size:'—', price:'Get', paidPrice:2.99, ageRating:'4+',
+    description:'A curated, rotating set of desktop and lock screen imagery — an OS Extension rather than an app, since it changes the shell chrome rather than running its own window.',
+    whatsNew:'Added a second seasonal collection.',
+    freeFeatures:['One curated collection'],
+    osFeatures:['All collections + auto-rotate','Submit your own collection'] }
+];
+
+const REVIEWS = [
+  { stars:'★★★★★', title:'Exactly the doorway I needed', author:'earlyadopter22', body:'Started with the free app, ended up on the full OS within a week. The upgrade path actually makes sense.' },
+  { stars:'★★★☆☆', title:'Good, wish more was free', author:'skeptical_dev', body:'App itself is solid. Some locked features feel like they should ship free, but understandable given the model.' }
+];
+
+const DEVELOPERS = {
+  'Mountain Shift OS': { bio:'The platform company behind Mountain Shift OS — the kernel, terminal, and app runtime every app on this store ultimately runs on.' },
+  'Will Fobbs Labs': { bio:'Independent developer focused on meaning-based translation and language tooling.' },
+  'Conduit Impact Capital': { bio:'$150M/yr infrastructure investment fund, reporting tools for Fund and Family Office use.' },
+  'ABF Holdings': { bio:'Small business software studio building CRM and relationship-tracking tools.' }
+};
+
+class Component extends DCLogic {
+  state = { view:'discover', query:'', selectedCategory:null, selectedAppId:null, selectedDeveloper:null, selectedArticleId:null, history:[],
+    apps:CATALOG.map(a=>({...a, installed:false, draft:null, reviewStatus:'none'})),
+    developers:Object.fromEntries(Object.entries(DEVELOPERS).map(([k,v])=>[k,{...v, draftBio:null, reviewStatus:'none'}])),
+    installingId:null, role:'guest', isEditingApp:false, draftForm:null, isEditingDev:false, draftDevBio:'',
+    accountBalance:12.50, pointsBalance:1240, isRedeemOpen:false, isAddMoneyOpen:false, addMoneyCustom:'', redeemMessage:null };
+
+  async componentDidMount(){
+    try {
+      let shared = null;
+      try { shared = (window.parent && window.parent !== window && window.parent.__meshKernel) || null; } catch(e){ shared = null; }
+      if (shared) { this._kernel = shared; }
+      else if (typeof Physical !== 'undefined' && typeof BIOS !== 'undefined') {
+        const physical = new Physical({ capacityMHz: 2600, ramBytes: 0x400000 });
+        const bios = new BIOS();
+        this._kernel = await bios.boot(physical, null, null);
+        this._kernel.fork('kernel.js', 0);
+      }
+    } catch(e){ console.warn('AppStore bootKernel:', e); }
+  }
+
+  snapshot(s){ return { view:s.view, selectedCategory:s.selectedCategory, selectedAppId:s.selectedAppId, selectedDeveloper:s.selectedDeveloper, selectedArticleId:s.selectedArticleId }; }
+  go = (view, params) => this.setState(s => ({ history:[...s.history, this.snapshot(s)], selectedCategory:null, selectedAppId:null, selectedDeveloper:null, selectedArticleId:null, view, ...params }));
+  onHome = () => this.setState({ view:'discover', selectedCategory:null, selectedAppId:null, selectedDeveloper:null, selectedArticleId:null, history:[] });
+  onGoCategories = () => this.setState({ view:'categories', selectedCategory:null, selectedAppId:null, selectedDeveloper:null, selectedArticleId:null, history:[] });
+  onSeeAll = () => this.go('category', { selectedCategory:'__all__' });
+  onBack = () => this.setState(s => {
+    const h = [...s.history];
+    const prev = h.pop();
+    if (!prev) return { view:'discover', selectedCategory:null, selectedAppId:null, selectedDeveloper:null, selectedArticleId:null, history:[] };
+    return { ...prev, history:h };
+  });
+  onQueryChange = (e) => {
+    const q = e.target.value;
+    if (!q.trim()) { this.setState({ query:'', view:'discover', history:[] }); return; }
+    this.setState(s => s.view === 'search' ? { query:q } : { history:[...s.history, this.snapshot(s)], query:q, view:'search' });
+  };
+
+  install = (app) => {
+    if (app.installed || this.state.installingId) return;
+    this.setState({ installingId: app.id });
+    const proc = this._kernel ? this._kernel.fork('appstore:install:' + app.id, 0) : null;
+    setTimeout(() => {
+      if (this._kernel && proc) this._kernel.kill(proc.pid);
+      this.setState(s => ({ apps: s.apps.map(a => a.id === app.id ? { ...a, installed:true } : a), installingId:null }));
+    }, 1400);
+  };
+  uninstall = (app) => {
+    const proc = this._kernel ? this._kernel.fork('appstore:uninstall:' + app.id, 0) : null;
+    if (this._kernel && proc) setTimeout(() => this._kernel.kill(proc.pid), 300);
+    this.setState(s => ({ apps: s.apps.map(a => a.id === app.id ? { ...a, installed:false } : a) }));
+  };
+
+  setRole = (role) => this.setState({ role, isEditingApp:false, isEditingDev:false });
+
+  stopClick = (e) => e.stopPropagation();
+  onOpenRedeem = () => this.setState({ isRedeemOpen:true, redeemMessage:null });
+  onCloseRedeem = () => this.setState({ isRedeemOpen:false, redeemMessage:null });
+  onOpenAddMoney = () => this.setState({ isAddMoneyOpen:true, addMoneyCustom:'' });
+  onCloseAddMoney = () => this.setState({ isAddMoneyOpen:false });
+  redeemReward = (rw) => this.setState(s => {
+    if (s.pointsBalance < rw.cost) return null;
+    const bal = rw.kind === 'credit' ? s.accountBalance + rw.amount : s.accountBalance;
+    const msg = rw.kind === 'credit' ? `Redeemed — $${rw.amount} added to your balance.` : `Redeemed — ${rw.name} applied to your account.`;
+    return { pointsBalance: s.pointsBalance - rw.cost, accountBalance: bal, redeemMessage: msg };
+  });
+  onAddMoneyCustomChange = (e) => this.setState({ addMoneyCustom: e.target.value });
+  addMoney = (amount) => { if (amount > 0) this.setState(s => ({ accountBalance: s.accountBalance + amount, isAddMoneyOpen:false, addMoneyCustom:'' })); };
+  onAddMoneyCustomSubmit = () => this.addMoney(parseFloat(this.state.addMoneyCustom) || 0);
+
+  startEditApp = () => {
+    const app = this.state.apps.find(a => a.id === this.state.selectedAppId);
+    const base = app.draft || app;
+    this.setState({ isEditingApp:true, draftForm:{ tagline:base.tagline, description:base.description, whatsNew:base.whatsNew,
+      freeFeatures:(base.freeFeatures||[]).join('\\n'), osFeatures:(base.osFeatures||[]).join('\\n') } });
+  };
+  updateDraftField = (field, val) => this.setState(s => ({ draftForm: { ...s.draftForm, [field]: val } }));
+  cancelEditApp = () => this.setState({ isEditingApp:false, draftForm:null });
+  saveApp = () => {
+    const f = this.state.draftForm;
+    const draft = { tagline:f.tagline, description:f.description, whatsNew:f.whatsNew,
+      freeFeatures:f.freeFeatures.split('\\n').map(x=>x.trim()).filter(Boolean),
+      osFeatures:f.osFeatures.split('\\n').map(x=>x.trim()).filter(Boolean) };
+    const isAdmin = this.state.role === 'admin';
+    this.setState(s => ({
+      apps: s.apps.map(a => a.id === s.selectedAppId
+        ? (isAdmin ? { ...a, ...draft, draft:null, reviewStatus:'none' } : { ...a, draft, reviewStatus:'pending' })
+        : a),
+      isEditingApp:false, draftForm:null
+    }));
+  };
+  approveApp = () => this.setState(s => ({ apps: s.apps.map(a => a.id === s.selectedAppId && a.draft ? { ...a, ...a.draft, draft:null, reviewStatus:'none' } : a) }));
+  rejectApp = () => this.setState(s => ({ apps: s.apps.map(a => a.id === s.selectedAppId ? { ...a, draft:null, reviewStatus:'none' } : a) }));
+
+  startEditDev = () => {
+    const dev = this.state.developers[this.state.selectedDeveloper];
+    this.setState({ isEditingDev:true, draftDevBio: dev.draftBio || dev.bio });
+  };
+  updateDraftDevBio = (val) => this.setState({ draftDevBio: val });
+  cancelEditDev = () => this.setState({ isEditingDev:false });
+  saveDev = () => {
+    const bio = this.state.draftDevBio;
+    const isAdmin = this.state.role === 'admin';
+    this.setState(s => ({
+      developers: { ...s.developers, [s.selectedDeveloper]: isAdmin
+        ? { ...s.developers[s.selectedDeveloper], bio, draftBio:null, reviewStatus:'none' }
+        : { ...s.developers[s.selectedDeveloper], draftBio:bio, reviewStatus:'pending' } },
+      isEditingDev:false
+    }));
+  };
+  approveDev = () => this.setState(s => { const d = s.developers[s.selectedDeveloper]; return { developers: { ...s.developers, [s.selectedDeveloper]: { ...d, bio:d.draftBio, draftBio:null, reviewStatus:'none' } } }; });
+  rejectDev = () => this.setState(s => ({ developers: { ...s.developers, [s.selectedDeveloper]: { ...s.developers[s.selectedDeveloper], draftBio:null, reviewStatus:'none' } } }));
+
+  actionFor(app){
+    if (this.state.installingId === app.id) return { label:'Installing…', bg:'#3a3a3c', color:'#aab1c19c', onClick:(e)=>e.stopPropagation() };
+    if (app.installed) return { label:'Open', bg:'#0a84ff', color:'#fff', onClick:(e)=>{ e.stopPropagation(); } };
+    return { label:app.price, bg:'#e8e8ed', color:'#000', onClick:(e)=>{ e.stopPropagation(); this.install(app); } };
+  }
+  cardFor(app){
+    const act = this.actionFor(app);
+    return { ...app, actionLabel: act.label, actionBg: act.bg, actionColor: act.color, onAction: act.onClick, onOpen: () => this.go('app', { selectedAppId: app.id }) };
+  }
+
+  renderVals(){
+    const s = this.state;
+    const apps = s.apps;
+    const isAdmin = s.role === 'admin';
+    const isDeveloper = s.role === 'developer';
+    const canEdit = isAdmin || isDeveloper;
+    const q = s.query.trim().toLowerCase();
+    const searchResults = q ? apps.filter(a => a.name.toLowerCase().includes(q) || a.developer.toLowerCase().includes(q) || a.tagline.toLowerCase().includes(q)) : [];
+    const selApp = s.selectedAppId ? apps.find(a => a.id === s.selectedAppId) : null;
+    const activeCategoryName = s.selectedCategory === '__all__' ? 'All Apps' : s.selectedCategory ? (CATEGORIES.find(c => c.key === s.selectedCategory) || {}).name : '';
+    const categoryApps = s.selectedCategory === '__all__' ? apps : s.selectedCategory ? apps.filter(a => a.category === s.selectedCategory) : [];
+    const devApps = s.selectedDeveloper ? apps.filter(a => a.developer === s.selectedDeveloper) : [];
+    const devRecord = s.selectedDeveloper ? s.developers[s.selectedDeveloper] : null;
+
+    const article = s.selectedArticleId ? ARTICLES[s.selectedArticleId] : null;
+    let articleVals = null;
+    if (article) {
+      articleVals = { ...article, id: s.selectedArticleId, sections: article.sections.map(sec => ({ ...sec, apps: sec.appIds.map(id => this.cardFor(apps.find(a => a.id === id))).filter(Boolean) })) };
+    }
+
+    let selAppVals = null;
+    if (selApp) {
+      const displayed = (canEdit && selApp.draft) ? { ...selApp, ...selApp.draft } : selApp;
+      const act = this.actionFor(selApp);
+      const catName = (CATEGORIES.find(c => c.key === selApp.category) || {}).name || selApp.category;
+      const moreByDev = apps.filter(a => a.developer === selApp.developer && a.id !== selApp.id).slice(0,3).map(a => this.cardFor(a));
+      selAppVals = { ...displayed, category: catName, actionLabel: act.label, actionBg: act.bg, actionColor: act.color, onAction: act.onClick,
+        reviews: REVIEWS, moreByDev, hasMoreByDev: moreByDev.length > 0,
+        showPendingBanner: canEdit && selApp.reviewStatus === 'pending',
+        onDeveloper: () => this.go('developer', { selectedDeveloper: selApp.developer }) };
+    }
+
+    return {
+      navItems: [
+        { icon:'★', label:'Discover', bg: s.view==='discover' || s.view==='article' ? '#1f3554' : 'transparent', color:'#fff', onClick: this.onHome, badge:null },
+        { icon:'▦', label:'Categories', bg: s.view==='categories' || s.view==='category' ? '#1f3554' : 'transparent', color:'#fff', onClick: this.onGoCategories, badge:null }
+      ],
+      roleOptions: ['guest','developer','admin'].map(r => ({
+        label: r === 'guest' ? 'Guest' : r === 'developer' ? 'Dev' : 'Admin',
+        bg: s.role === r ? '#0a84ff' : '#2c2c2e', color:'#fff', onClick: () => this.setRole(r)
+      })),
+      userInitial: isAdmin ? 'A' : isDeveloper ? 'D' : 'G',
+      userName: isAdmin ? 'Admin' : isDeveloper ? 'Developer' : 'Guest',
+      showBack: s.view !== 'discover' && s.view !== 'categories',
+      onBack: this.onBack,
+      isDiscover: s.view === 'discover',
+      isArticle: s.view === 'article' && !!articleVals,
+      article: articleVals,
+      discoverHero: { ...DISCOVER_HERO, onOpen: () => this.go('article', { selectedArticleId: DISCOVER_HERO.articleId }) },
+      discoverTiles: DISCOVER_TILES.map(t => ({ ...t, onOpen: () => this.go('article', { selectedArticleId: t.articleId }) })),
+      bestNewApps: BEST_NEW_IDS.map(id => this.cardFor(apps.find(a => a.id === id))).filter(Boolean),
+      onSeeAll: this.onSeeAll,
+      isCategories: s.view === 'categories',
+      isCategory: s.view === 'category',
+      isSearch: s.view === 'search',
+      isAppPage: s.view === 'app' && !!selApp,
+      isDeveloperPage: s.view === 'developer',
+      categoryList: CATEGORIES.map(c => {
+        const has = apps.some(a => a.category === c.key);
+        return { ...c, iconBg: has ? c.color : '#2c2c2e', nameColor: has ? '#fff' : '#aab1c19c',
+          cursor: has ? 'pointer' : 'default', onClick: has ? (() => this.go('category', { selectedCategory: c.key })) : (e => e && e.preventDefault && e.preventDefault()) };
+      }),
+      discoverCards: CATEGORY_DISCOVER_CARDS.map(c => ({ ...c, onOpen: () => this.go('article', { selectedArticleId: c.articleId }) })),
+      topFreeApps: apps.slice().sort((a,b) => parseFloat(b.rating) - parseFloat(a.rating)).slice(0,9).map((a,i) => ({ ...this.cardFor(a), rank: i+1 })),
+      trendingApps: apps.slice().sort((a,b) => parseInt(b.ratingsCount) - parseInt(a.ratingsCount)).slice(0,9).map((a,i) => ({ ...this.cardFor(a), rank: i+1 })),
+      topPaidApps: apps.filter(a => a.paidPrice).sort((a,b) => a.paidPrice - b.paidPrice).slice(0,9).map((a,i) => ({ ...this.cardFor(a), rank: i+1, priceLabel: '$' + a.paidPrice.toFixed(2), onOpen: () => this.go('app', { selectedAppId: a.id }) })),
+      accountBalanceLabel: '$' + s.accountBalance.toFixed(2),
+      pointsBalanceLabel: s.pointsBalance.toLocaleString() + ' pts',
+      onOpenRedeem: this.onOpenRedeem,
+      onCloseRedeem: this.onCloseRedeem,
+      onOpenAddMoney: this.onOpenAddMoney,
+      onCloseAddMoney: this.onCloseAddMoney,
+      stopClick: this.stopClick,
+      isRedeemOpen: s.isRedeemOpen,
+      isAddMoneyOpen: s.isAddMoneyOpen,
+      redeemMessage: s.redeemMessage,
+      rewardOptions: REWARDS.map(rw => {
+        const can = s.pointsBalance >= rw.cost;
+        return { ...rw, costLabel: rw.cost.toLocaleString() + ' pts', disabled: !can, cursor: can ? 'pointer' : 'default',
+          btnBg: can ? '#0a84ff' : '#3a3a3c', btnColor: can ? '#fff' : '#aab1c19c', onRedeem: can ? () => this.redeemReward(rw) : (e) => e.preventDefault() };
+      }),
+      addMoneyCustom: s.addMoneyCustom,
+      onAddMoneyCustomChange: this.onAddMoneyCustomChange,
+      onAddMoneyCustomSubmit: this.onAddMoneyCustomSubmit,
+      addMoneyPresets: ADD_MONEY_PRESETS.map(v => ({ label: '$' + v, bg:'#2c2c2e', color:'#fff', onClick: () => this.addMoney(v) })),
+      activeCategoryName,
+      categoryApps: categoryApps.map(a => this.cardFor(a)),
+      categoryEmpty: s.selectedCategory ? categoryApps.length === 0 : false,
+      searchCount: searchResults.length,
+      searchPlural: searchResults.length === 1 ? '' : 's',
+      searchResults: searchResults.map(a => this.cardFor(a)),
+      selApp: selAppVals,
+      canEditApp: canEdit && !!selApp,
+      isEditingApp: s.isEditingApp,
+      isAdmin,
+      draftForm: s.draftForm || { tagline:'', description:'', whatsNew:'', freeFeatures:'', osFeatures:'' },
+      saveAppLabel: isAdmin ? 'Publish' : 'Submit for Review',
+      onStartEditApp: this.startEditApp,
+      onCancelEditApp: this.cancelEditApp,
+      onSaveApp: this.saveApp,
+      onApproveApp: this.approveApp,
+      onRejectApp: this.rejectApp,
+      onDraftField_tagline: (e) => this.updateDraftField('tagline', e.target.value),
+      onDraftField_description: (e) => this.updateDraftField('description', e.target.value),
+      onDraftField_whatsNew: (e) => this.updateDraftField('whatsNew', e.target.value),
+      onDraftField_freeFeatures: (e) => this.updateDraftField('freeFeatures', e.target.value),
+      onDraftField_osFeatures: (e) => this.updateDraftField('osFeatures', e.target.value),
+      devName: s.selectedDeveloper || '',
+      devBio: devRecord ? ((canEdit && devRecord.draftBio) ? devRecord.draftBio : devRecord.bio) : '',
+      devAppCount: devApps.length,
+      devPlural: devApps.length === 1 ? '' : 's',
+      devApps: devApps.map(a => this.cardFor(a)),
+      canEditDev: canEdit && !!devRecord,
+      isEditingDev: s.isEditingDev,
+      draftDevBio: s.draftDevBio,
+      devShowPendingBanner: canEdit && devRecord && devRecord.reviewStatus === 'pending',
+      saveDevLabel: isAdmin ? 'Publish' : 'Submit for Review',
+      onStartEditDev: this.startEditDev,
+      onCancelEditDev: this.cancelEditDev,
+      onSaveDev: this.saveDev,
+      onApproveDev: this.approveDev,
+      onRejectDev: this.rejectDev,
+      onDraftDevField: (e) => this.updateDraftDevBio(e.target.value),
+      query: s.query
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <style>body { margin:0; background:#2b2e33; }</style>
+</helmet>
+<div style="width:100%;height:100vh;display:flex;flex-direction:column;background:#2b2e33;color:#e8eaf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;overflow:hidden;">
+
+  <div style="flex-shrink:0;display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid #1f2226;background:#212428;">
+    <div style="font-weight:700;font-size:14px;margin-right:8px;">DrawX</div>
+    <div onClick="{{ onNew }}" style="cursor:pointer;background:#33363c;padding:5px 12px;border-radius:6px;font-size:12px;">New</div>
+    <div onClick="{{ onOpenFinderOpen }}" style="cursor:pointer;background:#33363c;padding:5px 12px;border-radius:6px;font-size:12px;">Open…</div>
+    <div onClick="{{ onOpenFinderSave }}" style="cursor:pointer;background:#0a84ff;padding:5px 12px;border-radius:6px;font-size:12px;">Save…</div>
+    <div style="width:1px;height:20px;background:#33363c;margin:0 4px;"></div>
+    <div onClick="{{ onAddRect }}" style="cursor:pointer;background:{{ toolRectBg }};padding:5px 12px;border-radius:6px;font-size:12px;">▭ Rect</div>
+    <div onClick="{{ onAddCircle }}" style="cursor:pointer;background:{{ toolCircleBg }};padding:5px 12px;border-radius:6px;font-size:12px;">◯ Circle</div>
+    <div onClick="{{ onAddText }}" style="cursor:pointer;background:{{ toolTextBg }};padding:5px 12px;border-radius:6px;font-size:12px;">T Text</div>
+    <div style="flex:1;"></div>
+    <div onClick="{{ onDeleteSelected }}" style="cursor:pointer;background:#3a1f22;color:#ff8080;padding:5px 12px;border-radius:6px;font-size:12px;">Delete</div>
+    <div style="font-size:11px;color:#8e99a8;">{{ statusLabel }}</div>
+  </div>
+
+  <div style="flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:30px;">
+    <div style="width:900px;height:600px;background:#fff;position:relative;box-shadow:0 4px 20px rgba(0,0,0,0.35);" onMouseDown="{{ onCanvasMouseDown }}" onMouseMove="{{ onCanvasMouseMove }}" onMouseUp="{{ onCanvasMouseUp }}">
+      <sc-for list="{{ shapes }}" as="sh" hint-placeholder-count="2">
+        <div onMouseDown="{{ sh.onSelect }}" style="{{ sh.style }}">
+          <sc-if value="{{ sh.isText }}" hint-placeholder-val="{{ false }}">{{ sh.label }}</sc-if>
+        </div>
+      </sc-for>
+    </div>
+  </div>
+
+  <sc-if value="{{ finderLoadOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderLoad }}">
+      <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+        <dc-import name="FinderDialog" initial-mode="open" onOpenFile="{{ onFinderOpenFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+      </div>
+    </div>
+  </sc-if>
+  <sc-if value="{{ finderSaveOpen }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:50;display:flex;align-items:center;justify-content:center;" onClick="{{ onCloseFinderSave }}">
+      <div style="width:900px;max-width:92vw;height:600px;max-height:85vh;background:#0d1620;border-radius:14px;overflow:hidden;box-shadow:0 24px 70px rgba(0,0,0,0.55);" onClick="{{ onStopPropagation }}">
+        <dc-import name="FinderDialog" initial-mode="save" save-filename="{{ pendingSaveFilename }}" onSaveFile="{{ onFinderSaveFile }}" hint-size="900px,600px" style="width:100%;height:100%;"></dc-import>
+      </div>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const ROOT_BACKENDS = { Home: { backend:'idb', key:'meshui-root' } };
+
+// Scaffold pass: real add/select/move/delete on rect/circle/text primitives, real
+// save/open round-trip. Resize handles, layering, and rich shape editing are the
+// next pass \u2014 this proves the shape (pun intended) the other Office-suite apps use.
+class Component extends DCLogic {
+  state = {
+    shapes: [], nextShapeId: 1, selectedId: null,
+    dragging: null, // { id, startX, startY, origX, origY }
+    finderLoadOpen: false, finderSaveOpen: false, saveFilename: 'Untitled.pdf'
+  };
+
+  addShape(type) {
+    this.setState(s => {
+      const id = s.nextShapeId;
+      const shape = { id, type, x: 80 + (id * 20) % 300, y: 60 + (id * 15) % 200, w: type === 'text' ? 140 : 100, h: type === 'text' ? 30 : 100, fill: '#4a9eff', text: type === 'text' ? 'Text' : '' };
+      return { shapes: [...s.shapes, shape], nextShapeId: id + 1, selectedId: id };
+    });
+  }
+  onAddRect = () => this.addShape('rect');
+  onAddCircle = () => this.addShape('circle');
+  onAddText = () => this.addShape('text');
+  onDeleteSelected = () => this.setState(s => ({ shapes: s.shapes.filter(sh => sh.id !== s.selectedId), selectedId: null }));
+  onNew = () => this.setState({ shapes: [], nextShapeId: 1, selectedId: null });
+
+  selectShape(shape) { return (e) => { this.setState({ selectedId: shape.id, dragging: { id: shape.id, startX: e.clientX, startY: e.clientY, origX: shape.x, origY: shape.y } }); }; }
+  onCanvasMouseDown = () => {};
+  onCanvasMouseMove = (e) => {
+    const d = this.state.dragging;
+    if (!d) return;
+    const dx = e.clientX - d.startX, dy = e.clientY - d.startY;
+    this.setState(s => ({ shapes: s.shapes.map(sh => sh.id === d.id ? { ...sh, x: d.origX + dx, y: d.origY + dy } : sh) }));
+  };
+  onCanvasMouseUp = () => this.setState({ dragging: null });
+
+  rootSeg(path) { const m = /^\/([^\/]+)/.exec(path); return m ? m[1] : null; }
+  realPath(path) { const seg = this.rootSeg(path); if (!seg) return '/'; const rest = path.slice(seg.length + 1); return rest || '/'; }
+  async getFs(rootSeg) {
+    this._fsInstances = this._fsInstances || {};
+    if (this._fsInstances[rootSeg]) return this._fsInstances[rootSeg];
+    const cfg = ROOT_BACKENDS[rootSeg];
+    if (!cfg) return null;
+    const fs = await FileFsX.create({ backend: cfg.backend, key: cfg.key });
+    this._fsInstances[rootSeg] = fs;
+    return fs;
+  }
+  onOpenFinderOpen = () => this.setState({ finderLoadOpen: true });
+  onCloseFinderLoad = () => this.setState({ finderLoadOpen: false });
+  onOpenFinderSave = () => this.setState({ finderSaveOpen: true });
+  onCloseFinderSave = () => this.setState({ finderSaveOpen: false });
+  onStopPropagation = (e) => e.stopPropagation();
+
+  onFinderSaveFile = async (fileInfo) => {
+    const seg = this.rootSeg(fileInfo.path);
+    if (!seg || !ROOT_BACKENDS[seg]) { this.setState({ finderSaveOpen: false }); return; }
+    try {
+      const fs = await this.getFs(seg);
+      const real = this.realPath(fileInfo.path);
+      const payload = JSON.stringify({ app: 'DrawX', version: 1, shapes: this.state.shapes });
+      await fs.writeFile((real === '/' ? '' : real) + '/' + fileInfo.name, payload);
+    } catch (e) {}
+    this.setState({ finderSaveOpen: false, saveFilename: fileInfo.name });
+  };
+  onFinderOpenFile = async (fileInfo) => {
+    const seg = this.rootSeg(fileInfo.path);
+    if (!seg || !ROOT_BACKENDS[seg]) { this.setState({ finderLoadOpen: false }); return; }
+    try {
+      const fs = await this.getFs(seg);
+      const real = this.realPath(fileInfo.path);
+      const content = await fs.readFile((real === '/' ? '' : real) + '/' + fileInfo.name);
+      const parsed = JSON.parse(typeof content === 'string' ? content : new TextDecoder().decode(content));
+      if (parsed && parsed.app === 'DrawX') {
+        this.setState({ shapes: parsed.shapes, finderLoadOpen: false, saveFilename: fileInfo.name });
+      } else { this.setState({ finderLoadOpen: false }); }
+    } catch (e) { this.setState({ finderLoadOpen: false }); }
+  };
+
+  renderVals() {
+    const s = this.state;
+    const shapes = s.shapes.map(sh => {
+      const isSelected = s.selectedId === sh.id;
+      const base = `position:absolute;left:${sh.x}px;top:${sh.y}px;width:${sh.w}px;height:${sh.h}px;cursor:move;border:${isSelected ? '2px solid #0a84ff' : '1px solid transparent'};`;
+      let style = base;
+      if (sh.type === 'rect') style += `background:${sh.fill};`;
+      else if (sh.type === 'circle') style += `background:${sh.fill};border-radius:50%;`;
+      else style += `display:flex;align-items:center;justify-content:center;font-size:16px;color:#1c2733;background:rgba(74,158,255,0.08);`;
+      return { id: sh.id, isText: sh.type === 'text', label: sh.text, style, onSelect: this.selectShape(sh) };
+    });
+    return {
+      shapes,
+      toolRectBg: '#33363c', toolCircleBg: '#33363c', toolTextBg: '#33363c',
+      onAddRect: this.onAddRect, onAddCircle: this.onAddCircle, onAddText: this.onAddText,
+      onDeleteSelected: this.onDeleteSelected, onNew: this.onNew,
+      onCanvasMouseDown: this.onCanvasMouseDown, onCanvasMouseMove: this.onCanvasMouseMove, onCanvasMouseUp: this.onCanvasMouseUp,
+      statusLabel: s.saveFilename,
+      finderLoadOpen: s.finderLoadOpen, onOpenFinderOpen: this.onOpenFinderOpen, onCloseFinderLoad: this.onCloseFinderLoad, onFinderOpenFile: this.onFinderOpenFile,
+      finderSaveOpen: s.finderSaveOpen, onOpenFinderSave: this.onOpenFinderSave, onCloseFinderSave: this.onCloseFinderSave, onFinderSaveFile: this.onFinderSaveFile,
+      pendingSaveFilename: s.saveFilename, onStopPropagation: this.onStopPropagation
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <script src="./sql-wasm.js"></script>
+  <script src="./BaseClassX.js"></script>
+  <script src="./FieldACL.js"></script>
+  <script src="./FileFsX.js"></script>
+  <script src="./SchemaDB.js"></script>
+  <style>
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-thumb{background:#4a4f5a;border-radius:3px;}
+    @keyframes dbxSlideIn{from{transform:translateY(8px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+    @keyframes dbxSpin{to{transform:rotate(360deg);}}
+  </style>
+</helmet>
+<div style="height:100vh;display:flex;flex-direction:column;background:#1a1c1e;color:#e8eaf0;font-family:'IBM Plex Sans',-apple-system,'Segoe UI',sans-serif;font-size:13px;overflow:hidden;">
+
+  <!-- TITLEBAR -->
+  <div style="height:42px;flex-shrink:0;background:#22252a;border-bottom:1px solid #3e4249;display:flex;align-items:center;padding:0 12px;gap:10px;">
+    <div style="display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:#4fc3f7;letter-spacing:.02em;">
+      <span style="width:9px;height:9px;border-radius:50%;background:#4fc3f7;display:inline-block;"></span>DBX
+    </div>
+    <div style="width:1px;height:22px;background:#3e4249;margin:0 4px;"></div>
+    <div onClick="{{ onToggleSidebar }}" style="{{ tbBtnStyle }}">Schema</div>
+    <div onClick="{{ onRunActive }}" style="{{ tbBtnPrimaryStyle }}">▶ Run</div>
+    <div onClick="{{ onRefreshDbs }}" style="{{ tbBtnStyle }}">↻ Refresh</div>
+    <div style="width:1px;height:22px;background:#3e4249;margin:0 4px;"></div>
+    <div onClick="{{ onNewSqlite }}" style="{{ tbBtnStyle }}">+ New SQLite</div>
+    <div onClick="{{ onOpenSqlite }}" style="{{ tbBtnStyle }}">Open SQLite File…</div>
+    <div style="flex:1;"></div>
+    <kbd style="font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 5px;background:#32363f;border:1px solid #4a4f5a;border-radius:3px;color:#7a7f8e;">⌘/Ctrl+⏎</kbd>
+    <span style="font-size:10.5px;color:#7a7f8e;">Run</span>
+    <div onClick="{{ onExport }}" style="{{ tbBtnStyle }}">⭳ Export</div>
+  </div>
+
+  <sc-if value="{{ errorMsg }}" hint-placeholder-val="{{ false }}">
+    <div style="flex-shrink:0;padding:8px 14px;background:#3a1f22;border-bottom:1px solid #5a2a2e;color:#ff9b9b;font-size:12px;display:flex;align-items:center;gap:10px;">
+      <span style="flex:1;">{{ errorMsg }}</span>
+      <span onClick="{{ clearError }}" style="cursor:pointer;color:#ffb3b3;">✕</span>
+    </div>
+  </sc-if>
+
+  <div style="flex:1;display:flex;min-height:0;">
+
+    <!-- SIDEBAR: DB tree -->
+    <div style="{{ sidebarStyle }}">
+      <div style="padding:8px 10px 6px;border-bottom:1px solid #3e4249;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+        <span style="font-size:11px;font-weight:600;color:#7a7f8e;text-transform:uppercase;letter-spacing:.06em;">Object Browser</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:4px 0;">
+        <div style="padding:8px 10px 4px;font-size:10.5px;font-weight:700;color:#555a66;letter-spacing:.06em;">INDEXEDDB DATABASES</div>
+        <sc-for list="{{ idbTree }}" as="d" hint-placeholder-count="2">
+          <div>
+            <div onClick="{{ d.onToggle }}" style="{{ d.headerStyle }}">
+              <span style="{{ d.caretStyle }}">▸</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ d.name }}</span>
+            </div>
+            <sc-if value="{{ d.open }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ d.stores }}" as="st" hint-placeholder-count="2">
+                <div style="display:flex;align-items:center;">
+                  <div onClick="{{ st.onClick }}" style="{{ st.style }}flex:1;">{{ st.name }}<span style="margin-left:6px;font-size:10px;color:#555a66;">{{ st.count }}</span></div>
+                  <sc-if value="{{ st.isSqlite }}" hint-placeholder-val="{{ false }}">
+                    <span onClick="{{ st.onOpenSqlite }}" title="Open embedded SQLite" style="cursor:pointer;font-size:11px;padding:1px 6px;margin-right:6px;border-radius:3px;background:#1a3a4a;color:#4fc3f7;">SQLite</span>
+                  </sc-if>
+                  <span onClick="{{ st.onProposeSchema }}" title="{{ st.hasSchema }}" style="cursor:pointer;font-size:11px;padding:1px 6px;margin-right:6px;border-radius:3px;background:{{ st.schemaBadgeBg }};color:{{ st.schemaBadgeColor }};">{{ st.schemaBadgeLabel }}</span>
+                </div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ idbTreeEmpty }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:8px 14px;font-size:11.5px;color:#555a66;">None found</div>
+        </sc-if>
+
+        <div style="padding:14px 10px 4px;font-size:10.5px;font-weight:700;color:#555a66;letter-spacing:.06em;">SQLITE FILES (OPEN)</div>
+        <sc-for list="{{ sqliteTree }}" as="f" hint-placeholder-count="1">
+          <div>
+            <div onClick="{{ f.onToggle }}" style="{{ f.headerStyle }}">
+              <span style="{{ f.caretStyle }}">▸</span><span style="flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ f.name }}</span>
+            </div>
+            <sc-if value="{{ f.open }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ f.tables }}" as="tb" hint-placeholder-count="2">
+                <div onClick="{{ tb.onClick }}" style="{{ tb.style }}">{{ tb.name }}</div>
+              </sc-for>
+            </sc-if>
+          </div>
+        </sc-for>
+        <sc-if value="{{ sqliteTreeEmpty }}" hint-placeholder-val="{{ true }}">
+          <div style="padding:8px 14px;font-size:11.5px;color:#555a66;">None open</div>
+        </sc-if>
+      </div>
+    </div>
+
+    <!-- CONTENT -->
+    <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;">
+
+      <!-- QUERY PANEL (resizable) -->
+      <div style="{{ queryPanelStyle }}">
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 10px;border-bottom:1px solid #3e4249;background:#1a1c1e;flex-shrink:0;">
+          <span style="font-size:11px;color:#7a7f8e;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Query — {{ activeSelectionLabel }}</span>
+          <div style="flex:1;"></div>
+        </div>
+        <textarea value="{{ queryInput }}" onInput="{{ onQueryInput }}" onKeyDown="{{ onQueryKeyDown }}" placeholder="{{ queryPlaceholder }}" spellcheck="{{ false }}" style="flex:1;width:100%;box-sizing:border-box;background:transparent;border:none;outline:none;resize:none;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:#e8eaf0;padding:8px 12px;line-height:1.6;"></textarea>
+        <div onMouseDown="{{ onResizeStart }}" style="height:4px;background:transparent;cursor:ns-resize;flex-shrink:0;"></div>
+      </div>
+
+      <!-- RESULTS -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;">
+        <div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid #3e4249;background:#1a1c1e;flex-shrink:0;">
+          <div style="display:flex;gap:1px;">
+            <div onClick="{{ onViewGrid }}" style="{{ gridTabStyle }}">Grid</div>
+            <div onClick="{{ onViewJson }}" style="{{ jsonTabStyle }}">JSON</div>
+          </div>
+          <div style="flex:1;"></div>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#7a7f8e;cursor:pointer;">
+            <input type="checkbox" checked="{{ showTypes }}" onChange="{{ onToggleShowTypes }}" style="cursor:pointer;"/>Show Type
+          </label>
+          <div style="font-size:11px;color:#7a7f8e;font-family:'JetBrains Mono',monospace;">{{ resultsInfo }}</div>
+        </div>
+        <div style="flex:1;overflow:auto;position:relative;">
+          <sc-if value="{{ isGridView }}" hint-placeholder-val="{{ true }}">
+            <sc-if value="{{ hasRows }}" hint-placeholder-val="{{ false }}">
+              <table style="width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-size:12px;">
+                <thead><tr style="background:#22252a;position:sticky;top:0;z-index:5;">
+                  <sc-for list="{{ columns }}" as="col" hint-placeholder-count="3">
+                    <th style="padding:6px 12px;text-align:left;border-right:1px solid #3e4249;border-bottom:2px solid #0288d1;color:#4fc3f7;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;user-select:none;">
+                      <span onClick="{{ col.onSort }}" style="cursor:pointer;">{{ col.name }}<span style="margin-left:4px;color:#555a66;">{{ col.sortIcon }}</span></span>
+                      <sc-if value="{{ col.typeLabel }}" hint-placeholder-val="{{ false }}">
+                        <span onClick="{{ col.onEditType }}" title="Click to set the correct type" style="margin-left:6px;cursor:pointer;font-size:9.5px;font-weight:500;text-transform:none;letter-spacing:0;padding:1px 5px;border-radius:3px;background:#2a2d34;color:#9a9da6;border:1px solid #3e4249;">{{ col.typeLabel }}</span>
+                      </sc-if>
+                    </th>
+                  </sc-for>
+                </tr></thead>
+                <tbody>
+                  <sc-for list="{{ gridRows }}" as="row" hint-placeholder-count="6">
+                    <tr style="border-bottom:1px solid #3e4249;">
+                      <sc-for list="{{ row.cells }}" as="cell" hint-placeholder-count="3">
+                        <td onClick="{{ cell.onClick }}" style="{{ cell.style }}">{{ cell.display }}</td>
+                      </sc-for>
+                    </tr>
+                  </sc-for>
+                </tbody>
+              </table>
+            </sc-if>
+            <sc-if value="{{ !hasRows }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:#555a66;padding:40px;">
+                <div style="font-size:13px;">{{ emptyStateLabel }}</div>
+              </div>
+            </sc-if>
+          </sc-if>
+          <sc-if value="{{ isJsonView }}" hint-placeholder-val="{{ false }}">
+            <div style="padding:12px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;color:#e8eaf0;">{{ jsonViewText }}</div>
+          </sc-if>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUSBAR -->
+  <div style="height:24px;flex-shrink:0;background:#0288d1;display:flex;align-items:center;padding:0 12px;gap:16px;">
+    <div style="font-size:11px;color:rgba(255,255,255,.9);display:flex;align-items:center;gap:5px;">
+      <span style="{{ statusDotStyle }}"></span>{{ statusDb }}
+    </div>
+    <div style="font-size:11px;color:rgba(255,255,255,.9);">{{ statusStore }}</div>
+    <div style="margin-left:auto;font-size:11px;color:rgba(255,255,255,.9);">{{ statusRows }}</div>
+    <div style="font-size:11px;color:rgba(255,255,255,.9);">{{ statusTime }}</div>
+  </div>
+
+  <!-- MODAL: field type picker -->
+  <sc-if value="{{ showTypeModal }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseTypeModal }}" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;">
+      <div onClick="{{ stopProp }}" style="background:#22252a;border:1px solid #4a4f5a;border-radius:6px;width:min(320px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #3e4249;">
+          <div style="font-size:13px;font-weight:600;">Field type — {{ typeModalField }}</div>
+          <div onClick="{{ onCloseTypeModal }}" style="width:24px;height:24px;background:#32363f;border:1px solid #3e4249;border-radius:4px;cursor:pointer;color:#7a7f8e;display:flex;align-items:center;justify-content:center;font-size:14px;">✕</div>
+        </div>
+        <div style="padding:10px;display:flex;flex-direction:column;gap:4px;">
+          <sc-for list="{{ typeOptions }}" as="opt" hint-placeholder-count="6">
+            <div onClick="{{ opt.onSelect }}" style="padding:8px 12px;border-radius:4px;cursor:pointer;font-size:12.5px;background:{{ opt.bg }};color:{{ opt.color }};">{{ opt.label }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- MODAL: cell/JSON detail -->
+  <sc-if value="{{ showModal }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ onCloseModal }}" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;display:flex;align-items:center;justify-content:center;">
+      <div onClick="{{ stopProp }}" style="background:#22252a;border:1px solid #4a4f5a;border-radius:6px;width:min(600px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.6);">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #3e4249;">
+          <div style="font-size:13px;font-weight:600;">{{ modalTitle }}</div>
+          <div onClick="{{ onCloseModal }}" style="width:24px;height:24px;background:#32363f;border:1px solid #3e4249;border-radius:4px;cursor:pointer;color:#7a7f8e;display:flex;align-items:center;justify-content:center;font-size:14px;">✕</div>
+        </div>
+        <div style="flex:1;overflow:auto;padding:16px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;">{{ modalBody }}</div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- NOTIFICATION -->
+  <sc-if value="{{ showNotif }}" hint-placeholder-val="{{ false }}">
+    <div style="position:fixed;bottom:32px;right:16px;z-index:200;background:#2a2d34;border:1px solid {{ notifBorderColor }};border-radius:6px;padding:10px 16px;font-size:12px;color:#e8eaf0;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:dbxSlideIn .2s ease;max-width:320px;">{{ notifMsg }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    idbDatabases: [], idbOpenTree: {}, idbStoreCounts: {}, idbStoreIsSqlite: {},
+    sqliteFiles: [], sqliteOpenTree: {},
+    selection: null, // {kind:'idb'|'sqlite', dbName?, sqliteIdx?, store}
+    columns: [], gridRows: [], sortCol: null, sortAsc: true, viewMode: 'grid',
+    queryInput: '', resultsInfo: '', lastQueryMs: null,
+    errorMsg: '', notif: null,
+    sidebarOpen: true, queryPanelHeight: 140,
+    showModal: false, modalTitle: '', modalBody: '',
+    showTypeModal: false, typeModalField: null, schemaVersion: 0, showTypes: true
+  };
+
+  componentDidMount() { this.refreshDbList(); }
+
+  clearError = () => this.setState({ errorMsg: '' });
+  _fail(e) { this.setState({ errorMsg: (e && e.message) || String(e) }); }
+  _notify(msg, kind) {
+    this.setState({ notif: { msg, kind: kind || 'ok' } });
+    clearTimeout(this._notifTimer);
+    this._notifTimer = setTimeout(() => this.setState({ notif: null }), 3000);
+  }
+
+  async refreshDbList() {
+    try {
+      const dbs = (indexedDB.databases ? await indexedDB.databases() : []);
+      this.setState({ idbDatabases: dbs.map(d => d.name).filter(Boolean) });
+      this._notify(`Found ${dbs.length} database(s)`);
+    } catch (e) { this._fail(e); }
+  }
+  onRefreshDbs = () => this.refreshDbList();
+  onToggleSidebar = () => this.setState(s => ({ sidebarOpen: !s.sidebarOpen }));
+
+  // Detects a FileFsX mount stored with format:'sqlite' \u2014 the store holds one blob-like
+  // record whose bytes start with the real SQLite file-header magic ("SQLite format 3\0"),
+  // rather than JSON tree data. That store is then queryable at BOTH levels: as the plain IDB
+  // container (this store, its key) and, once opened, as the real SQLite tables inside it.
+  isSqliteMagic(bytes) {
+    if (!bytes) return false;
+    const arr = bytes instanceof ArrayBuffer ? new Uint8Array(bytes) : (bytes instanceof Uint8Array ? bytes : (bytes && bytes.buffer ? new Uint8Array(bytes.buffer) : null));
+    if (!arr || arr.length < 16) return false;
+    const header = 'SQLite format 3\0';
+    for (let i = 0; i < header.length; i++) if (arr[i] !== header.charCodeAt(i)) return false;
+    return true;
+  }
+
+  async toggleIdbDb(name) {
+    const wasOpen = this.state.idbOpenTree[name];
+    if (wasOpen) { this.setState(s => ({ idbOpenTree: { ...s.idbOpenTree, [name]: false } })); return; }
+    try {
+      const req = indexedDB.open(name);
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+      const stores = Array.from(db.objectStoreNames);
+      const counts = {};
+      const sqliteFlags = {};
+      for (const s of stores) {
+        const key = name + '::' + s;
+        counts[key] = await new Promise((res) => {
+          try { const tx = db.transaction(s, 'readonly'); const r = tx.objectStore(s).count(); r.onsuccess = () => res(r.result); r.onerror = () => res('?'); }
+          catch (e) { res('?'); }
+        });
+        // Peek the store's values for the embedded-SQLite fingerprint, cheaply \u2014 only
+        // matters for stores shaped like a FileFsX mount (a small number of blob records).
+        try {
+          const tx = db.transaction(s, 'readonly');
+          const all = await new Promise((res, rej) => { const r = tx.objectStore(s).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+          sqliteFlags[key] = all.some(v => this.isSqliteMagic(v));
+        } catch (e) { sqliteFlags[key] = false; }
+      }
+      db.close();
+      this.setState(s => ({
+        idbOpenTree: { ...s.idbOpenTree, [name]: stores },
+        idbStoreCounts: { ...s.idbStoreCounts, ...counts },
+        idbStoreIsSqlite: { ...s.idbStoreIsSqlite, ...sqliteFlags }
+      }));
+    } catch (e) { this._fail(e); }
+  }
+
+  // Opens a store's embedded SQLite blob as a real nested SQLite database, alongside (not
+  // instead of) the plain IDB container view \u2014 both levels stay independently queryable.
+  async openNestedSqlite(dbName, store) {
+    try {
+      const req = indexedDB.open(dbName);
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+      const tx = db.transaction(store, 'readonly');
+      const all = await new Promise((res, rej) => { const r = tx.objectStore(store).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+      db.close();
+      const blob = all.find(v => this.isSqliteMagic(v));
+      if (!blob) { this._fail(new Error('No embedded SQLite blob found in this store.')); return; }
+      const bytes = blob instanceof ArrayBuffer ? new Uint8Array(blob) : (blob instanceof Uint8Array ? blob : new Uint8Array(blob.buffer));
+      const SQL = await initSqlJs({ locateFile: f => './' + f });
+      const sdb = new SQL.Database(bytes);
+      const label = `${dbName}/${store} (embedded)`;
+      this.setState(s => ({ sqliteFiles: [...s.sqliteFiles, { name: label, db: sdb }] }));
+      this._notify(`Opened nested SQLite: ${label}`);
+    } catch (e) { this._fail(e); }
+  }
+
+  selectIdbStore(dbName, store) {
+    this.setState({
+      selection: { kind: 'idb', dbName, store },
+      queryInput: `SELECT * FROM ${store} LIMIT 200`,
+      columns: [], gridRows: [], sortCol: null
+    });
+    this.runActive();
+  }
+
+  // Schema key convention: one schema per IDB database + store pair, so every UI reading this
+  // data (DBX's own grid, any app-specific view) gets consistent typing/formatting from a single
+  // source of truth instead of guessing per-cell.
+  schemaKeyFor(dbName, store) { return `idb:${dbName}:${store}`; }
+
+  onToggleShowTypes = (e) => this.setState({ showTypes: e.target.checked });
+  onEditFieldType = (fieldName) => this.setState({ showTypeModal: true, typeModalField: fieldName });
+  onCloseTypeModal = () => this.setState({ showTypeModal: false, typeModalField: null });
+
+  onSetFieldType = (type) => {
+    const sel = this.state.selection;
+    if (!sel || sel.kind !== 'idb') return;
+    const key = this.schemaKeyFor(sel.dbName, sel.store);
+    let schema = SchemaDB.getSchema(key);
+    // Field wasn't in the inferred sample (e.g. all-null column) \u2014 create a minimal schema
+    // shell to hold the manual override rather than requiring re-inference first.
+    if (!schema) schema = SchemaDB.registerSchema(key, { label: `${sel.dbName} \u203a ${sel.store}`, source: { kind: 'idb', ref: `${sel.dbName}::${sel.store}` }, fields: [] });
+    const fields = schema.fields.filter(f => f.name !== this.state.typeModalField);
+    fields.push({ name: this.state.typeModalField, type, required: false, description: '', options: type === 'enum' ? [] : undefined, itemType: type === 'array' ? 'json' : undefined });
+    SchemaDB.registerSchema(key, { label: schema.label, source: schema.source, fields });
+    this.setState(s => ({ showTypeModal: false, typeModalField: null, schemaVersion: (s.schemaVersion || 0) + 1 }));
+    this._notify(`"${this.state.typeModalField}" set to ${type}`);
+  };
+
+  onProposeSchema = async (dbName, store) => {
+    try {
+      const req = indexedDB.open(dbName);
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+      const tx = db.transaction(store, 'readonly');
+      const sample = await new Promise((res, rej) => { const r = tx.objectStore(store).getAll(); r.onsuccess = () => res(r.result.slice(0, 50)); r.onerror = () => rej(r.error); });
+      db.close();
+      const fields = SchemaDB.inferSchema(sample);
+      const key = this.schemaKeyFor(dbName, store);
+      SchemaDB.registerSchema(key, { label: `${dbName} \u203a ${store}`, source: { kind: 'idb', ref: `${dbName}::${store}` }, fields });
+      this.setState(s => ({ schemaVersion: (s.schemaVersion || 0) + 1 }));
+      this._notify(`Schema proposed for ${dbName}/${store} (${fields.length} field(s)) \u2014 review under Schema panel`);
+    } catch (e) { this._fail(e); }
+  };
+
+  toggleSqliteFile(idx) {
+    const wasOpen = this.state.sqliteOpenTree[idx];
+    if (wasOpen) { this.setState(s => ({ sqliteOpenTree: { ...s.sqliteOpenTree, [idx]: false } })); return; }
+    const db = this.state.sqliteFiles[idx].db;
+    try {
+      const res = db.exec("SELECT name FROM sqlite_master WHERE type='table'");
+      const tables = res.length ? res[0].values.map(v => v[0]) : [];
+      this.setState(s => ({ sqliteOpenTree: { ...s.sqliteOpenTree, [idx]: tables } }));
+    } catch (e) { this._fail(e); }
+  }
+
+  selectSqliteTable(idx, tableName) {
+    this.setState({
+      selection: { kind: 'sqlite', sqliteIdx: idx, store: tableName },
+      queryInput: `SELECT * FROM "${tableName}" LIMIT 200;`,
+      columns: [], gridRows: [], sortCol: null
+    });
+    this.runActive();
+  }
+
+  // Both native File System Access and IDB are FileFsX adapters (backend: 'picker' vs 'idb') \u2014
+  // same Mount interface, different storage. 'picker' throws in a cross-origin iframe (e.g.
+  // embedded in DesktopShell), so we try it first and fall back to the 'idb' adapter, all
+  // through the one FileFsX API rather than calling window.showOpenFilePicker directly.
+  async getPickerFs() {
+    if (!this._pickerFs) this._pickerFs = await FileFsX.create({ backend: 'picker', format: 'sqlite', source: 'new-database.sqlite' });
+    return this._pickerFs;
+  }
+  async getIdbFs() {
+    if (!this._idbFs) this._idbFs = await FileFsX.create({ backend: 'idb', key: 'dbx-sqlite-files' });
+    return this._idbFs;
+  }
+
+  onNewSqlite = async () => {
+    try {
+      const SQL = await initSqlJs({ locateFile: f => './' + f });
+      const db = new SQL.Database();
+      try {
+        const fs = await this.getPickerFs();
+        await fs.writeFile('/new-database.sqlite', db.export());
+        this.setState(s => ({ sqliteFiles: [...s.sqliteFiles, { name: 'new-database.sqlite', db }] }));
+        this._notify(`Created new-database.sqlite`);
+        return;
+      } catch (e) { if (!/cross.?origin/i.test(e.message || '')) throw e; }
+      const name = 'new-database-' + Date.now() + '.sqlite';
+      const fs = await this.getIdbFs();
+      await fs.writeFile('/' + name, db.export());
+      this.setState(s => ({ sqliteFiles: [...s.sqliteFiles, { name, db }] }));
+      this._notify(`Created ${name} (embedded \u2014 idb adapter)`);
+    } catch (e) { this._fail(e); }
+  };
+
+  onOpenSqlite = async () => {
+    try {
+      try {
+        const fs = await this.getPickerFs();
+        const bytes = await fs.readFile('/new-database.sqlite');
+        const SQL = await initSqlJs({ locateFile: f => './' + f });
+        const db = new SQL.Database(new Uint8Array(bytes));
+        this.setState(s => ({ sqliteFiles: [...s.sqliteFiles, { name: 'new-database.sqlite', db }] }));
+        this._notify(`Opened file`);
+        return;
+      } catch (e) { if (!/cross.?origin/i.test(e.message || '')) throw e; }
+      const fs = await this.getIdbFs();
+      const entries = await fs.readdir('/', { withFileTypes: true });
+      const names = entries.filter(e => e.isFile()).map(e => e.name);
+      if (!names.length) { this._notify('No saved SQLite files yet \u2014 use + New SQLite first', 'err'); return; }
+      const name = prompt('Open which file?\n' + names.join('\n'), names[0]);
+      if (!name || !names.includes(name)) return;
+      const bytes = await fs.readFile('/' + name);
+      const SQL = await initSqlJs({ locateFile: f => './' + f });
+      const db = new SQL.Database(new Uint8Array(bytes));
+      this.setState(s => ({ sqliteFiles: [...s.sqliteFiles, { name, db }] }));
+      this._notify(`Opened ${name} (embedded \u2014 idb adapter)`);
+    } catch (e) { this._fail(e); }
+  };
+
+  parseIdbValue(v) {
+    if (v === 'null') return null;
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    if (/^['"].*['"]$/.test(v)) return v.slice(1, -1);
+    if (!isNaN(Number(v))) return Number(v);
+    return v;
+  }
+
+  onQueryInput = (e) => this.setState({ queryInput: e.target.value });
+  onQueryKeyDown = (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); this.runActive(); } };
+  onRunActive = () => this.runActive();
+
+  async runActive() {
+    const sel = this.state.selection;
+    const q = (this.state.queryInput || '').trim();
+    if (!sel || !q) return;
+    const t0 = performance.now();
+    if (sel.kind === 'sqlite') { this.runSqliteQuery(sel.sqliteIdx, q, t0); return; }
+    await this.runIdbQueryOn(sel.dbName, q, t0);
+  }
+
+  runSqliteQuery(idx, sql, t0) {
+    const db = this.state.sqliteFiles[idx].db;
+    try {
+      const res = db.exec(sql);
+      const ms = (performance.now() - t0).toFixed(1);
+      if (!res.length) { this.setState({ columns: [], gridRows: [], resultsInfo: `✓ 0 rows · ${ms}ms` }); return; }
+      const columns = res[0].columns;
+      const gridRows = res[0].values.map(row => ({ cells: row.map(v => v === null ? 'NULL' : String(v)), rawValues: row }));
+      this.setState({ columns, gridRows, resultsInfo: `✓ ${gridRows.length} row(s) · ${ms}ms` });
+    } catch (e) { this._fail(e); }
+  }
+
+  async runIdbQueryOn(dbName, q, t0) {
+    const upper = q.toUpperCase();
+    try {
+      const req = indexedDB.open(dbName);
+      const db = await new Promise((res, rej) => { req.onsuccess = () => res(req.result); req.onerror = () => rej(req.error); });
+
+      if (upper.startsWith('SELECT')) {
+        const m = q.match(/SELECT\s+\*\s+FROM\s+(\w+)(?:\s+WHERE\s+(\w+)\s*=\s*(.+?))?(?:\s+LIMIT\s+(\d+))?\s*;?$/i);
+        if (!m) throw new Error('Syntax: SELECT * FROM <store> [WHERE field = value] [LIMIT n]');
+        const [, store, whereField, whereVal, limit] = m;
+        const tx = db.transaction(store, 'readonly');
+        const all = await new Promise((res, rej) => { const r = tx.objectStore(store).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+        db.close();
+        let records = all.map(v => ({ value: v }));
+        if (whereField) {
+          const parsed = this.parseIdbValue(whereVal.trim());
+          records = records.filter(r => r.value && (r.value[whereField] == parsed || String(r.value[whereField]) === String(parsed)));
+        }
+        if (limit) records = records.slice(0, parseInt(limit, 10));
+        const cols = new Set();
+        records.forEach(r => { if (r.value && typeof r.value === 'object') Object.keys(r.value).forEach(k => cols.add(k)); });
+        const columns = cols.size ? Array.from(cols) : ['(value)'];
+        const gridRows = records.map(r => ({
+          cells: columns.map(c => {
+            if (c === '(value)') return typeof r.value === 'object' ? JSON.stringify(r.value) : String(r.value);
+            const v = r.value ? r.value[c] : undefined;
+            return v === undefined ? '' : (typeof v === 'object' ? JSON.stringify(v) : String(v));
+          })
+        }));
+        const ms = (performance.now() - t0).toFixed(1);
+        this.setState({ columns, gridRows, resultsInfo: `✓ ${records.length} row(s) · ${ms}ms` });
+        return;
+      }
+      if (upper.startsWith('COUNT')) {
+        const m = q.match(/COUNT\s+(\w+)/i);
+        if (!m) throw new Error('Syntax: COUNT <store>');
+        const tx = db.transaction(m[1], 'readonly');
+        const count = await new Promise((res, rej) => { const r = tx.objectStore(m[1]).count(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+        db.close();
+        const ms = (performance.now() - t0).toFixed(1);
+        this.setState({ resultsInfo: `✓ COUNT(${m[1]}) = ${count} · ${ms}ms` });
+        return;
+      }
+      if (upper.startsWith('DELETE')) {
+        const m = q.match(/DELETE\s+FROM\s+(\w+)\s+WHERE\s+(\w+)\s*=\s*(.+)/i);
+        if (!m) throw new Error('Syntax: DELETE FROM <store> WHERE <field> = <value>');
+        const [, store, field, val] = m;
+        const parsed = this.parseIdbValue(val.trim());
+        const tx = db.transaction(store, 'readwrite');
+        if (field === 'id' || field === 'key') {
+          await new Promise((res, rej) => { const r = tx.objectStore(store).delete(parsed); r.onsuccess = () => res(); r.onerror = () => rej(r.error); });
+        } else {
+          const all = await new Promise((res, rej) => { const r = tx.objectStore(store).getAll(); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+          throw new Error('DELETE WHERE on a non-key field is not supported for IndexedDB stores \u2014 use the key/id field.');
+        }
+        db.close();
+        this.setState({ resultsInfo: `✓ Deleted from ${store} where ${field} = ${parsed}` });
+        return;
+      }
+      if (upper.startsWith('CLEAR')) {
+        const m = q.match(/CLEAR\s+(\w+)/i);
+        if (!m) throw new Error('Syntax: CLEAR <store>');
+        if (!confirm(`Clear all records from "${m[1]}"?`)) { db.close(); return; }
+        const tx = db.transaction(m[1], 'readwrite');
+        await new Promise((res, rej) => { const r = tx.objectStore(m[1]).clear(); r.onsuccess = () => res(); r.onerror = () => rej(r.error); });
+        db.close();
+        this.setState({ resultsInfo: `✓ Cleared ${m[1]}`, columns: [], gridRows: [] });
+        return;
+      }
+      db.close();
+      throw new Error('Unknown query. Try: SELECT * FROM <store> | COUNT <store> | DELETE FROM <store> WHERE id = n | CLEAR <store>');
+    } catch (e) { this._fail(e); }
+  }
+
+  onViewGrid = () => this.setState({ viewMode: 'grid' });
+  onViewJson = () => this.setState({ viewMode: 'json' });
+  sortByCol = (colIdx) => this.setState(s => ({ sortCol: colIdx, sortAsc: s.sortCol === colIdx ? !s.sortAsc : true }));
+
+  onResizeStart = (e) => {
+    e.preventDefault();
+    const startY = e.clientY, startH = this.state.queryPanelHeight;
+    const onMove = (ev) => { const h = Math.max(60, Math.min(400, startH + (ev.clientY - startY))); this.setState({ queryPanelHeight: h }); };
+    const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
+  };
+
+  onCellClick = (val) => {
+    if (typeof val !== 'string' || !(val.startsWith('{') || val.startsWith('['))) return;
+    try { this.setState({ showModal: true, modalTitle: 'Value — Detail', modalBody: JSON.stringify(JSON.parse(val), null, 2) }); } catch (e) {}
+  };
+  onCloseModal = () => this.setState({ showModal: false });
+  stopProp = (e) => e.stopPropagation();
+
+  onExport = () => {
+    const rows = this.state.gridRows;
+    if (!rows.length) { this._notify('No data to export', 'err'); return; }
+    const objRows = rows.map(r => { const o = {}; this.state.columns.forEach((c, i) => o[c] = r.cells[i]); return o; });
+    const blob = new Blob([JSON.stringify(objRows, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `${(this.state.selection && this.state.selection.store) || 'export'}_${Date.now()}.json`;
+    a.click();
+    this._notify(`Exported ${rows.length} record(s)`);
+  };
+
+  renderVals() {
+    const s = this.state;
+    const tbBtnStyle = 'padding:6px 10px;background:#2a2d34;border:1px solid #3e4249;color:#b8bcc8;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;';
+    const tbBtnPrimaryStyle = 'padding:6px 10px;background:#0288d1;border:1px solid #0288d1;color:#fff;border-radius:4px;cursor:pointer;font-size:12px;white-space:nowrap;';
+
+    const idbTree = s.idbDatabases.map(name => {
+      const open = !!s.idbOpenTree[name];
+      const stores = (s.idbOpenTree[name] || []).map(store => {
+        const active = s.selection && s.selection.kind === 'idb' && s.selection.dbName === name && s.selection.store === store;
+        return {
+          name: store, count: s.idbStoreCounts[name + '::' + store] ?? '',
+          isSqlite: !!s.idbStoreIsSqlite[name + '::' + store],
+          onClick: () => this.selectIdbStore(name, store),
+          onOpenSqlite: () => this.openNestedSqlite(name, store),
+          onProposeSchema: () => this.onProposeSchema(name, store),
+          hasSchema: SchemaDB.getSchema(this.schemaKeyFor(name, store)) ? 'Schema registered \u2014 click to re-propose from current data' : 'No schema yet \u2014 click to infer one from current data',
+          schemaBadgeLabel: SchemaDB.getSchema(this.schemaKeyFor(name, store)) ? 'Typed' : 'Type it',
+          schemaBadgeBg: SchemaDB.getSchema(this.schemaKeyFor(name, store)) ? '#1a4a2a' : '#3a3d44',
+          schemaBadgeColor: SchemaDB.getSchema(this.schemaKeyFor(name, store)) ? '#66bb6a' : '#9a9da6',
+          style: `display:flex;align-items:center;gap:6px;padding:4px 10px 4px 26px;cursor:pointer;font-size:12px;color:${active ? '#4fc3f7' : '#7a7f8e'};background:${active ? '#1a3a4a' : 'transparent'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`
+        };
+      });
+      return {
+        name, open, stores,
+        onToggle: () => this.toggleIdbDb(name),
+        caretStyle: `display:inline-block;transition:transform .15s;color:#555a66;transform:rotate(${open ? 90 : 0}deg);`,
+        headerStyle: `display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;color:${open ? '#4fc3f7' : '#b8bcc8'};font-size:12px;font-weight:500;`
+      };
+    });
+
+    const sqliteTree = s.sqliteFiles.map((f, i) => {
+      const open = !!s.sqliteOpenTree[i];
+      const tables = (s.sqliteOpenTree[i] || []).map(t => {
+        const active = s.selection && s.selection.kind === 'sqlite' && s.selection.sqliteIdx === i && s.selection.store === t;
+        return {
+          name: t, onClick: () => this.selectSqliteTable(i, t),
+          style: `padding:4px 10px 4px 26px;cursor:pointer;font-size:12px;color:${active ? '#4fc3f7' : '#7a7f8e'};background:${active ? '#1a3a4a' : 'transparent'};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`
+        };
+      });
+      return {
+        name: f.name, open, tables,
+        onToggle: () => this.toggleSqliteFile(i),
+        caretStyle: `display:inline-block;transition:transform .15s;color:#555a66;transform:rotate(${open ? 90 : 0}deg);`,
+        headerStyle: `display:flex;align-items:center;gap:6px;padding:5px 10px;cursor:pointer;color:${open ? '#4fc3f7' : '#b8bcc8'};font-size:12px;font-weight:500;`
+      };
+    });
+
+    let sortedRows = s.gridRows;
+    if (s.sortCol !== null && s.sortCol !== undefined && s.columns[s.sortCol] !== undefined) {
+      sortedRows = [...s.gridRows].sort((a, b) => {
+        const av = a.cells[s.sortCol], bv = b.cells[s.sortCol];
+        const an = parseFloat(av), bn = parseFloat(bv);
+        const cmp = (!isNaN(an) && !isNaN(bn)) ? an - bn : String(av).localeCompare(String(bv));
+        return s.sortAsc ? cmp : -cmp;
+      });
+    }
+    const selForSchema = s.selection;
+    const activeSchema = (selForSchema && selForSchema.kind === 'idb') ? SchemaDB.getSchema(this.schemaKeyFor(selForSchema.dbName, selForSchema.store)) : null;
+    const schemaByField = {};
+    if (activeSchema) activeSchema.fields.forEach(f => { schemaByField[f.name] = f; });
+    const isIdbSel = selForSchema && selForSchema.kind === 'idb';
+    const columns = s.columns.map((col, i) => {
+      const fieldDef = schemaByField[col];
+      return {
+        name: col, onSort: () => this.sortByCol(i), sortIcon: s.sortCol === i ? (s.sortAsc ? '▲' : '▼') : '⇅',
+        typeLabel: (isIdbSel && s.showTypes) ? (fieldDef ? fieldDef.type : '?') : null,
+        onEditType: isIdbSel ? () => this.onEditFieldType(col) : undefined
+      };
+    });
+    const gridRows = sortedRows.map(row => ({
+      cells: row.cells.map((v, ci) => {
+        const colName = s.columns[ci];
+        const fieldDef = schemaByField[colName];
+        const isObj = typeof v === 'string' && (v.startsWith('{') || v.startsWith('['));
+        const rawVal = row.rawValues ? row.rawValues[ci] : undefined;
+        const isSqliteNumeric = rawVal !== undefined && typeof rawVal === 'number';
+        let display = isObj && v.length > 60 ? v.slice(0, 60) + '…' : v;
+        // Schema-driven formatting: consistent presentation from the one registered source of
+        // truth, instead of every consumer re-guessing per-cell how a raw value should look.
+        let isNumberOrDate = false;
+        if (fieldDef) {
+          if (fieldDef.type === 'bool') display = (v === 'true' || v === true) ? 'true' : 'false';
+          else if (fieldDef.type === 'date' || fieldDef.type === 'datetime') { const d = new Date(v); display = isNaN(d.getTime()) ? v : d.toLocaleString(); isNumberOrDate = true; }
+          else if (fieldDef.type === 'float') { const n = parseFloat(v); display = isNaN(n) ? v : n.toFixed(2); isNumberOrDate = true; }
+          else if (fieldDef.type === 'int') isNumberOrDate = true;
+        } else if (isSqliteNumeric) {
+          isNumberOrDate = true;
+        } else {
+          // No declared schema yet \u2014 still right-justify anything that looks like a plain
+          // number or an ISO-ish date string, so formatting is sane before a type is set.
+          isNumberOrDate = (typeof v === 'string' && v.trim() !== '' && !isNaN(Number(v))) || (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}/.test(v));
+        }
+        return { display, onClick: isObj ? () => this.onCellClick(v) : undefined,
+          style: `padding:5px 12px;text-align:${isNumberOrDate ? 'right' : 'left'};color:${isObj ? '#ab47bc' : (fieldDef ? '#4fc3f7' : '#e8eaf0')};border-right:1px solid #3e4249;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:${isObj ? 'pointer' : 'default'};` };
+      })
+    }));
+    const jsonObjRows = sortedRows.map(row => { const o = {}; s.columns.forEach((c, i) => o[c] = row.cells[i]); return o; });
+
+    const isGridView = s.viewMode === 'grid', isJsonView = s.viewMode === 'json';
+    const sel = s.selection;
+    const activeSelectionLabel = sel ? (sel.kind === 'idb' ? `${sel.dbName} \u203a ${sel.store}` : `${s.sqliteFiles[sel.sqliteIdx].name} \u203a ${sel.store}`) : 'none selected';
+    const queryPlaceholder = sel && sel.kind === 'idb'
+      ? 'SELECT * FROM store [WHERE field = value] [LIMIT n]  |  COUNT store  |  DELETE FROM store WHERE id = n  |  CLEAR store'
+      : 'SELECT * FROM table_name LIMIT 100;';
+
+    return {
+      tbBtnStyle, tbBtnPrimaryStyle,
+      onToggleSidebar: this.onToggleSidebar, onRunActive: this.onRunActive, onRefreshDbs: this.onRefreshDbs,
+      onNewSqlite: this.onNewSqlite, onOpenSqlite: this.onOpenSqlite, onExport: this.onExport,
+      errorMsg: s.errorMsg, clearError: this.clearError,
+      sidebarStyle: `width:${s.sidebarOpen ? '240px' : '0px'};flex:0 0 auto;background:#22252a;border-right:1px solid #3e4249;display:flex;flex-direction:column;overflow:hidden;transition:width .2s;`,
+      idbTree, idbTreeEmpty: idbTree.length === 0,
+      sqliteTree, sqliteTreeEmpty: sqliteTree.length === 0,
+      queryPanelStyle: `background:#22252a;border-bottom:1px solid #3e4249;display:flex;flex-direction:column;flex-shrink:0;height:${s.queryPanelHeight}px;min-height:60px;position:relative;`,
+      activeSelectionLabel, queryPlaceholder,
+      queryInput: s.queryInput, onQueryInput: this.onQueryInput, onQueryKeyDown: this.onQueryKeyDown, onResizeStart: this.onResizeStart,
+      gridTabStyle: `padding:3px 12px;font-size:12px;cursor:pointer;background:${isGridView ? '#1a1c1e' : '#2a2d34'};color:${isGridView ? '#e8eaf0' : '#7a7f8e'};border:1px solid #3e4249;border-radius:3px 3px 0 0;border-bottom:${isGridView ? '1px solid #1a1c1e' : '1px solid #3e4249'};`,
+      jsonTabStyle: `padding:3px 12px;font-size:12px;cursor:pointer;background:${isJsonView ? '#1a1c1e' : '#2a2d34'};color:${isJsonView ? '#e8eaf0' : '#7a7f8e'};border:1px solid #3e4249;border-radius:3px 3px 0 0;border-bottom:${isJsonView ? '1px solid #1a1c1e' : '1px solid #3e4249'};`,
+      onViewGrid: this.onViewGrid, onViewJson: this.onViewJson,
+      isGridView, isJsonView, hasRows: gridRows.length > 0,
+      emptyStateLabel: sel ? 'No records found' : 'Select a store or table from the sidebar, or run a query',
+      columns, gridRows, jsonViewText: JSON.stringify(jsonObjRows, null, 2),
+      resultsInfo: s.resultsInfo,
+      statusDb: sel ? (sel.kind === 'idb' ? sel.dbName : s.sqliteFiles[sel.sqliteIdx].name) : 'No database',
+      statusStore: sel ? sel.store : '—',
+      statusRows: gridRows.length + ' rows',
+      statusTime: s.resultsInfo.includes('·') ? s.resultsInfo.split('·')[1].trim() : '—',
+      statusDotStyle: `width:6px;height:6px;border-radius:50%;background:${s.errorMsg ? '#ef5350' : '#66bb6a'};display:inline-block;`,
+      showModal: s.showModal, modalTitle: s.modalTitle, modalBody: s.modalBody, onCloseModal: this.onCloseModal, stopProp: this.stopProp,
+      showTypes: s.showTypes, onToggleShowTypes: this.onToggleShowTypes,
+      showTypeModal: s.showTypeModal, typeModalField: s.typeModalField, onCloseTypeModal: this.onCloseTypeModal,
+      typeOptions: SchemaDB.ALL_TYPES.map(t => ({ label: t, bg: 'transparent', color: '#e8eaf0', onSelect: () => this.onSetFieldType(t) })),
+      showNotif: !!s.notif, notifMsg: s.notif ? s.notif.msg : '', notifBorderColor: s.notif && s.notif.kind === 'err' ? '#ef5350' : '#66bb6a'
+    };
+  }
+}
+</script>
+</body>
+</html>
