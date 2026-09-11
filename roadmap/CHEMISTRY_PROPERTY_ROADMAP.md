@@ -1,5 +1,8 @@
 # Sentinel Chemistry Engine — Property Roadmap & Prioritization Rubric
 
+**Version:** 1.1.0
+**Last updated:** 2026-09-11
+
 Source: the six-category punch list drafted this session (Optical,
 Electronic, Thermal, Magnetic, Reactivity, Device-Level properties for
 `research/periodic-data-table`). This document turns that list into a
@@ -74,7 +77,7 @@ on the strength of the formula alone.
 | 4.3 | Magnetic | Spin Density | ⬜ | 3 | 3 | 2 | 3 | 3 | 3 | **17** |
 | 4.4 | Magnetic | Exchange Coupling (J) | 🤝 | 1 | 1 | 2 | 5 | 5 | 1 | **15** |
 | 5.1 | Reactivity | Fukui Functions (f⁺, f⁻, f⁰) | ⬜ | 4 | 4 | 4 | 2 | 3 | 4 | **21** |
-| 5.2 | Reactivity | Electrophilicity / Nucleophilicity Indices | ⬜ | 4 | 2 | 3 | 1 | 2 | 4 | **16** |
+| 5.2 | Reactivity | Electrophilicity / Nucleophilicity Indices | ✅ | — | — | — | — | — | — | shipped (`Aromaticity.js` `homoLumo()`, Parr-Szentpaly-Liu electrophilicity index) |
 | 5.3 | Reactivity | Bond Dissociation Energy (BDE) | 🔬 | 2 | 5 | 5 | 5 | 5 | 1 | **23** *(investigated — see note)* |
 | 5.4 | Reactivity | Activation Energy (Ea) | ⬜ | 1 | 4 | 4 | 5 | 5 | 1 | **20** |
 | 5.5 | Reactivity | Reaction Rate (k) | ⬜ | 1 | 1 | 3 | 3 | 3 | 1 | **12** |
@@ -91,6 +94,36 @@ symmetry ✅ (underlies several optical/thermal selection rules), and the
 multipole/molar-refractivity/druglikeness cheap wins ✅ (molar
 refractivity is the adjacent piece to 6.5).
 
+**Correction (v1.1.0):** 5.2 Electrophilicity/Nucleophilicity Indices was
+scored ⬜ in v1.0.0 on the assumption it was unstarted. Checking the
+actual code while scoping 1.1/1.3/5.1's real difficulty found it was
+already shipped: `Aromaticity.js`'s `homoLumo()` computes the
+Parr-Szentpaly-Liu electrophilicity index (`electrophilicityEv`) directly
+from the same frontier-orbital energies the rubric assumed would still
+need deriving. Left as a reminder that this table's Status column is
+only as good as the last time someone actually checked the code, not the
+punch list's original wording.
+
+**Grounded difficulty check (v1.1.0), 1.1/1.3/5.1 specifically:** rather
+than trust the first-pass D/N/C scores in the abstract, the actual code
+was checked. The transition dipole matrix element `<phi_j|mu_hat|phi_i>`
+Oscillator Strength (1.1) needs is *already computed* inside
+`MolecularPolarizability.js`'s `analyzePiElectronic()` (it's the core
+term the sum-over-states polarizability formula sums over) — 1.1 is
+exposing an existing intermediate, not new work. Fukui Functions (5.1)
+similarly reuses per-atom MO coefficients already produced by
+`Aromaticity.js`'s Jacobi eigendecomposition, with one small but
+precedented wrinkle: a degenerate HOMO/LUMO level (e.g. benzene's
+degenerate e-pair) needs summing `|c|^2` over every MO in that group, and
+the grouping logic to do that already exists in `fillElectrons`. Absorption
+Spectrum (1.3) needs both of those plus something with **no existing
+precedent anywhere in this codebase**: a linewidth/broadening model to
+turn discrete stick transitions into a continuous curve — real spectral
+width comes from vibronic coupling and solvent effects, entirely outside
+simple Huckel theory. That is the concrete reason 1.3 is the hardest of
+the three despite the lower composite (22 vs. 23) — Novelty/Confidence
+already flagged it, and reading the actual code confirmed why.
+
 ## Recommended execution order
 
 **Single-molecule ("for us") queue, by composite descending:**
@@ -103,7 +136,7 @@ refractivity is the adjacent piece to 6.5).
 6. Refractive Index (n, k) — 19
 7. Fluorescence/Phosphorescence, Work Function, Dielectric Constant — 18
 8. Molar Absorptivity, Spin Density — 17
-9. Fermi Level, Electrophilicity/Nucleophilicity — 16
+9. Fermi Level — 16
 10. Thermal Conductivity, Debye Temperature, Thermal Expansion Coefficient, Magnetic Susceptibility — 15
 11. Stokes Shift — 13
 12. Reaction Rate (k) — 12
@@ -141,3 +174,23 @@ methodology per bond family, not restart from the one-line formula.
   the same way BDE's Confidence dimension was written retroactively from
   what was actually learned — a rubric that never updates from real
   outcomes is just an opinion with extra columns.
+
+## Changelog
+
+This document is meant to stand on its own, the same way
+`chemistry/De_investigation_FINDINGS.js` does — versioned and dated so a
+reader can tell what changed and why without diffing git history.
+
+- **1.1.0** — 2026-09-11 — Corrected 5.2 Electrophilicity/Nucleophilicity
+  Indices from ⬜ to ✅ shipped (`Aromaticity.js`'s `homoLumo()` already
+  computes it) after checking the actual code rather than trusting the
+  punch list's original wording. Added a grounded difficulty comparison
+  for 1.1 Oscillator Strength / 1.3 Absorption Spectrum / 5.1 Fukui
+  Functions, based on reading `MolecularPolarizability.js` and
+  `Aromaticity.js` directly, confirming 1.3 as the hardest of the three
+  despite its lower composite score. Added this version/changelog
+  footer.
+- **1.0.0** — 2026-09-11 — Initial publish: six-dimension rubric (Have
+  Data, Unlocks, Discipline Priority, Novelty, Rarity, Confidence),
+  full scored backlog for the six-category punch list, single-molecule
+  and agent/compositional execution queues.
