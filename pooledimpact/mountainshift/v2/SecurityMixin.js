@@ -91,6 +91,77 @@
         VIOLATIONS.set(extId, (VIOLATIONS.get(extId) || 0) + 1);
     }
 
+    // ─── Fingerprinting (verify) ────────────────────────────────────────
+    // Same hashString() algorithm BaseClassX itself uses for
+    // computeFingerprint() -- deliberately not a new scheme, so this stays
+    // consistent with how the rest of the codebase already reasons about
+    // integrity. This is a character-level (toString()) content check, NOT
+    // reference-identity: a hand-merged "pre-mixed" mixin (see the
+    // PreMixed hazard) can hold a DIFFERENT object than the one
+    // createSecurityMixin() returned, reusing the same mixinId, with some
+    // method slots silently replaced by an unrelated mixin's
+    // implementation -- reference equality wouldn't even be askable in
+    // that case (it's a different object), but the SOURCE TEXT of the
+    // replaced method differs from what was recorded at creation time, and
+    // that's what this catches. This is a diagnostic/testing aid, not a
+    // security control: toString() output is fully visible and trivially
+    // reproducible, so it cannot stop a deliberate forgery -- it exists to
+    // catch accidental silent overwrites (the actual hazard demonstrated),
+    // not a malicious actor who bothers to match hashes.
+    const MIXIN_FINGERPRINTS = new Map(); // mixinId -> { methodName: hash }
+
+    function hashString(str) {
+        let hash = 0;
+        for (let i = 0; i < str.length; i++) {
+            hash = ((hash << 5) - hash) + str.charCodeAt(i);
+            hash |= 0;
+        }
+        return Math.abs(hash).toString(36);
+    }
+
+    function fingerprintMixin(mixin) {
+        const fp = {};
+        Object.keys(mixin).forEach(function(key) {
+            if (typeof mixin[key] === 'function') {
+                fp[key] = hashString(mixin[key].toString());
+            }
+        });
+        return fp;
+    }
+
+    /**
+     * Compare a mixin object's CURRENT method source against what
+     * createSecurityMixin() recorded for this mixinId at creation time.
+     *
+     * Returns { verified, problems, extraMethods }:
+     *   verified     -- true only if every recorded method is present with
+     *                    an unchanged toString() hash.
+     *   problems     -- human-readable list of missing/changed methods.
+     *   extraMethods -- method names present now that weren't part of the
+     *                    original recording (e.g. a merge added them) --
+     *                    informational, not necessarily itself a problem.
+     */
+    function verify(mixin) {
+        if (!mixin || typeof mixin.mixinId !== 'string') {
+            return { verified: false, problems: ['mixin has no string mixinId to look up'], extraMethods: [] };
+        }
+        const expected = MIXIN_FINGERPRINTS.get(mixin.mixinId);
+        if (!expected) {
+            return { verified: false, problems: ['unknown mixinId "' + mixin.mixinId + '" -- no fingerprint was ever recorded for it'], extraMethods: [] };
+        }
+        const actual = fingerprintMixin(mixin);
+        const problems = [];
+        Object.keys(expected).forEach(function(name) {
+            if (!(name in actual)) {
+                problems.push(name + ': missing (present at creation, absent now)');
+            } else if (actual[name] !== expected[name]) {
+                problems.push(name + ': content changed (toString() hash mismatch -- likely overwritten by an outside merge)');
+            }
+        });
+        const extraMethods = Object.keys(actual).filter(function(name) { return !(name in expected); });
+        return { verified: problems.length === 0, problems: problems, extraMethods: extraMethods };
+    }
+
     // ─── Sealed state ───────────────────────────────────────────────────
     // Keyed by extId like TOKENS -- a closure-private flag, not a property
     // on the instance, so nothing about "is this sealed" is reachable or
@@ -195,6 +266,11 @@
         mixin._securityArmed = function() { return isArmed(this._extId); };
         mixin._securityViolations = function() { return VIOLATIONS.get(this._extId) || 0; };
 
+        // Record the fingerprint LAST, after every method above is in
+        // place, so verify() has the complete, correct picture of what
+        // this mixinId is supposed to look like.
+        MIXIN_FINGERPRINTS.set(mixinId, fingerprintMixin(mixin));
+
         return mixin;
     }
 
@@ -237,6 +313,7 @@
         createSecurityMixin: createSecurityMixin,
         seal: seal,
         isSealed: isSealed,
+        verify: verify,
         // Exposed for the isolated proof/tests only -- a real deployment
         // has no reason to reach these from outside a composed instance's
         // own init/dispose lifecycle.
