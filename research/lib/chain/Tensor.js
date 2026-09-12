@@ -1,86 +1,136 @@
 /**
- * Tensor.js
- *
- * Link 2 of Data -> Tensor -> Hilbert -> Hamiltonian -> Continuity -> VonNeumann -> Diagonal/Dense
- *
- * A Tensor is two injected parts, not one object:
- *   R1 — the structural/rank spec: shape, ordering rule, field-extraction
- *        rule. This is the frame/basis-choice half; it carries no data.
- *   R2 — the data itself: a Data instance, a flat array, or a nested array.
- *        R2 is legitimately shaped either way going IN (that's situational,
- *        not a defect — nested for jagged/structural data, flat for dense
- *        numeric access) and Tensor normalizes whichever it receives to one
- *        canonical flat buffer + row-major strides, from which toFlat() and
- *        toNested() are just two read-out views of the same thing.
- * "Ordered / Unordered / Custom" (R1.order) governs how R2's row identity
- * maps to index position when R2 arrives flat and unordered — a key
- * function is required to fix an order before coordinates mean anything.
- *
- * Tensor does not construct its own R2 — it is injected. No requires.
- * UMD, browser global falls back to `window.Chain.Tensor`.
+ * @file research/lib/chain/Tensor.js
+ * @author Will Fobbs
+ * @version 1.1.0
+ * @description Link 2 of Data -> Tensor -> Hilbert -> Hamiltonian -> Continuity -> VonNeumann -> Diagonal/Dense.
+ *              A Tensor is two injected parts, not one object:
+ *                R1 — the structural/rank spec: shape, ordering rule,
+ *                     field-extraction rule. The frame/basis-choice half;
+ *                     carries no data.
+ *                R2 — the data itself: a Data instance, a flat array, or a
+ *                     nested array. R2 is legitimately shaped either way
+ *                     going IN (situational, not a defect — nested for
+ *                     jagged/structural data, flat for dense numeric access)
+ *                     and Tensor normalizes whichever it receives to one
+ *                     canonical flat buffer + row-major strides, from which
+ *                     toFlat() and toNested() are just two read-out views
+ *                     of the same thing.
+ *              "Ordered / Unordered / Custom" (R1.order) governs how R2's
+ *              row identity maps to index position when R2 arrives flat and
+ *              unordered — a key function is required to fix an order
+ *              before coordinates mean anything.
+ * @principle "Assume no dependencies in classes unless authorized."
+ * @example const t = new Tensor().init({shape:[2,2]}, [1,0,1,1]);
+ * @example const t = new Tensor().init({}, [[1,2],[3,4]]);
  */
-(function (root, factory) {
-  if (typeof module === 'object' && module.exports) {
+(function (root, factory)
+{
+  if (typeof module === 'object' && module.exports)
+  {
     module.exports = factory();
-  } else if (typeof define === 'function' && define.amd) {
+  }
+  else if (typeof define === 'function' && define.amd)
+  {
     define([], factory);
-  } else {
+  }
+  else
+  {
     root.Chain = root.Chain || {};
     root.Chain.Tensor = factory();
   }
-})(typeof self !== 'undefined' ? self : this, function () {
+}(typeof self !== 'undefined' ? self : this, function ()
+{
   'use strict';
 
-  const LAYOUTS = Object.freeze({ FLAT: 'flat', NESTED: 'nested' });
-  const ORDERS = Object.freeze({ ORDERED: 'ordered', UNORDERED: 'unordered', CUSTOM: 'custom' });
-
-  function rowMajorStrides(shape) {
+  function rowMajorStrides(shape)
+  {
     const strides = new Array(shape.length);
     let acc = 1;
-    for (let d = shape.length - 1; d >= 0; d--) {
+    for (let d = shape.length - 1; d >= 0; d--)
+    {
       strides[d] = acc;
       acc *= shape[d];
     }
     return strides;
   }
 
-  function product(arr) {
+  function product(arr)
+  {
     return arr.reduce((a, b) => a * b, 1);
   }
 
-  class Tensor {
+  class Tensor
+  {
+    static name = 'Tensor';
+    static author = 'Will Fobbs';
+    static version = '1.1.0';
+    static description = 'Coordinate representation of a multi-index object: (R1) structural/rank spec + (R2) injected data, flat or nested.';
+    static docs = ['research/lib/chain/docs/Tensor.md'];
+    static tests = ['research/lib/chain/tests/Tensor.unit.js'];
+    static config_default = { order: 'ordered' };
+
+    static LAYOUTS = Object.freeze({ FLAT: 'flat', NESTED: 'nested' });
+    static ORDERS = Object.freeze({ ORDERED: 'ordered', UNORDERED: 'unordered', CUSTOM: 'custom' });
+
     /**
+     * Allocates an uninitialized Tensor. No R1/R2 are read here — call
+     * init() to actually resolve data into coordinate form. Splitting
+     * allocation from initialization keeps the instance re-init-able (a
+     * Tensor can be reshaped/re-sourced by calling init() again) and keeps
+     * construction-time failures out of `new`.
+     */
+    constructor()
+    {
+      this.order = Tensor.ORDERS.ORDERED;
+      this.field = undefined;
+      this.layout = Tensor.LAYOUTS.FLAT;
+      this.shape = [];
+      this.strides = [];
+      this._flat = [];
+      this.R1 = null;
+      this.R2 = null;
+    }
+
+    /**
+     * Initializes this Tensor from an injected (R1, R2) pair.
      * @param {Object} R1 - structural/rank spec (data-free)
      * @param {number[]} [R1.shape] - explicit shape; defaults to the shape inferred from R2
      *   (rank-1 [length] for a Data dependency or a flat array, or R2's own
      *   rectangular nesting depth/extents when R2 arrives as a nested array)
-     * @param {string} [R1.order='ordered'] - ORDERS.ORDERED | UNORDERED | CUSTOM;
+     * @param {string} [R1.order='ordered'] - Tensor.ORDERS.ORDERED | UNORDERED | CUSTOM;
      *   only meaningful when R2 is a Data dependency or a flat array of records
      * @param {Function} [R1.compare] - required when order is UNORDERED (Array.sort comparator over rows)
      * @param {Function} [R1.indexFn] - required when order is CUSTOM: (row, i, rows) => scalar sort key
      * @param {string} [R1.field] - field to extract a numeric scalar from each record; defaults to 'value' for key/value rows, else the row itself if already a number
-     * @param {string} [R1.layout] - purely descriptive label (LAYOUTS.FLAT | LAYOUTS.NESTED); inferred from R2's shape if omitted
+     * @param {string} [R1.layout] - purely descriptive label (Tensor.LAYOUTS.FLAT | NESTED); inferred from R2's shape if omitted
      * @param {Data|Array} R2 - the data: an injected Data instance, a flat array, or a nested array
+     * @returns {Tensor} this, for chaining
+     * @throws {TypeError} if R2 is missing or of an unsupported shape
+     * @throws {RangeError} if R1.shape does not match R2's extracted size, or R2 is ragged
      */
-    constructor(R1, R2) {
+    init(R1, R2)
+    {
       R1 = R1 || {};
-      if (R2 === undefined || R2 === null) {
-        throw new TypeError('Tensor: R2 (data) is required');
+      if (R2 === undefined || R2 === null)
+      {
+        throw new TypeError('Tensor.init: R2 (data) is required');
       }
-      this.order = R1.order || ORDERS.ORDERED;
+
+      this.order = R1.order || Tensor.ORDERS.ORDERED;
       this.field = R1.field;
 
       const resolved = Tensor._resolveR2(R2, this.order, R1, this.field);
       const shape = R1.shape ? R1.shape.slice() : resolved.shape;
 
-      if (product(shape) !== resolved.flat.length) {
+      if (product(shape) !== resolved.flat.length)
+      {
         throw new RangeError(
-          'Tensor: shape ' + JSON.stringify(shape) +
+          'Tensor.init: shape ' + JSON.stringify(shape) +
           ' (size ' + product(shape) + ') does not match ' + resolved.flat.length + ' extracted values'
         );
       }
 
-      this.layout = R1.layout || (resolved.wasNested ? LAYOUTS.NESTED : LAYOUTS.FLAT);
+      this.layout = R1.layout || (resolved.wasNested ? Tensor.LAYOUTS.NESTED : Tensor.LAYOUTS.FLAT);
       this.shape = shape;
       this.strides = rowMajorStrides(shape);
       this._flat = resolved.flat; // canonical backing store regardless of requested view
@@ -88,24 +138,27 @@
       // Surface the two injected halves explicitly, matching the R1/R2 contract itself.
       this.R1 = { shape: this.shape.slice(), order: this.order, layout: this.layout };
       this.R2 = R2;
-    }
 
-    static get LAYOUTS() { return LAYOUTS; }
-    static get ORDERS() { return ORDERS; }
+      return this;
+    }
 
     /**
      * Normalize R2 (Data dependency | flat array | nested array) to one
      * canonical flat buffer + inferred shape, regardless of which shape it
      * arrived in.
      */
-    static _resolveR2(R2, order, R1, field) {
-      if (R2 && typeof R2.toArray === 'function') {
+    static _resolveR2(R2, order, R1, field)
+    {
+      if (R2 && typeof R2.toArray === 'function')
+      {
         const rows = Tensor._applyOrder(R2.toArray(), order, R1);
         const flat = rows.map((r) => Tensor._extractScalar(r, field));
         return { flat, shape: [flat.length], wasNested: false };
       }
-      if (Array.isArray(R2)) {
-        if (R2.length > 0 && Array.isArray(R2[0])) {
+      if (Array.isArray(R2))
+      {
+        if (R2.length > 0 && Array.isArray(R2[0]))
+        {
           const nested = Tensor._flattenNested(R2);
           return { flat: nested.flat, shape: nested.shape, wasNested: true };
         }
@@ -117,39 +170,52 @@
     }
 
     /** Flattens a rectangular nested array and infers its shape from nesting depth/extents. */
-    static _flattenNested(nested) {
+    static _flattenNested(nested)
+    {
       const shape = [];
       let cur = nested;
-      while (Array.isArray(cur)) {
+      while (Array.isArray(cur))
+      {
         shape.push(cur.length);
         cur = cur[0];
       }
       const flat = [];
-      const walk = (node, depth) => {
-        if (depth === shape.length) {
+      const walk = (node, depth) =>
+      {
+        if (depth === shape.length)
+        {
           flat.push(Tensor._extractScalar(node));
           return;
         }
-        if (!Array.isArray(node) || node.length !== shape[depth]) {
+        if (!Array.isArray(node) || node.length !== shape[depth])
+        {
           throw new RangeError('Tensor: ragged nested array is not rectangular at depth ' + depth);
         }
-        for (let i = 0; i < node.length; i++) walk(node[i], depth + 1);
+        for (let i = 0; i < node.length; i++)
+        {
+          walk(node[i], depth + 1);
+        }
       };
       walk(nested, 0);
       return { shape, flat };
     }
 
-    static _applyOrder(rows, order, R1) {
-      switch (order) {
-        case ORDERS.ORDERED:
+    static _applyOrder(rows, order, R1)
+    {
+      switch (order)
+      {
+        case Tensor.ORDERS.ORDERED:
           return rows;
-        case ORDERS.UNORDERED:
-          if (typeof R1.compare !== 'function') {
+        case Tensor.ORDERS.UNORDERED:
+          if (typeof R1.compare !== 'function')
+          {
             throw new TypeError('Tensor: order "unordered" requires R1.compare');
           }
           return rows.slice().sort(R1.compare);
-        case ORDERS.CUSTOM: {
-          if (typeof R1.indexFn !== 'function') {
+        case Tensor.ORDERS.CUSTOM:
+        {
+          if (typeof R1.indexFn !== 'function')
+          {
             throw new TypeError('Tensor: order "custom" requires R1.indexFn');
           }
           const keyed = rows.map((r, i) => ({ r, k: R1.indexFn(r, i, rows) }));
@@ -161,65 +227,89 @@
       }
     }
 
-    static _extractScalar(row, field) {
-      if (typeof row === 'number') return row;
-      if (row && typeof row === 'object') {
+    static _extractScalar(row, field)
+    {
+      if (typeof row === 'number')
+      {
+        return row;
+      }
+      if (row && typeof row === 'object')
+      {
         const key = field || (Object.prototype.hasOwnProperty.call(row, 'value') ? 'value' : null);
-        if (key && Object.prototype.hasOwnProperty.call(row, key)) return Number(row[key]);
+        if (key && Object.prototype.hasOwnProperty.call(row, key))
+        {
+          return Number(row[key]);
+        }
       }
       const n = Number(row);
-      if (Number.isNaN(n)) {
+      if (Number.isNaN(n))
+      {
         throw new TypeError('Tensor: cannot extract a numeric scalar from row ' + JSON.stringify(row));
       }
       return n;
     }
 
-    rank() {
+    rank()
+    {
       return this.shape.length;
     }
 
-    size() {
+    size()
+    {
       return this._flat.length;
     }
 
     /** @param {...number} indices - multi-index, one per axis */
-    get(...indices) {
-      if (indices.length !== this.shape.length) {
+    get(...indices)
+    {
+      if (indices.length !== this.shape.length)
+      {
         throw new RangeError('Tensor.get: expected ' + this.shape.length + ' indices, got ' + indices.length);
       }
       let offset = 0;
-      for (let d = 0; d < indices.length; d++) {
+      for (let d = 0; d < indices.length; d++)
+      {
         offset += indices[d] * this.strides[d];
       }
       return this._flat[offset];
     }
 
     /** @param {...number} indicesThenValue - multi-index followed by the value to set */
-    set(...indicesThenValue) {
+    set(...indicesThenValue)
+    {
       const value = indicesThenValue.pop();
-      if (indicesThenValue.length !== this.shape.length) {
+      if (indicesThenValue.length !== this.shape.length)
+      {
         throw new RangeError('Tensor.set: expected ' + this.shape.length + ' indices, got ' + indicesThenValue.length);
       }
       let offset = 0;
-      for (let d = 0; d < indicesThenValue.length; d++) {
+      for (let d = 0; d < indicesThenValue.length; d++)
+      {
         offset += indicesThenValue[d] * this.strides[d];
       }
       this._flat[offset] = value;
     }
 
     /** @returns {{data:number[], shape:number[], strides:number[]}} flat coordinate representation */
-    toFlat() {
+    toFlat()
+    {
       return { data: this._flat.slice(), shape: this.shape.slice(), strides: this.strides.slice() };
     }
 
     /** @returns {*} nested-array coordinate representation, built recursively from the flat buffer */
-    toNested() {
-      const build = (shape, offset, stride) => {
-        if (shape.length === 0) return this._flat[offset];
+    toNested()
+    {
+      const build = (shape, offset, stride) =>
+      {
+        if (shape.length === 0)
+        {
+          return this._flat[offset];
+        }
         const [head, ...rest] = shape;
         const innerStride = stride / head;
         const out = new Array(head);
-        for (let i = 0; i < head; i++) {
+        for (let i = 0; i < head; i++)
+        {
           out[i] = build(rest, offset + i * innerStride, innerStride);
         }
         return out;
@@ -241,9 +331,11 @@
      * with no separate index array needed.
      * @returns {*} hereditarily-nested array
      */
-    toVonNeumannNested() {
+    toVonNeumannNested()
+    {
       let acc = [];
-      for (let i = 0; i < this._flat.length; i++) {
+      for (let i = 0; i < this._flat.length; i++)
+      {
         acc = [acc, this._flat[i]];
       }
       return acc;
@@ -260,12 +352,15 @@
      * @param {number} n - non-negative integer
      * @returns {*} nested-array encoding of the von Neumann ordinal n
      */
-    static ordinal(n) {
-      if (!Number.isInteger(n) || n < 0) {
+    static ordinal(n)
+    {
+      if (!Number.isInteger(n) || n < 0)
+      {
         throw new RangeError('Tensor.ordinal: n must be a non-negative integer');
       }
       let prev = [];
-      for (let i = 0; i < n; i++) {
+      for (let i = 0; i < n; i++)
+      {
         prev = prev.concat([prev]);
       }
       return prev;
@@ -273,4 +368,4 @@
   }
 
   return Tensor;
-});
+}));
