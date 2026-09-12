@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.10.0
+**Version:** 1.11.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `d2f3aa7` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `6a0b4fb` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -61,8 +61,9 @@ expect it to stay current and do not push there.
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
 | ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
+| MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
 
-**Total: 199/199 checks passing, 15/15 suites green.**
+**Total: 216/216 checks passing, 16/16 suites green.**
 
 ## Status legend
 
@@ -237,7 +238,7 @@ as shipped above; nothing about that wiring changed.
 | D.2 | Persistent/Shared Substrate | `'network'` boot device adapter via WebRTC federation (the never-implemented 3rd `bootDeviceOrder` slot) | 🤝 | 1 | 3 | 4 | 5 | 5 | 1 | **19** |
 | D.3 | Persistent/Shared Substrate | Node-native WebRTC parity layer (blocks D.2/D.4 entirely) | 🤝 | 1 | 4 | 3 | 3 | 4 | 2 | **17** |
 | D.4 | Persistent/Shared Substrate | Transport abstraction beyond WebRTC ("many different types of transports") | 🤝 | 1 | 1 | 1 | 2 | 2 | 3 | **10** |
-| E.1 | Outer Closure / Runtime | Opaque closure factory (`MountainShift()`, full-trap Proxy exposing only `run()`) | ⬜ | 4 | 5 | 5 | 3 | 3 | 3 | **23** |
+| E.1 | Outer Closure / Runtime | Opaque closure factory (`MountainShift()`, full-trap Proxy exposing only `run()`) | ✅ | — | — | — | — | — | — | shipped |
 | E.2 | Outer Closure / Runtime | Black-box (`run()`-only) integrated test tier | ⬜ | 1 | 2 | 4 | 2 | 2 | 4 | **15** |
 | E.3 | Outer Closure / Runtime | DevTools Local Overrides loader (reflection/`CodeComposer`, `CPU.js` ES6 rewrite) | ✅ | — | — | — | — | — | — | shipped |
 
@@ -279,33 +280,55 @@ with sequencing overrides noted where raw ranking would be wrong:**
    entry ever gets persisted (an unconfirmed raw `BootDeviceScan` hit
    never does). `test/BIOS.nvramFastPath.test.js`, 8/8, against a real
    `Registry.js` instance, not a mock.
-5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
-   should wrap a boot chain already audited and hardened, not one with
-   known-latent gaps still underneath it. **Pre-E.1 finding (2026-09-12,
-   three rounds, all resolved):** `ExtendX.extend()` called on top of an
-   already-composed class turned out to hide THREE separate stacking bugs,
-   found and fixed one at a time as each was audited/tested — (1) the
-   `Subclass` constructor hardcoded its own closed-over `Subclass` instead
-   of forwarding `new.target`, silently dropping the outer layer's
-   prototype entirely; (2) stacked `dispose()` only ran the outermost
-   layer's mixin hooks, since every layer's wrapper called one conflated
-   method reading the outermost class's `_rawMixins`; (3) `installWrappers()`'s
-   `_wrapped` Set leaked from the inner layer to the outer via the static
-   prototype chain, so an outer mixin sharing a method name with an inner
-   one never got its own dispatcher installed at all — confirmed
-   security-relevant: an outer SecurityMixin's guard on a shared method
-   name never actually enforced, while `mixins()`/`activeMixins()` still
-   reported it as active. See the Changelog for each. None was triggered
-   by any current production call site (every real composition passes
-   every mixin to one `extend()` call), but E.1's closure factory is
-   exactly the kind of code that could have introduced a stacked-
-   composition shape, so all three are closed out before E.1 lands. The
+5. ~~**E.1 — Opaque closure factory**~~ — **done** (2026-09-12).
+   `MountainShift.js` composes and boots the already-hardened chain
+   (Registry → BIOS → Kernel → Physical → CPU, each with SecurityMixin +
+   graph-mode StructureMixin, wired exactly per
+   `test/FullBootChain.lifecycle.test.js`) entirely inside the factory
+   function's closure, returning an object exposing ONLY `run()` — every
+   internal instance lives only as a closure variable (the real opacity
+   mechanism), wrapped in a full-trap Proxy over a frozen, null-prototype
+   target as deliberate defense-in-depth. `test/MountainShift.opaque.test.js`
+   is the first test in this codebase to prove the boot chain works
+   WITHOUT `require()`-ing BIOS/Kernel/CPU internals — through the same
+   single entry point a real caller would use — 17/17: full introspection
+   surface (`Object.keys`/`Reflect.ownKeys`/prototype/`instanceof`/
+   `JSON.stringify` all show nothing but `run`), strict-mode tamper
+   resistance, a real armed/secured Kernel captured via a test-only
+   `onBoot` hook proving the boot is genuine (never reachable through the
+   returned object itself), `run()` idempotency, and independence between
+   separate calls. **Pre-E.1 finding (2026-09-12, three rounds, all
+   resolved before E.1 landed):** `ExtendX.extend()` called on top of an
+   already-composed class turned out to hide THREE separate stacking
+   bugs, found and fixed one at a time — (1) the `Subclass` constructor
+   hardcoded its own closed-over `Subclass` instead of forwarding
+   `new.target`, silently dropping the outer layer's prototype entirely;
+   (2) stacked `dispose()` only ran the outermost layer's mixin hooks,
+   since every layer's wrapper called one conflated method reading the
+   outermost class's `_rawMixins`; (3) `installWrappers()`'s `_wrapped`
+   Set leaked from the inner layer to the outer via the static prototype
+   chain, so an outer mixin sharing a method name with an inner one never
+   got its own dispatcher installed — confirmed security-relevant: an
+   outer SecurityMixin's guard on a shared method name never actually
+   enforced, while `mixins()`/`activeMixins()` still reported it as
+   active. See the Changelog for each. None was triggered by any current
+   production call site, and `MountainShift.js` itself does not stack
+   `extend()` calls (one secured class family per class, composed once,
+   matching every other real composition in this codebase) — the audit
+   was precautionary, not blocking, but worth doing given E.1 was exactly
+   the kind of new code that could have introduced the shape. The
    repeated pattern here — a straightforward-looking helper silently
    trusting inherited/shared state across a shape nobody had exercised
-   yet — is itself now folded into this roadmap's Confidence-dimension
-   lesson, alongside the original `next()`-injection one.
-6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
-   its position here is sequencing, not priority.
+   yet — is folded into this roadmap's Confidence-dimension lesson,
+   alongside the original `next()`-injection one.
+6. **E.2 — Black-box test tier** (15) — was strictly blocked by E.1
+   (F=1); now unblocked. `test/MountainShift.opaque.test.js` already
+   covers the opacity/tamper-resistance surface through `run()` alone —
+   E.2 would extend that same run()-only discipline into a dedicated,
+   ongoing black-box tier for future functional scenarios (multi-process
+   fork/tick/kill through `run()` alone, once `run()`'s own surface grows
+   past a bare boolean), formalizing the two-tier convention
+   test/helpers.js's header comment already anticipates.
 7. **C.1 — Checksum → signature upgrade** (16)
 8. ~~**C.4 — First-boot vs. steady-state distinction**~~ — **done**
    (2026-09-12). A successful boot with no persisted `firstBootComplete`
@@ -359,6 +382,20 @@ dependency override:**
 
 ## Changelog
 
+- **1.11.0** — 2026-09-12 — E.1 (opaque closure factory) shipped:
+  `MountainShift.js` composes and boots the already-hardened chain
+  (Registry/BIOS/Kernel/Physical/CPU, each secured + graph-structured,
+  wired exactly per `test/FullBootChain.lifecycle.test.js`) entirely
+  inside its own closure, returning an object exposing ONLY `run()` — a
+  full-trap Proxy over a frozen, null-prototype target as defense-in-depth
+  on top of the real opacity mechanism (a plain closure variable is
+  fundamentally unreachable from outside). `test/MountainShift.opaque.test.js`
+  is this codebase's first test to prove the boot chain works without
+  `require()`-ing internals — 17/17: introspection-surface proof, strict-
+  mode tamper resistance, a genuine boot verified via a test-only `onBoot`
+  hook never reachable through the returned object, `run()` idempotency,
+  and call independence. Re-pinned the Last-test-run section to `6a0b4fb`
+  (216/216, up from 199/199 across 15, now 16/16 suites).
 - **1.10.0** — 2026-09-12 — Third ExtendX stacking bug found and fixed
   (pre-E.1): `installWrappers()`'s `Subclass._wrapped || (Subclass._wrapped
   = new Set())` did not check for an OWN property, so a stacked Outer's
