@@ -1,151 +1,144 @@
 /**
  * @file research/lib/chain/NestedTensor.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 2.0.0
  * @description Specialization of Link 2 (Tensor): a Tensor whose canonical
- *              `values` reading is always the nested coordinate view, with a
- *              registry of formulas defined structurally over that nesting
- *              (depth, leafCount, sum/mean computed by genuine recursion
- *              over the nested array rather than by reading the flat
- *              buffer). Extends Tensor rather than composing it.
+ *              `values` reading is always the nested coordinate view,
+ *              composed via ExtendX over Tensor with a 1:M set of formula
+ *              mixins (depth, leafCount, sum, mean) — each its own
+ *              independently toggleable layer (nt.disableLayer(...)), not a
+ *              single bundled method. Each formula is computed by genuine
+ *              recursion over the nested structure, not by reading the flat
+ *              buffer underneath.
  * @principle "Assume no dependencies in classes unless authorized."
  * @example const nt = new NestedTensor().init({shape:[2,2]}, [1,2,3,4]);
- * @example nt.compute('depth'); // 2
+ * @example nt.depth();                          // 2
+ * @example nt.disableLayer(NestedTensor.FORMULAS.mean); nt.mean(); // undefined
  */
 (function (root, factory)
 {
   if (typeof module === 'object' && module.exports)
   {
-    module.exports = factory(require('./Tensor.js'));
+    module.exports = factory(require('./Tensor.js'), require('./ExtendX.js'));
   }
   else if (typeof define === 'function' && define.amd)
   {
-    define(['./Tensor'], factory);
+    define(['./Tensor', './ExtendX'], factory);
   }
   else
   {
     root.Chain = root.Chain || {};
-    root.Chain.NestedTensor = factory(root.Chain.Tensor);
+    root.Chain.NestedTensor = factory(root.Chain.Tensor, root.Chain.ExtendX);
   }
-}(typeof self !== 'undefined' ? self : this, function (Tensor)
+}(typeof self !== 'undefined' ? self : this, function (Tensor, ExtendX)
 {
   'use strict';
 
-  class NestedTensor extends Tensor
+  function walkLeaves(nested, onLeaf)
   {
-    static name = 'NestedTensor';
-    static author = 'Will Fobbs';
-    static version = '1.0.0';
-    static description = 'Tensor fixed to its nested coordinate presentation, with formulas defined by recursion over that nesting.';
-    static docs = ['research/lib/chain/docs/NestedTensor.md'];
-    static tests = ['research/lib/chain/tests/NestedTensor.unit.js'];
-    static config_default = { order: 'ordered' };
-
-    static FORMULAS = Object.freeze({
-      // Nesting depth: how many array levels wrap a leaf — equals rank() for
-      // a rectangular Tensor, but computed by walking the nested structure
-      // itself rather than reading this.shape.
-      depth: (nested) =>
-      {
-        let d = 0;
-        let cur = nested;
-        while (Array.isArray(cur))
-        {
-          d += 1;
-          cur = cur[0];
-        }
-        return d;
-      },
-      leafCount: (nested) =>
-      {
-        let count = 0;
-        const walk = (node) =>
-        {
-          if (Array.isArray(node))
-          {
-            node.forEach(walk);
-          }
-          else
-          {
-            count += 1;
-          }
-        };
-        walk(nested);
-        return count;
-      },
-      sum: (nested) =>
-      {
-        let total = 0;
-        const walk = (node) =>
-        {
-          if (Array.isArray(node))
-          {
-            node.forEach(walk);
-          }
-          else
-          {
-            total += node;
-          }
-        };
-        walk(nested);
-        return total;
-      },
-      mean: (nested) =>
-      {
-        const total = NestedTensor.FORMULAS.sum(nested);
-        const count = NestedTensor.FORMULAS.leafCount(nested);
-        return count ? total / count : 0;
-      },
-    });
-
-    constructor()
+    if (Array.isArray(nested))
     {
-      super();
+      nested.forEach((child) => walkLeaves(child, onLeaf));
     }
-
-    /**
-     * @param {Object} R1 - see Tensor.init
-     * @param {Data|Array} R2 - see Tensor.init
-     * @returns {NestedTensor} this, for chaining
-     */
-    init(R1, R2)
+    else
     {
-      super.init(R1, R2);
-      return this;
+      onLeaf(nested);
     }
+  }
 
-    /** @returns {*} the fixed nested presentation */
-    get values()
-    {
-      return this.toNested();
-    }
+  // ── one mixin per formula: each is its own toggleable layer ──────────────
 
-    /**
-     * @param {string} name - a key in NestedTensor.FORMULAS
-     * @returns {number} the formula applied to this tensor's nested view
-     * @throws {TypeError} if name is not a registered formula
-     */
-    compute(name)
+  const DepthMixin = {
+    mixinId: 'NestedTensor.depth',
+    depth()
     {
-      const fn = NestedTensor.FORMULAS[name];
-      if (typeof fn !== 'function')
+      let d = 0;
+      let cur = this.toNested();
+      while (Array.isArray(cur))
       {
-        throw new TypeError('NestedTensor.compute: unknown formula "' + name + '"');
+        d += 1;
+        cur = cur[0];
       }
-      return fn(this.toNested());
-    }
+      return d;
+    },
+  };
 
-    /** @returns {Object} every registered formula evaluated against this tensor */
-    computeAll()
+  const LeafCountMixin = {
+    mixinId: 'NestedTensor.leafCount',
+    leafCount()
+    {
+      let count = 0;
+      walkLeaves(this.toNested(), () => { count += 1; });
+      return count;
+    },
+  };
+
+  const SumMixin = {
+    mixinId: 'NestedTensor.sum',
+    sum()
+    {
+      let total = 0;
+      walkLeaves(this.toNested(), (v) => { total += v; });
+      return total;
+    },
+  };
+
+  const MeanMixin = {
+    mixinId: 'NestedTensor.mean',
+    // Composes on top of the other layers via normal dispatched calls, so
+    // disabling sum or leafCount on an instance is reflected here too.
+    mean()
+    {
+      const total = this.sum();
+      const count = this.leafCount();
+      return count ? total / count : 0;
+    },
+  };
+
+  const NestedTensor = ExtendX.extend(Tensor, DepthMixin, LeafCountMixin, SumMixin, MeanMixin);
+
+  Object.defineProperty(NestedTensor, 'name', { value: 'NestedTensor', configurable: true });
+  NestedTensor.author = 'Will Fobbs';
+  NestedTensor.version = '2.0.0';
+  NestedTensor.description = 'Tensor fixed to its nested coordinate presentation, composed with one independently toggleable mixin per formula.';
+  NestedTensor.docs = ['research/lib/chain/docs/NestedTensor.md'];
+  NestedTensor.tests = ['research/lib/chain/tests/NestedTensor.unit.js'];
+  NestedTensor.config_default = { order: 'ordered' };
+
+  // Name -> mixin lookup, so a caller can toggle a specific formula:
+  //   nt.disableLayer(NestedTensor.FORMULAS.mean);
+  NestedTensor.FORMULAS = Object.freeze({
+    depth: DepthMixin,
+    leafCount: LeafCountMixin,
+    sum: SumMixin,
+    mean: MeanMixin,
+  });
+
+  // Fixed presentation accessor — not a togglable layer, so defined directly
+  // rather than as a dispatched mixin method.
+  Object.defineProperty(NestedTensor.prototype, 'values', {
+    get() { return this.toNested(); },
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Convenience aggregate over whatever formulas are CURRENTLY active on this
+  // instance (an instance where mean was disabled reports mean: undefined,
+  // rather than silently omitting it).
+  Object.defineProperty(NestedTensor.prototype, 'computeAll', {
+    value()
     {
       const out = {};
       for (const name of Object.keys(NestedTensor.FORMULAS))
       {
-        out[name] = this.compute(name);
+        out[name] = typeof this[name] === 'function' ? this[name]() : undefined;
       }
       return out;
-    }
-  }
+    },
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
 
   return NestedTensor;
 }));

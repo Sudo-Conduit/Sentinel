@@ -1,113 +1,142 @@
 /**
  * @file research/lib/chain/FlatTensor.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 2.0.0
  * @description Specialization of Link 2 (Tensor): a Tensor whose canonical
- *              `values` reading is always the flat coordinate view, with a
- *              registry of formulas naturally defined over a contiguous
- *              numeric buffer (sum, mean, min, max, variance, magnitude).
- *              Extends Tensor rather than composing it — FlatTensor IS a
- *              Tensor with a fixed presentation and an attached formula set,
- *              not a wrapper around one.
+ *              `values` reading is always the flat coordinate view,
+ *              composed via ExtendX over Tensor with a 1:M set of formula
+ *              mixins (sum, mean, min, max, variance, magnitude) — each its
+ *              own independently toggleable layer (ft.disableLayer(...)),
+ *              not a single bundled method.
  * @principle "Assume no dependencies in classes unless authorized."
  * @example const ft = new FlatTensor().init({shape:[4]}, [1,2,3,4]);
- * @example ft.compute('magnitude'); // sqrt(1+4+9+16)
+ * @example ft.magnitude();                          // sqrt(1+4+9+16)
+ * @example ft.disableLayer(FlatTensor.FORMULAS.sum); ft.sum(); // undefined
  */
 (function (root, factory)
 {
   if (typeof module === 'object' && module.exports)
   {
-    module.exports = factory(require('./Tensor.js'));
+    module.exports = factory(require('./Tensor.js'), require('./ExtendX.js'));
   }
   else if (typeof define === 'function' && define.amd)
   {
-    define(['./Tensor'], factory);
+    define(['./Tensor', './ExtendX'], factory);
   }
   else
   {
     root.Chain = root.Chain || {};
-    root.Chain.FlatTensor = factory(root.Chain.Tensor);
+    root.Chain.FlatTensor = factory(root.Chain.Tensor, root.Chain.ExtendX);
   }
-}(typeof self !== 'undefined' ? self : this, function (Tensor)
+}(typeof self !== 'undefined' ? self : this, function (Tensor, ExtendX)
 {
   'use strict';
 
-  class FlatTensor extends Tensor
-  {
-    static name = 'FlatTensor';
-    static author = 'Will Fobbs';
-    static version = '1.0.0';
-    static description = 'Tensor fixed to its flat coordinate presentation, with formulas defined over a contiguous numeric buffer.';
-    static docs = ['research/lib/chain/docs/FlatTensor.md'];
-    static tests = ['research/lib/chain/tests/FlatTensor.unit.js'];
-    static config_default = { order: 'ordered' };
+  // ── one mixin per formula: each is its own toggleable layer ──────────────
 
-    static FORMULAS = Object.freeze({
-      sum: (flat) => flat.reduce((a, b) => a + b, 0),
-      mean: (flat) => (flat.length ? FlatTensor.FORMULAS.sum(flat) / flat.length : 0),
-      min: (flat) => Math.min(...flat),
-      max: (flat) => Math.max(...flat),
-      variance: (flat) =>
+  const SumMixin = {
+    mixinId: 'FlatTensor.sum',
+    sum()
+    {
+      return this._flat.reduce((a, b) => a + b, 0);
+    },
+  };
+
+  const MeanMixin = {
+    mixinId: 'FlatTensor.mean',
+    // Composes on top of SumMixin via a normal dispatched call, so disabling
+    // sum on an instance is reflected here too.
+    mean()
+    {
+      return this._flat.length ? this.sum() / this._flat.length : 0;
+    },
+  };
+
+  const MinMixin = {
+    mixinId: 'FlatTensor.min',
+    min()
+    {
+      return Math.min(...this._flat);
+    },
+  };
+
+  const MaxMixin = {
+    mixinId: 'FlatTensor.max',
+    max()
+    {
+      return Math.max(...this._flat);
+    },
+  };
+
+  const VarianceMixin = {
+    mixinId: 'FlatTensor.variance',
+    variance()
+    {
+      if (!this._flat.length)
       {
-        if (!flat.length)
-        {
-          return 0;
-        }
-        const m = FlatTensor.FORMULAS.mean(flat);
-        return flat.reduce((acc, v) => acc + (v - m) * (v - m), 0) / flat.length;
-      },
-      // L2 norm: sqrt(sum of squares) — the Hilbert-space norm formula, one link ahead.
-      magnitude: (flat) => Math.sqrt(flat.reduce((acc, v) => acc + v * v, 0)),
-    });
-
-    constructor()
-    {
-      super();
-    }
-
-    /**
-     * @param {Object} R1 - see Tensor.init
-     * @param {Data|Array} R2 - see Tensor.init
-     * @returns {FlatTensor} this, for chaining
-     */
-    init(R1, R2)
-    {
-      super.init(R1, R2);
-      return this;
-    }
-
-    /** @returns {{data:number[], shape:number[], strides:number[]}} the fixed flat presentation */
-    get values()
-    {
-      return this.toFlat();
-    }
-
-    /**
-     * @param {string} name - a key in FlatTensor.FORMULAS
-     * @returns {number} the formula applied to this tensor's flat buffer
-     * @throws {TypeError} if name is not a registered formula
-     */
-    compute(name)
-    {
-      const fn = FlatTensor.FORMULAS[name];
-      if (typeof fn !== 'function')
-      {
-        throw new TypeError('FlatTensor.compute: unknown formula "' + name + '"');
+        return 0;
       }
-      return fn(this._flat);
-    }
+      const m = this.mean();
+      return this._flat.reduce((acc, v) => acc + (v - m) * (v - m), 0) / this._flat.length;
+    },
+  };
 
-    /** @returns {Object} every registered formula evaluated against this tensor */
-    computeAll()
+  const MagnitudeMixin = {
+    mixinId: 'FlatTensor.magnitude',
+    // L2 norm: sqrt(sum of squares) — the Hilbert-space norm formula, one
+    // link ahead in the chain.
+    magnitude()
+    {
+      return Math.sqrt(this._flat.reduce((acc, v) => acc + v * v, 0));
+    },
+  };
+
+  const FlatTensor = ExtendX.extend(Tensor, SumMixin, MeanMixin, MinMixin, MaxMixin, VarianceMixin, MagnitudeMixin);
+
+  Object.defineProperty(FlatTensor, 'name', { value: 'FlatTensor', configurable: true });
+  FlatTensor.author = 'Will Fobbs';
+  FlatTensor.version = '2.0.0';
+  FlatTensor.description = 'Tensor fixed to its flat coordinate presentation, composed with one independently toggleable mixin per formula.';
+  FlatTensor.docs = ['research/lib/chain/docs/FlatTensor.md'];
+  FlatTensor.tests = ['research/lib/chain/tests/FlatTensor.unit.js'];
+  FlatTensor.config_default = { order: 'ordered' };
+
+  // Name -> mixin lookup, so a caller can toggle a specific formula:
+  //   ft.disableLayer(FlatTensor.FORMULAS.variance);
+  FlatTensor.FORMULAS = Object.freeze({
+    sum: SumMixin,
+    mean: MeanMixin,
+    min: MinMixin,
+    max: MaxMixin,
+    variance: VarianceMixin,
+    magnitude: MagnitudeMixin,
+  });
+
+  // Fixed presentation accessor — not a togglable layer, so defined directly
+  // rather than as a dispatched mixin method.
+  Object.defineProperty(FlatTensor.prototype, 'values', {
+    get() { return this.toFlat(); },
+    enumerable: false,
+    configurable: true,
+  });
+
+  // Convenience aggregate over whatever formulas are CURRENTLY active on this
+  // instance (an instance where variance was disabled reports variance:
+  // undefined, rather than silently omitting it).
+  Object.defineProperty(FlatTensor.prototype, 'computeAll', {
+    value()
     {
       const out = {};
       for (const name of Object.keys(FlatTensor.FORMULAS))
       {
-        out[name] = this.compute(name);
+        out[name] = typeof this[name] === 'function' ? this[name]() : undefined;
       }
       return out;
-    }
-  }
+    },
+    enumerable: false,
+    configurable: true,
+    writable: true,
+  });
 
   return FlatTensor;
 }));
