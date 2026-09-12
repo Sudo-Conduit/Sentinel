@@ -97,23 +97,19 @@ function run() {
         });
     }
 
-    // --- KNOWN GAP, found alongside the constructor bug, NOT YET FIXED:
-    // stacked dispose() chaining silently drops an INNER layer's mixin
-    // dispose hook. Each layer's dispose wrapper calls the shared
-    // ExtendX.prototype.dispose(), which (a) always reads
-    // this.constructor._rawMixins -- which is always the OUTERMOST class,
-    // due to prototype shadowing, so an inner layer's wrapper can never
-    // reach ITS OWN mixin's hook through it at all -- and (b) sets
-    // DISPOSED.add(id) on its first call, so the inner layer's own chained
-    // call to the same shared method returns immediately on the
-    // idempotency guard before doing anything. Net effect: only the
-    // OUTERMOST layer's mixin dispose hooks ever run; every layer below it
-    // is silently skipped. This is a real, confirmed, currently-unfixed
-    // limitation -- documented here the same way Registry.set()'s
-    // next()-injection gap is, so it stays a known, tracked fact rather
-    // than a silent regression if this test starts failing (which would
-    // mean it was fixed -- update this check when that happens, don't just
-    // delete it).
+    // --- FIXED (was a known gap): stacked dispose() chaining used to
+    // silently drop an INNER layer's mixin dispose hook. Every layer's
+    // dispose wrapper called the same conflated ExtendX.prototype.dispose(),
+    // which (a) always read this.constructor._rawMixins -- always the
+    // OUTERMOST class, due to prototype shadowing, so an inner layer's
+    // wrapper could never reach ITS OWN mixin's hook through it at all --
+    // and (b) set DISPOSED.add(id) on its first call, so the inner layer's
+    // own chained call to the same shared method returned immediately on
+    // the idempotency guard before doing anything. Fixed by splitting the
+    // once-only bookkeeping (finalizeDisposeBookkeeping) from each layer's
+    // own mixin-hook run (runLayerDisposeHooks/Async), deduped per mixinId
+    // rather than gated by one whole-instance flag -- see ExtendX.js's
+    // "Dispose helpers (stacking fix, v1.4.0)" section.
     {
         let innerDisposed = false;
         let outerDisposed = false;
@@ -123,13 +119,41 @@ function run() {
         const Outer = ExtendX.extend(Inner, outer);
         const instance = new Outer();
         instance.dispose();
-        check('KNOWN GAP: stacked dispose() only runs the OUTERMOST layer\'s mixin hook -- the inner layer\'s hook is silently skipped', () => {
+        check('stacked dispose(): BOTH the outer layer\'s and the inner layer\'s mixin hooks run', () => {
             if (!outerDisposed) throw new Error('expected the outer mixin\'s dispose hook to run');
-            if (innerDisposed) throw new Error('the inner mixin\'s dispose hook unexpectedly ran -- this gap appears to be FIXED; update this test to assert the correct behavior instead of the known-gap behavior');
+            if (!innerDisposed) throw new Error('expected the inner mixin\'s dispose hook to run -- this is the bug that was fixed');
+        });
+
+        innerDisposed = false;
+        outerDisposed = false;
+        instance.dispose();
+        check('stacked dispose(): a SECOND top-level dispose() call does not re-run either layer\'s hook', () => {
+            if (innerDisposed || outerDisposed) throw new Error('a hook re-ran on a repeat dispose() call -- per-mixinId dedup regressed');
         });
     }
+}
 
-    report();
+async function runAsync() {
+    // --- disposeAsync() gets the identical fix, proven at three layers
+    // deep for extra confidence beyond the two-layer sync case above ---
+    let a = false, b = false, c = false;
+    const mA = { mixinId: 'stacking:asyncA', dispose() { a = true; } };
+    const mB = { mixinId: 'stacking:asyncB', dispose() { b = true; } };
+    const mC = { mixinId: 'stacking:asyncC', dispose() { c = true; } };
+    const L1 = ExtendX.extend(Raw, mA);
+    const L2 = ExtendX.extend(L1, mB);
+    const L3 = ExtendX.extend(L2, mC);
+    const instance = new L3();
+    await instance.disposeAsync();
+    check('stacked disposeAsync(): all three layers\' mixin hooks run', () => {
+        if (!a || !b || !c) throw new Error('expected all three hooks to run, got a=' + a + ' b=' + b + ' c=' + c);
+    });
 }
 
 run();
+runAsync()
+    .then(report)
+    .catch((err) => {
+        console.error('ExtendX.stacking.test.js (async section) failed:', err);
+        process.exitCode = 1;
+    });
