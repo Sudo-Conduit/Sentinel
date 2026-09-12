@@ -2,7 +2,7 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.5.0
+ * @version 1.6.0
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
@@ -59,6 +59,31 @@
  *           plus repeat-call idempotency (a second top-level dispose()
  *           does not re-run any hook) -- test/ExtendX.stacking.test.js
  *           updated from documenting the known gap to asserting the fix.
+ *   v1.6.0  Third stacking bug, found by direct code review (not testing):
+ *           installWrappers()'s `Subclass._wrapped || (Subclass._wrapped =
+ *           new Set())` did not check for an OWN property. extend() sets
+ *           Object.setPrototypeOf(Subclass, BaseClass), so a stacked
+ *           Outer's `_wrapped` lookup silently resolved up the STATIC
+ *           prototype chain to Inner's already-populated Set the first
+ *           time installWrappers(Outer) ran. Any method name Inner already
+ *           wrapped was then treated as "already installed" for Outer too
+ *           -- Outer never got its OWN dispatcher for that name on
+ *           Outer.prototype, so a call fell straight through the
+ *           prototype chain to INNER's dispatcher, running ONLY Inner's
+ *           chain. Confirmed live and security-relevant: a SecurityMixin
+ *           composed as the OUTER layer over an inner layer sharing a
+ *           guarded method name never actually enforced -- the guarded
+ *           call reached the inner, unguarded implementation directly --
+ *           while mixins()/activeMixins() (reading _rawMixins/
+ *           _resolvePipeline, not _wrapped) still reported the security
+ *           mixin as active, since the two mechanisms don't agree with
+ *           each other at all. Fixed by checking
+ *           Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+ *           instead of bare truthiness, so every Subclass gets its own
+ *           independent Set. test/ExtendX.stacking.test.js gained four
+ *           checks proving the fix (own-Set identity, the outer layer's
+ *           own dispatcher existing, the guard actually enforcing, and
+ *           correct this.super delegation once armed).
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -112,7 +137,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.5.0';
+    const VERSION = '1.6.0';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -583,7 +608,29 @@
     function installWrappers(Subclass)
     {
         const BaseClass = Subclass._extendXBase;
-        const installed = Subclass._wrapped || (Subclass._wrapped = new Set());
+        // Object.prototype.hasOwnProperty, NOT a bare `Subclass._wrapped ||
+        // ...` truthiness check -- extend() sets Object.setPrototypeOf(
+        // Subclass, BaseClass), so a stacked Outer's `_wrapped` lookup
+        // silently resolves up the STATIC prototype chain to Inner's
+        // already-populated Set when Outer has none of its own yet. That
+        // means (a) any method name Inner already wrapped is treated as
+        // "already installed" for Outer too, even when Outer's own mixin
+        // has a MEANINGFULLY DIFFERENT implementation of the same name --
+        // Outer.prototype never gets its own dispatcher for that name at
+        // all, so calls fall through the prototype chain straight to
+        // Inner's dispatcher, silently running ONLY Inner's chain -- and
+        // (b) `installed.add(key)` would MUTATE Inner's own Set in place.
+        // Confirmed live and security-relevant: a SecurityMixin composed
+        // as the OUTER layer over an inner layer sharing a guarded method
+        // name never actually enforced -- the guarded call reached
+        // Inner's unguarded implementation directly, while mixins()/
+        // activeMixins() (which read _rawMixins/_resolvePipeline, not
+        // _wrapped) still reported the security mixin as active. Each
+        // Subclass needs its OWN independent Set, never one inherited
+        // from the class it's stacked on top of.
+        const installed = Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+            ? Subclass._wrapped
+            : (Subclass._wrapped = new Set());
         (Subclass._rawMixins || []).forEach(m =>
         {
             dispatchKeys(current(m)).forEach(key =>

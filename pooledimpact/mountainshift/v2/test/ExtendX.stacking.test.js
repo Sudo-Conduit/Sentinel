@@ -131,6 +131,58 @@ function run() {
             if (innerDisposed || outerDisposed) throw new Error('a hook re-ran on a repeat dispose() call -- per-mixinId dedup regressed');
         });
     }
+
+    // --- FIXED: installWrappers()'s `Subclass._wrapped || (Subclass._wrapped
+    // = new Set())` did not check for an OWN property -- extend() sets
+    // Object.setPrototypeOf(Subclass, BaseClass), so a stacked Outer's
+    // `_wrapped` lookup silently resolved up the STATIC prototype chain to
+    // Inner's already-populated Set the first time installWrappers(Outer)
+    // ran (Outer had no own `_wrapped` yet). Whenever Outer's own mixin
+    // shared a method NAME with something Inner already wrapped, Outer's
+    // installWrappers() saw that name as "already installed" (reading
+    // Inner's Set) and never defined its OWN dispatcher for it on
+    // Outer.prototype at all -- so a call fell straight through the
+    // prototype chain to INNER's dispatcher, running ONLY Inner's chain.
+    // This is security-relevant: confirmed live, a SecurityMixin composed
+    // as the OUTER layer over an inner layer sharing a guarded method name
+    // never actually enforced -- the guarded call reached the inner,
+    // unguarded implementation directly -- while mixins()/activeMixins()
+    // (reading _rawMixins/_resolvePipeline, not _wrapped) still reported
+    // the security mixin as active, since those two mechanisms don't
+    // agree with each other at all. Fixed by checking
+    // Object.prototype.hasOwnProperty.call(Subclass, '_wrapped') instead
+    // of bare truthiness, so every Subclass gets its own independent Set.
+    {
+        let armed = false;
+        const inner = { mixinId: 'stacking:wrapInner', handle() { return 'INNER-UNGUARDED'; } };
+        const security = {
+            mixinId: 'stacking:wrapSecurity',
+            handle() {
+                if (!armed) throw new Error('BLOCKED: not armed');
+                return this.super.handle();
+            }
+        };
+        const Inner = ExtendX.extend(Raw, inner);
+        const Outer = ExtendX.extend(Inner, security);
+        const instance = new Outer();
+
+        check('stacked composition: Outer gets its OWN _wrapped Set, not Inner\'s', () => {
+            if (Outer._wrapped === Inner._wrapped) throw new Error('Outer._wrapped is the SAME object as Inner._wrapped -- static prototype inheritance leaked through');
+        });
+        check('stacked composition: Outer.prototype has its OWN dispatcher for a method name Inner also defines', () => {
+            if (!Object.prototype.hasOwnProperty.call(Outer.prototype, 'handle')) throw new Error('Outer.prototype has no own "handle" -- the outer layer\'s dispatcher was never installed');
+        });
+        check('stacked composition: the OUTER layer\'s guard actually enforces (unarmed -> throws), not silently bypassed to the inner layer', () => {
+            armed = false;
+            let threw = false;
+            try { instance.handle(); } catch (e) { threw = true; }
+            if (!threw) throw new Error('expected the outer SecurityMixin-shaped guard to block an unarmed call -- it silently returned a value instead');
+        });
+        check('stacked composition: once armed, the outer layer correctly delegates to the inner layer via this.super', () => {
+            armed = true;
+            if (instance.handle() !== 'INNER-UNGUARDED') throw new Error('expected the outer layer to chain down to the inner layer\'s implementation');
+        });
+    }
 }
 
 async function runAsync() {
