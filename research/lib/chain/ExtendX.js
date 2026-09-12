@@ -2,11 +2,63 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.1.0
+ * @version 1.5.0
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
  *   v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
+ *   v1.2.0  mixin.locked (composition-time toggle refusal, fixing the
+ *           enableLayer/disableLayer self-lockout deadlock), the
+ *           _resolvePipeline locked-survives-global-override fix (a
+ *           disposed instance's locked mixins keep enforcing instead of
+ *           silently falling through), and always-wrapped dispose()/
+ *           disposeAsync() (previously conditional in a way that made
+ *           mixin dispose hooks dead for every BaseClassX subclass).
+ *   v1.3.0  Docblock/static-metadata retrofit: static get name/description/
+ *           docs/tests alongside the existing author/company/version
+ *           getters, full Allman brace style, JSDoc on every method --
+ *           no behavior change, but a real additive surface (the new
+ *           getters), not a no-op worth reusing v1.2.0's number for.
+ *   v1.4.0  Stacking fix (found ahead of E.1's closure factory, no current
+ *           production call site hits this shape yet): ExtendX.extend()
+ *           called on top of an ALREADY-composed class used to silently
+ *           drop the OUTER layer entirely -- the Subclass constructor
+ *           called Reflect.construct(BaseClass, args, Subclass) with its
+ *           own closed-over Subclass instead of new.target, so a nested
+ *           Reflect.construct(Inner, args, Outer) never actually reached
+ *           Outer.prototype; confirmed live (instance.world === undefined,
+ *           instance instanceof Outer === false) before the fix. Now
+ *           forwards new.target (falling back to Subclass for an
+ *           ordinary, non-nested construction, where they're the same
+ *           value anyway). A SEPARATE, related dispose()-chain gap was
+ *           found alongside this one and is NOT fixed here -- stacked
+ *           dispose() only runs the outermost layer's mixin hooks, since
+ *           every layer's wrapper calls the same shared
+ *           ExtendX.prototype.dispose(), which always reads
+ *           this.constructor._rawMixins (always the outermost class) and
+ *           short-circuits on its own idempotency guard before an inner
+ *           layer's chained call can do anything. Documented and proven
+ *           as a known gap in test/ExtendX.stacking.test.js pending a
+ *           deliberate fix design (splitting the once-only bookkeeping
+ *           from each layer's own mixin-hook run, tracked per-mixinId
+ *           rather than by a single global disposed flag).
+ *   v1.5.0  Fixed the v1.4.0 dispose-chain gap: split the single conflated
+ *           ExtendX.prototype.dispose()/disposeAsync() into
+ *           finalizeDisposeBookkeeping() (the once-only DISPOSED-flag/
+ *           loop-teardown/mask-collapse/finalizer-unregister state, safe
+ *           to call from every stacked layer's wrapper) and
+ *           runLayerDisposeHooks()/runLayerDisposeHooksAsync() (each
+ *           layer's OWN closed-over mixins list, deduped per mixinId in a
+ *           new RAN_DISPOSE_HOOKS side table rather than gated by the
+ *           single whole-instance DISPOSED flag). The Subclass
+ *           constructor's dispose/disposeAsync wrappers now call these
+ *           helpers directly with THIS extend() call's own `mixins`
+ *           array, instead of the shared this.constructor._rawMixins
+ *           lookup that could only ever see the outermost stacked layer.
+ *           Confirmed live at two and three layers deep, sync and async,
+ *           plus repeat-call idempotency (a second top-level dispose()
+ *           does not re-run any hook) -- test/ExtendX.stacking.test.js
+ *           updated from documenting the known gap to asserting the fix.
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -60,7 +112,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.1.0';
+    const VERSION = '1.5.0';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -103,6 +155,7 @@
             LOOPS.delete(id);
             PENDING_INIT.delete(id);
             DISPOSED.delete(id);
+            RAN_DISPOSE_HOOKS.delete(id);
         })
         : null;
 
@@ -184,6 +237,15 @@
     // Disposal is idempotent and must be observable; keyed by id like MASKS.
     const DISPOSED = new Set();
 
+    // id -> Set<mixinId> already disposed. Deliberately SEPARATE from
+    // DISPOSED above -- DISPOSED gates the once-only bookkeeping (loop
+    // teardown, mask collapse, finalizer unregister), while this gates
+    // each individual mixin's dispose HOOK, one Set entry per mixinId
+    // rather than one flag for the whole instance. That split is what
+    // makes stacked composition's dispose chain work: see
+    // runLayerDisposeHooks()/runLayerDisposeHooksAsync() below.
+    const RAN_DISPOSE_HOOKS = new Map();
+
     // Compute-loop timer and deferred task queue, per instance. Keyed by id.
     const LOOPS = new Map();
 
@@ -252,6 +314,132 @@
     function current(m)
     {
         return REGISTERED.get(m.mixinId) || m;
+    }
+
+    // ─── Dispose helpers (stacking fix, v1.4.0) ──────────────────
+    //
+    // Split from one conflated ExtendX.prototype.dispose() into two
+    // independent concerns, because stacked composition (ExtendX.extend()
+    // called on top of an already-composed class) needs them to run on
+    // DIFFERENT schedules:
+    //
+    //   finalizeDisposeBookkeeping -- the once-only, whole-instance state
+    //     (DISPOSED flag, loop teardown, mask collapse, finalizer
+    //     unregister). Must run exactly once no matter how many stacked
+    //     layers call in.
+    //
+    //   runLayerDisposeHooks(Async) -- each mixin's OWN dispose hook, keyed
+    //     by mixinId rather than gated by the single instance-wide DISPOSED
+    //     flag. A stacked instance has ONE shared _extId but MULTIPLE
+    //     layers, each with its OWN distinct declared mixin list (closed
+    //     over per extend() call, not read from this.constructor._rawMixins
+    //     -- that always resolves to the OUTERMOST class via prototype
+    //     shadowing, so it could never reach an inner layer's mixins at
+    //     all). Before this split, every layer's dispose wrapper called the
+    //     same conflated method, whose OWN idempotency guard (`if
+    //     (DISPOSED.has(id)) return;`) short-circuited every layer below
+    //     the outermost the instant the outermost had run -- confirmed
+    //     live: an inner layer's mixin dispose hook silently never ran at
+    //     all. Deduping per mixinId (not per whole-instance flag) instead
+    //     means: every distinct layer's mixins get their turn once each,
+    //     AND a caller invoking dispose() twice at the top level still
+    //     never re-runs the same hook twice.
+    function finalizeDisposeBookkeeping(instance)
+    {
+        const id = getExtId(instance);
+        if (DISPOSED.has(id))
+        {
+            return;
+        }
+        DISPOSED.add(id);
+        const st = LOOPS.get(id);
+        if (st && st.timer)
+        {
+            clearInterval(st.timer);
+        }
+        LOOPS.delete(id);
+        PENDING_INIT.delete(id);
+        // Collapse, don't delete: getMask() regenerates a fresh, fully-
+        // enabled default mask for a MISSING entry, which would silently
+        // re-enable every mixin's dispatch after "dispose" -- setting
+        // [0,[]] is what actually makes the pipeline resolve to nothing.
+        setMask(instance, [0, []]);
+        if (FINALIZER)
+        {
+            FINALIZER.unregister(instance);
+        }
+    }
+
+    function runLayerDisposeHooks(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        (mixinsList || []).forEach(m =>
+        {
+            if (ran.has(m.mixinId))
+            {
+                return;
+            }
+            ran.add(m.mixinId);
+            // Through current(), so an overridden id disposes with its
+            // replacement's hook rather than the original's.
+            const impl = current(m);
+            if (typeof impl.dispose === 'function')
+            {
+                try
+                {
+                    impl.dispose.call(instance);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e);
+                }
+            }
+        });
+    }
+
+    async function runLayerDisposeHooksAsync(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        const pending = (mixinsList || [])
+            .filter(m => !ran.has(m.mixinId))
+            .map(m =>
+            {
+                ran.add(m.mixinId);
+                const impl = current(m);
+                if (typeof impl.dispose !== 'function')
+                {
+                    return null;
+                }
+                try
+                {
+                    return Promise.resolve(impl.dispose.call(instance));
+                }
+                catch (e)
+                {
+                    return Promise.reject(e);
+                }
+            })
+            .filter(p => p !== null);
+        const settled = await Promise.allSettled(pending);
+        settled.forEach(r =>
+        {
+            if (r.status === 'rejected')
+            {
+                console.error('[ExtendX asyncDispose] hook failed:', r.reason);
+            }
+        });
     }
 
     // Reindex every known mixin. A new id inserted alphabetically before an
@@ -750,48 +938,15 @@
          */
         dispose()
         {
-            const id = getExtId(this);
-            if (DISPOSED.has(id))
-            {
-                return;
-            }
-            DISPOSED.add(id);
-
-            const st = LOOPS.get(id);
-            if (st && st.timer)
-            {
-                clearInterval(st.timer);
-            }
-            LOOPS.delete(id);
-            PENDING_INIT.delete(id);
-            // Collapse, don't delete: getMask() regenerates a fresh, fully-
-            // enabled default mask for a MISSING entry, which would silently
-            // re-enable every mixin's dispatch after "dispose" -- setting [0,[]]
-            // is what actually makes the pipeline resolve to nothing.
-            setMask(this, [0, []]);
-            if (FINALIZER)
-            {
-                FINALIZER.unregister(this);
-            }
-
-            // Through current(), so an overridden id disposes with its
-            // replacement's hook rather than the original's.
-            const declared = this.constructor._rawMixins || [];
-            declared.forEach(m =>
-            {
-                const impl = current(m);
-                if (typeof impl.dispose === 'function')
-                {
-                    try
-                    {
-                        impl.dispose.call(this);
-                    }
-                    catch (e)
-                    {
-                        console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e);
-                    }
-                }
-            });
+            // Delegates to the shared helpers above -- see their header
+            // comment for why the once-only bookkeeping and each mixin's
+            // own hook are deliberately split. this.constructor._rawMixins
+            // is only correct here because a DIRECT ExtendX subclass (one
+            // never wrapped by extend()) has exactly one layer; extend()'s
+            // own Subclass constructor wraps dispose() differently below,
+            // closing over its OWN mixins list instead of reading this.
+            finalizeDisposeBookkeeping(this);
+            runLayerDisposeHooks(this, this.constructor._rawMixins || []);
         }
 
         /**
@@ -801,48 +956,9 @@
          */
         async disposeAsync()
         {
-            const id = getExtId(this);
-            if (DISPOSED.has(id))
-            {
-                return;
-            }
-            const declared = this.constructor._rawMixins || [];
-            const pending = declared
-                .map(m => current(m))
-                .filter(impl => typeof impl.dispose === 'function')
-                .map(impl =>
-                {
-                    try
-                    {
-                        return Promise.resolve(impl.dispose.call(this));
-                    }
-                    catch (e)
-                    {
-                        return Promise.reject(e);
-                    }
-                });
-            const settled = await Promise.allSettled(pending);
-            settled.forEach(r =>
-            {
-                if (r.status === 'rejected')
-                {
-                    console.error('[ExtendX asyncDispose] hook failed:', r.reason);
-                }
-            });
-
-            DISPOSED.add(id);
-            const st = LOOPS.get(id);
-            if (st && st.timer)
-            {
-                clearInterval(st.timer);
-            }
-            LOOPS.delete(id);
-            PENDING_INIT.delete(id);
-            setMask(this, [0, []]);
-            if (FINALIZER)
-            {
-                FINALIZER.unregister(this);
-            }
+            // See dispose() above and the shared helpers' header comment.
+            await runLayerDisposeHooksAsync(this, this.constructor._rawMixins || []);
+            finalizeDisposeBookkeeping(this);
         }
 
         /** Thin alias so `using` still triggers cleanup -- see dispose() above. @returns {void} */
@@ -954,7 +1070,32 @@
             // ─── Subclass constructor ──────────────────────────
             function Subclass(...args)
             {
-                const instance = Reflect.construct(BaseClass, args, Subclass);
+                // new.target, NOT the bare closed-over `Subclass` -- stacking a
+                // SECOND ExtendX.extend() on top of an already-composed class
+                // (Outer = ExtendX.extend(Inner, mixinB) where Inner is itself
+                // ExtendX.extend(Raw, mixinA)) used to silently drop the outer
+                // layer entirely. Outer's own constructor calls
+                // Reflect.construct(Inner, args, Outer), which sets new.target
+                // to Outer for the duration of Inner's function body -- but
+                // Inner's body ignored that and called
+                // Reflect.construct(BaseClass, args, Subclass) with ITS OWN
+                // closed-over `Subclass` (Inner itself), hardcoding newTarget
+                // back to Inner. Because Inner's body explicitly returns an
+                // object (the fully-set-up `proxied`), that returned object
+                // OVERRIDES whatever `this` the engine would have created from
+                // Outer.prototype -- so the final instance's real prototype
+                // chain stopped at Inner.prototype, never reaching
+                // Outer.prototype at all. Every mixinB method Outer's own
+                // installWrappers() had put on Outer.prototype became
+                // permanently unreachable: `instance.world` was undefined,
+                // `instance instanceof Outer` was false, proven live before
+                // this fix. Forwarding new.target (falling back to the
+                // closed-over Subclass for an ordinary, non-nested `new
+                // Inner()` call, where new.target === Subclass already) lets
+                // each layer's own newTarget propagate all the way down the
+                // Reflect.construct chain, so the final object's prototype
+                // correctly extends from the OUTERMOST composed class.
+                const instance = Reflect.construct(BaseClass, args, new.target || Subclass);
 
                 // A base that is not an ExtendX subclass has none of these, so
                 // attach them here. Own properties via defineProperty, because
@@ -991,12 +1132,29 @@
                 // logic first and chaining to the original afterward -- so a
                 // BaseClassX subclass gets both: its own real disposal AND
                 // every composed mixin's dispose hook actually running.
+                //
+                // Calls the shared runLayerDisposeHooks(Async) helpers directly
+                // with THIS extend() call's own closed-over `mixins` array --
+                // NOT ExtendX.prototype.dispose.call(this) (which reads
+                // this.constructor._rawMixins, always the OUTERMOST stacked
+                // layer via prototype shadowing, and would never reach an
+                // inner layer's own mixins at all). finalizeDisposeBookkeeping
+                // is idempotent and safe to call from every stacked layer's
+                // wrapper; runLayerDisposeHooks/Async dedupes per mixinId, so
+                // a stacked instance's OUTER layer running first does not
+                // prevent an INNER layer's chained call (via originalDispose
+                // below) from still running its own distinct mixins' hooks --
+                // the bug this fixes: before this split, the inner layer's
+                // chained call hit ExtendX.prototype.dispose's OWN idempotency
+                // guard and returned immediately, so its mixin's dispose hook
+                // silently never ran at all.
                 const originalDispose = typeof instance.dispose === 'function' ? instance.dispose.bind(instance) : null;
                 const originalDisposeAsync = typeof instance.disposeAsync === 'function' ? instance.disposeAsync.bind(instance) : null;
                 Object.defineProperty(instance, 'dispose', {
                     value: function()
                     {
-                        ExtendX.prototype.dispose.call(this);
+                        finalizeDisposeBookkeeping(this);
+                        runLayerDisposeHooks(this, mixins);
                         if (originalDispose)
                         {
                             originalDispose();
@@ -1009,7 +1167,8 @@
                 Object.defineProperty(instance, 'disposeAsync', {
                     value: async function()
                     {
-                        await ExtendX.prototype.disposeAsync.call(this);
+                        await runLayerDisposeHooksAsync(this, mixins);
+                        finalizeDisposeBookkeeping(this);
                         if (originalDisposeAsync)
                         {
                             await originalDisposeAsync();
