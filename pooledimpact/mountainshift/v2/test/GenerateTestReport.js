@@ -39,7 +39,8 @@ const TEST_FILES = [
     'NextInjection.audit.test.js',
     'Memory.security.test.js',
     'MemoryMapArena.test.js',
-    'MemoryMapFS.test.js'
+    'MemoryMapFS.test.js',
+    'MemoryMapFS.nodeToNode.test.js'
 ];
 
 function gitInfo() {
