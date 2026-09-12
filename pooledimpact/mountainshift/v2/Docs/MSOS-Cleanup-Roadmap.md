@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.4.0
+**Version:** 1.5.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `18f8077` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `dec16ea` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -57,8 +57,9 @@ expect it to stay current and do not push there.
 | Memory.security.test.js | ALL 15 CHECKS PASSED |
 | MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
+| MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
 
-**Total: 158/158 checks passing, 11/11 suites green.**
+**Total: 165/165 checks passing, 12/12 suites green.**
 
 ## Status legend
 
@@ -312,6 +313,21 @@ dependency override:**
 
 ## Changelog
 
+- **1.5.0** — 2026-09-12 — D.1 addendum: added
+  `test/MemoryMapFS.nodeToNode.test.js`, proving via `worker_threads`
+  (the only mechanism that actually shares live memory in Node) that
+  `MemoryMapFS.js`'s shared `WebAssembly.Memory` really crosses two
+  independent Node execution contexts — a mailbox created/authenticated/
+  written in the main thread is immediately visible through a second,
+  independent `WebAssembly.Instance` in a worker thread, a second
+  `init()` against an already-live shared arena doesn't corrupt it, and
+  the worker's own write is visible back in the main thread afterward.
+  A separate OS process (`child_process`) does NOT share memory this way
+  — that remains the documented "per-process memory only" limit, not
+  something this test claims to close. 7/7 checks, stable across repeated
+  runs; added to `test/run-all.js`/`test/GenerateTestReport.js`. Re-pinned
+  the Last-test-run section to `dec16ea` (165/165, up from 158/158 across
+  11, now 12/12 suites).
 - **1.4.0** — 2026-09-12 — D.1 addendum: the historical `mm_*`-API
   `memorymap.wasm` build named in the original scope was actually found
   and confirmed live (`WebAssembly.Module.exports()`) — landed as
