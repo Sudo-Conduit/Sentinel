@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.6.0
+**Version:** 1.7.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `159c061` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `5cda3ee` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -59,8 +59,9 @@ expect it to stay current and do not push there.
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
 | MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
+| ExtendX.stacking.test.js | ALL 10 CHECKS PASSED |
 
-**Total: 173/173 checks passing, 13/13 suites green.**
+**Total: 183/183 checks passing, 14/14 suites green.**
 
 ## Status legend
 
@@ -279,7 +280,17 @@ with sequencing overrides noted where raw ranking would be wrong:**
    `Registry.js` instance, not a mock.
 5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
    should wrap a boot chain already audited and hardened, not one with
-   known-latent gaps still underneath it.
+   known-latent gaps still underneath it. **Pre-E.1 finding (2026-09-12):**
+   `ExtendX.extend()` called on top of an already-composed class silently
+   dropped the outer layer (a real bug, fixed — see the Changelog); a
+   second, related dispose()-chain gap (stacked `dispose()` only runs the
+   outermost layer's mixin hooks) was found alongside it and is **not yet
+   fixed**, pending a deliberate design decision. Neither bug is triggered
+   by any current production call site (every real composition passes
+   every mixin to one `extend()` call), but E.1's closure factory is
+   exactly the kind of code that could introduce a stacked-composition
+   shape — worth resolving the dispose-chain gap, or at least deciding
+   E.1 will never stack `extend()` calls, before E.1 actually lands.
 6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
    its position here is sequencing, not priority.
 7. **C.1 — Checksum → signature upgrade** (16)
@@ -323,6 +334,18 @@ dependency override:**
 
 ## Changelog
 
+- **1.7.0** — 2026-09-12 — Pre-E.1 finding: `ExtendX.extend()` stacking
+  (composing on top of an already-composed class) silently dropped the
+  outer layer entirely — the `Subclass` constructor hardcoded its own
+  closed-over `Subclass` into `Reflect.construct(BaseClass, args,
+  Subclass)` instead of forwarding `new.target`, so a nested composed
+  class's constructor never actually reached the outer class's prototype.
+  Fixed; `ExtendX.js` bumped to 1.4.0. A related dispose()-chain gap
+  (stacked `dispose()` only running the outermost layer's mixin hooks)
+  was found alongside it and documented as a known, not-yet-fixed gap in
+  `test/ExtendX.stacking.test.js` (10/10). Neither bug is triggered by any
+  current production call site. Re-pinned the Last-test-run section to
+  `5cda3ee` (183/183, up from 173/173 across 13, now 14/14 suites).
 - **1.6.0** — 2026-09-12 — C.2 (Registry NVRAM-as-fast-path) shipped:
   `BIOS.boot()` tries the last-confirmed device first via an attached
   Registry's `confirmedBootEntry` record, through the same real
