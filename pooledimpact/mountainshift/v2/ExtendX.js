@@ -2,7 +2,7 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.3.0
+ * @version 1.4.0
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
@@ -19,6 +19,29 @@
  *           getters, full Allman brace style, JSDoc on every method --
  *           no behavior change, but a real additive surface (the new
  *           getters), not a no-op worth reusing v1.2.0's number for.
+ *   v1.4.0  Stacking fix (found ahead of E.1's closure factory, no current
+ *           production call site hits this shape yet): ExtendX.extend()
+ *           called on top of an ALREADY-composed class used to silently
+ *           drop the OUTER layer entirely -- the Subclass constructor
+ *           called Reflect.construct(BaseClass, args, Subclass) with its
+ *           own closed-over Subclass instead of new.target, so a nested
+ *           Reflect.construct(Inner, args, Outer) never actually reached
+ *           Outer.prototype; confirmed live (instance.world === undefined,
+ *           instance instanceof Outer === false) before the fix. Now
+ *           forwards new.target (falling back to Subclass for an
+ *           ordinary, non-nested construction, where they're the same
+ *           value anyway). A SEPARATE, related dispose()-chain gap was
+ *           found alongside this one and is NOT fixed here -- stacked
+ *           dispose() only runs the outermost layer's mixin hooks, since
+ *           every layer's wrapper calls the same shared
+ *           ExtendX.prototype.dispose(), which always reads
+ *           this.constructor._rawMixins (always the outermost class) and
+ *           short-circuits on its own idempotency guard before an inner
+ *           layer's chained call can do anything. Documented and proven
+ *           as a known gap in test/ExtendX.stacking.test.js pending a
+ *           deliberate fix design (splitting the once-only bookkeeping
+ *           from each layer's own mixin-hook run, tracked per-mixinId
+ *           rather than by a single global disposed flag).
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -72,7 +95,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.3.0';
+    const VERSION = '1.4.0';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -966,7 +989,32 @@
             // ─── Subclass constructor ──────────────────────────
             function Subclass(...args)
             {
-                const instance = Reflect.construct(BaseClass, args, Subclass);
+                // new.target, NOT the bare closed-over `Subclass` -- stacking a
+                // SECOND ExtendX.extend() on top of an already-composed class
+                // (Outer = ExtendX.extend(Inner, mixinB) where Inner is itself
+                // ExtendX.extend(Raw, mixinA)) used to silently drop the outer
+                // layer entirely. Outer's own constructor calls
+                // Reflect.construct(Inner, args, Outer), which sets new.target
+                // to Outer for the duration of Inner's function body -- but
+                // Inner's body ignored that and called
+                // Reflect.construct(BaseClass, args, Subclass) with ITS OWN
+                // closed-over `Subclass` (Inner itself), hardcoding newTarget
+                // back to Inner. Because Inner's body explicitly returns an
+                // object (the fully-set-up `proxied`), that returned object
+                // OVERRIDES whatever `this` the engine would have created from
+                // Outer.prototype -- so the final instance's real prototype
+                // chain stopped at Inner.prototype, never reaching
+                // Outer.prototype at all. Every mixinB method Outer's own
+                // installWrappers() had put on Outer.prototype became
+                // permanently unreachable: `instance.world` was undefined,
+                // `instance instanceof Outer` was false, proven live before
+                // this fix. Forwarding new.target (falling back to the
+                // closed-over Subclass for an ordinary, non-nested `new
+                // Inner()` call, where new.target === Subclass already) lets
+                // each layer's own newTarget propagate all the way down the
+                // Reflect.construct chain, so the final object's prototype
+                // correctly extends from the OUTERMOST composed class.
+                const instance = Reflect.construct(BaseClass, args, new.target || Subclass);
 
                 // A base that is not an ExtendX subclass has none of these, so
                 // attach them here. Own properties via defineProperty, because
