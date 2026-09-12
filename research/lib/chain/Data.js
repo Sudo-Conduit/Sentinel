@@ -28,6 +28,8 @@
     JSON_MAP: 'json-map',       // { key: {...}, key2: {...} } or { key: value }
     DELIMITED: 'delimited',     // CSV/TSV/etc as a raw string + delimiter
     DB_TABLE: 'db-table',       // { columns: [...], rows: [[...], [...]] }
+    BITMAP: 'bitmap',           // { width, height, data: byte-iterable, channels? }
+    UNICODE: 'unicode',         // string, or { text, encoding: 'utf-8'|'utf-16'|'utf-32' }
   });
 
   class Data {
@@ -53,6 +55,7 @@
       const parsed = Data._normalize(source, this);
       this.columns = parsed.columns;   // string[] | null (unordered/map sources)
       this.rows = parsed.rows;         // array of plain records (objects or arrays)
+      this.meta = parsed.meta || null; // e.g. {width,height,channels} for BITMAP, {encoding,byteLength} for UNICODE
     }
 
     static get SOURCE_TYPES() {
@@ -69,9 +72,71 @@
           return Data._fromDelimited(source, self.delimiter, self.hasHeader);
         case SOURCE_TYPES.DB_TABLE:
           return Data._fromDbTable(source);
+        case SOURCE_TYPES.BITMAP:
+          return Data._fromBitmap(source);
+        case SOURCE_TYPES.UNICODE:
+          return Data._fromUnicode(source);
         default:
           throw new TypeError('Data: unknown type "' + self.type + '"');
       }
+    }
+
+    // ── bit-level encoders (self-contained: no host TextEncoder dependency) ──
+
+    /** MSB-first bit expansion of a byte sequence -> array of 0|1 */
+    static _bytesToBits(bytes) {
+      const bits = new Array(bytes.length * 8);
+      let p = 0;
+      for (let i = 0; i < bytes.length; i++) {
+        const byte = bytes[i];
+        for (let b = 7; b >= 0; b--) {
+          bits[p++] = (byte >> b) & 1;
+        }
+      }
+      return bits;
+    }
+
+    /** UTF-8: 1-4 bytes per code point, standard encoding */
+    static _utf8Bytes(text) {
+      const bytes = [];
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+        if (cp <= 0x7f) {
+          bytes.push(cp);
+        } else if (cp <= 0x7ff) {
+          bytes.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
+        } else if (cp <= 0xffff) {
+          bytes.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+        } else {
+          bytes.push(
+            0xf0 | (cp >> 18),
+            0x80 | ((cp >> 12) & 0x3f),
+            0x80 | ((cp >> 6) & 0x3f),
+            0x80 | (cp & 0x3f)
+          );
+        }
+      }
+      return bytes;
+    }
+
+    /** UTF-16: 2 bytes per code unit (big-endian), surrogate pairs preserved as-is */
+    static _utf16Bytes(text) {
+      const bytes = [];
+      for (let i = 0; i < text.length; i++) {
+        const cu = text.charCodeAt(i);
+        bytes.push((cu >> 8) & 0xff, cu & 0xff);
+      }
+      return bytes;
+    }
+
+    /** UTF-32: 4 bytes per code point (big-endian) */
+    static _utf32Bytes(text) {
+      const bytes = [];
+      for (const ch of text) {
+        const cp = ch.codePointAt(0);
+        bytes.push((cp >>> 24) & 0xff, (cp >>> 16) & 0xff, (cp >>> 8) & 0xff, cp & 0xff);
+      }
+      return bytes;
     }
 
     static _fromJsonArray(arr) {
@@ -133,6 +198,60 @@
         return rec;
       });
       return { columns, rows };
+    }
+
+    static _fromBitmap(source) {
+      if (!source || typeof source !== 'object' || source.data == null) {
+        throw new TypeError('Data: BITMAP source must be { width, height, data, channels? }');
+      }
+      const { width, height, channels } = source;
+      if (typeof width !== 'number' || typeof height !== 'number') {
+        throw new TypeError('Data: BITMAP source requires numeric width and height');
+      }
+      const bytes = Array.prototype.slice.call(source.data);
+      const bits = Data._bytesToBits(bytes);
+      return {
+        columns: null,
+        rows: bits, // each row is a single bit (0|1); reshape via Tensor's opts.shape
+        meta: {
+          width,
+          height,
+          channels: channels || (bytes.length / (width * height)) || 1,
+          byteLength: bytes.length,
+          bitLength: bits.length,
+        },
+      };
+    }
+
+    static _fromUnicode(source) {
+      const isPlainString = typeof source === 'string';
+      const text = isPlainString ? source : source.text;
+      const encoding = (isPlainString ? 'utf-8' : source.encoding) || 'utf-8';
+      if (typeof text !== 'string') {
+        throw new TypeError('Data: UNICODE source must be a string or { text, encoding }');
+      }
+
+      let bytes;
+      switch (encoding) {
+        case 'utf-8':
+          bytes = Data._utf8Bytes(text);
+          break;
+        case 'utf-16':
+          bytes = Data._utf16Bytes(text);
+          break;
+        case 'utf-32':
+          bytes = Data._utf32Bytes(text);
+          break;
+        default:
+          throw new TypeError('Data: unknown UNICODE encoding "' + encoding + '"');
+      }
+
+      const bits = Data._bytesToBits(bytes);
+      return {
+        columns: null,
+        rows: bits, // each row is a single bit (0|1)
+        meta: { text, encoding, byteLength: bytes.length, bitLength: bits.length },
+      };
     }
 
     /** @returns {number} row count */

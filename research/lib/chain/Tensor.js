@@ -172,6 +172,50 @@
       };
       return build(this.shape, 0, product(this.shape));
     }
+
+    /**
+     * Hereditary (von Neumann) nesting: NOT rectangular sibling-nesting like
+     * toNested(). Each successive element contains the *entire* structure
+     * built from all prior elements, mirroring the ordinal construction
+     * 0 = ∅, n = (n-1) ∪ {n-1}, i.e. ord(n) = ord(n-1) ++ [ord(n-1)].
+     * Here the payload (each flat value) rides along at every step instead
+     * of the pure structural placeholder used by Tensor.ordinal():
+     *   acc_0 = []
+     *   acc_i = [acc_{i-1}, flat[i-1]]
+     * so acc_n for n values is depth-n, and unwrapping it front-to-back
+     * recovers the original sequence and its arrival order in one object,
+     * with no separate index array needed.
+     * @returns {*} hereditarily-nested array
+     */
+    toVonNeumannNested() {
+      let acc = [];
+      for (let i = 0; i < this._flat.length; i++) {
+        acc = [acc, this._flat[i]];
+      }
+      return acc;
+    }
+
+    /**
+     * Pure von Neumann ordinal construction (no payload): the canonical
+     * set-theoretic natural number n, built purely from nested empty sets.
+     *   ord(0) = []
+     *   ord(n) = ord(n-1) ++ [ord(n-1)]
+     * Note ord(n-1) is reused by reference as both the prefix and the new
+     * last element — n-1 literally *is* the set {0,...,n-2} in this
+     * construction, not a copy of it.
+     * @param {number} n - non-negative integer
+     * @returns {*} nested-array encoding of the von Neumann ordinal n
+     */
+    static ordinal(n) {
+      if (!Number.isInteger(n) || n < 0) {
+        throw new RangeError('Tensor.ordinal: n must be a non-negative integer');
+      }
+      let prev = [];
+      for (let i = 0; i < n; i++) {
+        prev = prev.concat([prev]);
+      }
+      return prev;
+    }
   }
 
   return Tensor;
