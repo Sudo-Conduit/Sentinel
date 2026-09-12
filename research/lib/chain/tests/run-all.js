@@ -15,6 +15,7 @@ require('./Tensor.unit.js')(runner);
 require('./FlatTensor.unit.js')(runner);
 require('./NestedTensor.unit.js')(runner);
 require('./ExtendXIntegration.unit.js')(runner);
+require('./WeightedGraphMixin.unit.js')(runner);
 
 const result = runner.run();
 process.exitCode = result.failed > 0 ? 1 : 0;
