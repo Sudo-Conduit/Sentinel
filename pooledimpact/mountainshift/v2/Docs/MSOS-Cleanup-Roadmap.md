@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.9.0
+**Version:** 1.10.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `c218f0f` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `d2f3aa7` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -59,10 +59,10 @@ expect it to stay current and do not push there.
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
 | MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
-| ExtendX.stacking.test.js | ALL 12 CHECKS PASSED |
+| ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
 
-**Total: 195/195 checks passing, 15/15 suites green.**
+**Total: 199/199 checks passing, 15/15 suites green.**
 
 ## Status legend
 
@@ -282,16 +282,28 @@ with sequencing overrides noted where raw ranking would be wrong:**
 5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
    should wrap a boot chain already audited and hardened, not one with
    known-latent gaps still underneath it. **Pre-E.1 finding (2026-09-12,
-   fully resolved):** `ExtendX.extend()` called on top of an already-
-   composed class silently dropped the outer layer (a real bug — the
+   three rounds, all resolved):** `ExtendX.extend()` called on top of an
+   already-composed class turned out to hide THREE separate stacking bugs,
+   found and fixed one at a time as each was audited/tested — (1) the
    `Subclass` constructor hardcoded its own closed-over `Subclass` instead
-   of forwarding `new.target`); fixed, and a second, related dispose()-
-   chain gap found alongside it (stacked `dispose()` only ran the
-   outermost layer's mixin hooks) is now fixed too — see the Changelog.
-   Neither bug was triggered by any current production call site (every
-   real composition passes every mixin to one `extend()` call), but E.1's
-   closure factory is exactly the kind of code that could have introduced
-   a stacked-composition shape, so both are closed out before E.1 lands.
+   of forwarding `new.target`, silently dropping the outer layer's
+   prototype entirely; (2) stacked `dispose()` only ran the outermost
+   layer's mixin hooks, since every layer's wrapper called one conflated
+   method reading the outermost class's `_rawMixins`; (3) `installWrappers()`'s
+   `_wrapped` Set leaked from the inner layer to the outer via the static
+   prototype chain, so an outer mixin sharing a method name with an inner
+   one never got its own dispatcher installed at all — confirmed
+   security-relevant: an outer SecurityMixin's guard on a shared method
+   name never actually enforced, while `mixins()`/`activeMixins()` still
+   reported it as active. See the Changelog for each. None was triggered
+   by any current production call site (every real composition passes
+   every mixin to one `extend()` call), but E.1's closure factory is
+   exactly the kind of code that could have introduced a stacked-
+   composition shape, so all three are closed out before E.1 lands. The
+   repeated pattern here — a straightforward-looking helper silently
+   trusting inherited/shared state across a shape nobody had exercised
+   yet — is itself now folded into this roadmap's Confidence-dimension
+   lesson, alongside the original `next()`-injection one.
 6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
    its position here is sequencing, not priority.
 7. **C.1 — Checksum → signature upgrade** (16)
@@ -347,6 +359,23 @@ dependency override:**
 
 ## Changelog
 
+- **1.10.0** — 2026-09-12 — Third ExtendX stacking bug found and fixed
+  (pre-E.1): `installWrappers()`'s `Subclass._wrapped || (Subclass._wrapped
+  = new Set())` did not check for an OWN property, so a stacked Outer's
+  `_wrapped` lookup silently resolved up the static prototype chain
+  (`Object.setPrototypeOf(Subclass, BaseClass)`) to Inner's already-
+  populated Set. Any method name Inner already wrapped was then treated
+  as "already installed" for Outer too, so Outer never got its own
+  dispatcher for that name — confirmed security-relevant: an outer
+  SecurityMixin's guard on a shared method name never actually enforced,
+  reaching the inner, unguarded implementation directly, while
+  `mixins()`/`activeMixins()` still reported it as active (those read
+  `_rawMixins`/`_resolvePipeline`, never `_wrapped`). Fixed by checking
+  `Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')` instead of
+  bare truthiness. `ExtendX.js` bumped to 1.6.0 with its own itemized
+  version-history entry. `test/ExtendX.stacking.test.js` gained four
+  checks (16/16, up from 12/12). Re-pinned the Last-test-run section to
+  `d2f3aa7` (199/199, up from 195/195 across 15, still 15/15 suites).
 - **1.9.0** — 2026-09-12 — C.4 (first-boot vs. steady-state distinction)
   shipped: `BIOS.boot()` now runs one-time post-install setup (minting a
   persistent `machineId`) exactly once, gated by a new `firstBootComplete`
