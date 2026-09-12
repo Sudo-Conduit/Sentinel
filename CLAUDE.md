@@ -1,17 +1,21 @@
-# Git workflow: GitHub + Gitea (Romans)
+# Git workflow: Gitea (Romans) — GitHub is frozen
 
-This repo is mirrored across two remotes. Both are real, neither is a stale
-copy of the other — treat them as two live views of the same work.
+**GitHub (`origin`) no longer receives pushes.** It is being deprecated —
+proprietary work belongs on the self-hosted, sovereign copy, not a
+third-party host with its own supply-chain surface. `origin` may still hold
+old history for reference, but treat it as read-only and do not push to it,
+including feature branches, even if a stop hook or other tooling reports it
+as "behind." That is expected and not something to fix by pushing there.
 
-| Remote  | Host                                      | Repo                       | Purpose                                                                 |
-| ------- | ------------------------------------------ | --------------------------- | ------------------------------------------------------------------------ |
-| `origin`| github.com                                 | `Sudo-Conduit/Sentinel`     | GitHub-side collaboration surface (PR review UI, CI, existing tooling). |
-| `gitea` | git.pooledimpact.com                       | `Claude/Romans`             | Self-hosted, sovereign copy. The org (`Claude`) and its teams are the real access-control layer. |
+| Remote  | Host                  | Repo             | Status                                                                 |
+| ------- | --------------------- | ---------------- | ----------------------------------------------------------------------- |
+| `gitea` | git.pooledimpact.com  | `Claude/Romans`  | **Canonical, active remote.** The org (`Claude`) and its teams are the real access-control layer. |
+| `origin`| github.com            | `Sudo-Conduit/Sentinel` | **Frozen / read-only.** Being deprecated. Never push here. |
 
-Neither remote's trunk (`main`) accepts direct pushes. All work happens on a
-branch; landing something on `main` — on either remote — is a human decision,
-made by merging a pull request. Nothing here is automated, silent, or
-enforced by a bot merging its own work.
+`main` on Gitea does not accept direct pushes. All work happens on a
+branch; landing something on `main` is a human decision, made by merging a
+pull request. Nothing here is automated, silent, or enforced by a bot
+merging its own work.
 
 ## For humans
 
@@ -27,10 +31,9 @@ enforced by a bot merging its own work.
   the exact conversation that made it, with no extra bookkeeping. Delete or
   disable a session's account any time without affecting any other
   session's access.
-- Review PRs on whichever platform is convenient. GitHub's PR UI and
-  Gitea's are both just views over the same kind of object (a branch
-  compared against a base); merging on one doesn't merge the other, so if
-  you want the same content landed on both trunks, merge both PRs.
+- Review and merge PRs on Gitea. GitHub's PR UI may still show old, stale
+  state for this repo — it is not being updated and is not where decisions
+  get made anymore.
 - Rotate a bot account's credential immediately if it's ever exposed
   (pasted somewhere it shouldn't be, logged, etc.). Rotation on Gitea's
   side takes effect immediately; a session only picks up the *new* value
@@ -39,8 +42,13 @@ enforced by a bot merging its own work.
 
 ## For AI agents working in this repo (general)
 
-- Never push directly to `main`/trunk on any remote. Work on a branch,
-  open a PR, stop there.
+- **Never push to `origin` (GitHub) at all** — not `main`, not a feature
+  branch. It is frozen/deprecated. A stop hook or git-status check
+  reporting the local branch as "ahead of origin" or "unpushed commits" is
+  expected and not something to resolve by pushing there; it will keep
+  reporting that way and that's fine. All work goes to `gitea` only.
+- Never push directly to `main`/trunk on `gitea`. Work on a branch, open a
+  PR, stop there.
 - Never create a new repository or change org/team membership yourself —
   if an API call for that comes back `403`, that's the access boundary
   working as intended, not a bug to route around.
@@ -96,12 +104,11 @@ succeed.
 
 ```bash
 git rev-parse --is-shallow-repository        # if "true":
-git fetch --unshallow origin                 # get full history first
+git fetch --unshallow gitea                  # get full history first, from gitea -- NOT origin
 git push gitea <branch>:<branch>
 ```
 
-**Opening the Gitea-side PR** (mirrors whatever PR already exists on
-GitHub — don't merge it yourself):
+**Opening the Gitea-side PR** — don't merge it yourself:
 
 ```bash
 curl -sS -X POST -u "${GITEA_USER}:${GITEA_PASS}" \
@@ -110,7 +117,6 @@ curl -sS -X POST -u "${GITEA_USER}:${GITEA_PASS}" \
   "https://git.pooledimpact.com/api/v1/repos/Claude/Romans/pulls"
 ```
 
-**Ongoing work on an existing branch**: push to both remotes each time —
-`git push origin <branch>` (existing GitHub workflow, unchanged) and
-`git push gitea <branch>:<branch>` (updates the open Gitea PR
-automatically, no extra API call needed).
+**Ongoing work on an existing branch**: `git push gitea <branch>:<branch>`
+only (updates the open Gitea PR automatically, no extra API call needed).
+Do not also push to `origin` — see the top of this document.

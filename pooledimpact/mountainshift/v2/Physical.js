@@ -7,6 +7,9 @@
  *   figures live on the instance; the live CPU.js engine those figures
  *   describe is a runtime handle in a Map keyed by this.id, never
  *   schema-validated per register/memory write.
+ * @docs Kernel-Machine-Architecture.md
+ * @tests test/Physical.security.test.js
+ * @tests test/FullBootChain.lifecycle.test.js
  *
  * v1.1.0: _cpus changed from a WeakMap keyed by `this` to a Map keyed by
  * `this.id`. Composing Physical via ExtendX.extend() (see SecurityMixin.js)
@@ -41,75 +44,129 @@
  * trap (the same reason _cpus itself lives outside the schema-tracked
  * instance rather than as `this.cpu`).
  */
-(function(root, factory) {
-  if (typeof define === 'function' && define.amd) define(['./BaseClassX.js', './CPU.js'], factory);
-  else if (typeof module === 'object' && module.exports) module.exports = factory(require('./BaseClassX.js'), require('./CPU.js'));
-  else root.Physical = factory(root.BaseClassX, root.CPU);
-}(typeof self !== 'undefined' ? self : this, function(BaseClassX, CPU) {
-  'use strict';
-  if (!BaseClassX) throw new Error('Physical requires BaseClassX to be loaded first');
-  if (!CPU) throw new Error('Physical requires CPU.js to be loaded first');
-
-  const _cpus = new Map();
-  const _cpuFactories = new Map();
-
-  function defaultCPUFactory(memBytes) {
-    return new CPU({ memorySize: memBytes });
-  }
-
-  class Physical extends BaseClassX {
-    static version = '1.2.0';
-    static domain = 'machine.physical';
-    static _schema = { properties: {
-      capacityMHz: { type: 'number', default: 2400 },
-      ramBytes: { type: 'number', default: 0x100000 },
-      storageBytes: { type: 'number', default: 0 },
-      energyBudgetW: { type: 'number', default: 65 },
-      poweredOn: { type: 'boolean', default: false }
-    }};
-
-    constructor(options = {}) {
-      super({ type: 'machine.physical', name: 'Physical' });
-      this.capacityMHz = options.capacityMHz || 2400;
-      this.ramBytes = options.ramBytes || 0x100000;
-      this.storageBytes = options.storageBytes || 0;
-      this.energyBudgetW = options.energyBudgetW || 65;
-      this.poweredOn = false;
-      _cpuFactories.set(this.id, typeof options.cpuFactory === 'function' ? options.cpuFactory : defaultCPUFactory);
+(function(root, factory)
+{
+    if (typeof define === 'function' && define.amd)
+    {
+        define(['./BaseClassX.js', './CPU.js'], factory);
+    }
+    else if (typeof module === 'object' && module.exports)
+    {
+        module.exports = factory(require('./BaseClassX.js'), require('./CPU.js'));
+    }
+    else
+    {
+        root.Physical = factory(root.BaseClassX, root.CPU);
+    }
+}(typeof self !== 'undefined' ? self : this, function(BaseClassX, CPU)
+{
+    'use strict';
+    if (!BaseClassX)
+    {
+        throw new Error('Physical requires BaseClassX to be loaded first');
+    }
+    if (!CPU)
+    {
+        throw new Error('Physical requires CPU.js to be loaded first');
     }
 
-    // POST: power hardware on, size and construct the CPU.js engine
-    // (via the injected factory, defaulting to a plain `new CPU(...)`),
-    // hold it as a runtime handle.
-    post() {
-      const factory = _cpuFactories.get(this.id) || defaultCPUFactory;
-      const cpu = factory(this.ramBytes);
-      _cpus.set(this.id, cpu);
-      this.poweredOn = true;
-      this._recordTrace('post', { capacityMHz: this.capacityMHz, ramBytes: this.ramBytes });
-      return cpu.boot();
+    const _cpus = new Map();
+    const _cpuFactories = new Map();
+
+    function defaultCPUFactory(memBytes)
+    {
+        return new CPU({ memorySize: memBytes });
     }
 
-    getCPU() {
-      if (!_cpus.has(this.id)) throw new Error('Physical.getCPU: call post() first (CPU not powered on)');
-      return _cpus.get(this.id);
+    class Physical extends BaseClassX
+    {
+        static name = 'Physical';
+        static author = 'Will Fobbs';
+        static version = '1.2.0';
+        static domain = 'machine.physical';
+        static description = 'The hardware surface: schema-tracked capacity/energy figures over a runtime-held CPU.js engine.';
+        static docs = ['Kernel-Machine-Architecture.md'];
+        static tests = ['test/Physical.security.test.js', 'test/FullBootChain.lifecycle.test.js'];
+        static _schema = { properties: {
+            capacityMHz: { type: 'number', default: 2400 },
+            ramBytes: { type: 'number', default: 0x100000 },
+            storageBytes: { type: 'number', default: 0 },
+            energyBudgetW: { type: 'number', default: 65 },
+            poweredOn: { type: 'boolean', default: false }
+        }};
+
+        /**
+         * @param {Object} [options={}]
+         * @param {number} [options.capacityMHz=2400]
+         * @param {number} [options.ramBytes=0x100000]
+         * @param {number} [options.storageBytes=0]
+         * @param {number} [options.energyBudgetW=65]
+         * @param {Function} [options.cpuFactory] - injectable `(memBytes) => cpuInstance`
+         *   factory, defaulting to a plain `new CPU(...)`; lets a caller hand back
+         *   a secured CPU (e.g. SecuredCPU) instead
+         */
+        constructor(options = {})
+        {
+            super({ type: 'machine.physical', name: 'Physical' });
+            this.capacityMHz = options.capacityMHz || 2400;
+            this.ramBytes = options.ramBytes || 0x100000;
+            this.storageBytes = options.storageBytes || 0;
+            this.energyBudgetW = options.energyBudgetW || 65;
+            this.poweredOn = false;
+            _cpuFactories.set(this.id, typeof options.cpuFactory === 'function' ? options.cpuFactory : defaultCPUFactory);
+        }
+
+        /**
+         * POST: power hardware on, size and construct the CPU.js engine
+         * (via the injected factory, defaulting to a plain `new CPU(...)`),
+         * hold it as a runtime handle.
+         * @returns {*} the result of the constructed CPU's boot()
+         */
+        post()
+        {
+            const factory = _cpuFactories.get(this.id) || defaultCPUFactory;
+            const cpu = factory(this.ramBytes);
+            _cpus.set(this.id, cpu);
+            this.poweredOn = true;
+            this._recordTrace('post', { capacityMHz: this.capacityMHz, ramBytes: this.ramBytes });
+            return cpu.boot();
+        }
+
+        /**
+         * @returns {Object} the live CPU.js instance
+         * @throws {Error} if post() has not been called yet
+         */
+        getCPU()
+        {
+            if (!_cpus.has(this.id))
+            {
+                throw new Error('Physical.getCPU: call post() first (CPU not powered on)');
+            }
+            return _cpus.get(this.id);
+        }
+
+        /**
+         * @returns {*} the result of the live CPU's reset()
+         */
+        reset()
+        {
+            const cpu = this.getCPU();
+            this._recordTrace('reset', {});
+            return cpu.reset();
+        }
+
+        /**
+         * Explicit cleanup: _cpus/_cpuFactories are Maps (strong
+         * references), not WeakMaps, so a disposed Physical's CPU/factory
+         * are otherwise held forever.
+         */
+        dispose()
+        {
+            _cpus.delete(this.id);
+            _cpuFactories.delete(this.id);
+            super.dispose();
+        }
     }
 
-    reset() {
-      const cpu = this.getCPU();
-      this._recordTrace('reset', {});
-      return cpu.reset();
-    }
-
-    // Explicit cleanup: _cpus/_cpuFactories are Maps (strong references),
-    // not WeakMaps, so a disposed Physical's CPU/factory are otherwise
-    // held forever.
-    dispose() {
-      _cpus.delete(this.id);
-      _cpuFactories.delete(this.id);
-      super.dispose();
-    }
-  }
-
-  return Physical;
+    return Physical;
 }));

@@ -1,7 +1,7 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.0.0
-**Last updated:** 2026-09-11
+**Version:** 1.11.0
+**Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
 thread — reflection-based override composition, `CPU.js` rewritten to a
@@ -35,15 +35,14 @@ A/B item lands; a roadmap claiming shipped work that the test suite
 doesn't back up is worse than no roadmap.
 
 The commit below is pinned to whichever remote is canonical for this code
-*right now*, not assumed. As of this pin, pushes for this branch go to
-Gitea only (`git.pooledimpact.com/Claude/Romans` — a mirror of this same
-repo under a different name/owner, not a typo) — GitHub
-(`github.com/Sudo-Conduit/Sentinel`) still holds this same commit today
-but is being deprecated and may fall behind or be removed without further
-notice here. Verify against Gitea first if the two ever disagree.
+*right now*, not assumed. Gitea (`git.pooledimpact.com/Claude/Romans`) is
+the sole active remote as of this pin — GitHub (`github.com/Sudo-Conduit/
+Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
+pushes; it may still hold an old copy of this commit today, but do not
+expect it to stay current and do not push there.
 
-**Commit:** `31af0c8` (git.pooledimpact.com/Claude/Romans, branch
-`claude/devtools-overrides-robustness-8we96z`) — 2026-09-11T16:53:11Z
+**Commit:** `6a0b4fb` (git.pooledimpact.com/Claude/Romans, branch
+`claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
 |---|---|
@@ -54,8 +53,17 @@ notice here. Verify against Gitea first if the two ever disagree.
 | Kernel.security.test.js | ALL 15 CHECKS PASSED |
 | BIOS.security.test.js | ALL 12 CHECKS PASSED |
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
+| NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
+| Memory.security.test.js | ALL 15 CHECKS PASSED |
+| MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
+| MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
+| MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
+| BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
+| ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
+| BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
+| MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
 
-**Total: 105/105 checks passing, 7/7 suites green.**
+**Total: 216/216 checks passing, 16/16 suites green.**
 
 ## Status legend
 
@@ -98,6 +106,116 @@ mixin pattern to X" should be scored low on Confidence and distrusted
 until actually run — not assumed safe by analogy to CPU/Physical/Kernel/
 BIOS's prior successes.
 
+**A.4 findings (2026-09-12), the same "check before trusting the punch
+list" discipline the chemistry roadmap used on its own 1.1/1.3/5.1 rows:**
+five of the six audited files are clean, each for a different *structural*
+reason, not luck — proven in `test/NextInjection.audit.test.js`, not just
+asserted: `Environment.js` has no instance methods at all; `ISO.js`'s
+instance methods originally took zero arguments; `Installer.js` (a static
+method) and `BootDeviceScan.js` (a plain object, not even a constructor)
+are never reachable through ExtendX's dispatcher regardless of
+composition; `FileFsBootAdapter.js`'s one method has no optional trailing
+parameter for `next()` to land in. `Registry.js`'s `set(key, value)` has
+one real, currently-unreachable gap (grepped — never called with fewer
+than 2 args anywhere in this codebase): omitting `value` under composition
+silently stores the injected `next()` function instead of `undefined`.
+Unlike every other instance of this hazard, it is **not fixable** with a
+`typeof`-guard, because a Registry value's legitimate type is
+unconstrained (unlike a `label` string or a `quantum` number) — documented
+in `Registry.js` as a known limitation instead of a false fix.
+
+The audit also surfaced a **second, more general bug than A.4 set out to
+find**: `ISO.js`'s constructor called `this.computeChecksum()` on itself,
+the exact self-call-before-arming shape `CPU.js`'s `#registerInstructions()`
+already fixed once — so the same `#private`-method fix was applied here
+too, and immediately broke a *different* way: `verifyIntegrity()` (a
+normal dispatched method) also called `this.#computeChecksum()`, and once
+`this` is ExtendX's frame Proxy (true for any call after construction),
+private-field/method brand checks do not forward through a Proxy at all —
+confirmed live via the engine's own `Receiver must be an instance of class
+ISO` TypeError, not a defect in this project's code. **`#private` methods
+only ever solve "called from the raw, un-proxied constructor"; they do
+not generalize to "called from any other composed method's body."** The
+actual fix was a plain closure-scoped function (`computeChecksumOf(manifest,
+hashFn)`) with no `this` and therefore no class brand for any Proxy layer
+to reject — works identically from the constructor or from a dispatched
+method. `CPU.js`'s own `#registerInstructions()` was re-checked against
+this exact failure mode and confirmed safe: it is called only from its
+own constructor, never from any other method, so it never hits a frame
+Proxy `this`. This second finding is now folded into the Confidence
+dimension's own lesson above, not tracked as a separate row: any future
+`#private`-method fix for a construction-order hazard needs the same
+"is this ever called from another dispatched method too?" check before
+being trusted.
+
+**D.1 findings (2026-09-12):** the item as originally scoped ("land
+`MemoryMapFS.js`") assumed the wrong API. `MemoryMapFS.js` was a verbatim
+reference implementation documenting a richer `mm_create()`/`mm_auth()`/
+`mm_kvStore()` multi-mailbox API with chain-linking and bitmap allocation —
+but that API was never actually compiled into this repo's `memorymap.wasm`.
+Confirmed live, not assumed: `WebAssembly.Module.imports()`/`.exports()`
+against the real binary show a single-flat-arena API (`getUUID`/
+`getPublicKey`/`getAuthScratch`/`authenticate`/`deauthenticate`/`read`/
+`write`/`getMemoryMap`/`getBase`/`slotBase`/`maxSlots`/`totalPages`/
+`offsetA`/`B`/`C`/`pagesNeeded`) and a full `wasi_snapshot_preview1` import
+surface (a standard `wasm32-wasi` build, not freestanding) — an md5sum
+match against a copy the user separately supplied confirmed the repo's
+`.wasm` is current, not stale; the richer API exists in one of ~23
+historical build versions but chasing it down was explicitly declined.
+`MemoryMapFS.js` was deleted (never committed) and replaced with
+`MemoryMapArena.js`, a fresh wrapper written against the API the binary
+actually exports, following the binding pattern demonstrated in the
+user-supplied `MemoryMap-Manager.dc.html` reference: every WASM import
+(WASI included) is satisfied generically from `WebAssembly.Module.imports()`
+— function imports stub to `() => 0`, memory/table/global imports get real
+`WebAssembly.Memory`/`Table`/`Global` instances — since none of this
+module's real behavior (identity, auth, slot read/write) exercises actual
+syscalls, so no real WASI polyfill is needed. `packBytes()`/`unpackBytes()`
+use a length-header-first binary codec (the real byte count written as its
+own slot, then 3 bytes/slot after it) rather than an in-band tail marker,
+matching the already-proven-safe convention in `Installer.js`/
+`FileFsBootAdapter.js` — the original `MemoryMap-Manager.dc.html`'s own
+comments documented the in-band alternative as fragile (a real byte that
+happens to match the marker corrupts unpacking). `Registry.js` gained
+`saveToArena(arena, startSlot)`/`static loadFromArena(arena, startSlot)` as
+an additive NVRAM path alongside the existing FileFsX-backed `save()`/
+`load()` — not a replacement — closing the Node/Browser split every
+FileFsX backend has (IDB/OPFS/Cache/localStorage are browser-only, real
+`fs` needs a user gesture); a capability-gated WASM arena instantiates
+identically in both runtimes. Today's arena is per-process memory only —
+real cross-restart persistence is a host-layer decision about what backs
+the arena's linear memory, deliberately out of scope here. Proven via
+`test/MemoryMapArena.test.js` against the real `memorymap.wasm`, not
+reasoning alone: init, pre-authenticate rejection, wrong/correct-key auth,
+raw slot read/write, byte-packing round-trips (plain ASCII, multi-byte
+UTF-8, a non-multiple-of-3-length edge case), a full `Registry` round-trip
+through the arena, `loadFromArena()`'s fallback-to-default on an untouched
+slot range, `saveToArena()` correctly throwing pre-authentication, and
+`deauthenticate()` actually revoking write access — 12/12.
+
+**D.1 addendum (2026-09-12): the richer `mm_*` binary was found.** After
+the above was already shipped, a further historical `memorymap.wasm`
+build was supplied and checked the same way — not assumed correct, live
+via `WebAssembly.Module.exports()` — and this one really does export the
+full `mm_*` surface `MemoryMapFS.js`'s original reference implementation
+was written against: `mm_init`/`mm_create`/`mm_destroy`/`mm_rotateKeys`/
+`mm_chainLink`/`mm_auth`/`mm_readSlot`/`mm_writeSlot`/`mm_status`/
+`mm_kvStore`/`mm_kvLookup`/`mm_kvDelete`/`mm_chainNext`/`mm_chainFind`/
+`mm_findFreeSlot`/`mm_markOccupied`/`mm_markFree`/`mm_isOccupied`, plus
+GC/transaction machinery not yet wrapped. It imports only a single shared
+`env.memory` — no WASI surface at all, unlike the other binary. Landed as
+`memorymap-mm.wasm` (a distinct compiled module, not a replacement of the
+existing `memorymap.wasm`), with `MemoryMapFS.js` authored fresh in this
+session's house style against it and proven end-to-end in
+`test/MemoryMapFS.test.js` before being trusted: mailbox create, wrong/
+correct access-key auth, raw slot read/write (including the 20-byte
+inline-blob limit), bitmap free-slot tracking, key-value store/lookup/
+delete, mailbox chain link/next/find, key rotation, and destroy/
+double-destroy rejection — 17/17. This is a second, independent NVRAM
+path alongside `MemoryMapArena.js`, not a replacement — `Registry.js`'s
+`saveToArena()`/`loadFromArena()` stay wired to `MemoryMapArena` exactly
+as shipped above; nothing about that wiring changed.
+
 ## Scored backlog
 
 | # | Category | Item | Status | F | U | O | N | R | C | **Composite** |
@@ -105,22 +223,22 @@ BIOS's prior successes.
 | A.1 | Composition & Dispatch | SecurityMixin (activation-token gating via ExtendX) | ✅ | — | — | — | — | — | — | shipped |
 | A.2 | Composition & Dispatch | StructureMixin graph mode (explicit + inferred parent/child/sibling) | ✅ | — | — | — | — | — | — | shipped |
 | A.3 | Composition & Dispatch | StructureMixin relational mode + `getConnectedGraph()` (real BFS, not one-hop) | ✅ | — | — | — | — | — | — | shipped |
-| A.4 | Composition & Dispatch | `next()`-injection systemic audit (Environment/Registry/ISO/Installer/BootDeviceScan/FileFsBootAdapter) | ⬜ | 5 | 4 | 3 | 1 | 1 | 3 | **17** |
+| A.4 | Composition & Dispatch | `next()`-injection systemic audit (Environment/Registry/ISO/Installer/BootDeviceScan/FileFsBootAdapter) | ✅ | — | — | — | — | — | — | shipped |
 | B.1 | Core Machine | CPU secured + tested | ✅ | — | — | — | — | — | — | shipped |
 | B.2 | Core Machine | Physical secured + tested (`cpuFactory` leak fix) | ✅ | — | — | — | — | — | — | shipped |
 | B.3 | Core Machine | Kernel secured + tested (`_host` fix, `fork`/`tick` hazard fix) | ✅ | — | — | — | — | — | — | shipped |
 | B.4 | Core Machine | BIOS secured + tested (`kernelFactory` leak fix, `iso` hazard fix, explicit `addChild`) | ✅ | — | — | — | — | — | — | shipped |
 | B.5 | Core Machine | Full boot-chain life-cycle integration test (CPU→Physical→Kernel→BIOS) | ✅ | — | — | — | — | — | — | shipped |
-| B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ⬜ | 5 | 3 | 3 | 1 | 1 | 2 | **15** |
+| B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ✅ | — | — | — | — | — | — | shipped |
 | C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
-| C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ⬜ | 3 | 4 | 4 | 2 | 2 | 4 | **19** |
+| C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ✅ | — | — | — | — | — | — | shipped |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
-| C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ⬜ | 3 | 2 | 2 | 2 | 2 | 4 | **15** |
-| D.1 | Persistent/Shared Substrate | Land `MemoryMapFS.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | 🔬 | 2 | 5 | 5 | 4 | 5 | 3 | **24** |
+| C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ✅ | — | — | — | — | — | — | shipped |
+| D.1 | Persistent/Shared Substrate | Land `MemoryMapArena.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | ✅ | — | — | — | — | — | — | shipped |
 | D.2 | Persistent/Shared Substrate | `'network'` boot device adapter via WebRTC federation (the never-implemented 3rd `bootDeviceOrder` slot) | 🤝 | 1 | 3 | 4 | 5 | 5 | 1 | **19** |
 | D.3 | Persistent/Shared Substrate | Node-native WebRTC parity layer (blocks D.2/D.4 entirely) | 🤝 | 1 | 4 | 3 | 3 | 4 | 2 | **17** |
 | D.4 | Persistent/Shared Substrate | Transport abstraction beyond WebRTC ("many different types of transports") | 🤝 | 1 | 1 | 1 | 2 | 2 | 3 | **10** |
-| E.1 | Outer Closure / Runtime | Opaque closure factory (`MountainShift()`, full-trap Proxy exposing only `run()`) | ⬜ | 4 | 5 | 5 | 3 | 3 | 3 | **23** |
+| E.1 | Outer Closure / Runtime | Opaque closure factory (`MountainShift()`, full-trap Proxy exposing only `run()`) | ✅ | — | — | — | — | — | — | shipped |
 | E.2 | Outer Closure / Runtime | Black-box (`run()`-only) integrated test tier | ⬜ | 1 | 2 | 4 | 2 | 2 | 4 | **15** |
 | E.3 | Outer Closure / Runtime | DevTools Local Overrides loader (reflection/`CodeComposer`, `CPU.js` ES6 rewrite) | ✅ | — | — | — | — | — | — | shipped |
 
@@ -129,27 +247,102 @@ BIOS's prior successes.
 **Single-subsystem ("harden what exists") queue, by composite descending,
 with sequencing overrides noted where raw ranking would be wrong:**
 
-1. **A.4 — `next()`-injection systemic audit** (17) — done **before** E.1
-   despite its middle-of-the-table composite: once the opaque closure
-   exists, white-box `require()` access to poke at these classes
-   individually is gone by design (the project's own two-tier test rule).
-   A hazard hiding in Registry/ISO/Installer/BootDeviceScan/
-   FileFsBootAdapter is far cheaper to find now than after E.1 ships.
-2. **B.6 — Memory.js secured/structured/tested** (15) — same reasoning as
-   #1: the last core machine component with a proven-pattern latent bug
-   still open. Close it before the boot chain it's part of gets wrapped
-   in E.1's closure, not after.
-3. **D.1 — MemoryMapFS as Registry's NVRAM backend** (24) — highest raw
-   composite, independent of the E.1 sequencing concern above.
-4. **C.2 — Registry NVRAM-as-fast-path** (19) — natural follow-on to D.1;
-   "write once, read first" needs a backend worth writing to.
-5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
-   should wrap a boot chain already audited and hardened, not one with
-   known-latent gaps still underneath it.
-6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
-   its position here is sequencing, not priority.
+1. ~~**A.4 — `next()`-injection systemic audit**~~ — **done** (2026-09-12).
+   Found and fixed one real gap (`ISO.js`'s constructor self-call, plus a
+   second, more general bug the fix itself exposed — see the findings
+   note above); documented one real, currently-unreachable gap
+   (`Registry.set()`) that isn't cleanly fixable. Five of six audited
+   files were already clean. `test/NextInjection.audit.test.js`, 9/9.
+2. ~~**B.6 — Memory.js secured/structured/tested**~~ — **done**
+   (2026-09-12). Fixed the same `_backing` WeakMap-by-`this` bug class as
+   `Physical`/`Kernel`, plus two `next()`-injection hazards (`attach(cpu)`,
+   `alloc(..., label)`) found the same way. Scope stayed deliberately
+   narrow, per direct instruction: this hardens `Memory.js` itself so it's
+   *safe* to compose whenever needed, but does **not** change how Memory
+   is actually used (Kernel/Physical's call patterns) — that waits for the
+   Terminal 2.0 reference implementation. `test/Memory.security.test.js`,
+   15/15.
+3. ~~**D.1 — MemoryMapArena as Registry's NVRAM backend**~~ — **done**
+   (2026-09-12). Original scope named the wrong file/API (`MemoryMapFS.js`'s
+   `mm_*` multi-mailbox surface was never actually compiled into
+   `memorymap.wasm`) — see the findings note above. Landed
+   `MemoryMapArena.js` against the real single-arena API, plus
+   `Registry.saveToArena()`/`loadFromArena()`. `test/MemoryMapArena.test.js`,
+   12/12.
+4. ~~**C.2 — Registry NVRAM-as-fast-path**~~ — **done** (2026-09-12).
+   `BIOS.boot()` tries the last-confirmed device first (via an attached
+   Registry's `confirmedBootEntry` record) through the SAME real
+   `fs.findBootEntry()` verification the full scan uses — a scan-order
+   optimization, not a trust shortcut. Guarded two ways: the confirmed
+   device is only tried while still present in the current
+   `bootDeviceOrder` (so editing boot policy overrides a stale record
+   instead of being bypassed by it), and only a real, `confirmed: true`
+   entry ever gets persisted (an unconfirmed raw `BootDeviceScan` hit
+   never does). `test/BIOS.nvramFastPath.test.js`, 8/8, against a real
+   `Registry.js` instance, not a mock.
+5. ~~**E.1 — Opaque closure factory**~~ — **done** (2026-09-12).
+   `MountainShift.js` composes and boots the already-hardened chain
+   (Registry → BIOS → Kernel → Physical → CPU, each with SecurityMixin +
+   graph-mode StructureMixin, wired exactly per
+   `test/FullBootChain.lifecycle.test.js`) entirely inside the factory
+   function's closure, returning an object exposing ONLY `run()` — every
+   internal instance lives only as a closure variable (the real opacity
+   mechanism), wrapped in a full-trap Proxy over a frozen, null-prototype
+   target as deliberate defense-in-depth. `test/MountainShift.opaque.test.js`
+   is the first test in this codebase to prove the boot chain works
+   WITHOUT `require()`-ing BIOS/Kernel/CPU internals — through the same
+   single entry point a real caller would use — 17/17: full introspection
+   surface (`Object.keys`/`Reflect.ownKeys`/prototype/`instanceof`/
+   `JSON.stringify` all show nothing but `run`), strict-mode tamper
+   resistance, a real armed/secured Kernel captured via a test-only
+   `onBoot` hook proving the boot is genuine (never reachable through the
+   returned object itself), `run()` idempotency, and independence between
+   separate calls. **Pre-E.1 finding (2026-09-12, three rounds, all
+   resolved before E.1 landed):** `ExtendX.extend()` called on top of an
+   already-composed class turned out to hide THREE separate stacking
+   bugs, found and fixed one at a time — (1) the `Subclass` constructor
+   hardcoded its own closed-over `Subclass` instead of forwarding
+   `new.target`, silently dropping the outer layer's prototype entirely;
+   (2) stacked `dispose()` only ran the outermost layer's mixin hooks,
+   since every layer's wrapper called one conflated method reading the
+   outermost class's `_rawMixins`; (3) `installWrappers()`'s `_wrapped`
+   Set leaked from the inner layer to the outer via the static prototype
+   chain, so an outer mixin sharing a method name with an inner one never
+   got its own dispatcher installed — confirmed security-relevant: an
+   outer SecurityMixin's guard on a shared method name never actually
+   enforced, while `mixins()`/`activeMixins()` still reported it as
+   active. See the Changelog for each. None was triggered by any current
+   production call site, and `MountainShift.js` itself does not stack
+   `extend()` calls (one secured class family per class, composed once,
+   matching every other real composition in this codebase) — the audit
+   was precautionary, not blocking, but worth doing given E.1 was exactly
+   the kind of new code that could have introduced the shape. The
+   repeated pattern here — a straightforward-looking helper silently
+   trusting inherited/shared state across a shape nobody had exercised
+   yet — is folded into this roadmap's Confidence-dimension lesson,
+   alongside the original `next()`-injection one.
+6. **E.2 — Black-box test tier** (15) — was strictly blocked by E.1
+   (F=1); now unblocked. `test/MountainShift.opaque.test.js` already
+   covers the opacity/tamper-resistance surface through `run()` alone —
+   E.2 would extend that same run()-only discipline into a dedicated,
+   ongoing black-box tier for future functional scenarios (multi-process
+   fork/tick/kill through `run()` alone, once `run()`'s own surface grows
+   past a bare boolean), formalizing the two-tier convention
+   test/helpers.js's header comment already anticipates.
 7. **C.1 — Checksum → signature upgrade** (16)
-8. **C.4 — First-boot vs. steady-state distinction** (15)
+8. ~~**C.4 — First-boot vs. steady-state distinction**~~ — **done**
+   (2026-09-12). A successful boot with no persisted `firstBootComplete`
+   Registry flag runs one-time post-install setup (minting a persistent
+   `machineId`, only if one isn't already recorded) exactly once, then
+   marks the Registry so later boots take the steady-state path. A
+   failed boot (nothing bootable found) never marks setup complete, so
+   the next real successful boot still gets to run it; a pre-existing
+   `machineId` from a partial prior run is never regenerated. No Registry
+   attached means every boot looks like a first boot, matching real
+   hardware with no battery-backed NVRAM. `Registry.js` gained
+   `firstBootComplete: false` in its default entries (bumped to 1.2.0);
+   `BIOS.js` bumped to 1.2.0. `test/BIOS.firstBoot.test.js`, 10/10,
+   against a real `Registry.js` instance.
 9. **C.3 — `secureBoot` flag enforcement** (13) — deliberately after C.1:
    enforcing a flag with no real signature behind it is the same
    "dead config gains false teeth" risk the Confidence dimension warns
@@ -189,6 +382,133 @@ dependency override:**
 
 ## Changelog
 
+- **1.11.0** — 2026-09-12 — E.1 (opaque closure factory) shipped:
+  `MountainShift.js` composes and boots the already-hardened chain
+  (Registry/BIOS/Kernel/Physical/CPU, each secured + graph-structured,
+  wired exactly per `test/FullBootChain.lifecycle.test.js`) entirely
+  inside its own closure, returning an object exposing ONLY `run()` — a
+  full-trap Proxy over a frozen, null-prototype target as defense-in-depth
+  on top of the real opacity mechanism (a plain closure variable is
+  fundamentally unreachable from outside). `test/MountainShift.opaque.test.js`
+  is this codebase's first test to prove the boot chain works without
+  `require()`-ing internals — 17/17: introspection-surface proof, strict-
+  mode tamper resistance, a genuine boot verified via a test-only `onBoot`
+  hook never reachable through the returned object, `run()` idempotency,
+  and call independence. Re-pinned the Last-test-run section to `6a0b4fb`
+  (216/216, up from 199/199 across 15, now 16/16 suites).
+- **1.10.0** — 2026-09-12 — Third ExtendX stacking bug found and fixed
+  (pre-E.1): `installWrappers()`'s `Subclass._wrapped || (Subclass._wrapped
+  = new Set())` did not check for an OWN property, so a stacked Outer's
+  `_wrapped` lookup silently resolved up the static prototype chain
+  (`Object.setPrototypeOf(Subclass, BaseClass)`) to Inner's already-
+  populated Set. Any method name Inner already wrapped was then treated
+  as "already installed" for Outer too, so Outer never got its own
+  dispatcher for that name — confirmed security-relevant: an outer
+  SecurityMixin's guard on a shared method name never actually enforced,
+  reaching the inner, unguarded implementation directly, while
+  `mixins()`/`activeMixins()` still reported it as active (those read
+  `_rawMixins`/`_resolvePipeline`, never `_wrapped`). Fixed by checking
+  `Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')` instead of
+  bare truthiness. `ExtendX.js` bumped to 1.6.0 with its own itemized
+  version-history entry. `test/ExtendX.stacking.test.js` gained four
+  checks (16/16, up from 12/12). Re-pinned the Last-test-run section to
+  `d2f3aa7` (199/199, up from 195/195 across 15, still 15/15 suites).
+- **1.9.0** — 2026-09-12 — C.4 (first-boot vs. steady-state distinction)
+  shipped: `BIOS.boot()` now runs one-time post-install setup (minting a
+  persistent `machineId`) exactly once, gated by a new `firstBootComplete`
+  Registry flag, with guards for a failed first boot (never marks setup
+  complete) and a partial prior run (never regenerates an existing
+  `machineId`). `Registry.js` and `BIOS.js` both bumped to 1.2.0.
+  `test/BIOS.firstBoot.test.js`, 10/10, against a real `Registry.js`
+  instance. Re-pinned the Last-test-run section to `c218f0f` (195/195, up
+  from 185/185 across 14, now 15/15 suites).
+- **1.8.0** — 2026-09-12 — Pre-E.1 finding fully resolved: the stacked-
+  dispose()-chain gap documented in 1.7.0 is fixed. Split the single
+  conflated `ExtendX.prototype.dispose()`/`disposeAsync()` into
+  `finalizeDisposeBookkeeping()` (once-only whole-instance state, safe to
+  call from every stacked layer) and `runLayerDisposeHooks()`/`Async()`
+  (each layer's own closed-over mixins list, deduped per mixinId instead
+  of gated by one whole-instance flag) — so a stacked instance's inner
+  layer's mixin hook now actually runs, and a repeat top-level `dispose()`
+  call still never re-runs any hook twice. `ExtendX.js` bumped to 1.5.0
+  with its own itemized version-history entry.
+  `test/ExtendX.stacking.test.js` updated from documenting the known gap
+  to asserting the fix, plus new async and repeat-call-idempotency checks
+  (12/12, up from 10/10). Re-pinned the Last-test-run section to
+  `8c87074` (185/185, up from 183/183 across 14, still 14/14 suites).
+- **1.7.0** — 2026-09-12 — Pre-E.1 finding: `ExtendX.extend()` stacking
+  (composing on top of an already-composed class) silently dropped the
+  outer layer entirely — the `Subclass` constructor hardcoded its own
+  closed-over `Subclass` into `Reflect.construct(BaseClass, args,
+  Subclass)` instead of forwarding `new.target`, so a nested composed
+  class's constructor never actually reached the outer class's prototype.
+  Fixed; `ExtendX.js` bumped to 1.4.0. A related dispose()-chain gap
+  (stacked `dispose()` only running the outermost layer's mixin hooks)
+  was found alongside it and documented as a known, not-yet-fixed gap in
+  `test/ExtendX.stacking.test.js` (10/10). Neither bug is triggered by any
+  current production call site. Re-pinned the Last-test-run section to
+  `5cda3ee` (183/183, up from 173/173 across 13, now 14/14 suites).
+- **1.6.0** — 2026-09-12 — C.2 (Registry NVRAM-as-fast-path) shipped:
+  `BIOS.boot()` tries the last-confirmed device first via an attached
+  Registry's `confirmedBootEntry` record, through the same real
+  `fs.findBootEntry()` verification the full scan uses — a scan-order
+  optimization, not a trust shortcut. Guarded against both a stale record
+  bypassing edited `bootDeviceOrder` policy and an unconfirmed raw
+  `BootDeviceScan` hit being cached as if it were verified. `BIOS.js`
+  bumped to 1.1.0 with itemized version history.
+  `test/BIOS.nvramFastPath.test.js`, 8/8, against a real `Registry.js`
+  instance. Re-pinned the Last-test-run section to `159c061` (173/173, up
+  from 165/165 across 12, now 13/13 suites).
+- **1.5.0** — 2026-09-12 — D.1 addendum: added
+  `test/MemoryMapFS.nodeToNode.test.js`, proving via `worker_threads`
+  (the only mechanism that actually shares live memory in Node) that
+  `MemoryMapFS.js`'s shared `WebAssembly.Memory` really crosses two
+  independent Node execution contexts — a mailbox created/authenticated/
+  written in the main thread is immediately visible through a second,
+  independent `WebAssembly.Instance` in a worker thread, a second
+  `init()` against an already-live shared arena doesn't corrupt it, and
+  the worker's own write is visible back in the main thread afterward.
+  A separate OS process (`child_process`) does NOT share memory this way
+  — that remains the documented "per-process memory only" limit, not
+  something this test claims to close. 7/7 checks, stable across repeated
+  runs; added to `test/run-all.js`/`test/GenerateTestReport.js`. Re-pinned
+  the Last-test-run section to `dec16ea` (165/165, up from 158/158 across
+  11, now 12/12 suites).
+- **1.4.0** — 2026-09-12 — D.1 addendum: the historical `mm_*`-API
+  `memorymap.wasm` build named in the original scope was actually found
+  and confirmed live (`WebAssembly.Module.exports()`) — landed as
+  `memorymap-mm.wasm` + `MemoryMapFS.js`, a second, independent NVRAM path
+  alongside `MemoryMapArena.js` (not a replacement; `Registry.js` stays
+  wired to `MemoryMapArena`). `test/MemoryMapFS.test.js`, 17/17, added to
+  `test/run-all.js`/`test/GenerateTestReport.js`. Re-pinned the
+  Last-test-run section to `18f8077` (158/158, up from 141/141 across 10,
+  now 11/11 suites).
+- **1.3.0** — 2026-09-12 — D.1 (`MemoryMapArena.js` landed, Registry's
+  NVRAM record wired through it) shipped: marked ✅, added the findings
+  note documenting the original-scope API mismatch (`MemoryMapFS.js`'s
+  `mm_*` multi-mailbox surface was never actually compiled into
+  `memorymap.wasm`, confirmed live via `WebAssembly.Module.imports()`/
+  `.exports()`) and the resolution (a fresh `MemoryMapArena.js` against the
+  real single-arena API, plus `Registry.saveToArena()`/`loadFromArena()`
+  as an additive NVRAM path). `test/MemoryMapArena.test.js`, 12/12, added
+  to `test/run-all.js`. Re-pinned the Last-test-run section to `825cea6`
+  (141/141, up from 129/129 across 9, now 10/10 suites).
+- **1.2.0** — 2026-09-12 — B.6 (Memory.js secured/structured/tested)
+  shipped: marked ✅, same `_backing` WeakMap-by-`this` fix as `Physical`/
+  `Kernel`, plus two `next()`-injection hazards (`attach(cpu)`,
+  `alloc(..., label)`). Scope deliberately narrow per direct instruction —
+  hardens the class itself, does not change how Memory is used until the
+  Terminal 2.0 reference implementation lands. Re-pinned the Last-test-run
+  section to `e6674af` (129/129, up from 114/114 across 8).
+- **1.1.0** — 2026-09-12 — A.4 (`next()`-injection systemic audit) shipped:
+  marked ✅, added the findings note (five of six files clean, `Registry.set()`
+  documented as a currently-unreachable, not-cleanly-fixable gap) and a
+  second finding the audit surfaced beyond its own scope (`ISO.js`'s
+  constructor self-call, and why `#private`-method fixes for that shape
+  don't generalize to methods called from other composed methods —
+  `CPU.js`'s own fix re-checked and confirmed safe). Re-pinned the
+  Last-test-run section to the commit that actually shipped this
+  (114/114, 8/8 suites, up from 105/105 across 7).
 - **1.0.0** — 2026-09-11 — Initial publish: six-dimension rubric
   (Foundation Ready, Unlocks, OS Priority, Novelty, Rarity, Confidence),
   full scored backlog across five categories (Composition & Dispatch,

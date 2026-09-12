@@ -1,51 +1,134 @@
 /**
- * ExtendX.js — MountainShift OS Runtime Composition Engine
- *
- * Author: Wilbert Fobbs III
- * Company: Pooled Impact
- *
- * v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
- *
- * Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
- * without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
- * top of any constructor -- a plain ES class, a function, a third-party base --
- * so composition is available in contexts where BaseClassX is not an option.
- *
- * Provides:
- * - extend(): ordered, runtime-toggleable mixin composition over any base
- * - async-capable middleware chain dispatch (this.super.m() / next())
- * - per-instance bitmask layer toggling (enableLayer / disableLayer)
- * - deliberate mixinId override as a hot-swap across composed classes
- * - chain discovery (mixins(prop) / activeMixins() / explain(prop))
- * - Von Neumann relational set inspection over layer masks
- * - Base36 cache-token generation for a pipeline configuration
- *
- * Chain dispatch notes:
- *   * each layer runs on a frame-local `this` (own `super`), so awaiting
- *     layers cannot clobber each other's super binding;
- *   * the cursor is an index passed down, never a destructive pop, so a layer
- *     may call down more than once (parallel fan-out);
- *   * adaptive -- sync chains stay sync, a thenable anywhere makes the chain
- *     thenable from that point outward;
- *   * `next` is passed as a trailing argument for (req, res, next) middleware.
- *
- * ExtendX carries the composition surface only. BaseClassX keeps trace, schema,
- * events, graph linking, and disposal; where both are present BaseClassX may
- * delegate composition here rather than reimplementing it.
- *
+ * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
+ * @version 1.6.0
  * @license Proprietary — All Rights Reserved
+ * @description MountainShift OS Runtime Composition Engine.
+ *
+ *   v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
+ *   v1.2.0  mixin.locked (composition-time toggle refusal, fixing the
+ *           enableLayer/disableLayer self-lockout deadlock), the
+ *           _resolvePipeline locked-survives-global-override fix (a
+ *           disposed instance's locked mixins keep enforcing instead of
+ *           silently falling through), and always-wrapped dispose()/
+ *           disposeAsync() (previously conditional in a way that made
+ *           mixin dispose hooks dead for every BaseClassX subclass).
+ *   v1.3.0  Docblock/static-metadata retrofit: static get name/description/
+ *           docs/tests alongside the existing author/company/version
+ *           getters, full Allman brace style, JSDoc on every method --
+ *           no behavior change, but a real additive surface (the new
+ *           getters), not a no-op worth reusing v1.2.0's number for.
+ *   v1.4.0  Stacking fix (found ahead of E.1's closure factory, no current
+ *           production call site hits this shape yet): ExtendX.extend()
+ *           called on top of an ALREADY-composed class used to silently
+ *           drop the OUTER layer entirely -- the Subclass constructor
+ *           called Reflect.construct(BaseClass, args, Subclass) with its
+ *           own closed-over Subclass instead of new.target, so a nested
+ *           Reflect.construct(Inner, args, Outer) never actually reached
+ *           Outer.prototype; confirmed live (instance.world === undefined,
+ *           instance instanceof Outer === false) before the fix. Now
+ *           forwards new.target (falling back to Subclass for an
+ *           ordinary, non-nested construction, where they're the same
+ *           value anyway). A SEPARATE, related dispose()-chain gap was
+ *           found alongside this one and is NOT fixed here -- stacked
+ *           dispose() only runs the outermost layer's mixin hooks, since
+ *           every layer's wrapper calls the same shared
+ *           ExtendX.prototype.dispose(), which always reads
+ *           this.constructor._rawMixins (always the outermost class) and
+ *           short-circuits on its own idempotency guard before an inner
+ *           layer's chained call can do anything. Documented and proven
+ *           as a known gap in test/ExtendX.stacking.test.js pending a
+ *           deliberate fix design (splitting the once-only bookkeeping
+ *           from each layer's own mixin-hook run, tracked per-mixinId
+ *           rather than by a single global disposed flag).
+ *   v1.5.0  Fixed the v1.4.0 dispose-chain gap: split the single conflated
+ *           ExtendX.prototype.dispose()/disposeAsync() into
+ *           finalizeDisposeBookkeeping() (the once-only DISPOSED-flag/
+ *           loop-teardown/mask-collapse/finalizer-unregister state, safe
+ *           to call from every stacked layer's wrapper) and
+ *           runLayerDisposeHooks()/runLayerDisposeHooksAsync() (each
+ *           layer's OWN closed-over mixins list, deduped per mixinId in a
+ *           new RAN_DISPOSE_HOOKS side table rather than gated by the
+ *           single whole-instance DISPOSED flag). The Subclass
+ *           constructor's dispose/disposeAsync wrappers now call these
+ *           helpers directly with THIS extend() call's own `mixins`
+ *           array, instead of the shared this.constructor._rawMixins
+ *           lookup that could only ever see the outermost stacked layer.
+ *           Confirmed live at two and three layers deep, sync and async,
+ *           plus repeat-call idempotency (a second top-level dispose()
+ *           does not re-run any hook) -- test/ExtendX.stacking.test.js
+ *           updated from documenting the known gap to asserting the fix.
+ *   v1.6.0  Third stacking bug, found by direct code review (not testing):
+ *           installWrappers()'s `Subclass._wrapped || (Subclass._wrapped =
+ *           new Set())` did not check for an OWN property. extend() sets
+ *           Object.setPrototypeOf(Subclass, BaseClass), so a stacked
+ *           Outer's `_wrapped` lookup silently resolved up the STATIC
+ *           prototype chain to Inner's already-populated Set the first
+ *           time installWrappers(Outer) ran. Any method name Inner already
+ *           wrapped was then treated as "already installed" for Outer too
+ *           -- Outer never got its OWN dispatcher for that name on
+ *           Outer.prototype, so a call fell straight through the
+ *           prototype chain to INNER's dispatcher, running ONLY Inner's
+ *           chain. Confirmed live and security-relevant: a SecurityMixin
+ *           composed as the OUTER layer over an inner layer sharing a
+ *           guarded method name never actually enforced -- the guarded
+ *           call reached the inner, unguarded implementation directly --
+ *           while mixins()/activeMixins() (reading _rawMixins/
+ *           _resolvePipeline, not _wrapped) still reported the security
+ *           mixin as active, since the two mechanisms don't agree with
+ *           each other at all. Fixed by checking
+ *           Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+ *           instead of bare truthiness, so every Subclass gets its own
+ *           independent Set. test/ExtendX.stacking.test.js gained four
+ *           checks proving the fix (own-Set identity, the outer layer's
+ *           own dispatcher existing, the guard actually enforcing, and
+ *           correct this.super delegation once armed).
+ *
+ *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
+ *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
+ *   top of any constructor -- a plain ES class, a function, a third-party base --
+ *   so composition is available in contexts where BaseClassX is not an option.
+ *
+ *   Provides:
+ *   - extend(): ordered, runtime-toggleable mixin composition over any base
+ *   - async-capable middleware chain dispatch (this.super.m() / next())
+ *   - per-instance bitmask layer toggling (enableLayer / disableLayer)
+ *   - deliberate mixinId override as a hot-swap across composed classes
+ *   - chain discovery (mixins(prop) / activeMixins() / explain(prop))
+ *   - Von Neumann relational set inspection over layer masks
+ *   - Base36 cache-token generation for a pipeline configuration
+ *
+ *   Chain dispatch notes:
+ *     * each layer runs on a frame-local `this` (own `super`), so awaiting
+ *       layers cannot clobber each other's super binding;
+ *     * the cursor is an index passed down, never a destructive pop, so a layer
+ *       may call down more than once (parallel fan-out);
+ *     * adaptive -- sync chains stay sync, a thenable anywhere makes the chain
+ *       thenable from that point outward;
+ *     * `next` is passed as a trailing argument for (req, res, next) middleware.
+ *
+ *   ExtendX carries the composition surface only. BaseClassX keeps trace, schema,
+ *   events, graph linking, and disposal; where both are present BaseClassX may
+ *   delegate composition here rather than reimplementing it.
+ * @tests test/run-all.js
  */
-(function(root, factory) {
-    if (typeof define === 'function' && define.amd) {
+(function(root, factory)
+{
+    if (typeof define === 'function' && define.amd)
+    {
         define([], factory);
-    } else if (typeof module === 'object' && module.exports) {
+    }
+    else if (typeof module === 'object' && module.exports)
+    {
         module.exports = factory();
-    } else {
+    }
+    else
+    {
         root.ExtendX = factory();
     }
-}(typeof self !== 'undefined' ? self : this, function() {
+}(typeof self !== 'undefined' ? self : this, function()
+{
 
     'use strict';
 
@@ -54,7 +137,11 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.1.0';
+    const VERSION = '1.6.0';
+    const NAME = 'ExtendX';
+    const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
+    const DOCS = [];
+    const TESTS = ['test/run-all.js'];
 
     // Mask/loop/dispose/pending-init state is keyed by a small internal id,
     // NOT by object identity.
@@ -76,7 +163,8 @@
     // suffix, AND gives every id a natural chronological sort order for free
     // (useful anywhere ids double as a trace/replay correlation key). No
     // crypto dependency.
-    function genId() {
+    function genId()
+    {
         return 'node_' + Date.now().toString(36) + '_' + (__idCounter++).toString(36) + '_' + Math.random().toString(36).substring(2, 6);
     }
 
@@ -86,23 +174,38 @@
     // nondeterministic (that is what FinalizationRegistry is), so this is a
     // safety net, not a substitute for calling dispose().
     const FINALIZER = typeof FinalizationRegistry === 'function'
-        ? new FinalizationRegistry((id) => {
+        ? new FinalizationRegistry((id) =>
+        {
             MASKS.delete(id);
             LOOPS.delete(id);
             PENDING_INIT.delete(id);
             DISPOSED.delete(id);
+            RAN_DISPOSE_HOOKS.delete(id);
         })
         : null;
 
-    // Returns this instance's internal id, minting and attaching one via
-    // defineProperty on first use.
-    function getExtId(obj) {
-        if (typeof obj._extId === 'string') return obj._extId;
+    /**
+     * Return this instance's internal id, minting and attaching one via
+     * defineProperty on first use.
+     * @param {Object} obj - any composed instance
+     * @returns {string} the instance's stable `_extId`
+     */
+    function getExtId(obj)
+    {
+        if (typeof obj._extId === 'string')
+        {
+            return obj._extId;
+        }
         const id = genId();
-        try {
+        try
+        {
             Object.defineProperty(obj, '_extId', { value: id, enumerable: false, configurable: false, writable: false });
-        } catch (e) { /* falls through; id still usable for this call */ }
-        if (FINALIZER && typeof obj._extId === 'string') FINALIZER.register(obj, obj._extId, obj);
+        }
+        catch (e) { /* falls through; id still usable for this call */ }
+        if (FINALIZER && typeof obj._extId === 'string')
+        {
+            FINALIZER.register(obj, obj._extId, obj);
+        }
         return typeof obj._extId === 'string' ? obj._extId : id;
     }
 
@@ -135,9 +238,13 @@
     // silently never dispatched. Composed classes are application-lifetime
     // objects, so a strong Set is acceptable here.
     const USERS = new Map();
-    function trackUser(mixinId, Subclass) {
+    function trackUser(mixinId, Subclass)
+    {
         let s = USERS.get(mixinId);
-        if (!s) { s = new Set(); USERS.set(mixinId, s); }
+        if (!s)
+        {
+            s = new Set(); USERS.set(mixinId, s);
+        }
         s.add(Subclass);
     }
 
@@ -155,6 +262,15 @@
     // Disposal is idempotent and must be observable; keyed by id like MASKS.
     const DISPOSED = new Set();
 
+    // id -> Set<mixinId> already disposed. Deliberately SEPARATE from
+    // DISPOSED above -- DISPOSED gates the once-only bookkeeping (loop
+    // teardown, mask collapse, finalizer unregister), while this gates
+    // each individual mixin's dispose HOOK, one Set entry per mixinId
+    // rather than one flag for the whole instance. That split is what
+    // makes stacked composition's dispose chain work: see
+    // runLayerDisposeHooks()/runLayerDisposeHooksAsync() below.
+    const RAN_DISPOSE_HOOKS = new Map();
+
     // Compute-loop timer and deferred task queue, per instance. Keyed by id.
     const LOOPS = new Map();
 
@@ -165,19 +281,25 @@
     // rather than calling init again -- without this the hook runs twice, once
     // fire-and-forget at construction and once more on the explicit call.
     const PENDING_INIT = new Map();
-    function loopState(obj) {
+    function loopState(obj)
+    {
         const id = getExtId(obj);
         let s = LOOPS.get(id);
-        if (!s) { s = { timer: null, queue: [] }; LOOPS.set(id, s); }
+        if (!s)
+        {
+            s = { timer: null, queue: [] }; LOOPS.set(id, s);
+        }
         return s;
     }
 
     // ─── Private Helpers ───────────────────────────────────────
 
-    function getMask(obj) {
+    function getMask(obj)
+    {
         const id = getExtId(obj);
         let m = MASKS.get(id);
-        if (!m) {
+        if (!m)
+        {
             const d = obj && obj.constructor && obj.constructor._defaultMaskState;
             m = d ? [d[0], [...d[1]]] : [1, []];
             MASKS.set(id, m);
@@ -185,7 +307,8 @@
         return m;
     }
 
-    function setMask(obj, mask) {
+    function setMask(obj, mask)
+    {
         MASKS.set(getExtId(obj), mask);
         return mask;
     }
@@ -193,29 +316,167 @@
     // Base36 scalar identity for a mask. Shared by the cacheToken getter and
     // the pipeline memo, so a configuration and its cached resolved pipeline
     // can never disagree about which mask they describe.
-    function tokenFor(mask) {
+    function tokenFor(mask)
+    {
         const [globalOverride, bitArray] = mask;
-        if (globalOverride === 0) return '0';
+        if (globalOverride === 0)
+        {
+            return '0';
+        }
         // Normalize holes to 1 (implicitly-on) so a mask that was never grown
         // and one explicitly filled with 1s produce the SAME token -- otherwise
         // 'undefined' would stringify into the binary literal and throw.
         const binary = Array.from(bitArray, b => (b === 0 ? 0 : 1)).reverse().join('');
-        if (!binary) return '1';
+        if (!binary)
+        {
+            return '1';
+        }
         return (((BigInt('0b' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
     }
 
     // Current implementation for a declared mixin: the registry's entry for its
     // id, falling back to the object itself if it was never registered.
-    function current(m) {
+    function current(m)
+    {
         return REGISTERED.get(m.mixinId) || m;
+    }
+
+    // ─── Dispose helpers (stacking fix, v1.4.0) ──────────────────
+    //
+    // Split from one conflated ExtendX.prototype.dispose() into two
+    // independent concerns, because stacked composition (ExtendX.extend()
+    // called on top of an already-composed class) needs them to run on
+    // DIFFERENT schedules:
+    //
+    //   finalizeDisposeBookkeeping -- the once-only, whole-instance state
+    //     (DISPOSED flag, loop teardown, mask collapse, finalizer
+    //     unregister). Must run exactly once no matter how many stacked
+    //     layers call in.
+    //
+    //   runLayerDisposeHooks(Async) -- each mixin's OWN dispose hook, keyed
+    //     by mixinId rather than gated by the single instance-wide DISPOSED
+    //     flag. A stacked instance has ONE shared _extId but MULTIPLE
+    //     layers, each with its OWN distinct declared mixin list (closed
+    //     over per extend() call, not read from this.constructor._rawMixins
+    //     -- that always resolves to the OUTERMOST class via prototype
+    //     shadowing, so it could never reach an inner layer's mixins at
+    //     all). Before this split, every layer's dispose wrapper called the
+    //     same conflated method, whose OWN idempotency guard (`if
+    //     (DISPOSED.has(id)) return;`) short-circuited every layer below
+    //     the outermost the instant the outermost had run -- confirmed
+    //     live: an inner layer's mixin dispose hook silently never ran at
+    //     all. Deduping per mixinId (not per whole-instance flag) instead
+    //     means: every distinct layer's mixins get their turn once each,
+    //     AND a caller invoking dispose() twice at the top level still
+    //     never re-runs the same hook twice.
+    function finalizeDisposeBookkeeping(instance)
+    {
+        const id = getExtId(instance);
+        if (DISPOSED.has(id))
+        {
+            return;
+        }
+        DISPOSED.add(id);
+        const st = LOOPS.get(id);
+        if (st && st.timer)
+        {
+            clearInterval(st.timer);
+        }
+        LOOPS.delete(id);
+        PENDING_INIT.delete(id);
+        // Collapse, don't delete: getMask() regenerates a fresh, fully-
+        // enabled default mask for a MISSING entry, which would silently
+        // re-enable every mixin's dispatch after "dispose" -- setting
+        // [0,[]] is what actually makes the pipeline resolve to nothing.
+        setMask(instance, [0, []]);
+        if (FINALIZER)
+        {
+            FINALIZER.unregister(instance);
+        }
+    }
+
+    function runLayerDisposeHooks(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        (mixinsList || []).forEach(m =>
+        {
+            if (ran.has(m.mixinId))
+            {
+                return;
+            }
+            ran.add(m.mixinId);
+            // Through current(), so an overridden id disposes with its
+            // replacement's hook rather than the original's.
+            const impl = current(m);
+            if (typeof impl.dispose === 'function')
+            {
+                try
+                {
+                    impl.dispose.call(instance);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e);
+                }
+            }
+        });
+    }
+
+    async function runLayerDisposeHooksAsync(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        const pending = (mixinsList || [])
+            .filter(m => !ran.has(m.mixinId))
+            .map(m =>
+            {
+                ran.add(m.mixinId);
+                const impl = current(m);
+                if (typeof impl.dispose !== 'function')
+                {
+                    return null;
+                }
+                try
+                {
+                    return Promise.resolve(impl.dispose.call(instance));
+                }
+                catch (e)
+                {
+                    return Promise.reject(e);
+                }
+            })
+            .filter(p => p !== null);
+        const settled = await Promise.allSettled(pending);
+        settled.forEach(r =>
+        {
+            if (r.status === 'rejected')
+            {
+                console.error('[ExtendX asyncDispose] hook failed:', r.reason);
+            }
+        });
     }
 
     // Reindex every known mixin. A new id inserted alphabetically before an
     // existing one shifts the positions after it, so previously assigned
     // indices must move too or old and new classes disagree about bit meaning.
-    function reindex() {
+    function reindex()
+    {
         const ids = Array.from(REGISTERED.keys()).sort();
-        ids.forEach((id, i) => { REGISTERED.get(id)._bitIndex = i; });
+        ids.forEach((id, i) =>
+        {
+            REGISTERED.get(id)._bitIndex = i;
+        });
         return ids;
     }
 
@@ -228,8 +489,10 @@
     // calls again so a replacement introducing a NEW method name still gets
     // one. Without that top-up, a late-added method is present on the mixin,
     // reachable by hand, and silently never dispatched.
-    function makeDispatcher(Subclass, BaseClass, prop) {
-        return function(...methodArgs) {
+    function makeDispatcher(Subclass, BaseClass, prop)
+    {
+        return function(...methodArgs)
+        {
             const receiver = this;
             const mask = getMask(receiver);
 
@@ -239,15 +502,22 @@
             // carries the registry generation, so an override invalidates it.
             const mKey = String(prop) + '|' + tokenFor(mask) + '|' + REGISTRY_GENERATION;
             let methodCache = METHOD_CACHE.get(Subclass);
-            if (!methodCache) { methodCache = new Map(); METHOD_CACHE.set(Subclass, methodCache); }
+            if (!methodCache)
+            {
+                methodCache = new Map(); METHOD_CACHE.set(Subclass, methodCache);
+            }
 
             let chain = methodCache.get(mKey);
-            if (!chain) {
+            if (!chain)
+            {
                 chain = Subclass._resolvePipeline(mask)
                     .filter(mixin => typeof mixin[prop] === 'function')
                     .map(mixin => mixin[prop]);
                 const baseMethod = BaseClass.prototype[prop];
-                if (typeof baseMethod === 'function') chain.unshift(baseMethod);
+                if (typeof baseMethod === 'function')
+                {
+                    chain.unshift(baseMethod);
+                }
                 methodCache.set(mKey, chain);
             }
 
@@ -256,8 +526,12 @@
             // fan-out, Promise.all([this.super.m(), this.super.m()]) -- eat the
             // same array: the first drains it and the second returns undefined,
             // silently.
-            const invokeNext = (cursor, ...args) => {
-                if (cursor < 0) return undefined;
+            const invokeNext = (cursor, ...args) =>
+            {
+                if (cursor < 0)
+                {
+                    return undefined;
+                }
                 const currentMethod = chain[cursor];
 
                 // Frame-local view of the instance.
@@ -284,8 +558,12 @@
                 // dispatch strategy can fix that; what dispatch CAN do is refuse
                 // to let it pass silently.
                 let downstreamAsync = false;
-                const observe = (v) => {
-                    if (v && typeof v.then === 'function') downstreamAsync = true;
+                const observe = (v) =>
+                {
+                    if (v && typeof v.then === 'function')
+                    {
+                        downstreamAsync = true;
+                    }
                     return v;
                 };
                 const next = (...nextArgs) =>
@@ -294,7 +572,8 @@
 
                 const result = currentMethod.apply(frame, args.concat(next));
 
-                if (downstreamAsync && !(result && typeof result.then === 'function')) {
+                if (downstreamAsync && !(result && typeof result.then === 'function'))
+                {
                     throw new Error(
                         'ExtendX chain: a synchronous layer of "' + String(prop) + '" received a ' +
                         'promise from the layer below and returned a non-promise (' + typeof result + '). ' +
@@ -314,7 +593,8 @@
     // invoked directly, not chained; the rest is bookkeeping.
     const NON_DISPATCH = new Set(['init', 'dispose', 'mixinId', '_bitIndex', 'overrides']);
 
-    function dispatchKeys(mixin) {
+    function dispatchKeys(mixin)
+    {
         return Object.keys(mixin).filter(k =>
             !NON_DISPATCH.has(k) && typeof mixin[k] === 'function');
     }
@@ -325,12 +605,40 @@
      * Idempotent and additive: called once at extend(), and again by override()
      * for any method name the replacement introduces.
      */
-    function installWrappers(Subclass) {
+    function installWrappers(Subclass)
+    {
         const BaseClass = Subclass._extendXBase;
-        const installed = Subclass._wrapped || (Subclass._wrapped = new Set());
-        (Subclass._rawMixins || []).forEach(m => {
-            dispatchKeys(current(m)).forEach(key => {
-                if (installed.has(key)) return;
+        // Object.prototype.hasOwnProperty, NOT a bare `Subclass._wrapped ||
+        // ...` truthiness check -- extend() sets Object.setPrototypeOf(
+        // Subclass, BaseClass), so a stacked Outer's `_wrapped` lookup
+        // silently resolves up the STATIC prototype chain to Inner's
+        // already-populated Set when Outer has none of its own yet. That
+        // means (a) any method name Inner already wrapped is treated as
+        // "already installed" for Outer too, even when Outer's own mixin
+        // has a MEANINGFULLY DIFFERENT implementation of the same name --
+        // Outer.prototype never gets its own dispatcher for that name at
+        // all, so calls fall through the prototype chain straight to
+        // Inner's dispatcher, silently running ONLY Inner's chain -- and
+        // (b) `installed.add(key)` would MUTATE Inner's own Set in place.
+        // Confirmed live and security-relevant: a SecurityMixin composed
+        // as the OUTER layer over an inner layer sharing a guarded method
+        // name never actually enforced -- the guarded call reached
+        // Inner's unguarded implementation directly, while mixins()/
+        // activeMixins() (which read _rawMixins/_resolvePipeline, not
+        // _wrapped) still reported the security mixin as active. Each
+        // Subclass needs its OWN independent Set, never one inherited
+        // from the class it's stacked on top of.
+        const installed = Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+            ? Subclass._wrapped
+            : (Subclass._wrapped = new Set());
+        (Subclass._rawMixins || []).forEach(m =>
+        {
+            dispatchKeys(current(m)).forEach(key =>
+            {
+                if (installed.has(key))
+                {
+                    return;
+                }
                 installed.add(key);
                 Object.defineProperty(Subclass.prototype, key, {
                     value: makeDispatcher(Subclass, BaseClass, key),
@@ -343,8 +651,10 @@
 
     // ─── ExtendX Class ──────────────────────────────────────────
 
-    class ExtendX {
-        constructor(options = {}) {
+    class ExtendX
+    {
+        constructor(options = {})
+        {
             this.id = options.id || genId();
             this.state = options.state || 'initialized';
             getMask(this);
@@ -355,6 +665,10 @@
         static get author() { return AUTHOR; }
         static get company() { return COMPANY; }
         static get version() { return VERSION; }
+        static get name() { return NAME; }
+        static get description() { return DESCRIPTION; }
+        static get docs() { return DOCS; }
+        static get tests() { return TESTS; }
 
         get author() { return AUTHOR; }
         get company() { return COMPANY; }
@@ -380,28 +694,55 @@
          * dropped because its bit index fell outside the mask array, and
          * disableLayer being swallowed by chain dispatch. Either would have
          * shown instantly as a missing entry here.
+         *
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @returns {Array} declared mixins, or the resolved dispatch chain for prop
          */
-        mixins(prop) {
+        mixins(prop)
+        {
             const C = this.constructor;
-            if (prop === undefined) return C._rawMixins ? [...C._rawMixins] : [];
+            if (prop === undefined)
+            {
+                return C._rawMixins ? [...C._rawMixins] : [];
+            }
             return ExtendX.mixins(C, prop, getMask(this));
         }
 
-        /** Active layers only, honouring this instance's mask. */
-        activeMixins() {
+        /**
+         * Active layers only, honouring this instance's mask.
+         * @returns {Array} the currently active mixin objects, dispatch order
+         */
+        activeMixins()
+        {
             const C = this.constructor;
-            if (typeof C._resolvePipeline !== 'function') return [];
+            if (typeof C._resolvePipeline !== 'function')
+            {
+                return [];
+            }
             return [...C._resolvePipeline(getMask(this))].reverse();
         }
 
-        /** One-line human-readable chain, e.g. "handle: Log -> Auth -> <base>". */
-        explain(prop) {
+        /**
+         * One-line human-readable chain, e.g. "handle: Log -> Auth -> <base>".
+         * @param {string} prop - method name to explain
+         * @returns {string} the human-readable chain description
+         */
+        explain(prop)
+        {
             const chain = this.mixins(prop);
             return String(prop) + ': ' + (chain.length ? chain.join(' -> ') : '(nothing dispatches)');
         }
 
-        hasMixin(mixin) {
-            if (!this.constructor._rawMixins) return false;
+        /**
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if this instance's class was composed with mixin
+         */
+        hasMixin(mixin)
+        {
+            if (!this.constructor._rawMixins)
+            {
+                return false;
+            }
             return this.constructor._rawMixins.includes(mixin);
         }
 
@@ -425,38 +766,75 @@
         // sidesteps that entirely -- the bit for a locked mixin never moves
         // through this API in the first place.
 
-        enableLayer(mixin) {
-            if (mixin && mixin.locked) {
+        /**
+         * Turn a mixin's bit on for this instance.
+         * @param {Object} mixin - the mixin to enable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        enableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
                 throw new Error('ExtendX.enableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
             }
-            if (mixin._bitIndex === undefined) return this;
+            if (mixin._bitIndex === undefined)
+            {
+                return this;
+            }
             const bits = getMask(this)[1];
-            for (let i = bits.length; i < mixin._bitIndex; i++) bits[i] = 1;
+            for (let i = bits.length; i < mixin._bitIndex; i++)
+            {
+                bits[i] = 1;
+            }
             bits[mixin._bitIndex] = 1;
             return this;
         }
 
-        disableLayer(mixin) {
-            if (mixin && mixin.locked) {
+        /**
+         * Turn a mixin's bit off for this instance.
+         * @param {Object} mixin - the mixin to disable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        disableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
                 throw new Error('ExtendX.disableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
             }
-            if (mixin._bitIndex === undefined) return this;
+            if (mixin._bitIndex === undefined)
+            {
+                return this;
+            }
             const bits = getMask(this)[1];
             // Assigning past the end extends the array; the holes it creates
             // read as implicitly-on, which is the correct default for a layer
             // registered after this instance's class was composed.
-            for (let i = bits.length; i < mixin._bitIndex; i++) bits[i] = 1;
+            for (let i = bits.length; i < mixin._bitIndex; i++)
+            {
+                bits[i] = 1;
+            }
             bits[mixin._bitIndex] = 0;
             return this;
         }
 
-        toggleAllLayers(enabled) {
+        /**
+         * @param {boolean} enabled - global on/off override for every layer
+         * @returns {ExtendX} this, for chaining
+         */
+        toggleAllLayers(enabled)
+        {
             getMask(this)[0] = enabled ? 1 : 0;
             return this;
         }
 
-        get cacheToken() {
-            if (DISPOSED.has(getExtId(this))) return '0';
+        get cacheToken()
+        {
+            if (DISPOSED.has(getExtId(this)))
+            {
+                return '0';
+            }
             return tokenFor(getMask(this));
         }
 
@@ -468,45 +846,76 @@
         // handle rather than starting immediately, so a caller decides when.
         // main() and render() are plain hooks -- a mixin that defines either
         // one joins the dispatch chain for it like any other method.
-        compute(mode = 'canvas', canvasIdOrContext = null, fps = 60) {
+        /**
+         * @param {string} [mode='canvas'] - 'canvas' or 'console'
+         * @param {string|CanvasRenderingContext2D|null} [canvasIdOrContext=null] - canvas id or context, for 'canvas' mode
+         * @param {number} [fps=60] - target frames per second
+         * @returns {{start: Function, stop: Function, running: boolean, schedule: Function, rescue: Function}} a lifecycle handle
+         */
+        compute(mode = 'canvas', canvasIdOrContext = null, fps = 60)
+        {
             const intervalMs = Math.max(1, Math.floor(1000 / fps));
             const self = this;
             let ctx = null;
 
-            if (mode === 'canvas' && canvasIdOrContext) {
+            if (mode === 'canvas' && canvasIdOrContext)
+            {
                 ctx = typeof canvasIdOrContext === 'string'
                     ? (typeof document !== 'undefined' ? document.getElementById(canvasIdOrContext)?.getContext('2d') : null)
                     : canvasIdOrContext;
             }
 
             const lifecycle = {
-                start: () => {
+                start: () =>
+                {
                     const st = loopState(self);
-                    if (st.timer) return lifecycle;
-                    if (DISPOSED.has(getExtId(self))) throw new Error('ExtendX.compute(): instance is disposed');
-                    st.timer = setInterval(() => {
-                        try {
+                    if (st.timer)
+                    {
+                        return lifecycle;
+                    }
+                    if (DISPOSED.has(getExtId(self)))
+                    {
+                        throw new Error('ExtendX.compute(): instance is disposed');
+                    }
+                    st.timer = setInterval(() =>
+                    {
+                        try
+                        {
                             self.flushQueue();
                             self.main();
-                            if (mode === 'canvas' && ctx) self.render(mode, ctx);
-                            else {
-                                if (mode === 'console' && typeof console.clear === 'function') console.clear();
+                            if (mode === 'canvas' && ctx)
+                            {
+                                self.render(mode, ctx);
+                            }
+                            else
+                            {
+                                if (mode === 'console' && typeof console.clear === 'function')
+                                {
+                                    console.clear();
+                                }
                                 self.render(mode);
                             }
-                        } catch (err) {
+                        }
+                        catch (err)
+                        {
                             lifecycle.rescue(err);
                         }
                     }, intervalMs);
                     return lifecycle;
                 },
-                stop: () => {
+                stop: () =>
+                {
                     const st = loopState(self);
-                    if (st.timer) { clearInterval(st.timer); st.timer = null; }
+                    if (st.timer)
+                    {
+                        clearInterval(st.timer); st.timer = null;
+                    }
                     return lifecycle;
                 },
                 get running() { return !!loopState(self).timer; },
                 schedule: (task) => { loopState(self).queue.push(task); return lifecycle; },
-                rescue: (error) => {
+                rescue: (error) =>
+                {
                     console.error('[ExtendX compute loop] halted:', error);
                     lifecycle.stop();
                 }
@@ -514,21 +923,47 @@
             return lifecycle;
         }
 
+        /** Dispatch hook -- a mixin defining main() joins this instance's compute loop chain. @returns {void} */
         main() { /* dispatch hook */ }
+
+        /**
+         * Dispatch hook -- a mixin defining render() joins this instance's compute loop chain.
+         * @param {string} mode - 'canvas' or 'console'
+         * @param {CanvasRenderingContext2D} [ctx] - the canvas context, for 'canvas' mode
+         * @returns {void}
+         */
         render(mode, ctx) { /* dispatch hook */ }
 
-        /** Run and clear every queued task. Errors do not stop the queue. */
-        flushQueue() {
+        /**
+         * Run and clear every queued task. Errors do not stop the queue.
+         * @returns {ExtendX} this, for chaining
+         */
+        flushQueue()
+        {
             const st = loopState(this);
-            while (st.queue.length > 0) {
+            while (st.queue.length > 0)
+            {
                 const task = st.queue.shift();
-                if (typeof task !== 'function') continue;
-                try { task.call(this); }
-                catch (e) { console.error('[ExtendX queue] task failed:', e); }
+                if (typeof task !== 'function')
+                {
+                    continue;
+                }
+                try
+                {
+                    task.call(this);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX queue] task failed:', e);
+                }
             }
             return this;
         }
 
+        /**
+         * @param {Function} task - queued to run on the next compute loop tick
+         * @returns {ExtendX} this, for chaining
+         */
         schedule(task) { loopState(this).queue.push(task); return this; }
 
         // ─── Explicit resource disposal ─────────────────────────
@@ -545,67 +980,53 @@
         // GC timing. That hook now lives on [DISPOSE] as a thin alias below, so
         // the primary method stays free of a JS-only well-known-symbol
         // dependency (PHP, or any host without Symbol, calls this directly).
-        dispose() {
-            const id = getExtId(this);
-            if (DISPOSED.has(id)) return;
-            DISPOSED.add(id);
-
-            const st = LOOPS.get(id);
-            if (st && st.timer) clearInterval(st.timer);
-            LOOPS.delete(id);
-            PENDING_INIT.delete(id);
-            // Collapse, don't delete: getMask() regenerates a fresh, fully-
-            // enabled default mask for a MISSING entry, which would silently
-            // re-enable every mixin's dispatch after "dispose" -- setting [0,[]]
-            // is what actually makes the pipeline resolve to nothing.
-            setMask(this, [0, []]);
-            if (FINALIZER) FINALIZER.unregister(this);
-
-            // Through current(), so an overridden id disposes with its
-            // replacement's hook rather than the original's.
-            const declared = this.constructor._rawMixins || [];
-            declared.forEach(m => {
-                const impl = current(m);
-                if (typeof impl.dispose === 'function') {
-                    try { impl.dispose.call(this); }
-                    catch (e) { console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e); }
-                }
-            });
+        /**
+         * @returns {void}
+         */
+        dispose()
+        {
+            // Delegates to the shared helpers above -- see their header
+            // comment for why the once-only bookkeeping and each mixin's
+            // own hook are deliberately split. this.constructor._rawMixins
+            // is only correct here because a DIRECT ExtendX subclass (one
+            // never wrapped by extend()) has exactly one layer; extend()'s
+            // own Subclass constructor wraps dispose() differently below,
+            // closing over its OWN mixins list instead of reading this.
+            finalizeDisposeBookkeeping(this);
+            runLayerDisposeHooks(this, this.constructor._rawMixins || []);
         }
 
         /**
          * Async counterpart. Awaits any mixin dispose hook that returns a
          * thenable, then performs the synchronous teardown.
+         * @returns {Promise<void>}
          */
-        async disposeAsync() {
-            const id = getExtId(this);
-            if (DISPOSED.has(id)) return;
-            const declared = this.constructor._rawMixins || [];
-            const pending = declared
-                .map(m => current(m))
-                .filter(impl => typeof impl.dispose === 'function')
-                .map(impl => { try { return Promise.resolve(impl.dispose.call(this)); } catch (e) { return Promise.reject(e); } });
-            const settled = await Promise.allSettled(pending);
-            settled.forEach(r => { if (r.status === 'rejected') console.error('[ExtendX asyncDispose] hook failed:', r.reason); });
-
-            DISPOSED.add(id);
-            const st = LOOPS.get(id);
-            if (st && st.timer) clearInterval(st.timer);
-            LOOPS.delete(id);
-            PENDING_INIT.delete(id);
-            setMask(this, [0, []]);
-            if (FINALIZER) FINALIZER.unregister(this);
+        async disposeAsync()
+        {
+            // See dispose() above and the shared helpers' header comment.
+            await runLayerDisposeHooksAsync(this, this.constructor._rawMixins || []);
+            finalizeDisposeBookkeeping(this);
         }
 
-        /** Thin alias so `using` still triggers cleanup -- see dispose() above. */
+        /** Thin alias so `using` still triggers cleanup -- see dispose() above. @returns {void} */
         [DISPOSE]() { return this.dispose(); }
 
-        /** Thin alias so `await using` still triggers cleanup -- see disposeAsync() above. */
+        /** Thin alias so `await using` still triggers cleanup -- see disposeAsync() above. @returns {Promise<void>} */
         async [ASYNC_DISPOSE]() { return this.disposeAsync(); }
 
         // ─── Static Methods ─────────────────────────────────────
 
-        static extend(BaseClass, ...args) {
+        /**
+         * Compose BaseClass with one or more mixins into a new, runtime-toggleable Subclass.
+         * @param {Function} BaseClass - the constructor/class to compose on top of
+         * @param {...Object} args - mixin objects, optionally followed by a trailing
+         *   `{ order, custommap, array }` configuration object
+         * @returns {Function} the composed Subclass constructor
+         * @throws {Error} if a mixin lacks a stable string mixinId, or reuses one
+         *   already registered to a different mixin without `overrides: true`
+         */
+        static extend(BaseClass, ...args)
+        {
             let options = { order: 'left-right' };
             let mixins = args;
 
@@ -613,9 +1034,11 @@
             if (args.length > 0 &&
                 typeof args[args.length - 1] === 'object' &&
                 !args[args.length - 1].prototype &&
-                !('init' in args[args.length - 1])) {
+                !('init' in args[args.length - 1]))
+            {
                 const lastArg = args[args.length - 1];
-                if ('order' in lastArg || 'custommap' in lastArg || 'array' in lastArg) {
+                if ('order' in lastArg || 'custommap' in lastArg || 'array' in lastArg)
+                {
                     options = { ...options, ...args.pop() };
                     mixins = args;
                 }
@@ -630,12 +1053,15 @@
             // portable cache key. Position is the mixin's index in the
             // ALPHABETICALLY SORTED list of every mixinId ever registered.
             const overriddenIds = [];
-            mixins.forEach(m => {
-                if (!m.mixinId || typeof m.mixinId !== 'string') {
+            mixins.forEach(m =>
+            {
+                if (!m.mixinId || typeof m.mixinId !== 'string')
+                {
                     throw new Error('ExtendX.extend(): every mixin needs a stable string mixinId for deterministic bit assignment');
                 }
                 const owner = REGISTERED.get(m.mixinId);
-                if (owner && owner !== m) {
+                if (owner && owner !== m)
+                {
                     // Two intents share this shape, and only the caller knows
                     // which:
                     //   accidental collision -- two unrelated mixins that
@@ -648,7 +1074,8 @@
                     //     same identity, same toggle, new behaviour.
                     // So the guard stays and `overrides: true` declares the
                     // second case.
-                    if (m.overrides !== true) {
+                    if (m.overrides !== true)
+                    {
                         throw new Error('ExtendX.extend(): mixinId "' + m.mixinId + '" is already registered to a different mixin. ' +
                             'Ids map to bit positions, so two mixins sharing one id share one bit -- disableLayer on either would toggle both. ' +
                             'If the replacement is intentional, set overrides: true on the new mixin (or call ExtendX.override(mixin)).');
@@ -667,9 +1094,13 @@
 
             // Now that REGISTERED holds the replacements, top up wrappers on any
             // class already composed with an overridden id.
-            overriddenIds.forEach(id => {
+            overriddenIds.forEach(id =>
+            {
                 const users = USERS.get(id);
-                if (users) users.forEach(Sub => installWrappers(Sub));
+                if (users)
+                {
+                    users.forEach(Sub => installWrappers(Sub));
+                }
             });
 
             // ─── Build mask array sized to global registry ─────
@@ -684,8 +1115,34 @@
             const classDefaultMaskState = [1, initialBits];
 
             // ─── Subclass constructor ──────────────────────────
-            function Subclass(...args) {
-                const instance = Reflect.construct(BaseClass, args, Subclass);
+            function Subclass(...args)
+            {
+                // new.target, NOT the bare closed-over `Subclass` -- stacking a
+                // SECOND ExtendX.extend() on top of an already-composed class
+                // (Outer = ExtendX.extend(Inner, mixinB) where Inner is itself
+                // ExtendX.extend(Raw, mixinA)) used to silently drop the outer
+                // layer entirely. Outer's own constructor calls
+                // Reflect.construct(Inner, args, Outer), which sets new.target
+                // to Outer for the duration of Inner's function body -- but
+                // Inner's body ignored that and called
+                // Reflect.construct(BaseClass, args, Subclass) with ITS OWN
+                // closed-over `Subclass` (Inner itself), hardcoding newTarget
+                // back to Inner. Because Inner's body explicitly returns an
+                // object (the fully-set-up `proxied`), that returned object
+                // OVERRIDES whatever `this` the engine would have created from
+                // Outer.prototype -- so the final instance's real prototype
+                // chain stopped at Inner.prototype, never reaching
+                // Outer.prototype at all. Every mixinB method Outer's own
+                // installWrappers() had put on Outer.prototype became
+                // permanently unreachable: `instance.world` was undefined,
+                // `instance instanceof Outer` was false, proven live before
+                // this fix. Forwarding new.target (falling back to the
+                // closed-over Subclass for an ordinary, non-nested `new
+                // Inner()` call, where new.target === Subclass already) lets
+                // each layer's own newTarget propagate all the way down the
+                // Reflect.construct chain, so the final object's prototype
+                // correctly extends from the OUTERMOST composed class.
+                const instance = Reflect.construct(BaseClass, args, new.target || Subclass);
 
                 // A base that is not an ExtendX subclass has none of these, so
                 // attach them here. Own properties via defineProperty, because
@@ -694,8 +1151,10 @@
                 const methods = ['enableLayer', 'disableLayer', 'toggleAllLayers',
                     'mixins', 'activeMixins', 'explain', 'hasMixin',
                     'compute', 'main', 'render', 'flushQueue', 'schedule'];
-                methods.forEach(fn => {
-                    if (typeof instance[fn] !== 'function') {
+                methods.forEach(fn =>
+                {
+                    if (typeof instance[fn] !== 'function')
+                    {
                         Object.defineProperty(instance, fn, {
                             value: ExtendX.prototype[fn],
                             enumerable: false,
@@ -720,21 +1179,47 @@
                 // logic first and chaining to the original afterward -- so a
                 // BaseClassX subclass gets both: its own real disposal AND
                 // every composed mixin's dispose hook actually running.
+                //
+                // Calls the shared runLayerDisposeHooks(Async) helpers directly
+                // with THIS extend() call's own closed-over `mixins` array --
+                // NOT ExtendX.prototype.dispose.call(this) (which reads
+                // this.constructor._rawMixins, always the OUTERMOST stacked
+                // layer via prototype shadowing, and would never reach an
+                // inner layer's own mixins at all). finalizeDisposeBookkeeping
+                // is idempotent and safe to call from every stacked layer's
+                // wrapper; runLayerDisposeHooks/Async dedupes per mixinId, so
+                // a stacked instance's OUTER layer running first does not
+                // prevent an INNER layer's chained call (via originalDispose
+                // below) from still running its own distinct mixins' hooks --
+                // the bug this fixes: before this split, the inner layer's
+                // chained call hit ExtendX.prototype.dispose's OWN idempotency
+                // guard and returned immediately, so its mixin's dispose hook
+                // silently never ran at all.
                 const originalDispose = typeof instance.dispose === 'function' ? instance.dispose.bind(instance) : null;
                 const originalDisposeAsync = typeof instance.disposeAsync === 'function' ? instance.disposeAsync.bind(instance) : null;
                 Object.defineProperty(instance, 'dispose', {
-                    value: function() {
-                        ExtendX.prototype.dispose.call(this);
-                        if (originalDispose) originalDispose();
+                    value: function()
+                    {
+                        finalizeDisposeBookkeeping(this);
+                        runLayerDisposeHooks(this, mixins);
+                        if (originalDispose)
+                        {
+                            originalDispose();
+                        }
                     },
                     enumerable: false,
                     configurable: true,
                     writable: true
                 });
                 Object.defineProperty(instance, 'disposeAsync', {
-                    value: async function() {
-                        await ExtendX.prototype.disposeAsync.call(this);
-                        if (originalDisposeAsync) await originalDisposeAsync();
+                    value: async function()
+                    {
+                        await runLayerDisposeHooksAsync(this, mixins);
+                        finalizeDisposeBookkeeping(this);
+                        if (originalDisposeAsync)
+                        {
+                            await originalDisposeAsync();
+                        }
                     },
                     enumerable: false,
                     configurable: true,
@@ -743,8 +1228,10 @@
 
                 // Authorship getters live on ExtendX.prototype, so an instance
                 // whose base is NOT an ExtendX subclass never sees them.
-                ['author', 'company', 'version'].forEach(p => {
-                    if (!(p in instance)) {
+                ['author', 'company', 'version'].forEach(p =>
+                {
+                    if (!(p in instance))
+                    {
                         Object.defineProperty(instance, p, {
                             get: Object.getOwnPropertyDescriptor(ExtendX.prototype, p).get,
                             enumerable: false,
@@ -755,22 +1242,26 @@
 
                 // Disposal symbols: a foreign base has no ExtendX.prototype, so
                 // `using` would find no [Symbol.dispose] and silently not clean up.
-                [DISPOSE, ASYNC_DISPOSE].forEach(sym => {
-                    if (typeof instance[sym] !== 'function') {
+                [DISPOSE, ASYNC_DISPOSE].forEach(sym =>
+                {
+                    if (typeof instance[sym] !== 'function')
+                    {
                         Object.defineProperty(instance, sym, {
                             value: ExtendX.prototype[sym],
                             enumerable: false, configurable: true, writable: true
                         });
                     }
                 });
-                if (!('disposed' in instance)) {
+                if (!('disposed' in instance))
+                {
                     Object.defineProperty(instance, 'disposed', {
                         get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'disposed').get,
                         enumerable: false, configurable: true
                     });
                 }
 
-                if (!('cacheToken' in instance)) {
+                if (!('cacheToken' in instance))
+                {
                     Object.defineProperty(instance, 'cacheToken', {
                         get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'cacheToken').get,
                         enumerable: false,
@@ -778,7 +1269,8 @@
                     });
                 }
 
-                if (!('_maskState' in instance)) {
+                if (!('_maskState' in instance))
+                {
                     Object.defineProperty(instance, '_maskState', {
                         get() { return getMask(this); },
                         set(v) { setMask(this, v); },
@@ -801,26 +1293,42 @@
                 // constructs with its replacement's init, not the original's.
                 // A hook that returns a thenable is recorded, not re-run later:
                 // ExtendX.initParallel() awaits these same promises.
-                mixins.forEach(mixin => {
+                mixins.forEach(mixin =>
+                {
                     const impl = current(mixin);
-                    if (typeof impl.init !== 'function') return;
+                    if (typeof impl.init !== 'function')
+                    {
+                        return;
+                    }
                     const im = getMask(proxied);
-                    if (im[0] !== 1 || im[1][mixin._bitIndex] === 0) return;
-                    const record = (p) => {
+                    if (im[0] !== 1 || im[1][mixin._bitIndex] === 0)
+                    {
+                        return;
+                    }
+                    const record = (p) =>
+                    {
                         const pid = getExtId(proxied);
                         let map = PENDING_INIT.get(pid);
-                        if (!map) { map = new Map(); PENDING_INIT.set(pid, map); }
+                        if (!map)
+                        {
+                            map = new Map(); PENDING_INIT.set(pid, map);
+                        }
                         map.set(mixin.mixinId, p);
                     };
                     let r;
-                    try { r = impl.init.call(proxied, ...args); }
-                    catch (e) {
+                    try
+                    {
+                        r = impl.init.call(proxied, ...args);
+                    }
+                    catch (e)
+                    {
                         const p = Promise.reject(e);
                         p.catch(() => {});   // defuse; initParallel re-raises
                         record(p);
                         return;
                     }
-                    if (r && typeof r.then === 'function') {
+                    if (r && typeof r.then === 'function')
+                    {
                         r.catch(() => {});   // same: the real report is initParallel's
                         record(r);
                     }
@@ -849,7 +1357,8 @@
             // mixin OBJECT as a plain-object key, which stringifies to
             // "[object Object]", so every weight read 0 and the sort was a
             // no-op that silently fell back to declaration order.
-            Subclass._resolvePipeline = function(currentMask) {
+            Subclass._resolvePipeline = function(currentMask)
+            {
                 const mask = currentMask || classDefaultMaskState;
                 const [globalOverride, bitArray] = mask;
 
@@ -866,32 +1375,43 @@
                 // global bit instead of the per-mixin one. Locked mixins are
                 // therefore immune to the global override entirely, not
                 // just to their own bit.
-                if (globalOverride === 0) {
+                if (globalOverride === 0)
+                {
                     const locked = Subclass._rawMixins.filter(function(m) { return !!m.locked; });
                     return locked.length ? locked.map(current) : [];
                 }
 
                 const token = tokenFor(mask) + ':' + REGISTRY_GENERATION;
                 let cache = PIPELINE_CACHE.get(Subclass);
-                if (!cache) {
+                if (!cache)
+                {
                     cache = new Map();
                     PIPELINE_CACHE.set(Subclass, cache);
                 }
                 const hit = cache.get(token);
-                if (hit) return hit;
+                if (hit)
+                {
+                    return hit;
+                }
 
                 let pipeline = [...Subclass._rawMixins];
 
-                const rank = (list, m) => {
+                const rank = (list, m) =>
+                {
                     let i = list.indexOf(m);
-                    if (i === -1) i = list.indexOf(m.mixinId);
+                    if (i === -1)
+                    {
+                        i = list.indexOf(m.mixinId);
+                    }
                     return i;
                 };
 
                 // Strategy A: Explicit Array Order (mixins or mixinIds)
-                if (Subclass._explicitArray && Array.isArray(Subclass._explicitArray)) {
+                if (Subclass._explicitArray && Array.isArray(Subclass._explicitArray))
+                {
                     const list = Subclass._explicitArray;
-                    pipeline.sort((a, b) => {
+                    pipeline.sort((a, b) =>
+                    {
                         const ia = rank(list, a);
                         const ib = rank(list, b);
                         return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) -
@@ -900,10 +1420,13 @@
                     pipeline.reverse();
                 }
                 // Strategy B: Custom Map Weight (Map by mixin, object by mixinId)
-                else if (Subclass._customMap && typeof Subclass._customMap === 'object') {
+                else if (Subclass._customMap && typeof Subclass._customMap === 'object')
+                {
                     const map = Subclass._customMap;
-                    const weight = (m) => {
-                        if (typeof map.get === 'function') {
+                    const weight = (m) =>
+                    {
+                        if (typeof map.get === 'function')
+                        {
                             return map.get(m) ?? map.get(m.mixinId) ?? 0;
                         }
                         return map[m.mixinId] ?? 0;
@@ -912,11 +1435,13 @@
                     pipeline.reverse();
                 }
                 // Strategy C: Right-to-Left
-                else if (Subclass._orderStrategy === 'right-left') {
+                else if (Subclass._orderStrategy === 'right-left')
+                {
                     // keep order as-is
                 }
                 // Strategy D: Left-to-Right (default)
-                else {
+                else
+                {
                     pipeline.reverse();
                 }
 
@@ -958,16 +1483,31 @@
          *
          * Returns the previous implementation so a caller can restore it -- the
          * shape a test double or a temporary patch needs.
+         *
+         * @param {Object} mixin - the replacement mixin, sharing mixinId with the original
+         * @returns {Object|null} the previous implementation registered for that id
+         * @throws {Error} if mixin lacks a string mixinId
          */
-        static override(mixin) {
-            if (!mixin || typeof mixin.mixinId !== 'string') {
+        static override(mixin)
+        {
+            if (!mixin || typeof mixin.mixinId !== 'string')
+            {
                 throw new Error('ExtendX.override(): needs a mixin with a string mixinId');
             }
             const prev = REGISTERED.get(mixin.mixinId) || null;
-            if (prev === mixin) return prev;
-            if (prev) mixin._bitIndex = prev._bitIndex;
+            if (prev === mixin)
+            {
+                return prev;
+            }
+            if (prev)
+            {
+                mixin._bitIndex = prev._bitIndex;
+            }
             REGISTERED.set(mixin.mixinId, mixin);
-            if (!prev) reindex();
+            if (!prev)
+            {
+                reindex();
+            }
             REGISTRY_GENERATION++;
 
             // Top up dispatch wrappers on every class already composed with this
@@ -976,7 +1516,10 @@
             // time, so without this the new method sits on the mixin, is
             // reachable by hand, and is silently never dispatched.
             const users = USERS.get(mixin.mixinId);
-            if (users) users.forEach(Sub => installWrappers(Sub));
+            if (users)
+            {
+                users.forEach(Sub => installWrappers(Sub));
+            }
             return prev;
         }
 
@@ -989,20 +1532,34 @@
          * overridden id initialises with its replacement.
          *
          * Honours the instance mask: a layer that is off does not initialise.
+         *
+         * @param {Object} instance - a composed instance
+         * @param {...*} args - arguments to re-invoke async init hooks with
+         * @returns {Promise<Object>} instance, once every pending/invoked hook settles
+         * @throws {Error} if one or more mixin init hooks reject
          */
-        static async initParallel(instance, ...args) {
+        static async initParallel(instance, ...args)
+        {
             const declared = (instance.constructor && instance.constructor._rawMixins) || [];
             const mask = getMask(instance);
             const pending = PENDING_INIT.get(getExtId(instance));
             const tasks = [];
 
-            declared.forEach(m => {
-                if (mask[0] !== 1 || mask[1][m._bitIndex] === 0) return;
+            declared.forEach(m =>
+            {
+                if (mask[0] !== 1 || mask[1][m._bitIndex] === 0)
+                {
+                    return;
+                }
                 // Already in flight from the constructor: await THAT promise.
                 // Re-invoking would run the hook a second time.
-                if (pending && pending.has(m.mixinId)) { tasks.push(pending.get(m.mixinId)); return; }
+                if (pending && pending.has(m.mixinId))
+                {
+                    tasks.push(pending.get(m.mixinId)); return;
+                }
                 const impl = current(m);
-                if (typeof impl.init === 'function' && args.length) {
+                if (typeof impl.init === 'function' && args.length)
+                {
                     // Only re-invoke when the caller supplies different args than
                     // construction did; otherwise the constructor already ran it.
                     tasks.push(Promise.resolve().then(() => impl.init.apply(instance, args)));
@@ -1011,25 +1568,47 @@
 
             const settled = await Promise.allSettled(tasks);
             const failed = settled.filter(r => r.status === 'rejected');
-            if (pending) pending.clear();
-            if (failed.length) {
+            if (pending)
+            {
+                pending.clear();
+            }
+            if (failed.length)
+            {
                 throw new Error('ExtendX.initParallel(): ' + failed.length + ' mixin init hook(s) failed: ' +
                     failed.map(f => (f.reason && f.reason.message) || String(f.reason)).join('; '));
             }
             return instance;
         }
 
-        /** Current implementation registered for an id. */
+        /**
+         * @param {string} mixinId - a mixin's stable string id
+         * @returns {Object|null} the current implementation registered for that id
+         */
         static registered(mixinId) { return REGISTERED.get(mixinId) || null; }
 
-        /** Every registered id, alphabetical -- the order that defines bits. */
+        /**
+         * @returns {string[]} every registered id, alphabetical -- the order that defines bits
+         */
         static registry() { return Array.from(REGISTERED.keys()).sort(); }
 
         // ─── Static Introspection ──────────────────────────────
 
-        static mixins(TargetClass, prop, mask) {
-            if (!TargetClass._rawMixins) return [];
-            if (prop === undefined) return [...TargetClass._rawMixins];
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @param {Array} [mask] - a specific instance mask to resolve against
+         * @returns {Array} declared mixins, or the resolved dispatch chain (names) for prop
+         */
+        static mixins(TargetClass, prop, mask)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return [];
+            }
+            if (prop === undefined)
+            {
+                return [...TargetClass._rawMixins];
+            }
 
             const pipeline = typeof TargetClass._resolvePipeline === 'function'
                 ? TargetClass._resolvePipeline(mask || TargetClass._defaultMaskState)
@@ -1042,49 +1621,104 @@
             const declared = new Map(TargetClass._rawMixins.map(m => [m.mixinId, m]));
             const names = [...pipeline]
                 .filter(m => typeof m[prop] === 'function')
-                .map(m => {
+                .map(m =>
+                {
                     const d = declared.get(m.mixinId);
                     return (d && d !== m) ? m.mixinId + ' (overridden)' : m.mixinId;
                 })
                 .reverse();
 
             const Base = Object.getPrototypeOf(TargetClass.prototype);
-            if (Base && typeof Base[prop] === 'function') names.push('<base>');
+            if (Base && typeof Base[prop] === 'function')
+            {
+                names.push('<base>');
+            }
             return names;
         }
 
-        static hasMixin(TargetClass, mixin) {
-            if (!TargetClass._rawMixins) return false;
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if TargetClass was composed with mixin
+         */
+        static hasMixin(TargetClass, mixin)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return false;
+            }
             return TargetClass._rawMixins.includes(mixin);
         }
 
-        static removeMixin(TargetClass, mixinToRemove) {
-            if (!TargetClass._rawMixins) return;
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixinToRemove - the mixin object to remove from TargetClass._rawMixins
+         * @returns {void}
+         */
+        static removeMixin(TargetClass, mixinToRemove)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return;
+            }
             TargetClass._rawMixins = TargetClass._rawMixins.filter(m => m !== mixinToRemove);
         }
 
-        static evaluateSetRelation(nodeA, nodeB) {
+        /**
+         * @param {Object} nodeA - a composed instance
+         * @param {Object} nodeB - a composed instance
+         * @returns {string} one of 'EQUIVALENT_EMPTY_SETS', 'NODE_A_IS_EMPTY_SUBSET_OF_B',
+         *   'NODE_B_IS_EMPTY_SUBSET_OF_A', 'IDENTITY_EQUIVALENT_SETS', 'SUBSET', 'SUPERSET',
+         *   or 'DISJOINT_OR_INTERSECTING_SETS'
+         */
+        static evaluateSetRelation(nodeA, nodeB)
+        {
             const mA = getMask(nodeA);
             const mB = getMask(nodeB);
             const bitsA = mA[1];
             const bitsB = mB[1];
-            if (mA[0] === 0 && mB[0] === 0) return 'EQUIVALENT_EMPTY_SETS';
-            if (mA[0] === 0) return 'NODE_A_IS_EMPTY_SUBSET_OF_B';
-            if (mB[0] === 0) return 'NODE_B_IS_EMPTY_SUBSET_OF_A';
+            if (mA[0] === 0 && mB[0] === 0)
+            {
+                return 'EQUIVALENT_EMPTY_SETS';
+            }
+            if (mA[0] === 0)
+            {
+                return 'NODE_A_IS_EMPTY_SUBSET_OF_B';
+            }
+            if (mB[0] === 0)
+            {
+                return 'NODE_B_IS_EMPTY_SUBSET_OF_A';
+            }
 
             let isSubset = true;
             let isSuperset = true;
 
-            for (let i = 0; i < Math.max(bitsA.length, bitsB.length); i++) {
+            for (let i = 0; i < Math.max(bitsA.length, bitsB.length); i++)
+            {
                 const bA = bitsA[i] ?? 0;
                 const bB = bitsB[i] ?? 0;
-                if (bA === 1 && bB !== 1) isSubset = false;
-                if (bB === 1 && bA !== 1) isSuperset = false;
+                if (bA === 1 && bB !== 1)
+                {
+                    isSubset = false;
+                }
+                if (bB === 1 && bA !== 1)
+                {
+                    isSuperset = false;
+                }
             }
 
-            if (isSubset && isSuperset) return 'IDENTITY_EQUIVALENT_SETS';
-            if (isSubset) return 'SUBSET';
-            if (isSuperset) return 'SUPERSET';
+            if (isSubset && isSuperset)
+            {
+                return 'IDENTITY_EQUIVALENT_SETS';
+            }
+            if (isSubset)
+            {
+                return 'SUBSET';
+            }
+            if (isSuperset)
+            {
+                return 'SUPERSET';
+            }
             return 'DISJOINT_OR_INTERSECTING_SETS';
         }
     }

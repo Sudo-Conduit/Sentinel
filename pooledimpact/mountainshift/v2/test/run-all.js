@@ -13,7 +13,16 @@ const files = [
     'StructureMixin.test.js',
     'Kernel.security.test.js',
     'BIOS.security.test.js',
-    'FullBootChain.lifecycle.test.js'
+    'FullBootChain.lifecycle.test.js',
+    'NextInjection.audit.test.js',
+    'Memory.security.test.js',
+    'MemoryMapArena.test.js',
+    'MemoryMapFS.test.js',
+    'MemoryMapFS.nodeToNode.test.js',
+    'BIOS.nvramFastPath.test.js',
+    'ExtendX.stacking.test.js',
+    'BIOS.firstBoot.test.js',
+    'MountainShift.opaque.test.js'
 ];
 
 let anyFailed = false;
