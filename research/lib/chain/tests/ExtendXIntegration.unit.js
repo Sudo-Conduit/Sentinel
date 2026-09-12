@@ -157,8 +157,7 @@ if (require.main === module)
   const TestRunner = require('./TestRunner.js');
   const runner = new TestRunner();
   register(runner);
-  const result = runner.run();
-  process.exitCode = result.failed > 0 ? 1 : 0;
+  runner.run().then((result) => { process.exitCode = result.failed > 0 ? 1 : 0; });
 }
 
 module.exports = register;

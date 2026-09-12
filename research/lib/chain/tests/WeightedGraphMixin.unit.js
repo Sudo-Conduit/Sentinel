@@ -16,11 +16,15 @@ const WeightedGraphMixin = require('../WeightedGraphMixin.js');
 /** @param {import('./TestRunner.js')} runner */
 function register(runner)
 {
+  // Hoisted to register()'s own scope (not a suite callback's) so BOTH
+  // suites below can share the same WeightedTensor — a second
+  // createWeightedGraphMixin(Tensor) call would collide with this one's
+  // mixinId ('weightedGraph:Tensor').
+  const wMixin = WeightedGraphMixin.createWeightedGraphMixin(Tensor);
+  const WeightedTensor = ExtendX.extend(Tensor, wMixin);
+
   runner.suite('WeightedGraphMixin', () =>
   {
-    const wMixin = WeightedGraphMixin.createWeightedGraphMixin(Tensor);
-    const WeightedTensor = ExtendX.extend(Tensor, wMixin);
-
     runner.test('weight as a plain number', () =>
     {
       const a = new WeightedTensor().init({ shape: [2] }, [1, 2]);
@@ -129,6 +133,143 @@ function register(runner)
       assert.strictEqual(parent.weightTo(child), 42); // weighted graph API
     });
   });
+
+  runner.suite('WeightedGraphMixin: walk()', () =>
+  {
+    // Reuses the SAME WeightedTensor (and its wMixin, mixinId
+    // 'weightedGraph:Tensor') created in the suite above — a second
+    // createWeightedGraphMixin(Tensor) call here would collide with it.
+    const G = WeightedTensor;
+
+    runner.test('a pure cycle terminates at exactly hops+1 visits, never runs away', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      const c = new G().init({ shape: [1] }, [3]);
+      a.linkTo(b);
+      b.linkTo(c);
+      c.linkTo(a); // a -> b -> c -> a -> ...
+
+      const result = await a.walk({ hops: 4, decide: (inst, candidates) => candidates[0] });
+      assert.strictEqual(result.length, 5); // hops 0,1,2,3,4
+      assert.deepStrictEqual(result.map((r) => r.hops), [0, 1, 2, 3, 4]);
+      assert.deepStrictEqual(result.map((r) => r.extId), [a, b, c, a, b].map((x) => x._extId));
+    });
+
+    runner.test('hops must be a non-negative integer', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      await assert.rejects(() => a.walk({ hops: -1 }), /non-negative integer/);
+      await assert.rejects(() => a.walk({ hops: 1.5 }), /non-negative integer/);
+    });
+
+    runner.test('hops=0 visits only the starting instance', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      a.linkTo(b);
+      const result = await a.walk({ hops: 0 });
+      assert.strictEqual(result.length, 1);
+      assert.strictEqual(result[0].extId, a._extId);
+    });
+
+    runner.test('a dead-end (no outgoing edges) stops the walk early, not an error', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const result = await a.walk({ hops: 4, seed: 1 });
+      assert.strictEqual(result.length, 1);
+    });
+
+    runner.test('same seed produces an identical walk (reproducible)', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      const c = new G().init({ shape: [1] }, [3]);
+      a.linkTo(b);
+      a.linkTo(c);
+      b.linkTo(c);
+
+      const r1 = await a.walk({ seed: 7 });
+      const r2 = await a.walk({ seed: 7 });
+      assert.deepStrictEqual(r1.map((r) => r.extId), r2.map((r) => r.extId));
+    });
+
+    runner.test('decide() drives a deterministic fan-out to multiple edges at once', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      const c = new G().init({ shape: [1] }, [3]);
+      const d = new G().init({ shape: [1] }, [4]);
+      a.linkTo(b);
+      a.linkTo(c);
+      b.linkTo(d);
+
+      // fan out to every candidate at every hop
+      const result = await a.walk({ hops: 2, decide: (inst, candidates) => candidates });
+      const extIds = result.map((r) => r.extId).sort();
+      assert.deepStrictEqual(extIds, [a, b, c, d].map((x) => x._extId).sort());
+    });
+
+    runner.test('parallel and sequential concurrency reach the same set of nodes', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      const c = new G().init({ shape: [1] }, [3]);
+      const d = new G().init({ shape: [1] }, [4]);
+      a.linkTo(b);
+      a.linkTo(c);
+      b.linkTo(d);
+
+      const fanOut = (inst, candidates) => candidates;
+      const parallel = await a.walk({ hops: 2, decide: fanOut, concurrency: WeightedGraphMixin.CONCURRENCY.PARALLEL });
+      const sequential = await a.walk({ hops: 2, decide: fanOut, concurrency: WeightedGraphMixin.CONCURRENCY.SEQUENTIAL });
+      const sortIds = (r) => r.map((x) => x.extId).sort();
+      assert.deepStrictEqual(sortIds(parallel), sortIds(sequential));
+    });
+
+    runner.test('avoidRevisit forbids re-entering a node already on the same path', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      const c = new G().init({ shape: [1] }, [3]);
+      a.linkTo(b);
+      b.linkTo(c);
+      c.linkTo(a); // cycle
+
+      const result = await a.walk({ hops: 5, avoidRevisit: true, decide: (inst, candidates) => candidates[0] });
+      const lastPath = result[result.length - 1].path;
+      assert.strictEqual(new Set(lastPath).size, lastPath.length); // no repeats within the path
+    });
+
+    runner.test('onVisit fires once per node visited, including the start', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      a.linkTo(b);
+      let count = 0;
+      await a.walk({ hops: 1, seed: 1, onVisit: () => { count += 1; } });
+      assert.strictEqual(count, 2); // a, then b
+    });
+
+    runner.test('a disposed target is no longer resolvable: walk stops there', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      a.linkTo(b);
+      b.dispose();
+      const result = await a.walk({ hops: 3, seed: 1 });
+      assert.strictEqual(result.length, 1); // only the starting instance
+    });
+
+    runner.test('direction is respected during a walk: cannot hop backward through a directed edge', async () =>
+    {
+      const a = new G().init({ shape: [1] }, [1]);
+      const b = new G().init({ shape: [1] }, [2]);
+      a.linkTo(b, { direction: WeightedGraphMixin.DIRECTIONS.DIRECTED });
+      const fromB = await b.walk({ hops: 2, seed: 1 });
+      assert.strictEqual(fromB.length, 1); // b has no outgoing edges; a->b is one-way
+    });
+  });
 }
 
 if (require.main === module)
@@ -136,8 +277,7 @@ if (require.main === module)
   const TestRunner = require('./TestRunner.js');
   const runner = new TestRunner();
   register(runner);
-  const result = runner.run();
-  process.exitCode = result.failed > 0 ? 1 : 0;
+  runner.run().then((result) => { process.exitCode = result.failed > 0 ? 1 : 0; });
 }
 
 module.exports = register;

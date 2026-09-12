@@ -65,19 +65,25 @@
       this._current.cases.push({ name, fn });
     }
 
-    /** @returns {{passed:number, failed:number, total:number}} */
-    run()
+    /**
+     * Async so a test function returning a Promise (e.g. exercising
+     * WeightedGraphMixin's async walk()) is actually awaited — `await`
+     * on a plain synchronous return value resolves immediately, so this
+     * is fully backward compatible with every existing sync test.
+     * @returns {Promise<{passed:number, failed:number, total:number}>}
+     */
+    async run()
     {
       let passed = 0;
       let failed = 0;
-      this.suites.forEach((s) =>
+      for (const s of this.suites)
       {
         console.log('\n' + s.name);
-        s.cases.forEach((c) =>
+        for (const c of s.cases)
         {
           try
           {
-            c.fn();
+            await c.fn();
             passed += 1;
             console.log('  ✓ ' + c.name);
           }
@@ -86,8 +92,8 @@
             failed += 1;
             console.log('  ✗ ' + c.name + '\n      ' + e.message);
           }
-        });
-      });
+        }
+      }
       console.log('\n' + passed + ' passed, ' + failed + ' failed, ' + (passed + failed) + ' total\n');
       return { passed, failed, total: passed + failed };
     }

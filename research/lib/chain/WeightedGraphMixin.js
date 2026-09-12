@@ -1,7 +1,7 @@
 /**
  * @file research/lib/chain/WeightedGraphMixin.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description Weighted, directed graph edges for any class composed via
  *              ExtendX.extend() — a sibling to StructureMixin's relational
  *              mode, not a modification of it. StructureMixin's edges are
@@ -37,6 +37,41 @@
  *              frame Proxy dispatch): only the extId is stored; the
  *              instance itself is passed through to a weight function at
  *              the moment of the call, never retained.
+ *
+ *   v1.1.0  walk(): bounded, decision-driven multi-hop traversal. An edge
+ *           only ever stored a target extId (a string), never an instance
+ *           reference — correct for weightTo()/resolveWeight() (those take
+ *           the target instance as a call argument, never need to retain
+ *           it), but it meant there was NO way to actually hop from a
+ *           resolved edge to the next real node to keep walking: you'd
+ *           have an extId and nothing that could call .getOutgoing() on
+ *           it. Fixed by adding INSTANCES, a plain extId -> instance
+ *           registry populated by linkTo() (both endpoints) and cleared by
+ *           a new dispose() hook — a strong-reference Map, not a WeakMap
+ *           keyed by object identity (StructureMixin's own file explains
+ *           why THAT breaks under ExtendX's per-call frame Proxy dispatch;
+ *           keying by the extId STRING has no such issue, since a string
+ *           key is never a fresh Proxy each call).
+ *
+ *           walk(options) explores up to options.hops steps out (default
+ *           4), never unbounded — the actual guard against runaway/
+ *           infinite recursion on a cyclic graph, since a decision
+ *           function or a random pick could otherwise walk a cycle
+ *           forever. At each node, the next edge(s) to follow are chosen
+ *           by options.decide(instance, candidateEdges, hopIndex) if
+ *           given, else by a seeded PRNG (options.seed, mulberry32 —
+ *           deterministic and reproducible, not Math.random()) picking
+ *           one candidate uniformly. decide() may return one edge (a
+ *           single path continues), an array of edges (the walk fans out
+ *           from this node), or a falsy value (this branch stops early).
+ *           Direction is respected automatically: candidates always come
+ *           from getOutgoing(), the same direction-aware source
+ *           getReachable() uses, so a directed edge's target cannot walk
+ *           backward through it. options.concurrency picks how a fan-out
+ *           is explored: 'parallel' (default) awaits every chosen branch
+ *           concurrently via Promise.all; 'sequential' walks them one at
+ *           a time in a single control-flow fiber, fully awaiting each
+ *           branch before starting the next.
  * @tests research/lib/chain/tests/WeightedGraphMixin.unit.js
  */
 (function (root, factory)
@@ -64,9 +99,17 @@
   }
 
   const DIRECTIONS = Object.freeze({ DIRECTED: 'directed', UNDIRECTED: 'undirected' });
+  const CONCURRENCY = Object.freeze({ PARALLEL: 'parallel', SEQUENTIAL: 'sequential' });
 
   // extId -> Set<{ target: extId, weight: number|Function, direction, label }>
   const EDGES_OUT = new Map();
+
+  // extId -> instance. A real (strong-reference) Map, deliberately not
+  // object-identity-keyed and not a WeakMap — see the file header (v1.1.0
+  // note) for why walk() needs this at all: an edge only carries a target
+  // extId, and hopping to the next node requires resolving that extId back
+  // to something walk() can call .getOutgoing() on.
+  const INSTANCES = new Map();
 
   function edgeSetOut(extId)
   {
@@ -77,6 +120,26 @@
       EDGES_OUT.set(extId, s);
     }
     return s;
+  }
+
+  /**
+   * mulberry32: a small, fast, deterministic PRNG — NOT Math.random(),
+   * which has no seed control and would make walk()'s "random, with seed"
+   * mode unreproducible. Same seed always produces the same sequence.
+   * @param {number} seed
+   * @returns {Function} a () => number in [0, 1) generator
+   */
+  function mulberry32(seed)
+  {
+    let a = seed >>> 0;
+    return function ()
+    {
+      a |= 0;
+      a = (a + 0x6d2b79f5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
   }
 
   /**
@@ -109,6 +172,15 @@
       const direction = opts.direction === DIRECTIONS.UNDIRECTED ? DIRECTIONS.UNDIRECTED : DIRECTIONS.DIRECTED;
       const label = typeof opts.label === 'string' ? opts.label : null;
       const targetExtId = targetInstance._extId;
+
+      // Register both endpoints as resolvable-by-extId — walk() needs this
+      // to hop past this edge later; weightTo()/resolveWeight() don't (the
+      // caller already holds targetInstance when calling those), but there
+      // is no way to know in advance whether a caller will later want to
+      // walk FROM this target, so both directions are registered here,
+      // once, at link time.
+      INSTANCES.set(this._extId, this);
+      INSTANCES.set(targetExtId, targetInstance);
 
       edgeSetOut(this._extId).add({ target: targetExtId, weight: weight, direction: direction, label: label });
 
@@ -200,16 +272,127 @@
       return Array.from(visited);
     };
 
+    /**
+     * Bounded, decision-driven multi-hop traversal. See the v1.1.0 file
+     * header note for the full design rationale.
+     *
+     * @param {Object} [options]
+     * @param {number} [options.hops=4] - max hops out from this instance; the
+     *   actual guard against unbounded/infinite recursion on a cyclic graph
+     * @param {function(instance, candidateEdges, hopIndex): (Object|Object[]|null|undefined|Promise)} [options.decide] -
+     *   chooses the next edge(s) to follow from `instance`'s getOutgoing();
+     *   return one edge to continue a single path, an array to fan out,
+     *   or a falsy value to stop this branch. May be async. Defaults to a
+     *   seeded-random single pick (options.seed) when omitted.
+     * @param {number} [options.seed=1] - seed for the default random-pick
+     *   decision (mulberry32); ignored if options.decide is given. Same
+     *   seed -> same walk, every time.
+     * @param {string} [options.concurrency='parallel'] - CONCURRENCY.PARALLEL
+     *   (Promise.all across a fan-out) or CONCURRENCY.SEQUENTIAL (one
+     *   branch at a time, fully awaited before the next — "a single fiber")
+     * @param {boolean} [options.avoidRevisit=false] - when true, filters out
+     *   candidates already present earlier in THIS branch's own path (a
+     *   real random walk normally allows revisits; opt in to forbid them)
+     * @param {function(instance, hopIndex, path): (void|Promise)} [options.onVisit] -
+     *   called once per node visited, including the starting instance at hop 0
+     * @returns {Promise<Array<{instance:Object, extId:string, path:string[], hops:number}>>}
+     *   every node touched by the walk, in visit order, with the extId
+     *   path taken to reach each (path[0] is always this instance's extId)
+     * @throws {RangeError} if options.hops is not a non-negative integer
+     */
+    mixin.walk = async function (options)
+    {
+      const opts = options || {};
+      const maxHops = opts.hops === undefined ? 4 : opts.hops;
+      if (!Number.isInteger(maxHops) || maxHops < 0)
+      {
+        throw new RangeError('WeightedGraphMixin.walk: options.hops must be a non-negative integer');
+      }
+      const decide = typeof opts.decide === 'function' ? opts.decide : null;
+      const rng = decide ? null : mulberry32(typeof opts.seed === 'number' ? opts.seed >>> 0 : 1);
+      const sequential = opts.concurrency === CONCURRENCY.SEQUENTIAL;
+      const onVisit = typeof opts.onVisit === 'function' ? opts.onVisit : null;
+      const avoidRevisit = opts.avoidRevisit === true;
+
+      const visitedLog = [];
+
+      const step = async (instance, hopIndex, path) =>
+      {
+        if (onVisit)
+        {
+          await onVisit(instance, hopIndex, path.slice());
+        }
+        visitedLog.push({ instance: instance, extId: instance._extId, path: path.slice(), hops: hopIndex });
+
+        if (hopIndex >= maxHops)
+        {
+          return;
+        }
+
+        let candidates = instance.getOutgoing();
+        if (avoidRevisit)
+        {
+          candidates = candidates.filter((edge) => path.indexOf(edge.target) === -1);
+        }
+        if (candidates.length === 0)
+        {
+          return;
+        }
+
+        const chosen = decide
+          ? await decide(instance, candidates, hopIndex)
+          : candidates[Math.floor(rng() * candidates.length)];
+
+        if (!chosen)
+        {
+          return;
+        }
+        const chosenEdges = Array.isArray(chosen) ? chosen : [chosen];
+
+        const advance = async (edge) =>
+        {
+          const nextInstance = INSTANCES.get(edge.target);
+          if (!nextInstance)
+          {
+            return; // target was never linked-to as a first-class instance, or has since disposed
+          }
+          await step(nextInstance, hopIndex + 1, path.concat([edge.target]));
+        };
+
+        if (sequential)
+        {
+          for (const edge of chosenEdges)
+          {
+            await advance(edge);
+          }
+        }
+        else
+        {
+          await Promise.all(chosenEdges.map(advance));
+        }
+      };
+
+      await step(this, 0, [this._extId]);
+      return visitedLog;
+    };
+
+    /** Drops this instance from the extId->instance registry — after dispose, walk() can no longer hop TO it. */
+    mixin.dispose = function ()
+    {
+      INSTANCES.delete(this._extId);
+    };
+
     return mixin;
   }
 
   return {
     createWeightedGraphMixin: createWeightedGraphMixin,
     DIRECTIONS: DIRECTIONS,
+    CONCURRENCY: CONCURRENCY,
     name: 'WeightedGraphMixin',
     author: 'Will Fobbs',
-    version: '1.0.0',
-    description: 'Weighted (value or function) and directed graph edges for any class composed via ExtendX.extend() — sibling to StructureMixin\'s relational mode.',
+    version: '1.1.0',
+    description: 'Weighted (value or function) and directed graph edges, plus bounded decision-driven multi-hop walk(), for any class composed via ExtendX.extend() — sibling to StructureMixin\'s relational mode.',
     docs: ['research/lib/chain/docs/WeightedGraphMixin.md'],
     tests: ['research/lib/chain/tests/WeightedGraphMixin.unit.js'],
   };
