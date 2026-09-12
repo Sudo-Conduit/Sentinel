@@ -74,6 +74,82 @@ function register(runner)
       assert.deepStrictEqual(a.toFlat().data, [1, 2]); // security-gated call still works while armed
     });
   });
+
+  // 'graph' mode (parent/child tree only) was the only StructureMixin mode
+  // exercised above. It also supports 'relational' (arbitrary linkTo/
+  // unlinkFrom edges, no hierarchy) and 'both' — covered here so the edge
+  // half isn't left untested. mixinId embeds the mode ('structure:<mode>:
+  // Tensor'), so composing one of each mode over the same BaseClass=Tensor
+  // mints three distinct ids, no collision with each other or with the
+  // 'graph' mixin in the suite above.
+  runner.suite('StructureMixin: relational and both modes (arbitrary edges)', () =>
+  {
+    const relMixin = StructureMixin.createStructureMixin(Tensor, { mode: 'relational' });
+    const RelationalTensor = ExtendX.extend(Tensor, relMixin);
+
+    const bothMixin = StructureMixin.createStructureMixin(Tensor, { mode: 'both' });
+    const BothStructTensor = ExtendX.extend(Tensor, bothMixin);
+
+    runner.test('relational mode has no tree API at all (addChild/getParent undefined)', () =>
+    {
+      const a = new RelationalTensor().init({ shape: [2] }, [1, 2]);
+      assert.strictEqual(typeof a.addChild, 'undefined');
+      assert.strictEqual(typeof a.getParent, 'undefined');
+    });
+
+    runner.test('linkTo/getConnected: one-hop adjacency, both directions recorded', () =>
+    {
+      const a = new RelationalTensor().init({ shape: [2] }, [1, 2]);
+      const b = new RelationalTensor().init({ shape: [2] }, [3, 4]);
+      a.linkTo(b._extId, 'friend');
+      assert.deepStrictEqual(a.getConnected(), [b._extId]);
+      assert.deepStrictEqual(b.getConnected(), [a._extId]); // linkTo records EDGES_IN on the target too
+    });
+
+    runner.test('getConnectedGraph: BFS transitive closure, not just direct neighbors', () =>
+    {
+      const a = new RelationalTensor().init({ shape: [2] }, [1, 2]);
+      const b = new RelationalTensor().init({ shape: [2] }, [3, 4]);
+      const c = new RelationalTensor().init({ shape: [2] }, [5, 6]);
+      a.linkTo(b._extId, 'friend');
+      b.linkTo(c._extId, 'friend');
+      // a-b direct, b-c direct, so a reaches c only transitively
+      assert.strictEqual(a.getConnected().length, 1); // one hop: b only
+      const reachable = a.getConnectedGraph();
+      assert.strictEqual(reachable.length, 2); // b and c
+      assert.ok(reachable.includes(b._extId));
+      assert.ok(reachable.includes(c._extId));
+    });
+
+    runner.test('unlinkFrom removes the edge in both directions', () =>
+    {
+      const a = new RelationalTensor().init({ shape: [2] }, [1, 2]);
+      const b = new RelationalTensor().init({ shape: [2] }, [3, 4]);
+      a.linkTo(b._extId, 'friend');
+      a.unlinkFrom(b._extId, 'friend');
+      assert.strictEqual(a.getConnected().length, 0);
+      assert.strictEqual(b.getConnected().length, 0);
+    });
+
+    runner.test('unlinkFrom with no label matches any label on that edge', () =>
+    {
+      const a = new RelationalTensor().init({ shape: [2] }, [1, 2]);
+      const b = new RelationalTensor().init({ shape: [2] }, [3, 4]);
+      a.linkTo(b._extId, 'friend');
+      a.unlinkFrom(b._extId); // no label filter
+      assert.strictEqual(a.getConnected().length, 0);
+    });
+
+    runner.test('both mode: tree API and relational API coexist on the same instance', () =>
+    {
+      const p = new BothStructTensor().init({ shape: [2] }, [1, 2]);
+      const ch = new BothStructTensor().init({ shape: [2] }, [3, 4]);
+      p.addChild(ch._extId);
+      p.linkTo(ch._extId, 'also-related');
+      assert.strictEqual(ch.getParent(), p._extId);
+      assert.ok(p.getConnected().includes(ch._extId));
+    });
+  });
 }
 
 if (require.main === module)
