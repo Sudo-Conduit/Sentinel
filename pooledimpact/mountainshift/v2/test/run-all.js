@@ -16,7 +16,8 @@ const files = [
     'FullBootChain.lifecycle.test.js',
     'NextInjection.audit.test.js',
     'Memory.security.test.js',
-    'MemoryMapArena.test.js'
+    'MemoryMapArena.test.js',
+    'MemoryMapFS.test.js'
 ];
 
 let anyFailed = false;
