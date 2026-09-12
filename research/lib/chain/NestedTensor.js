@@ -95,7 +95,58 @@
     },
   };
 
-  const NestedTensor = ExtendX.extend(Tensor, DepthMixin, LeafCountMixin, SumMixin, MeanMixin);
+  const MinMixin = {
+    mixinId: 'NestedTensor.min',
+    min()
+    {
+      let m = Infinity;
+      walkLeaves(this.toNested(), (v) => { if (v < m) m = v; });
+      return m;
+    },
+  };
+
+  const MaxMixin = {
+    mixinId: 'NestedTensor.max',
+    max()
+    {
+      let m = -Infinity;
+      walkLeaves(this.toNested(), (v) => { if (v > m) m = v; });
+      return m;
+    },
+  };
+
+  const VarianceMixin = {
+    mixinId: 'NestedTensor.variance',
+    variance()
+    {
+      const count = this.leafCount();
+      if (!count)
+      {
+        return 0;
+      }
+      const m = this.mean();
+      let acc = 0;
+      walkLeaves(this.toNested(), (v) => { acc += (v - m) * (v - m); });
+      return acc / count;
+    },
+  };
+
+  const MagnitudeMixin = {
+    mixinId: 'NestedTensor.magnitude',
+    // L2 norm, matching FlatTensor.magnitude — same formula, computed by
+    // recursion over the nesting rather than reading a flat buffer.
+    magnitude()
+    {
+      let acc = 0;
+      walkLeaves(this.toNested(), (v) => { acc += v * v; });
+      return Math.sqrt(acc);
+    },
+  };
+
+  const NestedTensor = ExtendX.extend(
+    Tensor,
+    DepthMixin, LeafCountMixin, SumMixin, MeanMixin, MinMixin, MaxMixin, VarianceMixin, MagnitudeMixin
+  );
 
   Object.defineProperty(NestedTensor, 'name', { value: 'NestedTensor', configurable: true });
   NestedTensor.author = 'Will Fobbs';
@@ -112,6 +163,10 @@
     leafCount: LeafCountMixin,
     sum: SumMixin,
     mean: MeanMixin,
+    min: MinMixin,
+    max: MaxMixin,
+    variance: VarianceMixin,
+    magnitude: MagnitudeMixin,
   });
 
   // Fixed presentation accessor — not a togglable layer, so defined directly
