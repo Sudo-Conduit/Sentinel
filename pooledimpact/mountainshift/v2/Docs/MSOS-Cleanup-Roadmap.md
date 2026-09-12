@@ -1,7 +1,7 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.0.0
-**Last updated:** 2026-09-11
+**Version:** 1.1.0
+**Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
 thread — reflection-based override composition, `CPU.js` rewritten to a
@@ -35,15 +35,14 @@ A/B item lands; a roadmap claiming shipped work that the test suite
 doesn't back up is worse than no roadmap.
 
 The commit below is pinned to whichever remote is canonical for this code
-*right now*, not assumed. As of this pin, pushes for this branch go to
-Gitea only (`git.pooledimpact.com/Claude/Romans` — a mirror of this same
-repo under a different name/owner, not a typo) — GitHub
-(`github.com/Sudo-Conduit/Sentinel`) still holds this same commit today
-but is being deprecated and may fall behind or be removed without further
-notice here. Verify against Gitea first if the two ever disagree.
+*right now*, not assumed. Gitea (`git.pooledimpact.com/Claude/Romans`) is
+the sole active remote as of this pin — GitHub (`github.com/Sudo-Conduit/
+Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
+pushes; it may still hold an old copy of this commit today, but do not
+expect it to stay current and do not push there.
 
-**Commit:** `31af0c8` (git.pooledimpact.com/Claude/Romans, branch
-`claude/devtools-overrides-robustness-8we96z`) — 2026-09-11T16:53:11Z
+**Commit:** `09c76bf` (git.pooledimpact.com/Claude/Romans, branch
+`claude/devtools-overrides-robustness-8we96z`) — 2026-09-12T01:02:12Z
 
 | Suite | Result |
 |---|---|
@@ -54,8 +53,9 @@ notice here. Verify against Gitea first if the two ever disagree.
 | Kernel.security.test.js | ALL 15 CHECKS PASSED |
 | BIOS.security.test.js | ALL 12 CHECKS PASSED |
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
+| NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
 
-**Total: 105/105 checks passing, 7/7 suites green.**
+**Total: 114/114 checks passing, 8/8 suites green.**
 
 ## Status legend
 
@@ -98,6 +98,48 @@ mixin pattern to X" should be scored low on Confidence and distrusted
 until actually run — not assumed safe by analogy to CPU/Physical/Kernel/
 BIOS's prior successes.
 
+**A.4 findings (2026-09-12), the same "check before trusting the punch
+list" discipline the chemistry roadmap used on its own 1.1/1.3/5.1 rows:**
+five of the six audited files are clean, each for a different *structural*
+reason, not luck — proven in `test/NextInjection.audit.test.js`, not just
+asserted: `Environment.js` has no instance methods at all; `ISO.js`'s
+instance methods originally took zero arguments; `Installer.js` (a static
+method) and `BootDeviceScan.js` (a plain object, not even a constructor)
+are never reachable through ExtendX's dispatcher regardless of
+composition; `FileFsBootAdapter.js`'s one method has no optional trailing
+parameter for `next()` to land in. `Registry.js`'s `set(key, value)` has
+one real, currently-unreachable gap (grepped — never called with fewer
+than 2 args anywhere in this codebase): omitting `value` under composition
+silently stores the injected `next()` function instead of `undefined`.
+Unlike every other instance of this hazard, it is **not fixable** with a
+`typeof`-guard, because a Registry value's legitimate type is
+unconstrained (unlike a `label` string or a `quantum` number) — documented
+in `Registry.js` as a known limitation instead of a false fix.
+
+The audit also surfaced a **second, more general bug than A.4 set out to
+find**: `ISO.js`'s constructor called `this.computeChecksum()` on itself,
+the exact self-call-before-arming shape `CPU.js`'s `#registerInstructions()`
+already fixed once — so the same `#private`-method fix was applied here
+too, and immediately broke a *different* way: `verifyIntegrity()` (a
+normal dispatched method) also called `this.#computeChecksum()`, and once
+`this` is ExtendX's frame Proxy (true for any call after construction),
+private-field/method brand checks do not forward through a Proxy at all —
+confirmed live via the engine's own `Receiver must be an instance of class
+ISO` TypeError, not a defect in this project's code. **`#private` methods
+only ever solve "called from the raw, un-proxied constructor"; they do
+not generalize to "called from any other composed method's body."** The
+actual fix was a plain closure-scoped function (`computeChecksumOf(manifest,
+hashFn)`) with no `this` and therefore no class brand for any Proxy layer
+to reject — works identically from the constructor or from a dispatched
+method. `CPU.js`'s own `#registerInstructions()` was re-checked against
+this exact failure mode and confirmed safe: it is called only from its
+own constructor, never from any other method, so it never hits a frame
+Proxy `this`. This second finding is now folded into the Confidence
+dimension's own lesson above, not tracked as a separate row: any future
+`#private`-method fix for a construction-order hazard needs the same
+"is this ever called from another dispatched method too?" check before
+being trusted.
+
 ## Scored backlog
 
 | # | Category | Item | Status | F | U | O | N | R | C | **Composite** |
@@ -105,7 +147,7 @@ BIOS's prior successes.
 | A.1 | Composition & Dispatch | SecurityMixin (activation-token gating via ExtendX) | ✅ | — | — | — | — | — | — | shipped |
 | A.2 | Composition & Dispatch | StructureMixin graph mode (explicit + inferred parent/child/sibling) | ✅ | — | — | — | — | — | — | shipped |
 | A.3 | Composition & Dispatch | StructureMixin relational mode + `getConnectedGraph()` (real BFS, not one-hop) | ✅ | — | — | — | — | — | — | shipped |
-| A.4 | Composition & Dispatch | `next()`-injection systemic audit (Environment/Registry/ISO/Installer/BootDeviceScan/FileFsBootAdapter) | ⬜ | 5 | 4 | 3 | 1 | 1 | 3 | **17** |
+| A.4 | Composition & Dispatch | `next()`-injection systemic audit (Environment/Registry/ISO/Installer/BootDeviceScan/FileFsBootAdapter) | ✅ | — | — | — | — | — | — | shipped |
 | B.1 | Core Machine | CPU secured + tested | ✅ | — | — | — | — | — | — | shipped |
 | B.2 | Core Machine | Physical secured + tested (`cpuFactory` leak fix) | ✅ | — | — | — | — | — | — | shipped |
 | B.3 | Core Machine | Kernel secured + tested (`_host` fix, `fork`/`tick` hazard fix) | ✅ | — | — | — | — | — | — | shipped |
@@ -129,16 +171,16 @@ BIOS's prior successes.
 **Single-subsystem ("harden what exists") queue, by composite descending,
 with sequencing overrides noted where raw ranking would be wrong:**
 
-1. **A.4 — `next()`-injection systemic audit** (17) — done **before** E.1
-   despite its middle-of-the-table composite: once the opaque closure
-   exists, white-box `require()` access to poke at these classes
-   individually is gone by design (the project's own two-tier test rule).
-   A hazard hiding in Registry/ISO/Installer/BootDeviceScan/
-   FileFsBootAdapter is far cheaper to find now than after E.1 ships.
-2. **B.6 — Memory.js secured/structured/tested** (15) — same reasoning as
-   #1: the last core machine component with a proven-pattern latent bug
-   still open. Close it before the boot chain it's part of gets wrapped
-   in E.1's closure, not after.
+1. ~~**A.4 — `next()`-injection systemic audit**~~ — **done** (2026-09-12).
+   Found and fixed one real gap (`ISO.js`'s constructor self-call, plus a
+   second, more general bug the fix itself exposed — see the findings
+   note above); documented one real, currently-unreachable gap
+   (`Registry.set()`) that isn't cleanly fixable. Five of six audited
+   files were already clean. `test/NextInjection.audit.test.js`, 9/9.
+2. **B.6 — Memory.js secured/structured/tested** (15) — the last core
+   machine component with a proven-pattern latent bug still open. Close
+   it before the boot chain it's part of gets wrapped in E.1's closure,
+   not after — same closure-visibility reasoning A.4 above was done for.
 3. **D.1 — MemoryMapFS as Registry's NVRAM backend** (24) — highest raw
    composite, independent of the E.1 sequencing concern above.
 4. **C.2 — Registry NVRAM-as-fast-path** (19) — natural follow-on to D.1;
@@ -189,6 +231,15 @@ dependency override:**
 
 ## Changelog
 
+- **1.1.0** — 2026-09-12 — A.4 (`next()`-injection systemic audit) shipped:
+  marked ✅, added the findings note (five of six files clean, `Registry.set()`
+  documented as a currently-unreachable, not-cleanly-fixable gap) and a
+  second finding the audit surfaced beyond its own scope (`ISO.js`'s
+  constructor self-call, and why `#private`-method fixes for that shape
+  don't generalize to methods called from other composed methods —
+  `CPU.js`'s own fix re-checked and confirmed safe). Re-pinned the
+  Last-test-run section to the commit that actually shipped this
+  (114/114, 8/8 suites, up from 105/105 across 7).
 - **1.0.0** — 2026-09-11 — Initial publish: six-dimension rubric
   (Foundation Ready, Unlocks, OS Priority, Novelty, Rarity, Confidence),
   full scored backlog across five categories (Composition & Dispatch,
