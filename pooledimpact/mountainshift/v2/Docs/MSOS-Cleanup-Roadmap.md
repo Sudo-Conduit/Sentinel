@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.7.0
+**Version:** 1.8.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `5cda3ee` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `8c87074` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -59,9 +59,9 @@ expect it to stay current and do not push there.
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
 | MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
-| ExtendX.stacking.test.js | ALL 10 CHECKS PASSED |
+| ExtendX.stacking.test.js | ALL 12 CHECKS PASSED |
 
-**Total: 183/183 checks passing, 14/14 suites green.**
+**Total: 185/185 checks passing, 14/14 suites green.**
 
 ## Status legend
 
@@ -280,17 +280,17 @@ with sequencing overrides noted where raw ranking would be wrong:**
    `Registry.js` instance, not a mock.
 5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
    should wrap a boot chain already audited and hardened, not one with
-   known-latent gaps still underneath it. **Pre-E.1 finding (2026-09-12):**
-   `ExtendX.extend()` called on top of an already-composed class silently
-   dropped the outer layer (a real bug, fixed — see the Changelog); a
-   second, related dispose()-chain gap (stacked `dispose()` only runs the
-   outermost layer's mixin hooks) was found alongside it and is **not yet
-   fixed**, pending a deliberate design decision. Neither bug is triggered
-   by any current production call site (every real composition passes
-   every mixin to one `extend()` call), but E.1's closure factory is
-   exactly the kind of code that could introduce a stacked-composition
-   shape — worth resolving the dispose-chain gap, or at least deciding
-   E.1 will never stack `extend()` calls, before E.1 actually lands.
+   known-latent gaps still underneath it. **Pre-E.1 finding (2026-09-12,
+   fully resolved):** `ExtendX.extend()` called on top of an already-
+   composed class silently dropped the outer layer (a real bug — the
+   `Subclass` constructor hardcoded its own closed-over `Subclass` instead
+   of forwarding `new.target`); fixed, and a second, related dispose()-
+   chain gap found alongside it (stacked `dispose()` only ran the
+   outermost layer's mixin hooks) is now fixed too — see the Changelog.
+   Neither bug was triggered by any current production call site (every
+   real composition passes every mixin to one `extend()` call), but E.1's
+   closure factory is exactly the kind of code that could have introduced
+   a stacked-composition shape, so both are closed out before E.1 lands.
 6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
    its position here is sequencing, not priority.
 7. **C.1 — Checksum → signature upgrade** (16)
@@ -334,6 +334,20 @@ dependency override:**
 
 ## Changelog
 
+- **1.8.0** — 2026-09-12 — Pre-E.1 finding fully resolved: the stacked-
+  dispose()-chain gap documented in 1.7.0 is fixed. Split the single
+  conflated `ExtendX.prototype.dispose()`/`disposeAsync()` into
+  `finalizeDisposeBookkeeping()` (once-only whole-instance state, safe to
+  call from every stacked layer) and `runLayerDisposeHooks()`/`Async()`
+  (each layer's own closed-over mixins list, deduped per mixinId instead
+  of gated by one whole-instance flag) — so a stacked instance's inner
+  layer's mixin hook now actually runs, and a repeat top-level `dispose()`
+  call still never re-runs any hook twice. `ExtendX.js` bumped to 1.5.0
+  with its own itemized version-history entry.
+  `test/ExtendX.stacking.test.js` updated from documenting the known gap
+  to asserting the fix, plus new async and repeat-call-idempotency checks
+  (12/12, up from 10/10). Re-pinned the Last-test-run section to
+  `8c87074` (185/185, up from 183/183 across 14, still 14/14 suites).
 - **1.7.0** — 2026-09-12 — Pre-E.1 finding: `ExtendX.extend()` stacking
   (composing on top of an already-composed class) silently dropped the
   outer layer entirely — the `Subclass` constructor hardcoded its own
