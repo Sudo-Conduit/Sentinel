@@ -1,16 +1,29 @@
 /**
  * @file BIOS.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description Firmware layer implementing steps 2-6 of the boot sequence
  *   in Kernel-Machine-Architecture.md: POST -> read environment -> scan
  *   bootDeviceOrder for a valid ESP/bootloader entry -> hand off to a fresh
  *   Kernel. Defaults to UEFI (bootDeviceOrder scans an ESP-shaped entry
  *   first); firmwareType: 'BIOS-L' is available for a deliberate legacy-MBR
  *   scenario but is not the project default.
+ *
+ *   v1.1.0 (C.2, MSOS Cleanup Roadmap): Registry NVRAM-as-fast-path --
+ *   when a Registry is attached and remembers which device confirmed
+ *   bootable last time (`confirmedBootEntry`), boot() tries THAT device
+ *   first via the same real fs.findBootEntry() verification (no
+ *   verification is skipped -- this is a scan-order optimization, not a
+ *   trust shortcut), before falling back to the full bootDeviceOrder scan.
+ *   The confirmed device is only trusted when it's still present in
+ *   bootDeviceOrder, so editing that policy (e.g. disabling network boot)
+ *   still takes effect even against a stale cached record. A freshly
+ *   confirmed entry is written back to the Registry after every boot that
+ *   finds one, "write once, read first."
  * @docs Kernel-Machine-Architecture.md
  * @tests test/BIOS.security.test.js
  * @tests test/FullBootChain.lifecycle.test.js
+ * @tests test/BIOS.nvramFastPath.test.js
  */
 (function(root, factory)
 {
@@ -76,11 +89,11 @@
     {
         static name = 'BIOS';
         static author = 'Will Fobbs';
-        static version = '1.0.0';
+        static version = '1.1.0';
         static domain = 'machine.bios';
         static description = 'Firmware layer: POST, read environment, scan bootDeviceOrder, hand off to a fresh Kernel.';
         static docs = ['Kernel-Machine-Architecture.md'];
-        static tests = ['test/BIOS.security.test.js', 'test/FullBootChain.lifecycle.test.js'];
+        static tests = ['test/BIOS.security.test.js', 'test/FullBootChain.lifecycle.test.js', 'test/BIOS.nvramFastPath.test.js'];
         static _schema = { properties: {
             firmwareType: { type: 'string', default: 'UEFI' },
             bootDeviceOrder: { type: 'array', default: ['esp', 'disk', 'network'] },
@@ -161,21 +174,53 @@
             const env = Environment.detect();
 
             let bootTarget = null;
-            for (const device of this.bootDeviceOrder)
+
+            // C.2 (MSOS Cleanup Roadmap): NVRAM fast path. Real firmware
+            // remembers which device actually booted last time and tries
+            // THAT device first, instead of re-scanning bootDeviceOrder
+            // from the top on every boot. This is a scan-ORDER optimization,
+            // not a trust shortcut: the confirmed device still goes through
+            // the exact same fs.findBootEntry() verification the full scan
+            // below uses (content/signature check, whatever the fs
+            // implementation defines) -- nothing about *what* gets verified
+            // changes, only *which device is tried first*. The confirmed
+            // device is also only trusted when it is still present in
+            // this.bootDeviceOrder, so editing boot policy (e.g. removing
+            // 'network' to disable network boot) still overrides a stale
+            // cached record rather than being silently bypassed by it.
+            const confirmedEntry = this.registryRef && typeof this.registryRef.get === 'function' ? this.registryRef.get('confirmedBootEntry') : null;
+            if (confirmedEntry && typeof confirmedEntry === 'object' && typeof confirmedEntry.device === 'string' && this.bootDeviceOrder.indexOf(confirmedEntry.device) !== -1)
             {
-                let found = fs && typeof fs.findBootEntry === 'function' ? await fs.findBootEntry(device, this.firmwareType) : null;
-                if (!found && device === 'disk' && typeof BootDeviceScan !== 'undefined')
-                {
-                    const hits = await BootDeviceScan.scanAll();
-                    if (hits.length > 0)
-                    {
-                        found = hits[0];
-                    }
-                }
+                const found = fs && typeof fs.findBootEntry === 'function' ? await fs.findBootEntry(confirmedEntry.device, this.firmwareType) : null;
                 if (found)
                 {
-                    bootTarget = { device, entry: found };
-                    break;
+                    bootTarget = { device: confirmedEntry.device, entry: found };
+                    this._recordTrace('registry_fastpath_hit', { device: confirmedEntry.device });
+                }
+                else
+                {
+                    this._recordTrace('registry_fastpath_miss', { device: confirmedEntry.device });
+                }
+            }
+
+            if (!bootTarget)
+            {
+                for (const device of this.bootDeviceOrder)
+                {
+                    let found = fs && typeof fs.findBootEntry === 'function' ? await fs.findBootEntry(device, this.firmwareType) : null;
+                    if (!found && device === 'disk' && typeof BootDeviceScan !== 'undefined')
+                    {
+                        const hits = await BootDeviceScan.scanAll();
+                        if (hits.length > 0)
+                        {
+                            found = hits[0];
+                        }
+                    }
+                    if (found)
+                    {
+                        bootTarget = { device, entry: found };
+                        break;
+                    }
                 }
             }
 
@@ -212,6 +257,19 @@
                         bootTarget = { device: 'disk', entry: confirmed };
                     }
                 }
+            }
+
+            // Write-once, read-first: persist a freshly confirmed entry so
+            // the NEXT boot's fast path above has something real to try.
+            // Only a REAL, fs-verified confirmation is worth caching --
+            // BootDeviceScan's raw hits (used above only when no
+            // fs.findBootEntry adapter exists at all) don't carry the
+            // {surface, id, path, confirmed} shape a real adapter like
+            // FileFsBootAdapter produces, so caching a bare scan hit as
+            // "confirmed" would misrepresent what was actually verified.
+            if (bootTarget && this.registryRef && typeof this.registryRef.set === 'function' && bootTarget.entry && bootTarget.entry.confirmed === true)
+            {
+                this.registryRef.set('confirmedBootEntry', { device: bootTarget.device, entry: bootTarget.entry });
             }
 
             this._recordTrace('boot', { firmwareType: this.firmwareType, env: env.runtime, bootTarget });

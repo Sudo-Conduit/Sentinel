@@ -18,7 +18,8 @@ const files = [
     'Memory.security.test.js',
     'MemoryMapArena.test.js',
     'MemoryMapFS.test.js',
-    'MemoryMapFS.nodeToNode.test.js'
+    'MemoryMapFS.nodeToNode.test.js',
+    'BIOS.nvramFastPath.test.js'
 ];
 
 let anyFailed = false;
