@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.5.0
+**Version:** 1.6.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `dec16ea` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `159c061` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -58,8 +58,9 @@ expect it to stay current and do not push there.
 | MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
 | MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
+| BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
 
-**Total: 165/165 checks passing, 12/12 suites green.**
+**Total: 173/173 checks passing, 13/13 suites green.**
 
 ## Status legend
 
@@ -227,7 +228,7 @@ as shipped above; nothing about that wiring changed.
 | B.5 | Core Machine | Full boot-chain life-cycle integration test (CPU→Physical→Kernel→BIOS) | ✅ | — | — | — | — | — | — | shipped |
 | B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ✅ | — | — | — | — | — | — | shipped |
 | C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
-| C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ⬜ | 3 | 4 | 4 | 2 | 2 | 4 | **19** |
+| C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ✅ | — | — | — | — | — | — | shipped |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
 | C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ⬜ | 3 | 2 | 2 | 2 | 2 | 4 | **15** |
 | D.1 | Persistent/Shared Substrate | Land `MemoryMapArena.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | ✅ | — | — | — | — | — | — | shipped |
@@ -265,8 +266,17 @@ with sequencing overrides noted where raw ranking would be wrong:**
    `MemoryMapArena.js` against the real single-arena API, plus
    `Registry.saveToArena()`/`loadFromArena()`. `test/MemoryMapArena.test.js`,
    12/12.
-4. **C.2 — Registry NVRAM-as-fast-path** (19) — natural follow-on to D.1;
-   "write once, read first" now has a backend worth writing to.
+4. ~~**C.2 — Registry NVRAM-as-fast-path**~~ — **done** (2026-09-12).
+   `BIOS.boot()` tries the last-confirmed device first (via an attached
+   Registry's `confirmedBootEntry` record) through the SAME real
+   `fs.findBootEntry()` verification the full scan uses — a scan-order
+   optimization, not a trust shortcut. Guarded two ways: the confirmed
+   device is only tried while still present in the current
+   `bootDeviceOrder` (so editing boot policy overrides a stale record
+   instead of being bypassed by it), and only a real, `confirmed: true`
+   entry ever gets persisted (an unconfirmed raw `BootDeviceScan` hit
+   never does). `test/BIOS.nvramFastPath.test.js`, 8/8, against a real
+   `Registry.js` instance, not a mock.
 5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
    should wrap a boot chain already audited and hardened, not one with
    known-latent gaps still underneath it.
@@ -313,6 +323,17 @@ dependency override:**
 
 ## Changelog
 
+- **1.6.0** — 2026-09-12 — C.2 (Registry NVRAM-as-fast-path) shipped:
+  `BIOS.boot()` tries the last-confirmed device first via an attached
+  Registry's `confirmedBootEntry` record, through the same real
+  `fs.findBootEntry()` verification the full scan uses — a scan-order
+  optimization, not a trust shortcut. Guarded against both a stale record
+  bypassing edited `bootDeviceOrder` policy and an unconfirmed raw
+  `BootDeviceScan` hit being cached as if it were verified. `BIOS.js`
+  bumped to 1.1.0 with itemized version history.
+  `test/BIOS.nvramFastPath.test.js`, 8/8, against a real `Registry.js`
+  instance. Re-pinned the Last-test-run section to `159c061` (173/173, up
+  from 165/165 across 12, now 13/13 suites).
 - **1.5.0** — 2026-09-12 — D.1 addendum: added
   `test/MemoryMapFS.nodeToNode.test.js`, proving via `worker_threads`
   (the only mechanism that actually shares live memory in Node) that
