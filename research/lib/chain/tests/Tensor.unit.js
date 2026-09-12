@@ -71,6 +71,49 @@ function register(runner)
       assert.deepStrictEqual(t.toFlat().data, [1, 2, 3]);
     });
 
+    runner.test('CUSTOM sorts rows by indexFn(row, i, rows)', () =>
+    {
+      const t = new Tensor().init({ order: Tensor.ORDERS.CUSTOM, indexFn: (row) => row }, [3, 1, 2]);
+      assert.deepStrictEqual(t.toFlat().data, [1, 2, 3]);
+    });
+
+    runner.test('CUSTOM indexFn receives the full (row, i, rows) signature', () =>
+    {
+      // key = rows.length - i: reverses purely by position, ignoring row value
+      const t = new Tensor().init({ order: Tensor.ORDERS.CUSTOM, indexFn: (row, i, rows) => rows.length - i }, [10, 20, 30]);
+      assert.deepStrictEqual(t.toFlat().data, [30, 20, 10]);
+    });
+
+    runner.test('CUSTOM sort is stable: ties keep their relative order', () =>
+    {
+      const rows = [{ k: 1, n: 10 }, { k: 1, n: 20 }, { k: 0, n: 30 }];
+      const t = new Tensor().init({ order: Tensor.ORDERS.CUSTOM, indexFn: (r) => r.k, field: 'n' }, rows);
+      assert.deepStrictEqual(t.toFlat().data, [30, 10, 20]);
+    });
+
+    runner.test('extracting a non-numeric field throws instead of silently producing NaN', () =>
+    {
+      assert.throws(
+        () => new Tensor().init({ field: 'v' }, [{ v: 'not-a-number' }]),
+        /is not a numeric scalar/
+      );
+    });
+
+    runner.test('CUSTOM/UNORDERED also reorder a nested array\'s OUTER axis, not just flat R2', () =>
+    {
+      const custom = new Tensor().init({ order: Tensor.ORDERS.CUSTOM, indexFn: (row) => row[0] }, [[3, 1], [1, 9], [2, 4]]);
+      assert.deepStrictEqual(custom.toNested(), [[1, 9], [2, 4], [3, 1]]);
+
+      const unordered = new Tensor().init({ order: Tensor.ORDERS.UNORDERED, compare: (a, b) => b[0] - a[0] }, [[3, 1], [1, 9], [2, 4]]);
+      assert.deepStrictEqual(unordered.toNested(), [[3, 1], [2, 4], [1, 9]]);
+    });
+
+    runner.test('default ORDERED leaves a nested array\'s row order unchanged', () =>
+    {
+      const t = new Tensor().init({}, [[1, 2], [3, 4]]);
+      assert.deepStrictEqual(t.toNested(), [[1, 2], [3, 4]]);
+    });
+
     runner.test('re-init reshapes/re-sources the same instance', () =>
     {
       const t = new Tensor().init({ shape: [2, 2] }, [1, 2, 3, 4]);

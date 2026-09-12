@@ -173,7 +173,16 @@
       {
         if (R2.length > 0 && Array.isArray(R2[0]))
         {
-          const nested = Tensor._flattenNested(R2, dtype);
+          // Reorder the OUTER axis exactly like a flat array of "rows" would
+          // be — R1.compare/R1.indexFn receive each top-level entry (itself
+          // a sub-array for rank > 1, or a scalar for rank 1) as `row`, so
+          // a CUSTOM indexFn sorting a matrix's rows picks its key from
+          // that sub-array (e.g. row[0]). ORDERED is the identity, so
+          // default behavior for nested R2 is unchanged; only UNORDERED/
+          // CUSTOM now actually do something instead of being silently
+          // ignored on the nested path.
+          const orderedRows = Tensor._applyOrder(R2, order, R1);
+          const nested = Tensor._flattenNested(orderedRows, dtype);
           return { flat: nested.flat, shape: nested.shape, wasNested: true };
         }
         const rows = Tensor._applyOrder(R2, order, R1);
@@ -277,7 +286,14 @@
         const key = field || (Object.prototype.hasOwnProperty.call(row, 'value') ? 'value' : null);
         if (key && Object.prototype.hasOwnProperty.call(row, key))
         {
-          return Number(row[key]);
+          const extracted = Number(row[key]);
+          if (Number.isNaN(extracted))
+          {
+            throw new TypeError(
+              'Tensor: field "' + key + '" of row ' + JSON.stringify(row) + ' is not a numeric scalar'
+            );
+          }
+          return extracted;
         }
       }
       const n = Number(row);
