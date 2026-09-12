@@ -597,6 +597,179 @@
       return new this.constructor().init({ shape: newShape, dtype: this.dtype }, flat);
     }
 
+    // ── Tensor-native classification & algebra ──────────────────────────────
+    //
+    // Everything above (sum/mean/variance/magnitude, formula mixins) is
+    // generic array statistics — none of it is specific to being a TENSOR
+    // rather than a plain buffer of numbers. Rank/shape structure carries
+    // real tensor-algebraic properties (square-ness, symmetry, trace,
+    // diagonality) that a flat array alone doesn't have an opinion about.
+    // These belong on the base class, not a formula mixin, because they're
+    // properties of the coordinate structure (R1) itself, not reductions
+    // over the data (R2) — true regardless of flat/nested presentation.
+
+    /** @returns {boolean} rank 0 (a single value, no axes) */
+    isScalar()
+    {
+      return this.rank() === 0;
+    }
+
+    /** @returns {boolean} rank 1 */
+    isVector()
+    {
+      return this.rank() === 1;
+    }
+
+    /** @returns {boolean} rank 2 */
+    isMatrix()
+    {
+      return this.rank() === 2;
+    }
+
+    /** @returns {boolean} rank 2 with equal row/column dimension */
+    isSquare()
+    {
+      return this.rank() === 2 && this.shape[0] === this.shape[1];
+    }
+
+    /** @param {number|Complex} v @returns {boolean} dtype-aware "is this element zero" */
+    _isZeroValue(v)
+    {
+      return this.dtype === Tensor.DTYPES.COMPLEX ? (v.re === 0 && v.im === 0) : v === 0;
+    }
+
+    /** @param {number|Complex} a @param {number|Complex} b @returns {boolean} dtype-aware value equality */
+    _valuesEqual(a, b)
+    {
+      return this.dtype === Tensor.DTYPES.COMPLEX ? Complex.from(a).equals(b) : a === b;
+    }
+
+    /** @returns {boolean} true if every element is zero (any rank) */
+    isZero()
+    {
+      return this._flat.every((v) => this._isZeroValue(v));
+    }
+
+    /**
+     * @returns {number|Complex} the sum of diagonal elements T[i][i]
+     * @throws {RangeError} if this is not a square rank-2 tensor
+     */
+    trace()
+    {
+      if (!this.isSquare())
+      {
+        throw new RangeError('Tensor.trace: requires a square rank-2 tensor, got shape ' + JSON.stringify(this.shape));
+      }
+      const n = this.shape[0];
+      let sum = this.dtype === Tensor.DTYPES.COMPLEX ? new Complex().init(0, 0) : 0;
+      for (let i = 0; i < n; i++)
+      {
+        sum = Tensor._add(sum, this.get(i, i), this.dtype);
+      }
+      return sum;
+    }
+
+    /**
+     * @returns {Array<number|Complex>} the diagonal elements [T[0][0], T[1][1], ...]
+     * @throws {RangeError} if this is not a square rank-2 tensor
+     */
+    diagonal()
+    {
+      if (!this.isSquare())
+      {
+        throw new RangeError('Tensor.diagonal: requires a square rank-2 tensor, got shape ' + JSON.stringify(this.shape));
+      }
+      const n = this.shape[0];
+      const out = new Array(n);
+      for (let i = 0; i < n; i++)
+      {
+        out[i] = this.get(i, i);
+      }
+      return out;
+    }
+
+    /**
+     * @returns {boolean} true if every off-diagonal element is zero
+     *   (a non-square tensor is not diagonal, by definition, not an error)
+     */
+    isDiagonal()
+    {
+      if (!this.isSquare())
+      {
+        return false;
+      }
+      const n = this.shape[0];
+      for (let i = 0; i < n; i++)
+      {
+        for (let j = 0; j < n; j++)
+        {
+          if (i !== j && !this._isZeroValue(this.get(i, j)))
+          {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    /**
+     * @returns {boolean} true if T[i][j] === T[j][i] for every i,j
+     *   (a non-square tensor is not symmetric, by definition, not an error)
+     */
+    isSymmetric()
+    {
+      if (!this.isSquare())
+      {
+        return false;
+      }
+      const n = this.shape[0];
+      for (let i = 0; i < n; i++)
+      {
+        for (let j = i + 1; j < n; j++)
+        {
+          if (!this._valuesEqual(this.get(i, j), this.get(j, i)))
+          {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    /**
+     * A structured summary of this tensor's own algebraic properties —
+     * the "report" half of "do and report tensor things": what trace()/
+     * diagonal()/isDiagonal()/isSymmetric() compute, without requiring the
+     * caller to know which ones are even meaningful for this tensor's rank.
+     * @returns {Object} { rank, shape, dtype, size, layout, isZero,
+     *   square?, symmetric?, diagonal?, trace? } — the last four present
+     *   only when isMatrix() (they are undefined, not false/thrown, for
+     *   any other rank, since "is a rank-3 tensor symmetric" isn't a
+     *   question this class answers)
+     */
+    report()
+    {
+      const out = {
+        rank: this.rank(),
+        shape: this.shape.slice(),
+        dtype: this.dtype,
+        size: this.size(),
+        layout: this.layout,
+        isZero: this.isZero(),
+      };
+      if (this.isMatrix())
+      {
+        out.square = this.isSquare();
+        if (out.square)
+        {
+          out.symmetric = this.isSymmetric();
+          out.diagonal = this.isDiagonal();
+          out.trace = this.trace();
+        }
+      }
+      return out;
+    }
+
     /**
      * @returns {{data:number[], shape:number[], strides:number[]}} flat coordinate representation
      *
