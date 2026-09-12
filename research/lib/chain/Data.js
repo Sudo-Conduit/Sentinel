@@ -30,6 +30,7 @@
     DB_TABLE: 'db-table',       // { columns: [...], rows: [[...], [...]] }
     BITMAP: 'bitmap',           // { width, height, data: byte-iterable, channels? }
     UNICODE: 'unicode',         // string, or { text, encoding: 'utf-8'|'utf-16'|'utf-32' }
+    ASCII: 'ascii',             // string, or { text }: strict 7-bit codepoints, 0-127 only
   });
 
   class Data {
@@ -39,6 +40,8 @@
      * @param {string} opts.type - one of SOURCE_TYPES
      * @param {string} [opts.delimiter=','] - required for DELIMITED
      * @param {boolean} [opts.hasHeader=true] - required for DELIMITED
+     * @param {number} [opts.bitsPerChar=7] - ASCII only; 7 is the true spec width,
+     *   pass 8 to get the byte-padded-in-memory form instead
      */
     constructor(source, opts) {
       if (source === undefined || source === null) {
@@ -50,6 +53,7 @@
       this.type = opts.type;
       this.delimiter = opts.delimiter || ',';
       this.hasHeader = opts.hasHeader !== false;
+      this.bitsPerChar = opts.bitsPerChar || 7;
       this.source = source;
 
       const parsed = Data._normalize(source, this);
@@ -76,6 +80,8 @@
           return Data._fromBitmap(source);
         case SOURCE_TYPES.UNICODE:
           return Data._fromUnicode(source);
+        case SOURCE_TYPES.ASCII:
+          return Data._fromAscii(source, self.bitsPerChar);
         default:
           throw new TypeError('Data: unknown type "' + self.type + '"');
       }
@@ -198,6 +204,54 @@
         return rec;
       });
       return { columns, rows };
+    }
+
+    /**
+     * ASCII is kept distinct from UTF-8 (rather than treated as its subset)
+     * for two reasons that matter downstream:
+     *   1. It is the clearest case that a character IS a bit array already —
+     *      'w' = 1110111 is not "like" a bitmap, it is one, at whatever
+     *      bitsPerChar width you fix, ready to reshape via Tensor.
+     *   2. It strictly enforces the 7-bit range (0-127) that UTF-8 would
+     *      silently widen past for anything above ASCII, so the width
+     *      actually used is honest: 7 bits/char is the historical
+     *      compression baseline (1 bit reclaimed per char vs. an 8-bit
+     *      byte), which is also what makes fixed-width Unicode encodings
+     *      (UTF-32's 32, or really just the 21 bits Unicode needs) worth
+     *      comparing against — a handful of bits encoding a symbol like
+     *      '∆' is drastically smaller than rasterizing that symbol as
+     *      an actual pixel bitmap glyph would be.
+     */
+    static _asciiBits(text, bitsPerChar) {
+      const bits = new Array(text.length * bitsPerChar);
+      let p = 0;
+      for (let i = 0; i < text.length; i++) {
+        const cp = text.charCodeAt(i);
+        if (cp > 127) {
+          throw new RangeError(
+            'Data: ASCII source has non-ASCII code point ' + cp + ' at index ' + i +
+            ' — use SOURCE_TYPES.UNICODE for text outside 0-127'
+          );
+        }
+        for (let b = bitsPerChar - 1; b >= 0; b--) {
+          bits[p++] = (cp >> b) & 1;
+        }
+      }
+      return bits;
+    }
+
+    static _fromAscii(source, bitsPerChar) {
+      const isPlainString = typeof source === 'string';
+      const text = isPlainString ? source : source.text;
+      if (typeof text !== 'string') {
+        throw new TypeError('Data: ASCII source must be a string or { text }');
+      }
+      const bits = Data._asciiBits(text, bitsPerChar);
+      return {
+        columns: null,
+        rows: bits, // each row is a single bit (0|1)
+        meta: { text, encoding: 'ascii-' + bitsPerChar, charLength: text.length, bitsPerChar, bitLength: bits.length },
+      };
     }
 
     static _fromBitmap(source) {
