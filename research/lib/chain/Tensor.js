@@ -736,16 +736,92 @@
       return true;
     }
 
+    // ── Storage size estimates (deterministic, formula-based) ──────────────
+    //
+    // "Deterministic" specifically rules out process.memoryUsage()-style
+    // measurement: actual JS engine memory (V8 array headers, per-element
+    // boxing, alignment padding) varies by engine, engine VERSION, and even
+    // array contents in ways that are not reproducible run to run. These
+    // methods instead compute a pure function of shape + dtype alone —
+    // IEEE-754 double-precision storage assumed throughout (8 bytes per
+    // real element, 16 bytes per complex element — two doubles, re and
+    // im) — so the same tensor always reports the same size, on any
+    // engine, without ever touching a live buffer. This is the actual
+    // point of the diagonal/dense distinction made concrete: a dense n x n
+    // matrix needs n^2 elements; its diagonal needs only n.
+
+    /** @returns {number} bytes assumed per element for this tensor's dtype (8 real, 16 complex) */
+    bytesPerElement()
+    {
+      return this.dtype === Tensor.DTYPES.COMPLEX ? 16 : 8;
+    }
+
+    /** @returns {number} elements needed to store every value densely (rows*cols*...) */
+    denseElementCount()
+    {
+      return this.size();
+    }
+
+    /** @returns {number} bytes to store every element densely */
+    denseSizeBytes()
+    {
+      return this.denseElementCount() * this.bytesPerElement();
+    }
+
+    /** @returns {number} MB (1024*1024 bytes) to store every element densely */
+    denseSizeMB()
+    {
+      return this.denseSizeBytes() / (1024 * 1024);
+    }
+
+    /**
+     * @returns {number} elements needed to store only the diagonal —
+     *   min(rows, cols) for an m x n matrix, the standard definition even
+     *   when the matrix is rectangular (m !== n), not just square
+     * @throws {RangeError} if this is not rank-2
+     */
+    diagonalElementCount()
+    {
+      if (!this.isMatrix())
+      {
+        throw new RangeError('Tensor.diagonalElementCount: requires a rank-2 tensor, got rank ' + this.rank());
+      }
+      return Math.min(this.shape[0], this.shape[1]);
+    }
+
+    /** @returns {number} bytes to store only the diagonal @throws {RangeError} if not rank-2 */
+    diagonalSizeBytes()
+    {
+      return this.diagonalElementCount() * this.bytesPerElement();
+    }
+
+    /** @returns {number} MB to store only the diagonal @throws {RangeError} if not rank-2 */
+    diagonalSizeMB()
+    {
+      return this.diagonalSizeBytes() / (1024 * 1024);
+    }
+
+    /**
+     * @returns {number} denseSizeBytes / diagonalSizeBytes — how many times
+     *   larger dense storage is than diagonal-only storage for this shape
+     * @throws {RangeError} if not rank-2
+     */
+    compressionRatio()
+    {
+      return this.denseSizeBytes() / this.diagonalSizeBytes();
+    }
+
     /**
      * A structured summary of this tensor's own algebraic properties —
      * the "report" half of "do and report tensor things": what trace()/
      * diagonal()/isDiagonal()/isSymmetric() compute, without requiring the
      * caller to know which ones are even meaningful for this tensor's rank.
      * @returns {Object} { rank, shape, dtype, size, layout, isZero,
-     *   square?, symmetric?, diagonal?, trace? } — the last four present
-     *   only when isMatrix() (they are undefined, not false/thrown, for
-     *   any other rank, since "is a rank-3 tensor symmetric" isn't a
-     *   question this class answers)
+     *   square?, denseSizeMB?, diagonalSizeMB?, compressionRatio?,
+     *   symmetric?, diagonal?, trace? } — matrix-only fields present only
+     *   when isMatrix() (undefined, not false/thrown, for any other rank,
+     *   since "is a rank-3 tensor symmetric" isn't a question this class
+     *   answers); symmetric/diagonal/trace further require isSquare()
      */
     report()
     {
@@ -760,6 +836,9 @@
       if (this.isMatrix())
       {
         out.square = this.isSquare();
+        out.denseSizeMB = this.denseSizeMB();
+        out.diagonalSizeMB = this.diagonalSizeMB();
+        out.compressionRatio = this.compressionRatio();
         if (out.square)
         {
           out.symmetric = this.isSymmetric();
