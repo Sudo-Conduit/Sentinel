@@ -3,16 +3,20 @@
  *
  * Link 2 of Data -> Tensor -> Hilbert -> Hamiltonian -> Continuity -> VonNeumann -> Diagonal/Dense
  *
- * A Tensor here is the coordinate representation of a multi-index object
- * once a basis/ordering has been fixed on the incoming Data: a flat buffer
- * plus a shape (and row-major strides), with an optional nested view.
- * "Nested or Flat, Ordered or Unordered, Custom" are all valid backings —
- * which one is correct is situational (nested for jagged/structural data,
- * flat+strides for dense numeric access, unordered when row identity, not
- * row position, is canonical and a key function is required to fix an order
- * before coordinates mean anything).
+ * A Tensor is two injected parts, not one object:
+ *   R1 — the structural/rank spec: shape, ordering rule, field-extraction
+ *        rule. This is the frame/basis-choice half; it carries no data.
+ *   R2 — the data itself: a Data instance, a flat array, or a nested array.
+ *        R2 is legitimately shaped either way going IN (that's situational,
+ *        not a defect — nested for jagged/structural data, flat for dense
+ *        numeric access) and Tensor normalizes whichever it receives to one
+ *        canonical flat buffer + row-major strides, from which toFlat() and
+ *        toNested() are just two read-out views of the same thing.
+ * "Ordered / Unordered / Custom" (R1.order) governs how R2's row identity
+ * maps to index position when R2 arrives flat and unordered — a key
+ * function is required to fix an order before coordinates mean anything.
  *
- * Tensor does not construct its own Data — Data is injected. No requires.
+ * Tensor does not construct its own R2 — it is injected. No requires.
  * UMD, browser global falls back to `window.Chain.Tensor`.
  */
 (function (root, factory) {
@@ -46,59 +50,109 @@
 
   class Tensor {
     /**
-     * @param {Data} data - injected Data instance (dependency, not constructed here)
-     * @param {Object} opts
-     * @param {string} [opts.layout='flat'] - LAYOUTS.FLAT | LAYOUTS.NESTED
-     * @param {string} [opts.order='ordered'] - ORDERS.ORDERED | UNORDERED | CUSTOM
-     * @param {Function} [opts.compare] - required when order is UNORDERED (Array.sort comparator over rows)
-     * @param {Function} [opts.indexFn] - required when order is CUSTOM: (row, i, rows) => scalar sort key
-     * @param {string} [opts.field] - field to extract a numeric scalar from each record; defaults to 'value' for key/value rows, else the row itself if already a number
-     * @param {number[]} [opts.shape] - explicit shape; defaults to [rows.length] (rank-1)
+     * @param {Object} R1 - structural/rank spec (data-free)
+     * @param {number[]} [R1.shape] - explicit shape; defaults to the shape inferred from R2
+     *   (rank-1 [length] for a Data dependency or a flat array, or R2's own
+     *   rectangular nesting depth/extents when R2 arrives as a nested array)
+     * @param {string} [R1.order='ordered'] - ORDERS.ORDERED | UNORDERED | CUSTOM;
+     *   only meaningful when R2 is a Data dependency or a flat array of records
+     * @param {Function} [R1.compare] - required when order is UNORDERED (Array.sort comparator over rows)
+     * @param {Function} [R1.indexFn] - required when order is CUSTOM: (row, i, rows) => scalar sort key
+     * @param {string} [R1.field] - field to extract a numeric scalar from each record; defaults to 'value' for key/value rows, else the row itself if already a number
+     * @param {string} [R1.layout] - purely descriptive label (LAYOUTS.FLAT | LAYOUTS.NESTED); inferred from R2's shape if omitted
+     * @param {Data|Array} R2 - the data: an injected Data instance, a flat array, or a nested array
      */
-    constructor(data, opts) {
-      if (!data || typeof data.toArray !== 'function') {
-        throw new TypeError('Tensor: data must be an injected Data-like instance (needs toArray())');
+    constructor(R1, R2) {
+      R1 = R1 || {};
+      if (R2 === undefined || R2 === null) {
+        throw new TypeError('Tensor: R2 (data) is required');
       }
-      opts = opts || {};
-      this.layout = opts.layout || LAYOUTS.FLAT;
-      this.order = opts.order || ORDERS.ORDERED;
-      this.field = opts.field;
+      this.order = R1.order || ORDERS.ORDERED;
+      this.field = R1.field;
 
-      let rows = data.toArray();
-      rows = Tensor._applyOrder(rows, this.order, opts);
+      const resolved = Tensor._resolveR2(R2, this.order, R1, this.field);
+      const shape = R1.shape ? R1.shape.slice() : resolved.shape;
 
-      const values = rows.map((r) => Tensor._extractScalar(r, this.field));
-      const shape = opts.shape ? opts.shape.slice() : [values.length];
-
-      if (product(shape) !== values.length) {
+      if (product(shape) !== resolved.flat.length) {
         throw new RangeError(
           'Tensor: shape ' + JSON.stringify(shape) +
-          ' (size ' + product(shape) + ') does not match ' + values.length + ' extracted values'
+          ' (size ' + product(shape) + ') does not match ' + resolved.flat.length + ' extracted values'
         );
       }
 
+      this.layout = R1.layout || (resolved.wasNested ? LAYOUTS.NESTED : LAYOUTS.FLAT);
       this.shape = shape;
       this.strides = rowMajorStrides(shape);
-      this._flat = values; // canonical backing store regardless of requested view
+      this._flat = resolved.flat; // canonical backing store regardless of requested view
+
+      // Surface the two injected halves explicitly, matching the R1/R2 contract itself.
+      this.R1 = { shape: this.shape.slice(), order: this.order, layout: this.layout };
+      this.R2 = R2;
     }
 
     static get LAYOUTS() { return LAYOUTS; }
     static get ORDERS() { return ORDERS; }
 
-    static _applyOrder(rows, order, opts) {
+    /**
+     * Normalize R2 (Data dependency | flat array | nested array) to one
+     * canonical flat buffer + inferred shape, regardless of which shape it
+     * arrived in.
+     */
+    static _resolveR2(R2, order, R1, field) {
+      if (R2 && typeof R2.toArray === 'function') {
+        const rows = Tensor._applyOrder(R2.toArray(), order, R1);
+        const flat = rows.map((r) => Tensor._extractScalar(r, field));
+        return { flat, shape: [flat.length], wasNested: false };
+      }
+      if (Array.isArray(R2)) {
+        if (R2.length > 0 && Array.isArray(R2[0])) {
+          const nested = Tensor._flattenNested(R2);
+          return { flat: nested.flat, shape: nested.shape, wasNested: true };
+        }
+        const rows = Tensor._applyOrder(R2, order, R1);
+        const flat = rows.map((r) => Tensor._extractScalar(r, field));
+        return { flat, shape: [flat.length], wasNested: false };
+      }
+      throw new TypeError('Tensor: R2 must be a Data instance, a flat array, or a nested array');
+    }
+
+    /** Flattens a rectangular nested array and infers its shape from nesting depth/extents. */
+    static _flattenNested(nested) {
+      const shape = [];
+      let cur = nested;
+      while (Array.isArray(cur)) {
+        shape.push(cur.length);
+        cur = cur[0];
+      }
+      const flat = [];
+      const walk = (node, depth) => {
+        if (depth === shape.length) {
+          flat.push(Tensor._extractScalar(node));
+          return;
+        }
+        if (!Array.isArray(node) || node.length !== shape[depth]) {
+          throw new RangeError('Tensor: ragged nested array is not rectangular at depth ' + depth);
+        }
+        for (let i = 0; i < node.length; i++) walk(node[i], depth + 1);
+      };
+      walk(nested, 0);
+      return { shape, flat };
+    }
+
+    static _applyOrder(rows, order, R1) {
       switch (order) {
         case ORDERS.ORDERED:
           return rows;
         case ORDERS.UNORDERED:
-          if (typeof opts.compare !== 'function') {
-            throw new TypeError('Tensor: order "unordered" requires opts.compare');
+          if (typeof R1.compare !== 'function') {
+            throw new TypeError('Tensor: order "unordered" requires R1.compare');
           }
-          return rows.slice().sort(opts.compare);
+          return rows.slice().sort(R1.compare);
         case ORDERS.CUSTOM: {
-          if (typeof opts.indexFn !== 'function') {
-            throw new TypeError('Tensor: order "custom" requires opts.indexFn');
+          if (typeof R1.indexFn !== 'function') {
+            throw new TypeError('Tensor: order "custom" requires R1.indexFn');
           }
-          const keyed = rows.map((r, i) => ({ r, k: opts.indexFn(r, i, rows) }));
+          const keyed = rows.map((r, i) => ({ r, k: R1.indexFn(r, i, rows) }));
           keyed.sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : 0));
           return keyed.map((x) => x.r);
         }
