@@ -290,22 +290,40 @@
       this._flat[offset] = value;
     }
 
-    /** @returns {{data:number[], shape:number[], strides:number[]}} flat coordinate representation */
+    /**
+     * @returns {{data:number[], shape:number[], strides:number[]}} flat coordinate representation
+     *
+     * Defensive against uninitialized state (this._flat/this.shape
+     * undefined) rather than throwing: reflection-based tooling (e.g.
+     * ExtendX mixins that enumerate BaseClass.prototype own property
+     * names to build a security/structure wrapper) invokes any accessor
+     * getter it finds merely by touching the property — including
+     * FlatTensor/NestedTensor's `values` getter, which calls this method
+     * — with `this` bound to the bare prototype object, which was never
+     * routed through init(). Returning empty defaults there is correct;
+     * throwing would break generic prototype introspection that has no
+     * way to know this getter needs a real instance first.
+     */
     toFlat()
     {
-      return { data: this._flat.slice(), shape: this.shape.slice(), strides: this.strides.slice() };
+      const flat = this._flat || [];
+      const shape = this.shape || [];
+      const strides = this.strides || [];
+      return { data: flat.slice(), shape: shape.slice(), strides: strides.slice() };
     }
 
-    /** @returns {*} nested-array coordinate representation, built recursively from the flat buffer */
+    /** @returns {*} nested-array coordinate representation, built recursively from the flat buffer. Same uninitialized-state defense as toFlat() above. */
     toNested()
     {
-      const build = (shape, offset, stride) =>
+      const flat = this._flat || [];
+      const shape = this.shape || [];
+      const build = (s, offset, stride) =>
       {
-        if (shape.length === 0)
+        if (s.length === 0)
         {
-          return this._flat[offset];
+          return flat[offset];
         }
-        const [head, ...rest] = shape;
+        const [head, ...rest] = s;
         const innerStride = stride / head;
         const out = new Array(head);
         for (let i = 0; i < head; i++)
@@ -314,7 +332,7 @@
         }
         return out;
       };
-      return build(this.shape, 0, product(this.shape));
+      return build(shape, 0, product(shape));
     }
 
     /**
