@@ -1,7 +1,7 @@
 /**
  * @file Registry.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description Machine-level persistent key/value config — NVRAM/CMOS
  *   equivalent (boot device priority, hardware config flags, saved
  *   settings). Kept deliberately separate from BIOS.js's own per-boot
@@ -9,8 +9,19 @@
  *   Registry.js is small, persistent, non-file-shaped machine config —
  *   the thing BIOS reads at step 3 of the boot sequence, before it even
  *   knows what's on disk.
+ *
+ *   v1.1.0 (D.1, MSOS Cleanup Roadmap): saveToArena()/loadFromArena() --
+ *   an NVRAM persistence path via MemoryMapArena.js, alongside the
+ *   existing FileFsX-backed save()/load(), not replacing it. Closes the
+ *   Node/Browser split every FileFsX backend has (IDB/OPFS/Cache/
+ *   localStorage are browser-only; real fs needs a user gesture) -- a
+ *   capability-gated WASM arena instantiates identically in both
+ *   runtimes. Today's arena is per-process memory only; real
+ *   cross-restart persistence needs a host-layer decision about what
+ *   backs the arena's linear memory, deliberately out of scope here.
  * @docs Kernel-Machine-Architecture.md
  * @tests test/NextInjection.audit.test.js
+ * @tests test/MemoryMapArena.test.js
  */
 (function(root, factory)
 {
@@ -38,11 +49,11 @@
     {
         static name = 'Registry';
         static author = 'Will Fobbs';
-        static version = '1.0.0';
+        static version = '1.1.0';
         static domain = 'machine.registry';
         static description = 'Machine-level persistent key/value config -- NVRAM/CMOS equivalent (boot device priority, hardware config flags, saved settings).';
         static docs = ['Kernel-Machine-Architecture.md'];
-        static tests = ['test/NextInjection.audit.test.js'];
+        static tests = ['test/NextInjection.audit.test.js', 'test/MemoryMapArena.test.js'];
         static _schema = { properties: {
             entries: { type: 'object', default: {} }
         }};
@@ -160,6 +171,59 @@
                 const fs = await FileFS.create({ backend, key });
                 const data = await fs.readFile('/registry.json', 'utf8');
                 return new Registry({ entries: JSON.parse(data) });
+            }
+            catch (e)
+            {
+                return new Registry();
+            }
+        }
+
+        // D.1 (MSOS Cleanup Roadmap): NVRAM record via MemoryMapArena --
+        // additive, alongside save()/load() above, not a replacement.
+        // Today's arena is per-process memory only (it does not survive a
+        // real process restart on its own -- that needs a host-layer
+        // decision about what backs the arena's linear memory, out of
+        // scope here); what this closes is the Node/Browser SPLIT every
+        // FileFsX backend has (IDB/OPFS/Cache/localStorage are browser-
+        // only, real fs needs a user gesture) -- a capability-gated WASM
+        // arena instantiates identically in both runtimes.
+        //
+        // arenaSlot: NOT optional with a `|| default`, deliberately --
+        // startSlot has no sensible implicit value the way ppid/label do
+        // elsewhere in this codebase's next()-injection fixes; every real
+        // call site should say explicitly which slot range it owns.
+        /**
+         * Pack this Registry's entries into a MemoryMapArena, JSON-encoded
+         * as UTF-8 bytes via the arena's length-header binary codec.
+         * @param {Object} arena - an initialized, authenticated MemoryMapArena
+         * @param {number} startSlot - first slot to write (a length header,
+         *   then the packed data slots after it)
+         * @returns {Registry} this, for chaining
+         */
+        saveToArena(arena, startSlot)
+        {
+            const bytes = new TextEncoder().encode(JSON.stringify(this.entries));
+            arena.packBytes(startSlot, bytes);
+            this._recordTrace('registry_persist_save_arena', { startSlot, byteLength: bytes.length });
+            return this;
+        }
+
+        /**
+         * Inverse of saveToArena(): reads and JSON-decodes entries back out
+         * of the arena. Falls back to a fresh default Registry if nothing
+         * valid is found at that slot (mirrors load()'s own fallback
+         * behavior for a missing/corrupt FileFsX record).
+         * @param {Object} arena - an initialized, authenticated MemoryMapArena
+         * @param {number} startSlot - the slot saveToArena() was given
+         * @returns {Registry} a Registry loaded from the arena, or a fresh default one
+         */
+        static loadFromArena(arena, startSlot)
+        {
+            try
+            {
+                const bytes = arena.unpackBytes(startSlot);
+                const json = new TextDecoder().decode(bytes);
+                return new Registry({ entries: JSON.parse(json) });
             }
             catch (e)
             {
