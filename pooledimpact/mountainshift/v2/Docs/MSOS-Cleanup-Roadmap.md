@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.8.0
+**Version:** 1.9.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `8c87074` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `c218f0f` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -60,8 +60,9 @@ expect it to stay current and do not push there.
 | MemoryMapFS.nodeToNode.test.js | ALL 7 CHECKS PASSED |
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
 | ExtendX.stacking.test.js | ALL 12 CHECKS PASSED |
+| BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
 
-**Total: 185/185 checks passing, 14/14 suites green.**
+**Total: 195/195 checks passing, 15/15 suites green.**
 
 ## Status legend
 
@@ -231,7 +232,7 @@ as shipped above; nothing about that wiring changed.
 | C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
 | C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ✅ | — | — | — | — | — | — | shipped |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
-| C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ⬜ | 3 | 2 | 2 | 2 | 2 | 4 | **15** |
+| C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ✅ | — | — | — | — | — | — | shipped |
 | D.1 | Persistent/Shared Substrate | Land `MemoryMapArena.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | ✅ | — | — | — | — | — | — | shipped |
 | D.2 | Persistent/Shared Substrate | `'network'` boot device adapter via WebRTC federation (the never-implemented 3rd `bootDeviceOrder` slot) | 🤝 | 1 | 3 | 4 | 5 | 5 | 1 | **19** |
 | D.3 | Persistent/Shared Substrate | Node-native WebRTC parity layer (blocks D.2/D.4 entirely) | 🤝 | 1 | 4 | 3 | 3 | 4 | 2 | **17** |
@@ -294,7 +295,19 @@ with sequencing overrides noted where raw ranking would be wrong:**
 6. **E.2 — Black-box test tier** (15) — strictly blocked by E.1 (F=1);
    its position here is sequencing, not priority.
 7. **C.1 — Checksum → signature upgrade** (16)
-8. **C.4 — First-boot vs. steady-state distinction** (15)
+8. ~~**C.4 — First-boot vs. steady-state distinction**~~ — **done**
+   (2026-09-12). A successful boot with no persisted `firstBootComplete`
+   Registry flag runs one-time post-install setup (minting a persistent
+   `machineId`, only if one isn't already recorded) exactly once, then
+   marks the Registry so later boots take the steady-state path. A
+   failed boot (nothing bootable found) never marks setup complete, so
+   the next real successful boot still gets to run it; a pre-existing
+   `machineId` from a partial prior run is never regenerated. No Registry
+   attached means every boot looks like a first boot, matching real
+   hardware with no battery-backed NVRAM. `Registry.js` gained
+   `firstBootComplete: false` in its default entries (bumped to 1.2.0);
+   `BIOS.js` bumped to 1.2.0. `test/BIOS.firstBoot.test.js`, 10/10,
+   against a real `Registry.js` instance.
 9. **C.3 — `secureBoot` flag enforcement** (13) — deliberately after C.1:
    enforcing a flag with no real signature behind it is the same
    "dead config gains false teeth" risk the Confidence dimension warns
@@ -334,6 +347,15 @@ dependency override:**
 
 ## Changelog
 
+- **1.9.0** — 2026-09-12 — C.4 (first-boot vs. steady-state distinction)
+  shipped: `BIOS.boot()` now runs one-time post-install setup (minting a
+  persistent `machineId`) exactly once, gated by a new `firstBootComplete`
+  Registry flag, with guards for a failed first boot (never marks setup
+  complete) and a partial prior run (never regenerates an existing
+  `machineId`). `Registry.js` and `BIOS.js` both bumped to 1.2.0.
+  `test/BIOS.firstBoot.test.js`, 10/10, against a real `Registry.js`
+  instance. Re-pinned the Last-test-run section to `c218f0f` (195/195, up
+  from 185/185 across 14, now 15/15 suites).
 - **1.8.0** — 2026-09-12 — Pre-E.1 finding fully resolved: the stacked-
   dispose()-chain gap documented in 1.7.0 is fixed. Split the single
   conflated `ExtendX.prototype.dispose()`/`disposeAsync()` into
