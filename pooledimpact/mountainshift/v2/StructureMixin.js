@@ -1,13 +1,25 @@
 /**
  * @file StructureMixin.js
  * @author Wilbert Fobbs III
- * @version 1.0.0
+ * @version 1.1.0
  * @description Optional parent/child/sibling and arbitrary-edge tracking for
  *   any class composed via ExtendX.extend(), independent of BaseClassX.
  *   Generalizes BaseClassX's own dual model (children/_parentRef for the
  *   tree, linkTo/inEdges/outEdges for arbitrary edges) to classes that
  *   aren't BaseClassX subclasses, and makes each half independently
  *   optional instead of always-on.
+ *
+ *   v1.0.0  Initial ship: graph mode (explicit + inferred parent/child/
+ *           sibling, spawnChildren's Promise.all-based concurrent
+ *           inference), relational mode's linkTo/unlinkFrom/getConnected
+ *           (one-hop adjacency only), modes 'none' and 'both'.
+ *   v1.1.0  Relational mode's other half: getConnectedGraph(), a real BFS
+ *           traversal returning every extId transitively reachable, not
+ *           just direct edges -- "a connected graph view" was only
+ *           half-built until this. Also fixed the label/next() collision:
+ *           unlinkFrom(target) with no label omitted was silently
+ *           comparing against ExtendX's injected next() callback instead
+ *           of undefined, so it deleted nothing.
  *
  *   OFF BY DEFAULT: nothing here runs unless a class is explicitly composed
  *   with a mixin this file produces. Every existing class (CPU, Physical,
@@ -431,7 +443,7 @@
         spawnChildren: spawnChildren,
         name: 'StructureMixin',
         author: 'Wilbert Fobbs III',
-        version: '1.0.0',
+        version: '1.1.0',
         description: 'Optional parent/child/sibling and arbitrary-edge tracking for any class composed via ExtendX.extend(), independent of BaseClassX.',
         tests: ['test/StructureMixin.test.js']
     };

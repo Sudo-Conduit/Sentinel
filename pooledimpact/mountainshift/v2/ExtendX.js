@@ -2,11 +2,23 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.1.0
+ * @version 1.3.0
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
  *   v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
+ *   v1.2.0  mixin.locked (composition-time toggle refusal, fixing the
+ *           enableLayer/disableLayer self-lockout deadlock), the
+ *           _resolvePipeline locked-survives-global-override fix (a
+ *           disposed instance's locked mixins keep enforcing instead of
+ *           silently falling through), and always-wrapped dispose()/
+ *           disposeAsync() (previously conditional in a way that made
+ *           mixin dispose hooks dead for every BaseClassX subclass).
+ *   v1.3.0  Docblock/static-metadata retrofit: static get name/description/
+ *           docs/tests alongside the existing author/company/version
+ *           getters, full Allman brace style, JSDoc on every method --
+ *           no behavior change, but a real additive surface (the new
+ *           getters), not a no-op worth reusing v1.2.0's number for.
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -60,7 +72,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.2.0';
+    const VERSION = '1.3.0';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
