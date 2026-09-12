@@ -27,18 +27,18 @@
 {
   if (typeof module === 'object' && module.exports)
   {
-    module.exports = factory();
+    module.exports = factory(require('./Complex.js'));
   }
   else if (typeof define === 'function' && define.amd)
   {
-    define([], factory);
+    define(['./Complex'], factory);
   }
   else
   {
     root.Chain = root.Chain || {};
-    root.Chain.Tensor = factory();
+    root.Chain.Tensor = factory(root.Chain.Complex);
   }
-}(typeof self !== 'undefined' ? self : this, function ()
+}(typeof self !== 'undefined' ? self : this, function (Complex)
 {
   'use strict';
 
@@ -71,6 +71,12 @@
 
     static LAYOUTS = Object.freeze({ FLAT: 'flat', NESTED: 'nested' });
     static ORDERS = Object.freeze({ ORDERED: 'ordered', UNORDERED: 'unordered', CUSTOM: 'custom' });
+    // REAL: elements are plain JS numbers. COMPLEX: elements are Complex
+    // instances — every value in _flat is coerced through Complex.from()
+    // at init() time, so downstream code never has to branch on "is this
+    // element a number or a Complex" itself; it only has to know the
+    // tensor's own dtype once.
+    static DTYPES = Object.freeze({ REAL: 'real', COMPLEX: 'complex' });
 
     /**
      * Allocates an uninitialized Tensor. No R1/R2 are read here — call
@@ -84,6 +90,7 @@
       this.order = Tensor.ORDERS.ORDERED;
       this.field = undefined;
       this.layout = Tensor.LAYOUTS.FLAT;
+      this.dtype = Tensor.DTYPES.REAL;
       this.shape = [];
       this.strides = [];
       this._flat = [];
@@ -103,6 +110,9 @@
      * @param {Function} [R1.indexFn] - required when order is CUSTOM: (row, i, rows) => scalar sort key
      * @param {string} [R1.field] - field to extract a numeric scalar from each record; defaults to 'value' for key/value rows, else the row itself if already a number
      * @param {string} [R1.layout] - purely descriptive label (Tensor.LAYOUTS.FLAT | NESTED); inferred from R2's shape if omitted
+     * @param {string} [R1.dtype='real'] - Tensor.DTYPES.REAL | COMPLEX. When COMPLEX, every
+     *   extracted element is coerced through Complex.from() (a plain number becomes re
+     *   with im=0), so _flat holds Complex instances instead of plain numbers throughout.
      * @param {Data|Array} R2 - the data: an injected Data instance, a flat array, or a nested array
      * @returns {Tensor} this, for chaining
      * @throws {TypeError} if R2 is missing or of an unsupported shape
@@ -118,8 +128,9 @@
 
       this.order = R1.order || Tensor.ORDERS.ORDERED;
       this.field = R1.field;
+      this.dtype = R1.dtype || Tensor.DTYPES.REAL;
 
-      const resolved = Tensor._resolveR2(R2, this.order, R1, this.field);
+      const resolved = Tensor._resolveR2(R2, this.order, R1, this.field, this.dtype);
       const shape = R1.shape ? R1.shape.slice() : resolved.shape;
 
       if (product(shape) !== resolved.flat.length)
@@ -136,7 +147,7 @@
       this._flat = resolved.flat; // canonical backing store regardless of requested view
 
       // Surface the two injected halves explicitly, matching the R1/R2 contract itself.
-      this.R1 = { shape: this.shape.slice(), order: this.order, layout: this.layout };
+      this.R1 = { shape: this.shape.slice(), order: this.order, layout: this.layout, dtype: this.dtype };
       this.R2 = R2;
 
       return this;
@@ -147,30 +158,30 @@
      * canonical flat buffer + inferred shape, regardless of which shape it
      * arrived in.
      */
-    static _resolveR2(R2, order, R1, field)
+    static _resolveR2(R2, order, R1, field, dtype)
     {
       if (R2 && typeof R2.toArray === 'function')
       {
         const rows = Tensor._applyOrder(R2.toArray(), order, R1);
-        const flat = rows.map((r) => Tensor._extractScalar(r, field));
+        const flat = rows.map((r) => Tensor._extractScalar(r, field, dtype));
         return { flat, shape: [flat.length], wasNested: false };
       }
       if (Array.isArray(R2))
       {
         if (R2.length > 0 && Array.isArray(R2[0]))
         {
-          const nested = Tensor._flattenNested(R2);
+          const nested = Tensor._flattenNested(R2, dtype);
           return { flat: nested.flat, shape: nested.shape, wasNested: true };
         }
         const rows = Tensor._applyOrder(R2, order, R1);
-        const flat = rows.map((r) => Tensor._extractScalar(r, field));
+        const flat = rows.map((r) => Tensor._extractScalar(r, field, dtype));
         return { flat, shape: [flat.length], wasNested: false };
       }
       throw new TypeError('Tensor: R2 must be a Data instance, a flat array, or a nested array');
     }
 
     /** Flattens a rectangular nested array and infers its shape from nesting depth/extents. */
-    static _flattenNested(nested)
+    static _flattenNested(nested, dtype)
     {
       const shape = [];
       let cur = nested;
@@ -184,7 +195,7 @@
       {
         if (depth === shape.length)
         {
-          flat.push(Tensor._extractScalar(node));
+          flat.push(Tensor._extractScalar(node, undefined, dtype));
           return;
         }
         if (!Array.isArray(node) || node.length !== shape[depth])
@@ -227,8 +238,33 @@
       }
     }
 
-    static _extractScalar(row, field)
+    /**
+     * @param {*} row - a raw record, number, or (dtype=complex) Complex/{re,im}
+     * @param {string} [field] - key to pull the value from when row is an object
+     * @param {string} [dtype=Tensor.DTYPES.REAL]
+     * @returns {number|Complex}
+     */
+    static _extractScalar(row, field, dtype)
     {
+      if (dtype === Tensor.DTYPES.COMPLEX)
+      {
+        if (row instanceof Complex)
+        {
+          return row;
+        }
+        if (typeof row === 'number')
+        {
+          return Complex.from(row);
+        }
+        if (row && typeof row === 'object')
+        {
+          const key = field || (Object.prototype.hasOwnProperty.call(row, 'value') ? 'value' : null);
+          const source = key && Object.prototype.hasOwnProperty.call(row, key) ? row[key] : row;
+          return Complex.from(source);
+        }
+        throw new TypeError('Tensor: cannot extract a complex value from row ' + JSON.stringify(row));
+      }
+
       if (typeof row === 'number')
       {
         return row;
@@ -288,6 +324,277 @@
         offset += indicesThenValue[d] * this.strides[d];
       }
       this._flat[offset] = value;
+    }
+
+    /** @param {number} offset - a flat-store index @returns {number[]} the multi-index it corresponds to under this.strides */
+    _indicesForOffset(offset)
+    {
+      const idx = new Array(this.shape.length);
+      let rem = offset;
+      for (let d = 0; d < this.shape.length; d++)
+      {
+        idx[d] = Math.floor(rem / this.strides[d]);
+        rem = rem % this.strides[d];
+      }
+      return idx;
+    }
+
+    // ── Iteration ─────────────────────────────────────────────────────────
+
+    /**
+     * @param {function(value, indices:number[], offset:number, tensor:Tensor)} fn
+     * @returns {Tensor} this, for chaining
+     */
+    forEach(fn)
+    {
+      for (let i = 0; i < this._flat.length; i++)
+      {
+        fn(this._flat[i], this._indicesForOffset(i), i, this);
+      }
+      return this;
+    }
+
+    /**
+     * @param {function(value, indices:number[], offset:number, tensor:Tensor): *} fn
+     * @returns {Tensor} a NEW instance of this.constructor, same shape/dtype, with fn applied elementwise
+     */
+    map(fn)
+    {
+      const mapped = this._flat.map((v, i) => fn(v, this._indicesForOffset(i), i, this));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, mapped);
+    }
+
+    /** @returns {Generator<[number[], *]>} [multiIndex, value] pairs in flat-store order */
+    * entries()
+    {
+      for (let i = 0; i < this._flat.length; i++)
+      {
+        yield [this._indicesForOffset(i), this._flat[i]];
+      }
+    }
+
+    // ── dtype-aware value arithmetic (static: takes an explicit dtype rather
+    // than reading `this`, since outer()/contract() combine two tensors that
+    // may not share a dtype — the RESULT's dtype, not either operand's own,
+    // is what decides which arithmetic to use for a given combination) ──────
+
+    static _add(a, b, dtype)
+    {
+      return dtype === Tensor.DTYPES.COMPLEX ? Complex.from(a).add(b) : a + b;
+    }
+
+    static _sub(a, b, dtype)
+    {
+      return dtype === Tensor.DTYPES.COMPLEX ? Complex.from(a).subtract(b) : a - b;
+    }
+
+    static _mul(a, b, dtype)
+    {
+      return dtype === Tensor.DTYPES.COMPLEX ? Complex.from(a).multiply(b) : a * b;
+    }
+
+    static _scaleValue(a, s, dtype)
+    {
+      return dtype === Tensor.DTYPES.COMPLEX ? Complex.from(a).multiply(s) : a * s;
+    }
+
+    // ── Contraction / outer product ─────────────────────────────────────────
+
+    /**
+     * Outer product: resultShape = this.shape.concat(other.shape), every
+     * pairwise product of an element of this with an element of other,
+     * this-index varying slower (matches the row-major shape concatenation).
+     * @param {Tensor} other
+     * @returns {Tensor} rank this.rank()+other.rank() tensor
+     */
+    outer(other)
+    {
+      const resultDtype = (this.dtype === Tensor.DTYPES.COMPLEX || other.dtype === Tensor.DTYPES.COMPLEX)
+        ? Tensor.DTYPES.COMPLEX : Tensor.DTYPES.REAL;
+      const resultShape = this.shape.concat(other.shape);
+      const flat = new Array(this._flat.length * other._flat.length);
+      for (let i = 0; i < this._flat.length; i++)
+      {
+        for (let j = 0; j < other._flat.length; j++)
+        {
+          flat[i * other._flat.length + j] = Tensor._mul(this._flat[i], other._flat[j], resultDtype);
+        }
+      }
+      return new this.constructor().init({ shape: resultShape, dtype: resultDtype }, flat);
+    }
+
+    /**
+     * Single-axis contraction, generalizing matrix multiplication (and,
+     * contracting a matrix's own two axes against each other via two
+     * separate rank-2 tensors sharing one axis, a trace-like reduction):
+     * sums this[..., k, ...] * other[..., k, ...] over the contracted
+     * dimension k, for every combination of the remaining ("free") indices
+     * of each operand. resultShape = (this.shape minus axisSelf) concat
+     * (other.shape minus axisOther); a rank-1 . rank-1 contraction over
+     * their only axes collapses to a rank-0 scalar tensor (shape []).
+     * @param {Tensor} other
+     * @param {number} [axisSelf=this.rank()-1]
+     * @param {number} [axisOther=0]
+     * @returns {Tensor}
+     * @throws {RangeError} if the contracted dimensions' sizes disagree
+     */
+    contract(other, axisSelf, axisOther)
+    {
+      if (axisSelf === undefined)
+      {
+        axisSelf = this.rank() - 1;
+      }
+      if (axisOther === undefined)
+      {
+        axisOther = 0;
+      }
+      if (this.shape[axisSelf] !== other.shape[axisOther])
+      {
+        throw new RangeError(
+          'Tensor.contract: dimension mismatch at axisSelf=' + axisSelf + ' (' + this.shape[axisSelf] +
+          ') vs axisOther=' + axisOther + ' (' + other.shape[axisOther] + ')'
+        );
+      }
+      const dim = this.shape[axisSelf];
+      const resultDtype = (this.dtype === Tensor.DTYPES.COMPLEX || other.dtype === Tensor.DTYPES.COMPLEX)
+        ? Tensor.DTYPES.COMPLEX : Tensor.DTYPES.REAL;
+
+      const selfFreeAxes = this.shape.map((_, d) => d).filter((d) => d !== axisSelf);
+      const otherFreeAxes = other.shape.map((_, d) => d).filter((d) => d !== axisOther);
+      const resultShape = selfFreeAxes.map((d) => this.shape[d]).concat(otherFreeAxes.map((d) => other.shape[d]));
+
+      const enumerateIndices = (shape) =>
+      {
+        const total = product(shape) || 1;
+        const all = new Array(shape.length === 0 ? 1 : total);
+        for (let i = 0; i < all.length; i++)
+        {
+          const idx = new Array(shape.length);
+          let rem = i;
+          for (let d = shape.length - 1; d >= 0; d--)
+          {
+            idx[d] = rem % shape[d];
+            rem = Math.floor(rem / shape[d]);
+          }
+          all[i] = idx;
+        }
+        return all;
+      };
+
+      const selfFreeCombos = enumerateIndices(selfFreeAxes.map((d) => this.shape[d]));
+      const otherFreeCombos = enumerateIndices(otherFreeAxes.map((d) => other.shape[d]));
+      const flat = new Array(selfFreeCombos.length * otherFreeCombos.length);
+
+      for (let a = 0; a < selfFreeCombos.length; a++)
+      {
+        const selfIdx = new Array(this.rank());
+        selfFreeAxes.forEach((axis, i) => { selfIdx[axis] = selfFreeCombos[a][i]; });
+
+        for (let b = 0; b < otherFreeCombos.length; b++)
+        {
+          const otherIdx = new Array(other.rank());
+          otherFreeAxes.forEach((axis, i) => { otherIdx[axis] = otherFreeCombos[b][i]; });
+
+          let sum = resultDtype === Tensor.DTYPES.COMPLEX ? new Complex().init(0, 0) : 0;
+          for (let k = 0; k < dim; k++)
+          {
+            selfIdx[axisSelf] = k;
+            otherIdx[axisOther] = k;
+            const term = Tensor._mul(this.get(...selfIdx), other.get(...otherIdx), resultDtype);
+            sum = Tensor._add(sum, term, resultDtype);
+          }
+          flat[a * otherFreeCombos.length + b] = sum;
+        }
+      }
+
+      return new this.constructor().init({ shape: resultShape, dtype: resultDtype }, flat);
+    }
+
+    // ── Elementwise arithmetic (same-shape, same-dtype tensors) ────────────
+
+    /** @param {Tensor} other @returns {Tensor} elementwise this + other */
+    add(other)
+    {
+      Tensor._assertSameShape(this, other, 'add');
+      const flat = this._flat.map((v, i) => Tensor._add(v, other._flat[i], this.dtype));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, flat);
+    }
+
+    /** @param {Tensor} other @returns {Tensor} elementwise this - other */
+    subtract(other)
+    {
+      Tensor._assertSameShape(this, other, 'subtract');
+      const flat = this._flat.map((v, i) => Tensor._sub(v, other._flat[i], this.dtype));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, flat);
+    }
+
+    /** @param {number|Complex} scalar @returns {Tensor} elementwise this * scalar */
+    scale(scalar)
+    {
+      const flat = this._flat.map((v) => Tensor._scaleValue(v, scalar, this.dtype));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, flat);
+    }
+
+    static _assertSameShape(a, b, opName)
+    {
+      if (a.shape.length !== b.shape.length || a.shape.some((d, i) => d !== b.shape[i]))
+      {
+        throw new RangeError(
+          'Tensor.' + opName + ': shape mismatch ' + JSON.stringify(a.shape) + ' vs ' + JSON.stringify(b.shape)
+        );
+      }
+    }
+
+    // ── Shape operations ────────────────────────────────────────────────────
+
+    /**
+     * Same flat data, reinterpreted under a new shape (must match total size).
+     * @param {number[]} newShape
+     * @returns {Tensor}
+     * @throws {RangeError} if product(newShape) !== this.size()
+     */
+    reshape(newShape)
+    {
+      if (product(newShape) !== this._flat.length)
+      {
+        throw new RangeError(
+          'Tensor.reshape: new shape ' + JSON.stringify(newShape) + ' does not match size ' + this._flat.length
+        );
+      }
+      return new this.constructor().init({ shape: newShape.slice(), dtype: this.dtype }, this._flat.slice());
+    }
+
+    /**
+     * Permutes axes, MATERIALIZING the reordered data into a new row-major
+     * flat store (not a strides-only view) so the row-major invariant every
+     * other method relies on stays true of the result.
+     * @param {number[]} [axesPermutation] - a permutation of 0..rank()-1; defaults to reversing every axis
+     * @returns {Tensor}
+     * @throws {RangeError} if axesPermutation is not a permutation of this tensor's axes
+     */
+    transpose(axesPermutation)
+    {
+      const rank = this.rank();
+      const perm = axesPermutation || this.shape.map((_, i) => rank - 1 - i);
+      if (perm.length !== rank || new Set(perm).size !== rank || perm.some((d) => d < 0 || d >= rank))
+      {
+        throw new RangeError('Tensor.transpose: axesPermutation must be a permutation of 0..' + (rank - 1));
+      }
+      const newShape = perm.map((axis) => this.shape[axis]);
+      const newStrides = rowMajorStrides(newShape);
+      const flat = new Array(this._flat.length);
+      for (let offset = 0; offset < this._flat.length; offset++)
+      {
+        const oldIdx = this._indicesForOffset(offset);
+        const newIdx = perm.map((axis) => oldIdx[axis]);
+        let newOffset = 0;
+        for (let d = 0; d < newIdx.length; d++)
+        {
+          newOffset += newIdx[d] * newStrides[d];
+        }
+        flat[newOffset] = this._flat[offset];
+      }
+      return new this.constructor().init({ shape: newShape, dtype: this.dtype }, flat);
     }
 
     /**
