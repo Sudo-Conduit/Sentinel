@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,8 +41,8 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `e6674af` (git.pooledimpact.com/Claude/Romans, branch
-`claude/devtools-overrides-robustness-8we96z`) — 2026-09-12T04:26:49Z
+**Commit:** `825cea6` (git.pooledimpact.com/Claude/Romans, branch
+`claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
 |---|---|
@@ -55,8 +55,9 @@ expect it to stay current and do not push there.
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
 | NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
 | Memory.security.test.js | ALL 15 CHECKS PASSED |
+| MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
 
-**Total: 129/129 checks passing, 9/9 suites green.**
+**Total: 141/141 checks passing, 10/10 suites green.**
 
 ## Status legend
 
@@ -141,6 +142,51 @@ dimension's own lesson above, not tracked as a separate row: any future
 "is this ever called from another dispatched method too?" check before
 being trusted.
 
+**D.1 findings (2026-09-12):** the item as originally scoped ("land
+`MemoryMapFS.js`") assumed the wrong API. `MemoryMapFS.js` was a verbatim
+reference implementation documenting a richer `mm_create()`/`mm_auth()`/
+`mm_kvStore()` multi-mailbox API with chain-linking and bitmap allocation —
+but that API was never actually compiled into this repo's `memorymap.wasm`.
+Confirmed live, not assumed: `WebAssembly.Module.imports()`/`.exports()`
+against the real binary show a single-flat-arena API (`getUUID`/
+`getPublicKey`/`getAuthScratch`/`authenticate`/`deauthenticate`/`read`/
+`write`/`getMemoryMap`/`getBase`/`slotBase`/`maxSlots`/`totalPages`/
+`offsetA`/`B`/`C`/`pagesNeeded`) and a full `wasi_snapshot_preview1` import
+surface (a standard `wasm32-wasi` build, not freestanding) — an md5sum
+match against a copy the user separately supplied confirmed the repo's
+`.wasm` is current, not stale; the richer API exists in one of ~23
+historical build versions but chasing it down was explicitly declined.
+`MemoryMapFS.js` was deleted (never committed) and replaced with
+`MemoryMapArena.js`, a fresh wrapper written against the API the binary
+actually exports, following the binding pattern demonstrated in the
+user-supplied `MemoryMap-Manager.dc.html` reference: every WASM import
+(WASI included) is satisfied generically from `WebAssembly.Module.imports()`
+— function imports stub to `() => 0`, memory/table/global imports get real
+`WebAssembly.Memory`/`Table`/`Global` instances — since none of this
+module's real behavior (identity, auth, slot read/write) exercises actual
+syscalls, so no real WASI polyfill is needed. `packBytes()`/`unpackBytes()`
+use a length-header-first binary codec (the real byte count written as its
+own slot, then 3 bytes/slot after it) rather than an in-band tail marker,
+matching the already-proven-safe convention in `Installer.js`/
+`FileFsBootAdapter.js` — the original `MemoryMap-Manager.dc.html`'s own
+comments documented the in-band alternative as fragile (a real byte that
+happens to match the marker corrupts unpacking). `Registry.js` gained
+`saveToArena(arena, startSlot)`/`static loadFromArena(arena, startSlot)` as
+an additive NVRAM path alongside the existing FileFsX-backed `save()`/
+`load()` — not a replacement — closing the Node/Browser split every
+FileFsX backend has (IDB/OPFS/Cache/localStorage are browser-only, real
+`fs` needs a user gesture); a capability-gated WASM arena instantiates
+identically in both runtimes. Today's arena is per-process memory only —
+real cross-restart persistence is a host-layer decision about what backs
+the arena's linear memory, deliberately out of scope here. Proven via
+`test/MemoryMapArena.test.js` against the real `memorymap.wasm`, not
+reasoning alone: init, pre-authenticate rejection, wrong/correct-key auth,
+raw slot read/write, byte-packing round-trips (plain ASCII, multi-byte
+UTF-8, a non-multiple-of-3-length edge case), a full `Registry` round-trip
+through the arena, `loadFromArena()`'s fallback-to-default on an untouched
+slot range, `saveToArena()` correctly throwing pre-authentication, and
+`deauthenticate()` actually revoking write access — 12/12.
+
 ## Scored backlog
 
 | # | Category | Item | Status | F | U | O | N | R | C | **Composite** |
@@ -159,7 +205,7 @@ being trusted.
 | C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ⬜ | 3 | 4 | 4 | 2 | 2 | 4 | **19** |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
 | C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ⬜ | 3 | 2 | 2 | 2 | 2 | 4 | **15** |
-| D.1 | Persistent/Shared Substrate | Land `MemoryMapFS.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | 🔬 | 2 | 5 | 5 | 4 | 5 | 3 | **24** |
+| D.1 | Persistent/Shared Substrate | Land `MemoryMapArena.js` in the repo + wire Registry's NVRAM record through it (today's per-process memory) | ✅ | — | — | — | — | — | — | shipped |
 | D.2 | Persistent/Shared Substrate | `'network'` boot device adapter via WebRTC federation (the never-implemented 3rd `bootDeviceOrder` slot) | 🤝 | 1 | 3 | 4 | 5 | 5 | 1 | **19** |
 | D.3 | Persistent/Shared Substrate | Node-native WebRTC parity layer (blocks D.2/D.4 entirely) | 🤝 | 1 | 4 | 3 | 3 | 4 | 2 | **17** |
 | D.4 | Persistent/Shared Substrate | Transport abstraction beyond WebRTC ("many different types of transports") | 🤝 | 1 | 1 | 1 | 2 | 2 | 3 | **10** |
@@ -187,10 +233,15 @@ with sequencing overrides noted where raw ranking would be wrong:**
    is actually used (Kernel/Physical's call patterns) — that waits for the
    Terminal 2.0 reference implementation. `test/Memory.security.test.js`,
    15/15.
-3. **D.1 — MemoryMapFS as Registry's NVRAM backend** (24) — highest raw
-   composite, independent of the E.1 sequencing concern above.
+3. ~~**D.1 — MemoryMapArena as Registry's NVRAM backend**~~ — **done**
+   (2026-09-12). Original scope named the wrong file/API (`MemoryMapFS.js`'s
+   `mm_*` multi-mailbox surface was never actually compiled into
+   `memorymap.wasm`) — see the findings note above. Landed
+   `MemoryMapArena.js` against the real single-arena API, plus
+   `Registry.saveToArena()`/`loadFromArena()`. `test/MemoryMapArena.test.js`,
+   12/12.
 4. **C.2 — Registry NVRAM-as-fast-path** (19) — natural follow-on to D.1;
-   "write once, read first" needs a backend worth writing to.
+   "write once, read first" now has a backend worth writing to.
 5. **E.1 — Opaque closure factory** (23) — deliberately *after* 1-4: it
    should wrap a boot chain already audited and hardened, not one with
    known-latent gaps still underneath it.
@@ -237,6 +288,16 @@ dependency override:**
 
 ## Changelog
 
+- **1.3.0** — 2026-09-12 — D.1 (`MemoryMapArena.js` landed, Registry's
+  NVRAM record wired through it) shipped: marked ✅, added the findings
+  note documenting the original-scope API mismatch (`MemoryMapFS.js`'s
+  `mm_*` multi-mailbox surface was never actually compiled into
+  `memorymap.wasm`, confirmed live via `WebAssembly.Module.imports()`/
+  `.exports()`) and the resolution (a fresh `MemoryMapArena.js` against the
+  real single-arena API, plus `Registry.saveToArena()`/`loadFromArena()`
+  as an additive NVRAM path). `test/MemoryMapArena.test.js`, 12/12, added
+  to `test/run-all.js`. Re-pinned the Last-test-run section to `825cea6`
+  (141/141, up from 129/129 across 9, now 10/10 suites).
 - **1.2.0** — 2026-09-12 — B.6 (Memory.js secured/structured/tested)
   shipped: marked ✅, same `_backing` WeakMap-by-`this` fix as `Physical`/
   `Kernel`, plus two `next()`-injection hazards (`attach(cpu)`,
