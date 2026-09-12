@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.1.0
+**Version:** 1.2.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,8 +41,8 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `09c76bf` (git.pooledimpact.com/Claude/Romans, branch
-`claude/devtools-overrides-robustness-8we96z`) — 2026-09-12T01:02:12Z
+**Commit:** `e6674af` (git.pooledimpact.com/Claude/Romans, branch
+`claude/devtools-overrides-robustness-8we96z`) — 2026-09-12T04:26:49Z
 
 | Suite | Result |
 |---|---|
@@ -54,8 +54,9 @@ expect it to stay current and do not push there.
 | BIOS.security.test.js | ALL 12 CHECKS PASSED |
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
 | NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
+| Memory.security.test.js | ALL 15 CHECKS PASSED |
 
-**Total: 114/114 checks passing, 8/8 suites green.**
+**Total: 129/129 checks passing, 9/9 suites green.**
 
 ## Status legend
 
@@ -153,7 +154,7 @@ being trusted.
 | B.3 | Core Machine | Kernel secured + tested (`_host` fix, `fork`/`tick` hazard fix) | ✅ | — | — | — | — | — | — | shipped |
 | B.4 | Core Machine | BIOS secured + tested (`kernelFactory` leak fix, `iso` hazard fix, explicit `addChild`) | ✅ | — | — | — | — | — | — | shipped |
 | B.5 | Core Machine | Full boot-chain life-cycle integration test (CPU→Physical→Kernel→BIOS) | ✅ | — | — | — | — | — | — | shipped |
-| B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ⬜ | 5 | 3 | 3 | 1 | 1 | 2 | **15** |
+| B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ✅ | — | — | — | — | — | — | shipped |
 | C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
 | C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ⬜ | 3 | 4 | 4 | 2 | 2 | 4 | **19** |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
@@ -177,10 +178,15 @@ with sequencing overrides noted where raw ranking would be wrong:**
    note above); documented one real, currently-unreachable gap
    (`Registry.set()`) that isn't cleanly fixable. Five of six audited
    files were already clean. `test/NextInjection.audit.test.js`, 9/9.
-2. **B.6 — Memory.js secured/structured/tested** (15) — the last core
-   machine component with a proven-pattern latent bug still open. Close
-   it before the boot chain it's part of gets wrapped in E.1's closure,
-   not after — same closure-visibility reasoning A.4 above was done for.
+2. ~~**B.6 — Memory.js secured/structured/tested**~~ — **done**
+   (2026-09-12). Fixed the same `_backing` WeakMap-by-`this` bug class as
+   `Physical`/`Kernel`, plus two `next()`-injection hazards (`attach(cpu)`,
+   `alloc(..., label)`) found the same way. Scope stayed deliberately
+   narrow, per direct instruction: this hardens `Memory.js` itself so it's
+   *safe* to compose whenever needed, but does **not** change how Memory
+   is actually used (Kernel/Physical's call patterns) — that waits for the
+   Terminal 2.0 reference implementation. `test/Memory.security.test.js`,
+   15/15.
 3. **D.1 — MemoryMapFS as Registry's NVRAM backend** (24) — highest raw
    composite, independent of the E.1 sequencing concern above.
 4. **C.2 — Registry NVRAM-as-fast-path** (19) — natural follow-on to D.1;
@@ -231,6 +237,13 @@ dependency override:**
 
 ## Changelog
 
+- **1.2.0** — 2026-09-12 — B.6 (Memory.js secured/structured/tested)
+  shipped: marked ✅, same `_backing` WeakMap-by-`this` fix as `Physical`/
+  `Kernel`, plus two `next()`-injection hazards (`attach(cpu)`,
+  `alloc(..., label)`). Scope deliberately narrow per direct instruction —
+  hardens the class itself, does not change how Memory is used until the
+  Terminal 2.0 reference implementation lands. Re-pinned the Last-test-run
+  section to `e6674af` (129/129, up from 114/114 across 8).
 - **1.1.0** — 2026-09-12 — A.4 (`next()`-injection systemic audit) shipped:
   marked ✅, added the findings note (five of six files clean, `Registry.set()`
   documented as a currently-unreachable, not-cleanly-fixable gap) and a
