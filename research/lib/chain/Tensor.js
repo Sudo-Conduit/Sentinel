@@ -77,6 +77,9 @@
     // element a number or a Complex" itself; it only has to know the
     // tensor's own dtype once.
     static DTYPES = Object.freeze({ REAL: 'real', COMPLEX: 'complex' });
+    // 2GB (binary: 2048 * 1024 * 1024 bytes), matching the MB convention
+    // (1024*1024 bytes/MB) already used throughout the size-estimate methods.
+    static MAX_DENSE_MB_DEFAULT = 2048;
 
     /**
      * Allocates an uninitialized Tensor. No R1/R2 are read here — call
@@ -768,10 +771,49 @@
       return this.denseElementCount() * this.bytesPerElement();
     }
 
-    /** @returns {number} MB (1024*1024 bytes) to store every element densely */
+    /**
+     * Static so it can be called on a SHAPE before any tensor exists —
+     * the actual point of a size guard is deciding whether to materialize
+     * something dense in the first place (e.g. before Hilbert/Hamiltonian
+     * builds a dim x dim operator for an n-qubit system, where dim = 2^n
+     * and dense storage grows as dim^2 — 65 GB already at n=16). Checking
+     * after construction is too late; the array is already built.
+     * @param {number[]} shape
+     * @param {string} [dtype=Tensor.DTYPES.REAL]
+     * @param {number} [maxMB=Tensor.MAX_DENSE_MB_DEFAULT] - throws if the
+     *   estimate exceeds this. Pass Infinity for a pure estimate with no guard.
+     * @returns {number} estimated MB to store `shape` densely at `dtype`
+     * @throws {RangeError} if the estimate exceeds maxMB
+     */
+    static estimateDenseSizeMB(shape, dtype, maxMB)
+    {
+      const limit = maxMB === undefined ? Tensor.MAX_DENSE_MB_DEFAULT : maxMB;
+      const bytesPerElement = dtype === Tensor.DTYPES.COMPLEX ? 16 : 8;
+      const mb = (product(shape) * bytesPerElement) / (1024 * 1024);
+      if (mb > limit)
+      {
+        throw new RangeError(
+          'Tensor.estimateDenseSizeMB: shape ' + JSON.stringify(shape) + ' at dtype "' +
+          (dtype || Tensor.DTYPES.REAL) + '" would need ' + mb.toFixed(2) + ' MB densely, exceeding the ' +
+          limit + ' MB limit. Pass a larger maxMB explicitly if this is intentional (or Infinity for no ' +
+          'limit), or use a diagonal/sparse representation instead.'
+        );
+      }
+      return mb;
+    }
+
+    /**
+     * @returns {number} MB (1024*1024 bytes) to store every element densely
+     *
+     * Unguarded (maxMB=Infinity): this tensor already exists — its dense
+     * data is already materialized in this._flat — so there is nothing
+     * left to prevent by throwing here. The guard belongs at
+     * Tensor.estimateDenseSizeMB(shape, dtype), called BEFORE deciding to
+     * build something this size, not on an object that already exists.
+     */
     denseSizeMB()
     {
-      return this.denseSizeBytes() / (1024 * 1024);
+      return Tensor.estimateDenseSizeMB(this.shape, this.dtype, Infinity);
     }
 
     /**
