@@ -42,7 +42,8 @@ const TEST_FILES = [
     'MemoryMapFS.test.js',
     'MemoryMapFS.nodeToNode.test.js',
     'BIOS.nvramFastPath.test.js',
-    'ExtendX.stacking.test.js'
+    'ExtendX.stacking.test.js',
+    'BIOS.firstBoot.test.js'
 ];
 
 function gitInfo() {

@@ -1,7 +1,7 @@
 /**
  * @file Registry.js
  * @author Will Fobbs
- * @version 1.1.0
+ * @version 1.2.0
  * @description Machine-level persistent key/value config — NVRAM/CMOS
  *   equivalent (boot device priority, hardware config flags, saved
  *   settings). Kept deliberately separate from BIOS.js's own per-boot
@@ -19,9 +19,15 @@
  *   runtimes. Today's arena is per-process memory only; real
  *   cross-restart persistence needs a host-layer decision about what
  *   backs the arena's linear memory, deliberately out of scope here.
+ *   v1.2.0 (C.4, MSOS Cleanup Roadmap): added `firstBootComplete: false`
+ *   to the default entries, alongside bootDeviceOrder/firmwareType/
+ *   secureBoot -- the flag BIOS.boot() reads to distinguish a real first
+ *   boot from steady-state and gate its one-time post-install setup.
+ *   Registry itself stays a plain key/value bag; no new methods needed.
  * @docs Kernel-Machine-Architecture.md
  * @tests test/NextInjection.audit.test.js
  * @tests test/MemoryMapArena.test.js
+ * @tests test/BIOS.firstBoot.test.js
  */
 (function(root, factory)
 {
@@ -49,11 +55,11 @@
     {
         static name = 'Registry';
         static author = 'Will Fobbs';
-        static version = '1.1.0';
+        static version = '1.2.0';
         static domain = 'machine.registry';
         static description = 'Machine-level persistent key/value config -- NVRAM/CMOS equivalent (boot device priority, hardware config flags, saved settings).';
         static docs = ['Kernel-Machine-Architecture.md'];
-        static tests = ['test/NextInjection.audit.test.js', 'test/MemoryMapArena.test.js'];
+        static tests = ['test/NextInjection.audit.test.js', 'test/MemoryMapArena.test.js', 'test/BIOS.firstBoot.test.js'];
         static _schema = { properties: {
             entries: { type: 'object', default: {} }
         }};
@@ -64,7 +70,8 @@
             this.entries = options.entries || {
                 bootDeviceOrder: ['esp', 'disk', 'network'],
                 firmwareType: 'UEFI',
-                secureBoot: false
+                secureBoot: false,
+                firstBootComplete: false
             };
         }
 

@@ -1,7 +1,7 @@
 /**
  * @file BIOS.js
  * @author Will Fobbs
- * @version 1.1.0
+ * @version 1.2.0
  * @description Firmware layer implementing steps 2-6 of the boot sequence
  *   in Kernel-Machine-Architecture.md: POST -> read environment -> scan
  *   bootDeviceOrder for a valid ESP/bootloader entry -> hand off to a fresh
@@ -20,10 +20,21 @@
  *   still takes effect even against a stale cached record. A freshly
  *   confirmed entry is written back to the Registry after every boot that
  *   finds one, "write once, read first."
+ *   v1.2.0 (C.4, MSOS Cleanup Roadmap): first-boot vs. steady-state
+ *   distinction. A successful boot with no persisted `firstBootComplete`
+ *   Registry flag is treated as this machine's real first boot -- runs
+ *   one-time post-install setup (minting a persistent `machineId`, only
+ *   if one isn't already recorded) exactly once, then marks the Registry
+ *   so every later boot takes the steady-state path instead. A BIOS with
+ *   no Registry attached treats every boot as a first boot, matching real
+ *   hardware with no battery-backed NVRAM: there is nothing to remember
+ *   between boots, so setup (harmlessly) reruns every time. `boot()`'s own
+ *   trace now records which mode a given boot actually ran under.
  * @docs Kernel-Machine-Architecture.md
  * @tests test/BIOS.security.test.js
  * @tests test/FullBootChain.lifecycle.test.js
  * @tests test/BIOS.nvramFastPath.test.js
+ * @tests test/BIOS.firstBoot.test.js
  */
 (function(root, factory)
 {
@@ -89,11 +100,11 @@
     {
         static name = 'BIOS';
         static author = 'Will Fobbs';
-        static version = '1.1.0';
+        static version = '1.2.0';
         static domain = 'machine.bios';
         static description = 'Firmware layer: POST, read environment, scan bootDeviceOrder, hand off to a fresh Kernel.';
         static docs = ['Kernel-Machine-Architecture.md'];
-        static tests = ['test/BIOS.security.test.js', 'test/FullBootChain.lifecycle.test.js', 'test/BIOS.nvramFastPath.test.js'];
+        static tests = ['test/BIOS.security.test.js', 'test/FullBootChain.lifecycle.test.js', 'test/BIOS.nvramFastPath.test.js', 'test/BIOS.firstBoot.test.js'];
         static _schema = { properties: {
             firmwareType: { type: 'string', default: 'UEFI' },
             bootDeviceOrder: { type: 'array', default: ['esp', 'disk', 'network'] },
@@ -172,6 +183,15 @@
             physical.post();
             this.postComplete = true;
             const env = Environment.detect();
+
+            // C.4 (MSOS Cleanup Roadmap): first-boot vs. steady-state.
+            // Captured up front, before this boot writes anything to the
+            // Registry itself, so it reflects state from BEFORE this boot,
+            // never something this same call just set. No Registry attached
+            // -> every boot looks like a first boot, same as real hardware
+            // with no battery-backed NVRAM: there is nothing to remember
+            // between boots, so first-boot setup (harmlessly) reruns.
+            const isFirstBoot = !(this.registryRef && typeof this.registryRef.get === 'function' && this.registryRef.get('firstBootComplete') === true);
 
             let bootTarget = null;
 
@@ -272,7 +292,27 @@
                 this.registryRef.set('confirmedBootEntry', { device: bootTarget.device, entry: bootTarget.entry });
             }
 
-            this._recordTrace('boot', { firmwareType: this.firmwareType, env: env.runtime, bootTarget });
+            // C.4 (MSOS Cleanup Roadmap): the actual one-time setup that
+            // first-boot vs. steady-state exists to gate. Only commits once
+            // a real bootTarget was found -- a failed boot (nothing bootable
+            // anywhere) never marks first-boot setup complete, since setup
+            // didn't meaningfully happen. Minting machineId is guarded by
+            // its own has() check as a defensive second layer (a partial
+            // prior run that set machineId but crashed before marking
+            // firstBootComplete should not mint a SECOND id), independent
+            // of the isFirstBoot gate above.
+            if (bootTarget && isFirstBoot && this.registryRef && typeof this.registryRef.set === 'function')
+            {
+                if (typeof this.registryRef.has !== 'function' || !this.registryRef.has('machineId'))
+                {
+                    const machineId = this.hashString(this.id + ':' + Date.now() + ':' + Math.random());
+                    this.registryRef.set('machineId', machineId);
+                    this._recordTrace('firstboot_setup', { machineId });
+                }
+                this.registryRef.set('firstBootComplete', true);
+            }
+
+            this._recordTrace('boot', { firmwareType: this.firmwareType, env: env.runtime, bootTarget, bootMode: isFirstBoot ? 'first-boot' : 'steady-state' });
 
             const kernelFactory = _kernelFactories.get(this.id) || defaultKernelFactory;
             const kernel = kernelFactory({ bootedFrom: bootTarget ? bootTarget.device : 'none', firmwareType: this.firmwareType, cores: env.cores || 1 });
