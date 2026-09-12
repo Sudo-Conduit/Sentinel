@@ -36,6 +36,26 @@
 
     get(key) { return this.entries[key]; }
 
+    // KNOWN GAP (next()-injection audit, unlike fork()/tick()/boot()'s
+    // ppid/quantum/iso -- NOT fixed with a typeof-guard here, deliberately):
+    // if this class is ever composed via ExtendX.extend(), a caller doing
+    // set(key) with the value omitted does not get value === undefined --
+    // ExtendX's dispatcher always appends its own next() callback as the
+    // trailing argument to every dispatched call, so value becomes that
+    // injected function instead. Every other instance of this hazard found
+    // this session (StructureMixin's label, Kernel's ppid/memBytes/quantum,
+    // BIOS's iso) was fixable by trusting only a specific expected TYPE
+    // (string, number) since next is always a function and never one of
+    // those. That fix does not apply here: a Registry value is legitimately
+    // ANY type, including a function, so there is no type check that can
+    // tell "caller meant undefined" apart from "ExtendX's next landed here"
+    // without arbitrarily restricting what a registry entry can hold. As
+    // of this writing set() is never called with fewer than 2 arguments
+    // anywhere in this codebase (grepped, confirmed), so this is currently
+    // unreachable -- documented here so it stays that way on purpose,
+    // not by accident, if this class is later composed with SecurityMixin/
+    // StructureMixin for the NVRAM-as-fast-path work. Callers composing
+    // this class MUST always pass both key and value explicitly.
     set(key, value) {
       this.entries = { ...this.entries, [key]: value };
       this._recordTrace('registry_set', { key, value });

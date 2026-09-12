@@ -13,7 +13,8 @@ const files = [
     'StructureMixin.test.js',
     'Kernel.security.test.js',
     'BIOS.security.test.js',
-    'FullBootChain.lifecycle.test.js'
+    'FullBootChain.lifecycle.test.js',
+    'NextInjection.audit.test.js'
 ];
 
 let anyFailed = false;
