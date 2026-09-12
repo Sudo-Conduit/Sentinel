@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.3.0
+**Version:** 1.4.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `825cea6` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `18f8077` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -56,8 +56,9 @@ expect it to stay current and do not push there.
 | NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
 | Memory.security.test.js | ALL 15 CHECKS PASSED |
 | MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
+| MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
 
-**Total: 141/141 checks passing, 10/10 suites green.**
+**Total: 158/158 checks passing, 11/11 suites green.**
 
 ## Status legend
 
@@ -187,6 +188,29 @@ through the arena, `loadFromArena()`'s fallback-to-default on an untouched
 slot range, `saveToArena()` correctly throwing pre-authentication, and
 `deauthenticate()` actually revoking write access — 12/12.
 
+**D.1 addendum (2026-09-12): the richer `mm_*` binary was found.** After
+the above was already shipped, a further historical `memorymap.wasm`
+build was supplied and checked the same way — not assumed correct, live
+via `WebAssembly.Module.exports()` — and this one really does export the
+full `mm_*` surface `MemoryMapFS.js`'s original reference implementation
+was written against: `mm_init`/`mm_create`/`mm_destroy`/`mm_rotateKeys`/
+`mm_chainLink`/`mm_auth`/`mm_readSlot`/`mm_writeSlot`/`mm_status`/
+`mm_kvStore`/`mm_kvLookup`/`mm_kvDelete`/`mm_chainNext`/`mm_chainFind`/
+`mm_findFreeSlot`/`mm_markOccupied`/`mm_markFree`/`mm_isOccupied`, plus
+GC/transaction machinery not yet wrapped. It imports only a single shared
+`env.memory` — no WASI surface at all, unlike the other binary. Landed as
+`memorymap-mm.wasm` (a distinct compiled module, not a replacement of the
+existing `memorymap.wasm`), with `MemoryMapFS.js` authored fresh in this
+session's house style against it and proven end-to-end in
+`test/MemoryMapFS.test.js` before being trusted: mailbox create, wrong/
+correct access-key auth, raw slot read/write (including the 20-byte
+inline-blob limit), bitmap free-slot tracking, key-value store/lookup/
+delete, mailbox chain link/next/find, key rotation, and destroy/
+double-destroy rejection — 17/17. This is a second, independent NVRAM
+path alongside `MemoryMapArena.js`, not a replacement — `Registry.js`'s
+`saveToArena()`/`loadFromArena()` stay wired to `MemoryMapArena` exactly
+as shipped above; nothing about that wiring changed.
+
 ## Scored backlog
 
 | # | Category | Item | Status | F | U | O | N | R | C | **Composite** |
@@ -288,6 +312,15 @@ dependency override:**
 
 ## Changelog
 
+- **1.4.0** — 2026-09-12 — D.1 addendum: the historical `mm_*`-API
+  `memorymap.wasm` build named in the original scope was actually found
+  and confirmed live (`WebAssembly.Module.exports()`) — landed as
+  `memorymap-mm.wasm` + `MemoryMapFS.js`, a second, independent NVRAM path
+  alongside `MemoryMapArena.js` (not a replacement; `Registry.js` stays
+  wired to `MemoryMapArena`). `test/MemoryMapFS.test.js`, 17/17, added to
+  `test/run-all.js`/`test/GenerateTestReport.js`. Re-pinned the
+  Last-test-run section to `18f8077` (158/158, up from 141/141 across 10,
+  now 11/11 suites).
 - **1.3.0** — 2026-09-12 — D.1 (`MemoryMapArena.js` landed, Registry's
   NVRAM record wired through it) shipped: marked ✅, added the findings
   note documenting the original-scope API mismatch (`MemoryMapFS.js`'s
