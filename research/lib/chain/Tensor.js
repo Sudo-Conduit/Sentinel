@@ -535,16 +535,43 @@
     add(other)
     {
       Tensor._assertSameShape(this, other, 'add');
-      const flat = this._flat.map((v, i) => Tensor._add(v, other._flat[i], this.dtype));
-      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, flat);
+      const resultDtype = (this.dtype === Tensor.DTYPES.COMPLEX || other.dtype === Tensor.DTYPES.COMPLEX)
+        ? Tensor.DTYPES.COMPLEX : Tensor.DTYPES.REAL;
+      const flat = this._flat.map((v, i) => Tensor._add(v, other._flat[i], resultDtype));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: resultDtype }, flat);
     }
 
-    /** @param {Tensor} other @returns {Tensor} elementwise this - other */
+    /**
+     * @param {Tensor} other @returns {Tensor} elementwise this - other
+     *
+     * Promotes to complex dtype when either operand is complex (matching
+     * outer()/contract()) — using this.dtype alone would silently break on
+     * a REAL - COMPLEX subtraction: Tensor._sub would run plain `v - other`
+     * with `other` an actual Complex object, not a number, producing NaN.
+     */
     subtract(other)
     {
       Tensor._assertSameShape(this, other, 'subtract');
-      const flat = this._flat.map((v, i) => Tensor._sub(v, other._flat[i], this.dtype));
-      return new this.constructor().init({ shape: this.shape.slice(), dtype: this.dtype }, flat);
+      const resultDtype = (this.dtype === Tensor.DTYPES.COMPLEX || other.dtype === Tensor.DTYPES.COMPLEX)
+        ? Tensor.DTYPES.COMPLEX : Tensor.DTYPES.REAL;
+      const flat = this._flat.map((v, i) => Tensor._sub(v, other._flat[i], resultDtype));
+      return new this.constructor().init({ shape: this.shape.slice(), dtype: resultDtype }, flat);
+    }
+
+    /**
+     * Elementwise complex conjugate. Identity for dtype REAL (a real number
+     * is its own conjugate) — needed by Hilbert's sesquilinear inner
+     * product, but a general enough dtype-aware operation to belong here
+     * on the base class rather than a Hilbert-specific mixin.
+     * @returns {Tensor}
+     */
+    conjugate()
+    {
+      if (this.dtype !== Tensor.DTYPES.COMPLEX)
+      {
+        return this.map((v) => v);
+      }
+      return this.map((v) => v.conjugate());
     }
 
     /** @param {number|Complex} scalar @returns {Tensor} elementwise this * scalar */

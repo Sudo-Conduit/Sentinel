@@ -12,6 +12,7 @@ const runner = new TestRunner();
 require('./Data.unit.js')(runner);
 require('./Complex.unit.js')(runner);
 require('./Tensor.unit.js')(runner);
+require('./Hilbert.unit.js')(runner);
 require('./FlatTensor.unit.js')(runner);
 require('./NestedTensor.unit.js')(runner);
 require('./ExtendXIntegration.unit.js')(runner);

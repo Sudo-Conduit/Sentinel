@@ -211,6 +211,37 @@ function register(runner)
       assert.deepStrictEqual(new Tensor().init({ shape: [2] }, [1, 2]).scale(3).toFlat().data, [3, 6]);
     });
 
+    runner.test('add/subtract promote to complex dtype when only ONE operand is complex', () =>
+    {
+      // Regression: using `this.dtype` alone (instead of a computed
+      // resultDtype, like outer()/contract() already did) meant a REAL
+      // tensor subtracting a COMPLEX one ran plain `v - complexObject`,
+      // silently producing NaN instead of a real result.
+      const real = new Tensor().init({ shape: [2] }, [5, 5]);
+      const cplx = new Tensor().init({ shape: [2], dtype: Tensor.DTYPES.COMPLEX }, [{ re: 2, im: 1 }, { re: 3, im: -1 }]);
+
+      const sum = real.add(cplx);
+      assert.strictEqual(sum.dtype, Tensor.DTYPES.COMPLEX);
+      assert.strictEqual(sum.toFlat().data[0].re, 7);
+      assert.strictEqual(sum.toFlat().data[0].im, 1);
+
+      const diff = real.subtract(cplx);
+      assert.strictEqual(diff.dtype, Tensor.DTYPES.COMPLEX);
+      assert.strictEqual(diff.toFlat().data[0].re, 3);
+      assert.strictEqual(diff.toFlat().data[0].im, -1);
+    });
+
+    runner.test('conjugate: identity for REAL, negates the imaginary part for COMPLEX', () =>
+    {
+      const real = new Tensor().init({ shape: [2] }, [1, 2]);
+      assert.deepStrictEqual(real.conjugate().toFlat().data, [1, 2]);
+
+      const cplx = new Tensor().init({ shape: [1], dtype: Tensor.DTYPES.COMPLEX }, [{ re: 3, im: 4 }]);
+      const conj = cplx.conjugate().toFlat().data[0];
+      assert.strictEqual(conj.re, 3);
+      assert.strictEqual(conj.im, -4);
+    });
+
     runner.test('add/subtract throw on a shape mismatch', () =>
     {
       const a = new Tensor().init({ shape: [2] }, [1, 2]);
