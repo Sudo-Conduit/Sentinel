@@ -44,7 +44,8 @@ const TEST_FILES = [
     'BIOS.nvramFastPath.test.js',
     'ExtendX.stacking.test.js',
     'BIOS.firstBoot.test.js',
-    'MountainShift.opaque.test.js'
+    'MountainShift.opaque.test.js',
+    'WeightedGraphMixin.test.js'
 ];
 
 function gitInfo() {
