@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `07b4d29` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `91547c0` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -403,7 +403,7 @@ dependency override:**
   `test/WeightedGraphMixin.test.js`, 20/20 (a promise-passed-to-check()
   mistake in the first draft was caught and fixed before committing, per
   this project's own documented convention). Re-pinned the Last-test-run
-  section to `07b4d29` (236/236, up from 216/216 across 16, now 17/17
+  section to `91547c0` (236/236, up from 216/216 across 16, now 17/17
   suites).
 - **1.11.0** — 2026-09-12 — E.1 (opaque closure factory) shipped:
   `MountainShift.js` composes and boots the already-hardened chain
