@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.11.0
+**Version:** 1.12.0
 **Last updated:** 2026-09-12
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `6a0b4fb` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `07b4d29` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -62,8 +62,9 @@ expect it to stay current and do not push there.
 | ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
 | MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
+| WeightedGraphMixin.test.js | ALL 20 CHECKS PASSED |
 
-**Total: 216/216 checks passing, 16/16 suites green.**
+**Total: 236/236 checks passing, 17/17 suites green.**
 
 ## Status legend
 
@@ -382,6 +383,28 @@ dependency override:**
 
 ## Changelog
 
+- **1.12.0** — 2026-09-13 — Added `WeightedGraphMixin.js` (outside the
+  A-E backlog, a direct addition): weighted (number or a
+  `(source, target) => number` function, resolved lazily) and directed/
+  undirected graph edges, plus `walk()` — bounded, decision-driven
+  multi-hop traversal with a seeded-PRNG (mulberry32) default pick, an
+  optional `decide()` callback for custom or fan-out routing, `onVisit`,
+  `avoidRevisit`, and parallel/sequential concurrency — a sibling to
+  `StructureMixin`'s relational mode, not a modification of it. Supplied
+  already matching this codebase's Allman/docblock/static-metadata house
+  style; only header paths and the UMD browser-global branch were
+  adjusted to this project's actual flat layout. Audited for the
+  next()-injection hazard on `linkTo()`/`walk()`'s optional trailing
+  `options` (the recurring shape from A.4's systemic audit) and confirmed
+  ACCIDENTALLY SAFE, the same way `Registry.save()`'s omitted options
+  already is — every downstream field read is guarded by a
+  `typeof`/`===`/`in` check, so the injected `next()` callback landing in
+  the options slot still resolves to the same safe defaults.
+  `test/WeightedGraphMixin.test.js`, 20/20 (a promise-passed-to-check()
+  mistake in the first draft was caught and fixed before committing, per
+  this project's own documented convention). Re-pinned the Last-test-run
+  section to `07b4d29` (236/236, up from 216/216 across 16, now 17/17
+  suites).
 - **1.11.0** — 2026-09-12 — E.1 (opaque closure factory) shipped:
   `MountainShift.js` composes and boots the already-hardened chain
   (Registry/BIOS/Kernel/Physical/CPU, each secured + graph-structured,
