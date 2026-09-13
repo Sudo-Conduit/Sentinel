@@ -254,34 +254,33 @@
         };
     }
 
-    // Oscillator strength f: the standard dimensionless measure of a
-    // transition's absorption intensity, f_ij = (2/3)*dE_hartree*|mu_ij|^2
-    // (atomic units, length gauge) - built on the EXACT SAME occ->unocc
-    // transitions and ZDO transition-dipole matrix elements
-    // analyzePiElectronic already computes for pi-electronic
-    // polarizability (see _computeTransitions above); this is not a new
-    // physical model, it is the other standard quantity built from the
-    // same sum-over-states data this project already has.
-    function analyzeOscillatorStrength(molecule, options) {
+    // Transition energies/wavelengths only - deliberately NOT oscillator
+    // strength. An earlier version of this function computed f =
+    // (2/3)*dE_hartree*|mu_ij|^2 from the same ZDO transition dipole
+    // analyzePiElectronic uses, but checked against real spectroscopy it
+    // was wrong by ~100x on benzene's textbook symmetry-forbidden 255nm
+    // band (simple Huckel + ZDO has no mechanism to enforce D6h selection
+    // rules). The energy/wavelength for every occ->unocc transition is
+    // real and already cross-validated (benzene's 255.1nm HOMO-LUMO gap
+    // matches this codebase's own established value elsewhere) - that
+    // part ships. Oscillator strength does not, and stays unshipped on
+    // the roadmap until the symmetry gap is addressed.
+    function analyzeTransitionEnergies(molecule, options) {
         var t = _computeTransitions(molecule, options);
         if (!t.applicable) return t;
 
         var transitions = t.transitions.map(function(tr) {
-            var gapHartree = tr.gapEv / HARTREE_TO_EV;
-            var mu2 = tr.muVecBohr[0] * tr.muVecBohr[0] + tr.muVecBohr[1] * tr.muVecBohr[1] + tr.muVecBohr[2] * tr.muVecBohr[2];
-            var f = (2 / 3) * gapHartree * mu2;
             return {
                 occMoIndex: tr.occMoIndex,
                 unoccMoIndex: tr.unoccMoIndex,
                 transitionEv: Math.round(tr.gapEv * 1000) / 1000,
-                wavelengthNm: Math.round((1239.84 / tr.gapEv) * 10) / 10,
-                oscillatorStrength: Math.round(f * 100000) / 100000
+                wavelengthNm: Math.round((1239.84 / tr.gapEv) * 10) / 10
             };
         }).sort(function(a, b) { return a.transitionEv - b.transitionEv; });
 
         return {
             applicable: true,
-            method: 'Oscillator strength f = (2/3)*dE(hartree)*|mu_ij(bohr)|^2 (atomic units, length gauge), for every occ->unocc Huckel transition - the same ZDO transition-dipole matrix element and sum-over-states transitions analyzePiElectronic() uses for pi-electronic polarizability, just the other standard quantity built from the same data.',
+            method: 'Transition energy/wavelength for every occ->unocc Huckel pi-system transition (Aromaticity.js spectroscopic-beta eigenbasis) - the same sum-over-states transitions analyzePiElectronic() uses for pi-electronic polarizability. Oscillator strength intentionally NOT included here - see header comment.',
             transitions: transitions,
             homoLumo: transitions[0],
             version: '0.1'
@@ -291,7 +290,7 @@
     return {
         analyze: analyze,
         analyzePiElectronic: analyzePiElectronic,
-        analyzeOscillatorStrength: analyzeOscillatorStrength,
+        analyzeTransitionEnergies: analyzeTransitionEnergies,
         ATOMIC_CONTRIBUTION: ATOMIC_CONTRIBUTION,
         version: '0.1'
     };
