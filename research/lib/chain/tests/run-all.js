@@ -22,5 +22,6 @@ require('./SystemAdapter.unit.js')(runner);
 require('./Geodesic.unit.js')(runner);
 require('./GeodesicLink.unit.js')(runner);
 require('./Torus.unit.js')(runner);
+require('./MathPrecision.unit.js')(runner);
 
 runner.run().then((result) => { process.exitCode = result.failed > 0 ? 1 : 0; });
