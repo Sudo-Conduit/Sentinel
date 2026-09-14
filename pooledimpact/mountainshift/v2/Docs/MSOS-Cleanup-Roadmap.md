@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.15.0
+**Version:** 1.15.1
 **Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -20,10 +20,13 @@ so priority isn't re-debated from scratch each session.
 Related prior art already in this repo, not superseded by this doc:
 `BaseClassX-Relationships-Rubric.md` (the OS core itself),
 `Kernel-Machine-Architecture.md` (the boot sequence steps 1-8 this
-roadmap's Category C items close gaps in), and
+roadmap's Category C items close gaps in),
 `Threads-SABX-Federation-Login-Rubric.md` (Federation as weak-link
 references between BaseClassX trees — the conceptual ancestor of this
-doc's Category D 'network' boot work).
+doc's Category D 'network' boot work), and `Envelope-Format-Spec.md`
+(the manifest/trust/portable-IO contract `ISO.js`, `TzGz.js`, and
+PDFVaultX/`BuildTerminalPdf.js` all turn out to be bindings of — F.1's
+conceptual ancestor, same relationship Threads-SABX has to Category D).
 
 ## Last test run
 
@@ -432,6 +435,18 @@ dependency override:**
 
 ## Changelog
 
+- **1.15.1** — 2026-09-14 — Added `Envelope-Format-Spec.md`: the
+  manifest/trust/portable-IO contract underneath F.1, written up as its
+  own doc rather than folded into this table, since it's prior art
+  spanning three artifacts (`ISO.js`, `TzGz.js`, PDFVaultX) rather than
+  a single scored backlog item. Doc-only, no code. Confirms live (not
+  assumed) that `pdf-lib`'s writer always fully rewrites the PDF on
+  `save()` — no incremental-update `/Prev` chain support — and that
+  `TzGz.js`'s `_normalizeStructure()` has a real bare-`Buffer`-reference
+  bug that throws in any environment without a `Buffer` global, checked
+  by deleting `global.Buffer` and re-requiring the module fresh. Cross-
+  referenced from this doc's "Related prior art" list, same relationship
+  `Threads-SABX-Federation-Login-Rubric.md` has to Category D.
 - **1.15.0** — 2026-09-14 — Added **F.1** (new category: Reference
   Artifact Verification) to the Scored backlog: formalize the
   `Terminal.pdf` end-to-end browser boot proof done ad hoc in 1.14.1
