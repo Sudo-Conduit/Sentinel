@@ -1,6 +1,6 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.0.0
+**Version:** 1.1.0
 **Last updated:** 2026-09-14
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
@@ -184,8 +184,111 @@ discipline applied to process, not just code.
   the same way the Confidence dimension above was written from what
   this chain's own bugs actually taught, not guessed in the abstract.
 
+## Supplemental Addendum: Math Theory & Formulas Study Guide
+
+**Purpose:** a fast, applied on-ramp — not a substitute for `WHITE_PAPER.md`,
+which has the full derivations and rigor. This addendum exists so a
+junior engineer (or anyone picking this chain up cold) can read one
+formula, one code pointer, and one paragraph of "why this and not
+something simpler" per concept, in the same category order (A–H) as the
+backlog above, before diving into the white paper's full treatment. Each
+entry has the same shape on purpose — **Formula → Code → Why** — so this
+pattern can be lifted into another roadmap's own Supplemental Addendum
+without redesigning it each time.
+
+### B — Tensor Core
+
+- **Structure/data separation.** `Tensor` never mixes "what shape is
+  this" with "what's actually in it" — `init(R1, R2)`, `R1` = shape/dtype/order
+  (data-free), `R2` = the payload. **Code:** `Tensor.js:init`. **Why:** the
+  same `R1` can be filled by a flat array, a nested array, or a `Data`
+  instance with a field-extraction rule, and the resulting tensor is
+  identical either way — the structure was never coupled to one input shape.
+- **Contraction.** `Σ` over one shared axis: contracting rank-`p` `A` with
+  rank-`q` `B` along matching dimensions gives rank-`(p-1)+(q-1)`; two
+  rank-1 tensors contract to a rank-0 scalar (the ordinary dot product).
+  **Code:** `Tensor.js:contract`. **Why:** this one operation generalizes
+  matrix multiplication, the dot product, and outer-product reduction —
+  three "different" operations in most libraries are one formula here.
+- **Deterministic size bound.** Dense storage needs `Π nᵢ` elements
+  (`8` bytes/element real, `16` complex); this is knowable *before*
+  materializing anything. **Code:** `Tensor.estimateDenseSizeMB` (static —
+  callable with just a hypothetical shape). **Why:** a 2GB guard that
+  only fires *after* you've already allocated the tensor is too late to help.
+
+### D — Quantum Layer
+
+- **Sesquilinear inner product.** `⟨ψ,φ⟩ = Σᵢ conj(ψᵢ)·φᵢ` — conjugate-linear
+  in the first argument, linear in the second (physics convention).
+  **Code:** `Hilbert.js:InnerProductMixin.innerProduct`. **Why:** this is
+  *not* the same as `Tensor.contract()` on two vectors — contraction has
+  no conjugation, so it would silently give the wrong answer for any
+  complex-dtype state. That distinction is the entire reason `Hilbert`
+  is its own link in the chain rather than "contract on a vector."
+- **Self-adjointness.** `H = H†`, where `(H†)ᵢⱼ = conj(Hⱼᵢ)`. **Code:**
+  `Hamiltonian.js:AdjointMixin`/`IsHermitianMixin`. **Why:** Hermitian
+  operators are exactly the ones whose expectation values `⟨ψ|H|ψ⟩` are
+  guaranteed real — the mathematical property that lets `H` represent a
+  physical observable at all.
+- **First-order evolution step.** `|ψ(t+dt)⟩ ≈ |ψ(t)⟩ − i(dt/ħ)H|ψ(t)⟩`.
+  **Code:** `Hamiltonian.js:EvolveMixin.evolve`. **Why (read carefully):**
+  this is a forward-Euler discretization, *not* the exact `e^{-iHt/ħ}`
+  unitary evolution — it's only approximately norm-preserving, with error
+  vanishing as `dt→0`. `WHITE_PAPER.md` §3.5 has the full rigor note on
+  exactly why this distinction matters and must never be glossed over.
+
+### F — Geometric Substrate
+
+- **Coprimality via the Chinese Remainder Theorem.** `gcd(p,q)=1` implies
+  `ℤ/p × ℤ/q ≅ ℤ/pq` — a single connected `p·q`-point structure, not
+  `gcd(p,q)` disjoint ones. **Code:** `Torus.componentCount` (literally `gcd`).
+  **Why:** this is *why* `9×8` (coprime) gives one 72-point diagonal
+  strip, while e.g. `4×6` (`gcd=2`) splits into two disjoint 12-point cycles
+  — a property you can check before building anything on top of a given `(p,q)`.
+- **The empty≡infinity seam.** `wrap(t) = t mod 1`, so `wrap(0) === wrap(1)`.
+  **Code:** `Torus.wrap`. **Why:** folding a line `[0,1]` into a circle
+  means gluing its two ends into one point — this is that gluing,
+  concretely, not a metaphor.
+
+### G — Math Extension Host
+
+- **IEEE-754-style float layout.** Any `(signBit=1, expBits, manBits)`
+  format's max finite magnitude is `(2 − 2⁻ᵗ)·2^maxExp` for a real Inf-bearing
+  format — but not for OCP's finite/"FN" formats (`F8_E4M3`), which reserve
+  one bit pattern for their single NaN encoding and so saturate lower
+  than the naive formula predicts (448, not 480). **Code:**
+  `MathPrecision.js:quantizeFloat`. **Why:** this is the one place in this
+  chain where "the formula" and "the actual documented constant" diverge,
+  and the divergence itself is the thing worth understanding, not just the number.
+- **Control-point blending.** `Σᵢ weightsᵢ · pointsᵢ` — the one operation
+  Bezier/B-spline/NURBS all actually need underneath them. **Code:**
+  `Vector.linearCombination`. **Why:** verified directly against an
+  independently hand-computed quadratic Bezier point, not just internal
+  self-consistency — see `Vector.unit.js`.
+
+### H — Coming Next (preview, code not yet written)
+
+- **Bernstein basis (Bezier).** `Bᵢ,ₙ(t) = C(n,i)·tⁱ·(1−t)^(n−i)` — an
+  explicit polynomial of degree `n`. **Why it's a polynomial, concretely:**
+  expand the binomial and every term is a plain power of `t`.
+- **Cox-de Boor recursion (B-spline).** `Nᵢ,ₚ(t)` built from `Nᵢ,₀(t) =
+  1` if `t` falls in knot span `i`, else `0`, recursively blended up to
+  degree `p`. **Why it's a polynomial too:** on any single knot span, it's
+  a genuine polynomial of degree `p` — a *different* polynomial per span,
+  stitched together with `C^{p-1}` continuity at simple knots.
+- **NURBS rational weighting.** A ratio of two weighted B-spline basis
+  combinations, not a polynomial itself — the numerator and denominator
+  both are, but the quotient generally isn't.
+
 ## Changelog
 
+- **1.1.0** — 2026-09-14 — Added the Supplemental Addendum (Math Theory
+  & Formulas Study Guide): a fast, formula-first on-ramp for a junior
+  engineer, one entry per load-bearing concept (Formula → Code → Why),
+  in the same A–H category order as the backlog, deliberately not a
+  substitute for `WHITE_PAPER.md`'s full rigor. Designed as a reusable
+  section shape for other roadmaps (this session's MSOS roadmap
+  included), not a one-off.
 - **1.0.0** — 2026-09-14 — Initial publish, covering the full chain
   through `Vector.round()`/`PRECISION.F64`. 265/265 across 17 suites.
   Categories A–G (Data Foundation through Math Extension Host) fully
