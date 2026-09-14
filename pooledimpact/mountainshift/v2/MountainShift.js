@@ -1,7 +1,7 @@
 /**
  * @file MountainShift.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description E.1 (MSOS Cleanup Roadmap): the opaque closure factory.
  *   `MountainShift(options)` composes and boots the ALREADY-hardened
  *   chain -- Registry, BIOS (SecurityMixin + graph-mode StructureMixin),
@@ -60,9 +60,28 @@
  *   run() is idempotent: real firmware's "power on" does nothing
  *   meaningful if the machine is already running, and re-running BIOS.
  *   boot() a second time would double-construct a Kernel/Memory/CPU
- *   under a machine that already has one. The first call's outcome
- *   (a plain boolean -- never the real Kernel/BIOS instances) is cached
- *   and returned again by any later call.
+ *   under a machine that already has one. The first call's outcome is
+ *   cached and returned again by any later call.
+ *
+ *   v1.1.0: run() now resolves to a small CAPABILITY object instead of a
+ *   bare boolean -- `{ ok, cores, fork, kill, tick, ps, getMemory }` on a
+ *   successful boot, `{ ok: false }` otherwise. This is E.2's own
+ *   anticipated evolution ("once run()'s own surface grows past a bare
+ *   boolean"), driven by real need: wiring the actual Terminal app
+ *   (entry.html/PosixCommands.js/Procd.js) onto this factory required
+ *   giving it something to actually DO real work with. The exact method
+ *   set is not a guess -- grepped from the real, currently-shipping
+ *   Terminal source: entry.html's own boot sequence and top renderer use
+ *   fork/tick/getMemory/cores; PosixCommands.js's ps/kill commands and
+ *   Procd.js's attachKernel() usage need exactly ps/kill/fork/cores.
+ *   Each capability is a closure bound to the REAL secured Kernel --
+ *   calling `caps.fork(cmd, ppid)` really does dispatch through
+ *   SecurityMixin/ExtendX exactly like calling kernel.fork() directly
+ *   would. What never happens, still: the Kernel instance itself, BIOS,
+ *   Physical, and Registry remain unreachable through the capability
+ *   object -- only these six bound entry points exist, frozen, nothing
+ *   else. The OUTER returned object's own contract is completely
+ *   unchanged by this -- it is still, and only ever, `{ run }`.
  *
  *   options.onBoot (test/diagnostic only): an optional callback invoked
  *   from INSIDE this closure, synchronously after boot() settles, with
@@ -164,7 +183,7 @@
         });
 
         let hasRun = false;
-        let cachedResult = false;
+        let cachedResult = { ok: false };
 
         async function run()
         {
@@ -174,7 +193,16 @@
             }
             hasRun = true;
             const kernel = await bios.boot(physical, opts.fs, opts.iso);
-            cachedResult = !!(kernel && kernel.bootedFrom && kernel.bootedFrom !== 'none');
+            const booted = !!(kernel && kernel.bootedFrom && kernel.bootedFrom !== 'none');
+            cachedResult = booted ? Object.freeze({
+                ok: true,
+                cores: kernel.cores,
+                fork: (cmd, ppid) => kernel.fork(cmd, ppid),
+                kill: (pid) => kernel.kill(pid),
+                tick: () => kernel.tick(),
+                ps: () => kernel.ps(),
+                getMemory: () => (typeof kernel.getMemory === 'function' ? kernel.getMemory() : null)
+            }) : { ok: false };
             if (typeof opts.onBoot === 'function')
             {
                 opts.onBoot({ registry, bios, physical, kernel });
@@ -218,7 +246,7 @@
     }
 
     MountainShift.author = 'Will Fobbs';
-    MountainShift.version = '1.0.0';
+    MountainShift.version = '1.1.0';
     MountainShift.description = 'Opaque closure factory over the hardened MSOS boot chain -- the returned object exposes ONLY run().';
     MountainShift.docs = ['Kernel-Machine-Architecture.md'];
     MountainShift.tests = ['test/MountainShift.opaque.test.js'];

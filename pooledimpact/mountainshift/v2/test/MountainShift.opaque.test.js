@@ -103,8 +103,44 @@ async function run() {
         onBoot: (internals) => { captured = internals; }
     });
     const bootResult = await os2.run();
-    check('run() resolves true on a successful boot', () => {
-        if (bootResult !== true) throw new Error('expected true, got ' + bootResult);
+    check('run() resolves a capability object with ok:true on a successful boot', () => {
+        if (!bootResult || bootResult.ok !== true) throw new Error('expected {ok:true, ...}, got ' + JSON.stringify(bootResult));
+    });
+    check('the capability object exposes EXACTLY the six real entry points the Terminal actually needs, nothing else', () => {
+        const keys = Object.keys(bootResult).sort();
+        const expected = ['cores', 'fork', 'getMemory', 'kill', 'ok', 'ps', 'tick'].sort();
+        if (JSON.stringify(keys) !== JSON.stringify(expected)) throw new Error('expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(keys));
+        if (bootResult.kernel !== undefined || bootResult.bios !== undefined || bootResult.physical !== undefined || bootResult.registry !== undefined) {
+            throw new Error('a raw internal instance leaked into the capability object');
+        }
+    });
+    check('the capability object is frozen -- no new capability can be added, none can be reassigned', () => {
+        const result = settleSync(() => { bootResult.evil = () => {}; });
+        if (result.ok) throw new Error('expected the assignment to throw under strict mode');
+        const result2 = settleSync(() => { bootResult.fork = () => 'hijacked'; });
+        if (result2.ok) throw new Error('expected reassigning fork to throw under strict mode');
+    });
+    check('capability.fork()/ps() dispatch through the REAL secured Kernel -- a forked process is really there', () => {
+        const before = bootResult.ps().length;
+        bootResult.fork('test-proc', 0);
+        const after = bootResult.ps();
+        if (after.length !== before + 1) throw new Error('expected one more process after fork(), got ' + before + ' -> ' + after.length);
+        if (!after.some((p) => p.cmd === 'test-proc')) throw new Error('forked process not found in ps()');
+    });
+    check('capability.kill() really removes the process via the real Kernel', () => {
+        const proc = bootResult.ps().find((p) => p.cmd === 'test-proc');
+        bootResult.kill(proc.pid);
+        if (bootResult.ps().some((p) => p.pid === proc.pid)) throw new Error('expected the process to be gone after kill()');
+    });
+    check('capability.tick() runs without throwing', () => {
+        bootResult.tick();
+    });
+    check('capability.cores is a real number matching the booted Physical', () => {
+        if (typeof bootResult.cores !== 'number' || bootResult.cores < 1) throw new Error('expected a real cores count, got ' + bootResult.cores);
+    });
+    check('capability.getMemory() does not throw (Memory.js is not globally wired in this test environment, so null is the correct, documented result)', () => {
+        const mem = bootResult.getMemory();
+        if (mem !== null) throw new Error('expected null in this environment, got ' + JSON.stringify(mem));
     });
     check('onBoot captured a REAL, armed, secured Kernel -- the boot genuinely happened, this is not a lie', () => {
         if (!captured || !captured.kernel) throw new Error('onBoot did not fire with a kernel');
@@ -124,19 +160,24 @@ async function run() {
         fs: fakeFs(CONFIRMED_ENTRY),
         onBoot: () => { bootCount++; }
     });
-    await os3.run();
-    await os3.run();
-    await os3.run();
+    const r1 = await os3.run();
+    const r2 = await os3.run();
+    const r3 = await os3.run();
     check('run() called three times only boots once', () => {
         if (bootCount !== 1) throw new Error('expected exactly 1 boot, got ' + bootCount);
+    });
+    check('run() called again returns the SAME cached capability object, not a fresh one', () => {
+        if (r1 !== r2 || r2 !== r3) throw new Error('expected identical object references across repeat calls');
     });
 
     // --- a failed boot (nothing bootable) resolves false, does not crash,
     // and stays just as opaque ---
     const os4 = MountainShift({ fs: fakeFs(null) });
     const failedResult = await os4.run();
-    check('a failed boot resolves false, not a crash or a leaked error object', () => {
-        if (failedResult !== false) throw new Error('expected false, got ' + JSON.stringify(failedResult));
+    check('a failed boot resolves {ok:false}, not a crash or a leaked error object', () => {
+        if (!failedResult || failedResult.ok !== false || Object.keys(failedResult).length !== 1) {
+            throw new Error('expected {ok:false} exactly, got ' + JSON.stringify(failedResult));
+        }
     });
     check('a failed boot still leaves the returned object fully opaque', () => {
         if (Object.keys(os4).length !== 1 || Object.keys(os4)[0] !== 'run') throw new Error('surface changed after a failed boot');
