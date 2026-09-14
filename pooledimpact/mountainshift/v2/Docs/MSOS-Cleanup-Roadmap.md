@@ -1,7 +1,7 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.12.0
-**Last updated:** 2026-09-12
+**Version:** 1.13.0
+**Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
 thread — reflection-based override composition, `CPU.js` rewritten to a
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `91547c0` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `83e9279` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -53,7 +53,7 @@ expect it to stay current and do not push there.
 | Kernel.security.test.js | ALL 15 CHECKS PASSED |
 | BIOS.security.test.js | ALL 12 CHECKS PASSED |
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
-| NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
+| NextInjection.audit.test.js | ALL 12 CHECKS PASSED |
 | Memory.security.test.js | ALL 15 CHECKS PASSED |
 | MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
@@ -63,8 +63,9 @@ expect it to stay current and do not push there.
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
 | MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
 | WeightedGraphMixin.test.js | ALL 20 CHECKS PASSED |
+| Signature.test.js | ALL 17 CHECKS PASSED |
 
-**Total: 236/236 checks passing, 17/17 suites green.**
+**Total: 256/256 checks passing, 18/18 suites green.**
 
 ## Status legend
 
@@ -231,7 +232,7 @@ as shipped above; nothing about that wiring changed.
 | B.4 | Core Machine | BIOS secured + tested (`kernelFactory` leak fix, `iso` hazard fix, explicit `addChild`) | ✅ | — | — | — | — | — | — | shipped |
 | B.5 | Core Machine | Full boot-chain life-cycle integration test (CPU→Physical→Kernel→BIOS) | ✅ | — | — | — | — | — | — | shipped |
 | B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ✅ | — | — | — | — | — | — | shipped |
-| C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
+| C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ✅ | — | — | — | — | — | — | shipped |
 | C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ✅ | — | — | — | — | — | — | shipped |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
 | C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ✅ | — | — | — | — | — | — | shipped |
@@ -330,7 +331,30 @@ with sequencing overrides noted where raw ranking would be wrong:**
    fork/tick/kill through `run()` alone, once `run()`'s own surface grows
    past a bare boolean), formalizing the two-tier convention
    test/helpers.js's header comment already anticipates.
-7. **C.1 — Checksum → signature upgrade** (16)
+7. ~~**C.1 — Checksum → signature upgrade**~~ — **done** (2026-09-14).
+   New `Signature.js`: real ECDSA (P-256/SHA-256) sign/verify via the
+   standard Web Crypto API (`crypto.subtle`) -- confirmed live that
+   Node 22's global `crypto` already is a real, spec-compliant
+   implementation, so no hand-rolled crypto and no external dependency.
+   Wired in as a strictly additive authenticity layer: `ISO.js` gains
+   `signManifest()`/`verifyManifestSignature()` alongside the untouched
+   `checksum`/`verifyIntegrity()`; `Installer.js`'s `options.privateKey`
+   additionally writes a real `.sig` sidecar alongside the existing
+   `.sha` hash sidecar; `FileFsBootAdapter.js`'s `options.publicKey`
+   additionally requires a genuine verified signature before confirming
+   a boot hit. Zero behavior change for any caller who never supplies a
+   key. Proven live in `test/Signature.test.js` (17/17): the actual gap
+   closed is that a hash alone can be trivially forged by anyone who
+   tampers with content, while a real signature cannot be forged without
+   the private key -- both the "old check is fooled" and "new check
+   rejects the same tampering" halves confirmed directly, not assumed.
+   `test/NextInjection.audit.test.js` gained 3 checks (12/12, up from
+   9/9): ISO's two new one-argument methods DO have a next()-injection
+   slot when a caller omits the required key, unlike its original
+   zero-arg methods -- confirmed safe by a different mechanism than this
+   codebase's usual typeof-guard trick, since `crypto.subtle` itself
+   throws a clear TypeError on an invalid key rather than silently
+   signing/verifying against garbage.
 8. ~~**C.4 — First-boot vs. steady-state distinction**~~ — **done**
    (2026-09-12). A successful boot with no persisted `firstBootComplete`
    Registry flag runs one-time post-install setup (minting a persistent
@@ -383,6 +407,19 @@ dependency override:**
 
 ## Changelog
 
+- **1.13.0** — 2026-09-14 — C.1 (checksum → signature upgrade) shipped:
+  new `Signature.js` (real ECDSA P-256/SHA-256 via `crypto.subtle`, no
+  hand-rolled crypto, no external dependency) wired in as a strictly
+  additive authenticity layer over `ISO.js`'s existing checksum,
+  `Installer.js`'s existing `.sha` sidecar, and `FileFsBootAdapter.js`'s
+  existing hash check — zero behavior change for any caller who never
+  supplies a key. Proven live in `test/Signature.test.js` (17/17) that a
+  forged hash defeats the old check but not the new one. Also audited (3
+  new checks in `test/NextInjection.audit.test.js`, 12/12): ISO's two new
+  one-argument methods are safe against the next()-injection hazard by a
+  different mechanism than usual — `crypto.subtle` itself rejects an
+  invalid key with a clear TypeError. Re-pinned the Last-test-run section
+  to `83e9279` (256/256, up from 236/236 across 17, now 18/18 suites).
 - **1.12.0** — 2026-09-13 — Added `WeightedGraphMixin.js` (outside the
   A-E backlog, a direct addition): weighted (number or a
   `(source, target) => number` function, resolved lazily) and directed/
