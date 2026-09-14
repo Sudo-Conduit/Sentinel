@@ -71,6 +71,7 @@
   'use strict';
 
   const PRECISION = Object.freeze({
+    F64: 'f64',
     F32: 'f32',
     F16: 'f16',
     F8_E4M3: 'f8e4m3',
@@ -161,11 +162,22 @@
 
   /**
    * @param {number} x
-   * @param {string} type one of PRECISION's values; omitted/F32 delegates to native fround
+   * @param {string} [type] one of PRECISION's values; omitted/F32 delegates
+   *   to native fround (F32 narrowing, exact backward compatibility);
+   *   F64 is a true no-op -- x IS already a JS double, so returning it
+   *   unchanged (not routed through native fround, which would narrow it
+   *   to F32) is the only correct behavior. Distinct from omitting type:
+   *   that still narrows to F32 for backward compatibility, while
+   *   explicit F64 is a new, self-documenting "deliberately full
+   *   precision here" capability.
    * @returns {number}
    */
   function quantize(x, type)
   {
+    if (type === PRECISION.F64)
+    {
+      return x;
+    }
     if (type === undefined || type === PRECISION.F32)
     {
       return _nativeFround(x);

@@ -48,6 +48,22 @@ function register(runner)
       assert.strictEqual(Math.fround(1.23456789, P.F32), Math.fround(1.23456789));
     });
 
+    runner.test('Math.fround(x, PRECISION.F64) is a true no-op -- x is already a JS double', () =>
+    {
+      const x = 1.234567890123456;
+      assert.strictEqual(Math.fround(x, P.F64), x, 'must return x completely unchanged, full double precision');
+    });
+
+    runner.test('F64 is distinct from omitting type: F64 does NOT narrow to F32 the way the omitted-type default does', () =>
+    {
+      const x = 1.234567890123456;
+      const withF64 = Math.fround(x, P.F64);
+      const omitted = Math.fround(x); // still narrows to F32 for backward compatibility
+      assert.strictEqual(withF64, x);
+      assert.notStrictEqual(omitted, x, 'omitting type must still narrow to F32, unchanged old behavior');
+      assert.notStrictEqual(withF64, omitted, 'F64 and omitted-type must give genuinely different results here');
+    });
+
     runner.test('every format: 1.0 round-trips exactly (needs zero mantissa bits)', () =>
     {
       assert.strictEqual(Math.fround(1.0, P.F16), 1.0);
