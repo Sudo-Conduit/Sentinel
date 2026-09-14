@@ -20,6 +20,29 @@
   'use strict';
   if (!BaseClassX) throw new Error('BIOS requires BaseClassX to be loaded first');
 
+  const _kernelFactories = new Map(); // this.id -> factory({bootedFrom, firmwareType, cores}) | null
+  function defaultKernelFactory(opts) { return new Kernel(opts); }
+
+  // NOT `typeof this.addChild === 'function'` -- BaseClassX itself already
+  // defines a NATIVE addChild(childInstance) for its own always-on tree
+  // (a totally separate feature from StructureMixin's, taking a real
+  // BaseClassX instance, not an extId string). That native method exists
+  // on every BIOS instance whether or not StructureMixin is composed, so a
+  // bare typeof check finds it every time and calls it with the wrong
+  // argument shape -- proven live: "Child must be an instance of
+  // BaseClassX" thrown from BaseClassX.js, not from anything obviously
+  // BIOS-related. This checks for a graph/both-mode StructureMixin
+  // SPECIFICALLY, by mixinId prefix, so the native BaseClassX tree is
+  // never confused with it.
+  function hasGraphStructure(instance) {
+    const raw = instance.constructor && instance.constructor._rawMixins;
+    if (!raw) return false;
+    return raw.some(function(m) {
+      return typeof m.mixinId === 'string' &&
+        (m.mixinId.indexOf('structure:graph:') === 0 || m.mixinId.indexOf('structure:both:') === 0);
+    });
+  }
+
   class BIOS extends BaseClassX {
     static version = '1.0.0';
     static domain = 'machine.bios';
@@ -38,6 +61,21 @@
       this.bootDeviceOrder = options.bootDeviceOrder || ['esp', 'disk', 'network'];
       this.postComplete = false;
       this.registryRef = null;
+      // Injectable, like Physical's cpuFactory -- without it, boot() always
+      // hands off to a plain, unsecured Kernel regardless of whether BIOS
+      // itself is composed with SecurityMixin, exactly the raw-unsecured-CPU
+      // leak Physical.js had before its own cpuFactory fix. Keyed by this.id
+      // in a module-level Map (not a plain instance property) for the same
+      // reason Physical._cpuFactories is: BaseClassX's schema Proxy silently
+      // rejects an undeclared property write, and once BIOS is composed via
+      // ExtendX a plain instance property would be vulnerable to the same
+      // frame-Proxy-identity mismatch as the _host/_cpus WeakMap bugs.
+      _kernelFactories.set(this.id, typeof options.kernelFactory === 'function' ? options.kernelFactory : null);
+    }
+
+    dispose() {
+      _kernelFactories.delete(this.id);
+      super.dispose();
     }
 
     // Step 3 of the boot sequence: read NVRAM-shaped config. When a
@@ -80,7 +118,21 @@
       // then re-run the same fs.findBootEntry('disk', ...) lookup against
       // what was just written — the post-install reboot, step 8, without an
       // actual page reload.
-      if (!bootTarget && iso && typeof Installer !== 'undefined') {
+      //
+      // `iso && typeof Installer !== 'undefined'` is NOT enough once this
+      // class is composed via ExtendX.extend(): boot(physical, fs) called
+      // with only 2 arguments (a legitimate, common call shape -- no ISO
+      // available) does not leave `iso` as undefined. ExtendX's dispatcher
+      // always appends its own next() callback as the trailing argument to
+      // every dispatched call, and it lands in this exact omitted slot --
+      // `iso` becomes that injected function, which is truthy. Proven live:
+      // this used to crash with "iso.verifyIntegrity is not a function" on
+      // a real 2-argument boot() call. Guarding on the actual shape an ISO
+      // is required to have (a verifyIntegrity method) is the fix, same
+      // typeof-guard convention as fork()/tick() above and StructureMixin's
+      // label/next collision -- never trust bare truthiness on an optional
+      // trailing dispatched parameter.
+      if (!bootTarget && iso && typeof iso.verifyIntegrity === 'function' && typeof Installer !== 'undefined') {
         iso.verifyIntegrity();
         const FileFS = (fs && fs.FileFS) || (typeof FileFsX !== 'undefined' ? FileFsX : undefined);
         const installed = await Installer.install(iso, { FileFS, surface: this.installTargetSurface, id: this.installTargetId });
@@ -93,7 +145,8 @@
 
       this._recordTrace('boot', { firmwareType: this.firmwareType, env: env.runtime, bootTarget });
 
-      const kernel = new Kernel({ bootedFrom: bootTarget ? bootTarget.device : 'none', firmwareType: this.firmwareType, cores: env.cores || 1 });
+      const kernelFactory = _kernelFactories.get(this.id) || defaultKernelFactory;
+      const kernel = kernelFactory({ bootedFrom: bootTarget ? bootTarget.device : 'none', firmwareType: this.firmwareType, cores: env.cores || 1 });
       // Real host signals from Environment.detect() (navigator.deviceMemory /
       // hardwareConcurrency), not the Physical instance's construction-time
       // defaults \u2014 deviceMemoryGB is a coarse browser-reported bucket (0.25/0.5/
@@ -101,6 +154,26 @@
       const memSizeBytes = env.deviceMemoryGB > 0 ? env.deviceMemoryGB * 1024 * 1024 * 1024 : (physical.ramBytes || 0x400000);
       const memory = (typeof Memory !== 'undefined') ? new Memory({ sizeBytes: memSizeBytes }).attach(physical.getCPU ? physical.getCPU() : null) : null;
       kernel.attach(physical, env, memory);
+
+      // Explicit, not inferred. StructureMixin's graph-mode inference reads
+      // whatever extId sits on top of CONTEXT_STACK at the CALLED instance's
+      // own construction (its init() hook), and that stack entry is popped
+      // by the WRAPPING dispatcher's `finally` the instant boot()'s first
+      // `apply()` call returns -- which, for an async method, is immediately,
+      // long before any of boot()'s own internal awaits (the findBootEntry
+      // scan above) resolve. kernel is constructed only after those awaits,
+      // so by the time kernelFactory() runs, BIOS's extId is already off the
+      // stack -- proven live: inference silently returned null here. This is
+      // exactly the documented "construction after an internal await" gap
+      // in StructureMixin.js's own header comment; addChild() is the
+      // documented fix for it, not a workaround. Both BIOS and kernel must
+      // actually be composed with a StructureMixin in graph/both mode for
+      // this to do anything -- guarded by hasGraphStructure() above (NOT a
+      // bare typeof check -- see its comment) so this line is safe to leave
+      // in place even when BIOS/Kernel aren't composed with structure
+      // tracking, and never collides with BaseClassX's own native,
+      // differently-shaped addChild().
+      if (hasGraphStructure(this) && hasGraphStructure(kernel)) this.addChild(kernel._extId);
       return kernel;
     }
   }
