@@ -87,6 +87,19 @@ function register(runner)
       assert.deepStrictEqual(Vector.linearCombination([3], [[1, 2]]), [3, 6]);
     });
 
+    runner.test('round: reuses Math.fround(x, type) directly -- leverages MathPrecision, no separate rounding math', () =>
+    {
+      const P = require('../MathPrecision.js').PRECISION;
+      const a = [1000, -1000, 0.5];
+      assert.deepStrictEqual(Vector.round(a, P.F8_E4M3), a.map((v) => Math.fround(v, P.F8_E4M3)));
+      assert.strictEqual(Vector.round([1000], P.F8_E4M3)[0], 448, 'saturates at the documented E4M3 max, same as Math.fround alone');
+    });
+
+    runner.test('round: type omitted matches native Math.fround (F32) elementwise', () =>
+    {
+      assert.deepStrictEqual(Vector.round([1.23456789, 2.3456789]), [Math.fround(1.23456789), Math.fround(2.3456789)]);
+    });
+
     runner.test('static functions and instance methods agree', () =>
     {
       const v = new Vector().init();

@@ -28,6 +28,7 @@
   if (typeof module === 'object' && module.exports)
   {
     require('./MathExt.js');
+    require('./MathPrecision.js');
     module.exports = factory();
   }
   else if (typeof define === 'function' && define.amd)
@@ -82,6 +83,21 @@
       sum += a[i] * b[i];
     }
     return sum;
+  }
+
+  /**
+   * Elementwise Math.fround(x, type) -- reuses MathPrecision directly
+   * rather than Vector reimplementing any rounding math of its own.
+   * Arithmetic (add/subtract/scale/dot/linearCombination) stays
+   * precision-agnostic; quantizing a result is this explicit, separate,
+   * caller-invoked step.
+   * @param {Array} a
+   * @param {string} [type] one of MathPrecision's PRECISION values; omitted uses native F32
+   * @returns {Array}
+   */
+  function round(a, type)
+  {
+    return a.map((v) => Math.fround(v, type));
   }
 
   /** @param {Array} a @returns {number} Euclidean norm sqrt(dot(a,a)) */
@@ -140,6 +156,7 @@
     static scale = scale;
     static dot = dot;
     static norm = norm;
+    static round = round;
     static linearCombination = linearCombination;
 
     constructor()
@@ -157,6 +174,7 @@
     scale(a, k) { return scale(a, k); }
     dot(a, b) { return dot(a, b); }
     norm(a) { return norm(a); }
+    round(a, type) { return round(a, type); }
     linearCombination(weights, vectors) { return linearCombination(weights, vectors); }
   }
 
