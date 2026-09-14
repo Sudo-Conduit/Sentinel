@@ -1,7 +1,7 @@
 /**
  * @file MountainShift.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description E.1 (MSOS Cleanup Roadmap): the opaque closure factory.
  *   `MountainShift(options)` composes and boots the ALREADY-hardened
  *   chain -- Registry, BIOS (SecurityMixin + graph-mode StructureMixin),
@@ -60,9 +60,46 @@
  *   run() is idempotent: real firmware's "power on" does nothing
  *   meaningful if the machine is already running, and re-running BIOS.
  *   boot() a second time would double-construct a Kernel/Memory/CPU
- *   under a machine that already has one. The first call's outcome
- *   (a plain boolean -- never the real Kernel/BIOS instances) is cached
- *   and returned again by any later call.
+ *   under a machine that already has one. The first call's outcome is
+ *   cached and returned again by any later call.
+ *
+ *   v1.1.0: run() now resolves to a small CAPABILITY object instead of a
+ *   bare boolean -- `{ ok: true, bootedFrom, cores, fork, kill, tick, ps,
+ *   getMemory }`. This is E.2's own anticipated evolution ("once run()'s
+ *   own surface grows past a bare boolean"), driven by real need: wiring
+ *   the actual Terminal app (entry.html/PosixCommands.js/Procd.js) onto
+ *   this factory required giving it something to actually DO real work
+ *   with. The exact method set is not a guess -- grepped from the real,
+ *   currently-shipping Terminal source: entry.html's own boot sequence
+ *   and top renderer use fork/tick/getMemory/cores; PosixCommands.js's
+ *   ps/kill commands and Procd.js's attachKernel() usage need exactly
+ *   ps/kill/fork/cores.
+ *
+ *   `ok` is (deliberately) not gated on `bootedFrom` -- confirmed live
+ *   that BIOS.boot() ALWAYS produces a fully working Kernel whether or
+ *   not a real boot device was found (fork()/tick()/ps() all work
+ *   normally on a 'none'-booted Kernel; real hardware hands off to
+ *   whatever OS it has regardless of which device it found). An earlier
+ *   draft of this version gated `ok` on `bootedFrom !== 'none'`, which
+ *   would have made run() report failure for exactly the Terminal's own
+ *   real deployment shape (no fs/iso configured, so bootedFrom is always
+ *   'none') and abort a boot that actually succeeds -- caught by tracing
+ *   the real call path before shipping, not assumed safe. `ok` now
+ *   simply reflects "run() got a real kernel back"; a genuine failure
+ *   (a broken dependency inside boot() itself throwing) propagates as an
+ *   ordinary rejected promise, matching how every other failure in this
+ *   codebase's boot chain is signaled -- not a parallel sentinel value
+ *   invented on top of that convention. `bootedFrom` is exposed as plain
+ *   informational status, the same string the real Kernel carries.
+ *
+ *   Each capability is a closure bound to the REAL secured Kernel --
+ *   calling `caps.fork(cmd, ppid)` really does dispatch through
+ *   SecurityMixin/ExtendX exactly like calling kernel.fork() directly
+ *   would. What never happens, still: the Kernel instance itself, BIOS,
+ *   Physical, and Registry remain unreachable through the capability
+ *   object -- only these entry points exist, frozen, nothing else. The
+ *   OUTER returned object's own contract is completely unchanged by
+ *   this -- it is still, and only ever, `{ run }`.
  *
  *   options.onBoot (test/diagnostic only): an optional callback invoked
  *   from INSIDE this closure, synchronously after boot() settles, with
@@ -164,7 +201,7 @@
         });
 
         let hasRun = false;
-        let cachedResult = false;
+        let cachedResult = null;
 
         async function run()
         {
@@ -173,8 +210,29 @@
                 return cachedResult;
             }
             hasRun = true;
+            // BIOS.boot() ALWAYS produces a working Kernel, whether or not a
+            // real boot device was found -- bootedFrom:'none' is informational
+            // status, not a failure signal (confirmed live: fork()/tick()/ps()
+            // all work normally on a 'none'-booted Kernel; real hardware hands
+            // off to its OS the same way regardless of which device it found).
+            // ok therefore reflects "did run() get a real kernel back" -- true
+            // in every normal case; a genuine failure (a broken dependency
+            // inside boot() itself throwing) propagates as an ordinary
+            // rejected promise, matching how every other failure in this
+            // codebase's boot chain is signaled (ISO.verifyIntegrity() throws,
+            // Installer.install() throws, etc.) -- not a parallel {ok:false}
+            // sentinel invented on top of that convention.
             const kernel = await bios.boot(physical, opts.fs, opts.iso);
-            cachedResult = !!(kernel && kernel.bootedFrom && kernel.bootedFrom !== 'none');
+            cachedResult = Object.freeze({
+                ok: true,
+                bootedFrom: kernel.bootedFrom,
+                cores: kernel.cores,
+                fork: (cmd, ppid) => kernel.fork(cmd, ppid),
+                kill: (pid) => kernel.kill(pid),
+                tick: () => kernel.tick(),
+                ps: () => kernel.ps(),
+                getMemory: () => (typeof kernel.getMemory === 'function' ? kernel.getMemory() : null)
+            });
             if (typeof opts.onBoot === 'function')
             {
                 opts.onBoot({ registry, bios, physical, kernel });
@@ -218,7 +276,7 @@
     }
 
     MountainShift.author = 'Will Fobbs';
-    MountainShift.version = '1.0.0';
+    MountainShift.version = '1.1.0';
     MountainShift.description = 'Opaque closure factory over the hardened MSOS boot chain -- the returned object exposes ONLY run().';
     MountainShift.docs = ['Kernel-Machine-Architecture.md'];
     MountainShift.tests = ['test/MountainShift.opaque.test.js'];

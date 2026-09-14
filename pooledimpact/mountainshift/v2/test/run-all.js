@@ -22,7 +22,10 @@ const files = [
     'BIOS.nvramFastPath.test.js',
     'ExtendX.stacking.test.js',
     'BIOS.firstBoot.test.js',
-    'MountainShift.opaque.test.js'
+    'MountainShift.opaque.test.js',
+    'WeightedGraphMixin.test.js',
+    'Signature.test.js',
+    'BuildTerminalPdf.test.js'
 ];
 
 let anyFailed = false;

@@ -1,7 +1,7 @@
 # Sentinel Chemistry Engine — Property Roadmap & Prioritization Rubric
 
-**Version:** 1.3.0
-**Last updated:** 2026-09-11
+**Version:** 1.5.0
+**Last updated:** 2026-09-13
 
 Source: the six-category punch list drafted this session (Optical,
 Electronic, Thermal, Magnetic, Reactivity, Device-Level properties for
@@ -28,7 +28,9 @@ Status column changes or a new Category 1-6 item ships; a roadmap
 claiming shipped work that the test suite doesn't back up is worse than
 no roadmap.
 
-Commit: `8f56141` — 2026-09-11T21:38:54+00:00
+Commit: `6946ccb` (branch `claude/oscillator-strength`, PR #10 — not yet
+merged to main as of this write-up; re-pin to main's HEAD once merged)
+— 2026-09-13T01:52:20+00:00
 
 | Suite | Result |
 |---|---|
@@ -38,13 +40,40 @@ Commit: `8f56141` — 2026-09-11T21:38:54+00:00
 | MolecularDescriptors.test.js | ALL 7 CHECKS PASSED |
 | Aromaticity.test.js | ALL 7 CHECKS PASSED |
 | PDT.test.js | ALL 8 CHECKS PASSED |
+| MolecularPolarizability.test.js | ALL 6 CHECKS PASSED |
 
-Total: 40/40 checks passing, 6/6 suites green. Coverage gap closed on
-Band Gap, Magnetic Moment, and Electrophilicity/Nucleophilicity Indices
-— all three shipped items previously had zero regression coverage;
-Electrophilicity specifically was the one row already found wrong once
-before (v1.1.0), so it was the one most worth not trusting further
-without a test.
+Total: 46/46 checks passing, 7/7 suites green (up from 40/40, 6/6).
+Adds coverage for the new transition-energies capability, including an
+explicit assertion that no oscillator-strength field ships (see the 1.1
+correction above for why).
+
+**A second, separate run** — branched from `main` directly rather than
+from the PR #10 branch above, so it's a different lineage, not a
+continuation of the 46/46 run:
+
+Commit: `2fc2370` (branch `claude/fukui-functions`, PR #14 — not yet
+merged to main as of this write-up; re-pin to main's HEAD once merged)
+— 2026-09-13T02:08:35+00:00
+
+| Suite | Result |
+|---|---|
+| MolecularSymmetry.test.js | ALL 6 CHECKS PASSED |
+| MolecularThermodynamics.test.js | ALL 6 CHECKS PASSED |
+| MolecularVibrationalModes.test.js | ALL 6 CHECKS PASSED |
+| MolecularDescriptors.test.js | ALL 7 CHECKS PASSED |
+| Aromaticity.test.js | ALL 7 CHECKS PASSED |
+| PDT.test.js | ALL 8 CHECKS PASSED |
+| MolecularReactivity.test.js | ALL 20 CHECKS PASSED |
+
+Total: 60/60 checks passing, 7/7 suites green. New coverage for Fukui
+Functions (5.1) — see the v1.5.0 note above for what's actually checked
+(benzene D6h symmetry, pyridine C2v symmetry and LUMO nodal pattern, the
+sum-to-1 normalization invariant, and a non-conjugated molecule correctly
+reporting not-applicable rather than a fabricated value).
+
+Once PR #10 and PR #14 both merge to `main`, run the combined suite (8
+files) and paste that as the new canonical entry here rather than trusting
+either count above in isolation.
 
 One real finding surfaced while writing this suite, not previously
 documented anywhere: `MolecularVibrationalModes.js` builds its Hessian
@@ -98,7 +127,7 @@ on the strength of the formula alone.
 
 | # | Category | Item | Status | D | U | P | N | R | C | **Composite** |
 |---|---|---|---|---|---|---|---|---|---|---|
-| 1.1 | Optical | Oscillator Strength (f) | ⬜ | 5 | 5 | 4 | 2 | 2 | 5 | **23** |
+| 1.1 | Optical | Oscillator Strength (f) | ⬜ | 5 | 5 | 4 | 2 | 2 | 1 | **19** *(Confidence corrected, see note)* |
 | 1.2 | Optical | Molar Absorptivity (ε) | ⬜ | 4 | 3 | 3 | 1 | 1 | 5 | **17** |
 | 1.3 | Optical | Absorption Spectrum (UV-Vis) | ⬜ | 4 | 4 | 4 | 3 | 3 | 4 | **22** |
 | 1.4 | Optical | Fluorescence / Phosphorescence | ⬜ | 2 | 3 | 3 | 4 | 4 | 2 | **18** |
@@ -119,7 +148,7 @@ on the strength of the formula alone.
 | 4.2 | Magnetic | Magnetic Susceptibility (χ) | ⬜ | 4 | 2 | 2 | 1 | 2 | 4 | **15** |
 | 4.3 | Magnetic | Spin Density | ⬜ | 3 | 3 | 2 | 3 | 3 | 3 | **17** |
 | 4.4 | Magnetic | Exchange Coupling (J) | 🤝 | 1 | 1 | 2 | 5 | 5 | 1 | **15** |
-| 5.1 | Reactivity | Fukui Functions (f⁺, f⁻, f⁰) | ⬜ | 4 | 4 | 4 | 2 | 3 | 4 | **21** |
+| 5.1 | Reactivity | Fukui Functions (f⁺, f⁻, f⁰) | ✅ | — | — | — | — | — | — | shipped (`MolecularReactivity.js` `analyzeFukuiFunctions()`, see note) |
 | 5.2 | Reactivity | Electrophilicity / Nucleophilicity Indices | ✅ | — | — | — | — | — | — | shipped (`Aromaticity.js` `homoLumo()`, Parr-Szentpaly-Liu electrophilicity index) |
 | 5.3 | Reactivity | Bond Dissociation Energy (BDE) | 🔬 | 2 | 5 | 5 | 5 | 5 | 1 | **23** *(investigated — see note)* |
 | 5.4 | Reactivity | Activation Energy (Ea) | ⬜ | 1 | 4 | 4 | 5 | 5 | 1 | **20** |
@@ -133,9 +162,63 @@ on the strength of the formula alone.
 
 Also shipped this session, not on the original list but feeding several
 rows above: vibrational normal modes ✅ (underlies 3.2/3.4/3.5), point-group
-symmetry ✅ (underlies several optical/thermal selection rules), and the
+symmetry ✅ (underlies several optical/thermal selection rules), the
 multipole/molar-refractivity/druglikeness cheap wins ✅ (molar
-refractivity is the adjacent piece to 6.5).
+refractivity is the adjacent piece to 6.5), and transition
+energies/wavelengths ✅ (`MolecularPolarizability.js`'s new
+`analyzeTransitionEnergies()` — every occ->unocc Huckel transition's
+energy and wavelength, e.g. benzene's HOMO-LUMO at 4.86eV/255.1nm,
+cross-validated against this codebase's own established value. Feeds
+6.5 Refractive Index and is the raw data 1.3 Absorption Spectrum would
+need — but deliberately does NOT include oscillator strength, see the
+1.1 correction below), and Fukui Functions ✅ (`MolecularReactivity.js`'s
+new `analyzeFukuiFunctions()` — see the v1.5.0 note below).
+
+**Shipped (v1.5.0):** 5.1 Fukui Functions — the frontier molecular orbital
+(FMO) approximation to the Parr-Yang Fukui function (f⁺ₖ = |c_LUMO,k|²,
+f⁻ₖ = |c_HOMO,k|², condensed to atoms per Yang & Mortier 1986), built on
+`Aromaticity.js`'s existing spectroscopic-beta MO coefficients exactly as
+the v1.1.0 grounded-difficulty note anticipated. The one real wrinkle that
+note flagged — a degenerate HOMO/LUMO level needs `|c|²` handled across
+every MO in the group, not just one — turned out to need **averaging**,
+not summing, across the degenerate set: f⁺/f⁻ are each a normalized
+one-electron density change, so summed over every pi-system atom they
+must equal exactly 1, and only averaging (not summing) a degenerate
+group's `|c|²` preserves that. Checked against real chemistry before
+shipping, not just internal consistency: benzene's D6h symmetry forces
+all 6 ring carbons to identical f⁺/f⁻ (exactly 1/6, with the real
+doubly-degenerate e-symmetry HOMO/LUMO pair), and pyridine's LUMO nodal
+pattern reproduces known textbook reactivity (nucleophilic addition
+favors C4/para and C2,C6/ortho over C3,C5/meta — e.g. why
+organolithiums add at pyridine's C2). New `groupDegenerateLevels()` /
+`homoLumoMoIndices()` helpers were extracted from `Aromaticity.js`'s
+`fillElectrons`/`homoLumo` (previously duplicated inline in both) rather
+than adding a third copy. Full record: Gitea PR #14. **Branch-lineage
+note:** PR #14 branched from `main` directly, not from PR #10's
+not-yet-merged Transition Energies branch, so its own 60/60-check run
+(below) has 7 suites that do NOT include `MolecularPolarizability.test.js`
+— once both PR #10 and PR #14 land on `main`, re-run the combined suite
+(8 files, both `MolecularPolarizability.test.js` and
+`MolecularReactivity.test.js`) and re-paste that count here rather than
+assuming the two check counts simply add.
+
+**Correction (v1.4.0):** 1.1 Oscillator Strength's Confidence score was
+wrong, the same way BDE's original score was wrong - reusing an
+already-computed intermediate (the ZDO transition dipole) does not mean
+no physics is missing, and this was built and checked before shipping,
+not built and trusted on the strength of the formula. The oscillator
+strength formula f=(2/3)*dE*|mu|^2 was implemented, then checked against
+real spectroscopy: benzene's computed HOMO-LUMO oscillator strength came
+out ~100x too large (f=0.178 vs. the real, textbook-known value of
+~0.001-0.002 for this SYMMETRY-FORBIDDEN transition - one of the most
+commonly cited examples in photochemistry), with the intensity ordering
+across the three computed transitions backwards relative to benzene's
+three real UV bands. Root cause: simple Huckel theory with a ZDO
+transition dipole has no mechanism to enforce D6h's actual selection
+rules. Held at BDE's status (investigated, not shipped) - see Gitea PR
+#10 for the full record. What DID ship from this work is the transition
+energies/wavelengths above, which were correct and cross-validated
+before anything was kept.
 
 **Correction (v1.1.0):** 5.2 Electrophilicity/Nucleophilicity Indices was
 scored ⬜ in v1.0.0 on the assumption it was unstarted. Checking the
@@ -171,18 +254,19 @@ already flagged it, and reading the actual code confirmed why.
 
 **Single-molecule ("for us") queue, by composite descending:**
 
-1. Oscillator Strength (f) — 23
-2. Absorption Spectrum (UV-Vis) — 22
-3. Fukui Functions — 21
-4. Ionization Potential / Electron Affinity / Reorganization Energy — 20 (tie)
-5. Activation Energy (Ea) — 20, **but C=1** — treat as BDE-risk, verify against real cited data before trusting any closed form
-6. Refractive Index (n, k) — 19
-7. Fluorescence/Phosphorescence, Work Function, Dielectric Constant — 18
-8. Molar Absorptivity, Spin Density — 17
-9. Fermi Level — 16
-10. Thermal Conductivity, Debye Temperature, Thermal Expansion Coefficient, Magnetic Susceptibility — 15
-11. Stokes Shift — 13
-12. Reaction Rate (k) — 12
+1. Absorption Spectrum (UV-Vis) — 22 — flagged as genuinely the hardest of
+   the three in the v1.1.0 grounded-difficulty note (needs a linewidth/
+   broadening model with no precedent anywhere in this codebase); still
+   the top of the queue now that Fukui Functions has shipped (v1.5.0)
+2. Ionization Potential / Electron Affinity / Reorganization Energy — 20 (tie)
+3. Activation Energy (Ea) — 20, **but C=1** — treat as BDE-risk, verify against real cited data before trusting any closed form
+4. Oscillator Strength (f) — 19, **but C=1** (corrected v1.4.0 — actually attempted and failed a real spectroscopy check, not a hypothetical risk anymore; hold at BDE's status, see PR #10), Refractive Index (n, k) — 19
+5. Fluorescence/Phosphorescence, Work Function, Dielectric Constant — 18
+6. Molar Absorptivity, Spin Density — 17
+7. Fermi Level — 16
+8. Thermal Conductivity, Debye Temperature, Thermal Expansion Coefficient, Magnetic Susceptibility — 15
+9. Stokes Shift — 13
+10. Reaction Rate (k) — 12
 
 **Agent/compositional (🤝) queue, by composite descending:**
 
@@ -224,6 +308,35 @@ This document is meant to stand on its own, the same way
 `chemistry/De_investigation_FINDINGS.js` does — versioned and dated so a
 reader can tell what changed and why without diffing git history.
 
+- **1.5.0** — 2026-09-13 — Shipped 5.1 Fukui Functions (`f⁺`, `f⁻`, `f⁰`)
+  via the frontier molecular orbital approximation, reusing
+  `Aromaticity.js`'s existing Huckel MO coefficients exactly as the
+  v1.1.0 grounded-difficulty note anticipated. The one real wrinkle —
+  degenerate HOMO/LUMO levels — needed averaging (not summing) `|c|²`
+  across the degenerate set, discovered by requiring the real
+  normalization invariant (f⁺/f⁻ sum to exactly 1 across the pi system)
+  to actually hold rather than assuming summing was fine. Checked
+  against real chemistry before shipping: benzene's D6h symmetry (all 6
+  ring carbons identical) and pyridine's C2v symmetry plus its known
+  textbook LUMO nodal pattern (nucleophilic addition favors C4/C2/C6).
+  Extracted `groupDegenerateLevels()`/`homoLumoMoIndices()` out of
+  `Aromaticity.js` rather than adding a third duplicate copy of the
+  grouping logic. New `MolecularReactivity.js`, 20 new checks. 60/60
+  checks passing, 7/7 suites green on this branch's own lineage — see
+  the branch-lineage note above the two "Last test run" entries; this
+  branched from `main`, not from PR #10, so its suite count is not yet
+  additive with PR #10's 46/46. Full record: Gitea PR #14.
+- **1.4.0** — 2026-09-13 — Attempted 1.1 Oscillator Strength, the top of
+  the queue; checked the real output against benzene's known
+  spectroscopy before shipping and found it wrong by ~100x (the real
+  255nm band is famously symmetry-forbidden, simple Huckel + ZDO has no
+  mechanism to enforce that). Dropped oscillator strength entirely
+  rather than ship with a caveat; shipped the part that was correct
+  (transition energies/wavelengths, `analyzeTransitionEnergies()`) as a
+  new item instead. Corrected 1.1's Confidence score from 5 to 1 (same
+  correction BDE's original score needed) and re-ranked the execution
+  queue accordingly. 46/46 checks passing, 7/7 suites green. Full
+  record: Gitea PR #10.
 - **1.3.0** — 2026-09-11 — GitHub deprecated; code and roadmap now live
   together in this repo, so the "Last test run" section's commit hash
   is this repo's own HEAD instead of a cross-repo reference. Closed the
