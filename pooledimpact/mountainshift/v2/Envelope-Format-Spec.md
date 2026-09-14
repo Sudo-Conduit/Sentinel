@@ -1,5 +1,9 @@
 # The Envelope — Spec & Bindings
 
+**Author:** Will Fobbs
+**Version:** 1.3.0
+**Last updated:** 2026-09-14
+
 ## Summary
 
 An envelope is a self-describing container satisfying four clauses.
@@ -144,3 +148,31 @@ uses a bare `Buffer ?` check rather than `typeof Buffer !== 'undefined'`
 `ReferenceError: Buffer is not defined` in any environment lacking a
 `Buffer` global. Verifiable by deleting `global.Buffer` and re-requiring
 the module.
+
+## Changelog
+
+- **1.3.0** — Added author attribution and this Changelog section.
+- **1.2.0** — Restructured into Summary / Spec / Addendum: the four
+  clauses and bindings table moved to a Summary at the top so the
+  document answers what it is before explaining why; the same four
+  clauses restated in Spec as plain normative requirements with no
+  justification; all rationale, precedent, and implementation-defect
+  detail moved to a labeled, skippable Addendum. Non-goals folded into
+  the Summary.
+- **1.1.0** — Rewritten in spec register throughout: removed
+  session-narrative framing ("this session built...", "confirmed live",
+  "not yet started") in favor of atemporal, declarative statements of
+  what the contract is and what each binding does or does not
+  implement, matching the register of this repo's other architecture
+  docs (`Kernel-Machine-Architecture.md` and siblings).
+- **1.0.0** — Initial draft. Named the four-clause envelope contract
+  (manifest, neutral outer contract, trust independent of payload,
+  portable IO plus an executable-manifest layer); mapped `ISO.js`,
+  `TzGz.js`, and PDFVaultX/`BuildTerminalPdf.js` onto it as its three
+  bindings; recorded `pdf-lib`'s full-rewrite-only `save()` behavior and
+  `TzGz.js`'s bare-`Buffer`-reference defect, both checked directly
+  against source rather than assumed; stated the fractal recurrence of
+  this same shape in `BaseClassX`, the append-only-log requirement for
+  any binding standing in for a hand-maintained changelog, and explicit
+  non-goals (no SQLite mandate, no replacement of shipped tooling, no
+  claim that mechanical per-target-UI mixin composition already works).
