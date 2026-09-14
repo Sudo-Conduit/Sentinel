@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.14.0
+**Version:** 1.14.1
 **Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -408,6 +408,22 @@ dependency override:**
 
 ## Changelog
 
+- **1.14.1** — 2026-09-14 — Closed the browser-verification gap 1.14.0
+  disclosed as unresolved: `unpkg.com` turned out to be reachable from
+  this sandbox after all (confirmed via `curl`) — the earlier
+  `net::ERR_CONNECTION_RESET` was Chromium's own network stack not
+  honoring `HTTPS_PROXY` (unlike `curl`, which reads it automatically),
+  compounded by the proxy relay independently closing Chromium's
+  CONNECT tunnel to `unpkg.com` mid-exchange. Worked around by routing
+  that one external fetch through Node's own proxy-aware `fetch()` via
+  Playwright's `page.route()` interception instead of fighting
+  Chromium's tunnel. With that in place, `Terminal.entry.html` was
+  confirmed booting for real in headless Chromium — the DC-runtime UI
+  rendered, and running `ps` at the live prompt returned exactly the
+  two real processes the new `MountainShift()`-wired `_bootKernel()`
+  forks (`1 root kernel.js`, `2 root bsh`). See the 1.14.0 entry below,
+  now updated in place to record this as confirmed rather than
+  disclosed-as-unverified.
 - **1.14.0** — 2026-09-14 — Wired `MountainShift()` (E.1's opaque
   closure factory) into the Terminal's actual boot path, and rebuilt
   `Terminal.pdf` from current repo source — "full circle" on the C.1
@@ -453,7 +469,9 @@ dependency override:**
     every embedded file inflated and compared byte-for-byte against
     its source on disk, plus a scratch-copy check proving the build
     reads live content, not a stale cache.
-  - **Known limitation, disclosed rather than silently skipped:** full
+  - **Known limitation, disclosed rather than silently skipped (see
+    the 1.14.1 entry above — resolved the same day, this entry is left
+    exactly as originally written for the historical record):** full
     browser-rendered verification of the DC-runtime-compiled Terminal
     UI (does it actually boot and accept commands in a live browser)
     was not achievable in this sandbox — `support.js` (pre-existing,
