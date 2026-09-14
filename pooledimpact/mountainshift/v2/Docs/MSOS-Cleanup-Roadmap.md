@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.13.0
+**Version:** 1.14.0
 **Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `83e9279` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `f499535` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -61,11 +61,12 @@ expect it to stay current and do not push there.
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
 | ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
-| MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
+| MountainShift.opaque.test.js | ALL 27 CHECKS PASSED |
 | WeightedGraphMixin.test.js | ALL 20 CHECKS PASSED |
 | Signature.test.js | ALL 17 CHECKS PASSED |
+| BuildTerminalPdf.test.js | ALL 8 CHECKS PASSED |
 
-**Total: 256/256 checks passing, 18/18 suites green.**
+**Total: 274/274 checks passing, 19/19 suites green.**
 
 ## Status legend
 
@@ -407,6 +408,65 @@ dependency override:**
 
 ## Changelog
 
+- **1.14.0** — 2026-09-14 — Wired `MountainShift()` (E.1's opaque
+  closure factory) into the Terminal's actual boot path, and rebuilt
+  `Terminal.pdf` from current repo source — "full circle" on the C.1
+  test request: prove the hardening via a real, freshly-built artifact,
+  not just unit tests. Three pieces:
+  - `MountainShift.js` → v1.1.0: `run()` now resolves a small, frozen
+    capability object (`fork`/`kill`/`tick`/`ps`/`getMemory`/`cores`/
+    `bootedFrom`/`ok`) bound over the real secured Kernel, instead of a
+    bare boolean — the exact minimal surface the Terminal needs,
+    determined by grepping `PosixCommands.js`/`Procd.js`'s actual
+    `system.kernel.*`/`_attachedKernel.*` call sites rather than
+    guessed. Caught and fixed a real bug before it shipped: an early
+    draft gated `ok` on `bootedFrom !== 'none'`, which would have
+    reported failure on the Terminal's own real deployment shape (no
+    fs/iso configured) even though `BIOS.boot()` always hands back a
+    fully working Kernel regardless of `bootedFrom` — confirmed live by
+    tracing the actual call path. `ok` now means "`run()` got a kernel
+    back"; a genuine failure inside `boot()` still propagates as an
+    ordinary rejected promise, matching this codebase's error-handling
+    convention everywhere else. `test/MountainShift.opaque.test.js`
+    grew from 17 to 27 checks covering the capability object's exact
+    shape, frozen tamper-resistance, real fork/ps/kill/tick dispatch
+    through the actual Kernel, repeat-call identity/idempotency, the
+    corrected nothing-bootable-is-not-a-failure behavior, and the
+    genuine-failure-rejects-run() case.
+  - `Terminal.entry.html` rewritten: `_bootKernel()` now calls
+    `MountainShift({...}).run()` and drives Procd/the shell off the
+    returned capability object, instead of touching BIOS/Kernel
+    internals directly — the Terminal gets the real secured/armed boot
+    chain, not just the hardened library files sitting alongside old
+    unsecured boot logic. `<helmet>` script order updated to load
+    `ExtendX.js`/`SecurityMixin.js`/`StructureMixin.js`/`Registry.js`/
+    `MountainShift.js` alongside the existing dependencies.
+  - `BuildTerminalPdf.js` (new): reverse-engineered the prior
+    Terminal.pdf's format via direct binary forensics on its raw bytes
+    (its own `/Producer` metadata plus its `/Names/EmbeddedFiles` +
+    `/AF` catalog structure) — it is a standard `pdf-lib`
+    file-attachment container, not a custom format. This script
+    re-derives that same container from current repo source on every
+    run, so `Terminal.pdf` is always exactly what `Terminal.entry.html`
+    and its dependency list say it is. `test/BuildTerminalPdf.test.js`
+    (8/8) proves this via a real build-and-read-back round trip:
+    every embedded file inflated and compared byte-for-byte against
+    its source on disk, plus a scratch-copy check proving the build
+    reads live content, not a stale cache.
+  - **Known limitation, disclosed rather than silently skipped:** full
+    browser-rendered verification of the DC-runtime-compiled Terminal
+    UI (does it actually boot and accept commands in a live browser)
+    was not achievable in this sandbox — `support.js` (pre-existing,
+    unmodified this round) fetches React from `unpkg.com` at runtime,
+    and this sandbox's network policy does not reach that host; no
+    vendored local copy of React exists anywhere in this repo to
+    substitute. What WAS verified: all Node-level `MountainShift.js`/
+    `Kernel.js` boot-chain logic (274/274 across 19 suites), a
+    byte-for-byte-verified rebuild of the actual shipped PDF, and
+    manual review of the `entry.html` diff confirming it only touches
+    the six real call sites grepped from `PosixCommands.js`/
+    `Procd.js`. Re-pinned the Last-test-run section to `f499535`
+    (274/274, up from 256/256 across 18, now 19/19 suites).
 - **1.13.0** — 2026-09-14 — C.1 (checksum → signature upgrade) shipped:
   new `Signature.js` (real ECDSA P-256/SHA-256 via `crypto.subtle`, no
   hand-rolled crypto, no external dependency) wired in as a strictly
