@@ -1,7 +1,7 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.11.0
-**Last updated:** 2026-09-12
+**Version:** 1.14.1
+**Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
 thread — reflection-based override composition, `CPU.js` rewritten to a
@@ -41,7 +41,7 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `6a0b4fb` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `f499535` (git.pooledimpact.com/Claude/Romans, branch
 `claude/devtools-overrides-robustness-8we96z`)
 
 | Suite | Result |
@@ -53,7 +53,7 @@ expect it to stay current and do not push there.
 | Kernel.security.test.js | ALL 15 CHECKS PASSED |
 | BIOS.security.test.js | ALL 12 CHECKS PASSED |
 | FullBootChain.lifecycle.test.js | ALL 16 CHECKS PASSED |
-| NextInjection.audit.test.js | ALL 9 CHECKS PASSED |
+| NextInjection.audit.test.js | ALL 12 CHECKS PASSED |
 | Memory.security.test.js | ALL 15 CHECKS PASSED |
 | MemoryMapArena.test.js | ALL 12 CHECKS PASSED |
 | MemoryMapFS.test.js | ALL 17 CHECKS PASSED |
@@ -61,9 +61,12 @@ expect it to stay current and do not push there.
 | BIOS.nvramFastPath.test.js | ALL 8 CHECKS PASSED |
 | ExtendX.stacking.test.js | ALL 16 CHECKS PASSED |
 | BIOS.firstBoot.test.js | ALL 10 CHECKS PASSED |
-| MountainShift.opaque.test.js | ALL 17 CHECKS PASSED |
+| MountainShift.opaque.test.js | ALL 27 CHECKS PASSED |
+| WeightedGraphMixin.test.js | ALL 20 CHECKS PASSED |
+| Signature.test.js | ALL 17 CHECKS PASSED |
+| BuildTerminalPdf.test.js | ALL 8 CHECKS PASSED |
 
-**Total: 216/216 checks passing, 16/16 suites green.**
+**Total: 274/274 checks passing, 19/19 suites green.**
 
 ## Status legend
 
@@ -230,7 +233,7 @@ as shipped above; nothing about that wiring changed.
 | B.4 | Core Machine | BIOS secured + tested (`kernelFactory` leak fix, `iso` hazard fix, explicit `addChild`) | ✅ | — | — | — | — | — | — | shipped |
 | B.5 | Core Machine | Full boot-chain life-cycle integration test (CPU→Physical→Kernel→BIOS) | ✅ | — | — | — | — | — | — | shipped |
 | B.6 | Core Machine | Memory.js secured + structured + tested (latent `_backing` WeakMap-by-`this` bug, same class as B.2/B.3's) | ✅ | — | — | — | — | — | — | shipped |
-| C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ⬜ | 2 | 3 | 2 | 3 | 3 | 3 | **16** |
+| C.1 | Boot & Install | Checksum → signature upgrade (`ISO.verifyIntegrity()` / `FileFsBootAdapter` sidecar are integrity-only, not authenticity) | ✅ | — | — | — | — | — | — | shipped |
 | C.2 | Boot & Install | Registry NVRAM-as-fast-path (`BIOS.boot()` tries a persisted confirmed-entry record before the full scan) | ✅ | — | — | — | — | — | — | shipped |
 | C.3 | Boot & Install | `secureBoot` Registry flag enforcement (schema default exists, never read anywhere) | ⬜ | 4 | 1 | 2 | 2 | 2 | 2 | **13** |
 | C.4 | Boot & Install | First-boot vs. steady-state distinction (post-install one-time setup path) | ✅ | — | — | — | — | — | — | shipped |
@@ -329,7 +332,30 @@ with sequencing overrides noted where raw ranking would be wrong:**
    fork/tick/kill through `run()` alone, once `run()`'s own surface grows
    past a bare boolean), formalizing the two-tier convention
    test/helpers.js's header comment already anticipates.
-7. **C.1 — Checksum → signature upgrade** (16)
+7. ~~**C.1 — Checksum → signature upgrade**~~ — **done** (2026-09-14).
+   New `Signature.js`: real ECDSA (P-256/SHA-256) sign/verify via the
+   standard Web Crypto API (`crypto.subtle`) -- confirmed live that
+   Node 22's global `crypto` already is a real, spec-compliant
+   implementation, so no hand-rolled crypto and no external dependency.
+   Wired in as a strictly additive authenticity layer: `ISO.js` gains
+   `signManifest()`/`verifyManifestSignature()` alongside the untouched
+   `checksum`/`verifyIntegrity()`; `Installer.js`'s `options.privateKey`
+   additionally writes a real `.sig` sidecar alongside the existing
+   `.sha` hash sidecar; `FileFsBootAdapter.js`'s `options.publicKey`
+   additionally requires a genuine verified signature before confirming
+   a boot hit. Zero behavior change for any caller who never supplies a
+   key. Proven live in `test/Signature.test.js` (17/17): the actual gap
+   closed is that a hash alone can be trivially forged by anyone who
+   tampers with content, while a real signature cannot be forged without
+   the private key -- both the "old check is fooled" and "new check
+   rejects the same tampering" halves confirmed directly, not assumed.
+   `test/NextInjection.audit.test.js` gained 3 checks (12/12, up from
+   9/9): ISO's two new one-argument methods DO have a next()-injection
+   slot when a caller omits the required key, unlike its original
+   zero-arg methods -- confirmed safe by a different mechanism than this
+   codebase's usual typeof-guard trick, since `crypto.subtle` itself
+   throws a clear TypeError on an invalid key rather than silently
+   signing/verifying against garbage.
 8. ~~**C.4 — First-boot vs. steady-state distinction**~~ — **done**
    (2026-09-12). A successful boot with no persisted `firstBootComplete`
    Registry flag runs one-time post-install setup (minting a persistent
@@ -382,6 +408,118 @@ dependency override:**
 
 ## Changelog
 
+- **1.14.1** — 2026-09-14 — Closed the browser-verification gap 1.14.0
+  disclosed as unresolved: `unpkg.com` turned out to be reachable from
+  this sandbox after all (confirmed via `curl`) — the earlier
+  `net::ERR_CONNECTION_RESET` was Chromium's own network stack not
+  honoring `HTTPS_PROXY` (unlike `curl`, which reads it automatically),
+  compounded by the proxy relay independently closing Chromium's
+  CONNECT tunnel to `unpkg.com` mid-exchange. Worked around by routing
+  that one external fetch through Node's own proxy-aware `fetch()` via
+  Playwright's `page.route()` interception instead of fighting
+  Chromium's tunnel. With that in place, `Terminal.entry.html` was
+  confirmed booting for real in headless Chromium — the DC-runtime UI
+  rendered, and running `ps` at the live prompt returned exactly the
+  two real processes the new `MountainShift()`-wired `_bootKernel()`
+  forks (`1 root kernel.js`, `2 root bsh`). See the 1.14.0 entry below,
+  now updated in place to record this as confirmed rather than
+  disclosed-as-unverified.
+- **1.14.0** — 2026-09-14 — Wired `MountainShift()` (E.1's opaque
+  closure factory) into the Terminal's actual boot path, and rebuilt
+  `Terminal.pdf` from current repo source — "full circle" on the C.1
+  test request: prove the hardening via a real, freshly-built artifact,
+  not just unit tests. Three pieces:
+  - `MountainShift.js` → v1.1.0: `run()` now resolves a small, frozen
+    capability object (`fork`/`kill`/`tick`/`ps`/`getMemory`/`cores`/
+    `bootedFrom`/`ok`) bound over the real secured Kernel, instead of a
+    bare boolean — the exact minimal surface the Terminal needs,
+    determined by grepping `PosixCommands.js`/`Procd.js`'s actual
+    `system.kernel.*`/`_attachedKernel.*` call sites rather than
+    guessed. Caught and fixed a real bug before it shipped: an early
+    draft gated `ok` on `bootedFrom !== 'none'`, which would have
+    reported failure on the Terminal's own real deployment shape (no
+    fs/iso configured) even though `BIOS.boot()` always hands back a
+    fully working Kernel regardless of `bootedFrom` — confirmed live by
+    tracing the actual call path. `ok` now means "`run()` got a kernel
+    back"; a genuine failure inside `boot()` still propagates as an
+    ordinary rejected promise, matching this codebase's error-handling
+    convention everywhere else. `test/MountainShift.opaque.test.js`
+    grew from 17 to 27 checks covering the capability object's exact
+    shape, frozen tamper-resistance, real fork/ps/kill/tick dispatch
+    through the actual Kernel, repeat-call identity/idempotency, the
+    corrected nothing-bootable-is-not-a-failure behavior, and the
+    genuine-failure-rejects-run() case.
+  - `Terminal.entry.html` rewritten: `_bootKernel()` now calls
+    `MountainShift({...}).run()` and drives Procd/the shell off the
+    returned capability object, instead of touching BIOS/Kernel
+    internals directly — the Terminal gets the real secured/armed boot
+    chain, not just the hardened library files sitting alongside old
+    unsecured boot logic. `<helmet>` script order updated to load
+    `ExtendX.js`/`SecurityMixin.js`/`StructureMixin.js`/`Registry.js`/
+    `MountainShift.js` alongside the existing dependencies.
+  - `BuildTerminalPdf.js` (new): reverse-engineered the prior
+    Terminal.pdf's format via direct binary forensics on its raw bytes
+    (its own `/Producer` metadata plus its `/Names/EmbeddedFiles` +
+    `/AF` catalog structure) — it is a standard `pdf-lib`
+    file-attachment container, not a custom format. This script
+    re-derives that same container from current repo source on every
+    run, so `Terminal.pdf` is always exactly what `Terminal.entry.html`
+    and its dependency list say it is. `test/BuildTerminalPdf.test.js`
+    (8/8) proves this via a real build-and-read-back round trip:
+    every embedded file inflated and compared byte-for-byte against
+    its source on disk, plus a scratch-copy check proving the build
+    reads live content, not a stale cache.
+  - **Known limitation, disclosed rather than silently skipped (see
+    the 1.14.1 entry above — resolved the same day, this entry is left
+    exactly as originally written for the historical record):** full
+    browser-rendered verification of the DC-runtime-compiled Terminal
+    UI (does it actually boot and accept commands in a live browser)
+    was not achievable in this sandbox — `support.js` (pre-existing,
+    unmodified this round) fetches React from `unpkg.com` at runtime,
+    and this sandbox's network policy does not reach that host; no
+    vendored local copy of React exists anywhere in this repo to
+    substitute. What WAS verified: all Node-level `MountainShift.js`/
+    `Kernel.js` boot-chain logic (274/274 across 19 suites), a
+    byte-for-byte-verified rebuild of the actual shipped PDF, and
+    manual review of the `entry.html` diff confirming it only touches
+    the six real call sites grepped from `PosixCommands.js`/
+    `Procd.js`. Re-pinned the Last-test-run section to `f499535`
+    (274/274, up from 256/256 across 18, now 19/19 suites).
+- **1.13.0** — 2026-09-14 — C.1 (checksum → signature upgrade) shipped:
+  new `Signature.js` (real ECDSA P-256/SHA-256 via `crypto.subtle`, no
+  hand-rolled crypto, no external dependency) wired in as a strictly
+  additive authenticity layer over `ISO.js`'s existing checksum,
+  `Installer.js`'s existing `.sha` sidecar, and `FileFsBootAdapter.js`'s
+  existing hash check — zero behavior change for any caller who never
+  supplies a key. Proven live in `test/Signature.test.js` (17/17) that a
+  forged hash defeats the old check but not the new one. Also audited (3
+  new checks in `test/NextInjection.audit.test.js`, 12/12): ISO's two new
+  one-argument methods are safe against the next()-injection hazard by a
+  different mechanism than usual — `crypto.subtle` itself rejects an
+  invalid key with a clear TypeError. Re-pinned the Last-test-run section
+  to `83e9279` (256/256, up from 236/236 across 17, now 18/18 suites).
+- **1.12.0** — 2026-09-13 — Added `WeightedGraphMixin.js` (outside the
+  A-E backlog, a direct addition): weighted (number or a
+  `(source, target) => number` function, resolved lazily) and directed/
+  undirected graph edges, plus `walk()` — bounded, decision-driven
+  multi-hop traversal with a seeded-PRNG (mulberry32) default pick, an
+  optional `decide()` callback for custom or fan-out routing, `onVisit`,
+  `avoidRevisit`, and parallel/sequential concurrency — a sibling to
+  `StructureMixin`'s relational mode, not a modification of it. Supplied
+  already matching this codebase's Allman/docblock/static-metadata house
+  style; only header paths and the UMD browser-global branch were
+  adjusted to this project's actual flat layout. Audited for the
+  next()-injection hazard on `linkTo()`/`walk()`'s optional trailing
+  `options` (the recurring shape from A.4's systemic audit) and confirmed
+  ACCIDENTALLY SAFE, the same way `Registry.save()`'s omitted options
+  already is — every downstream field read is guarded by a
+  `typeof`/`===`/`in` check, so the injected `next()` callback landing in
+  the options slot still resolves to the same safe defaults.
+  `test/WeightedGraphMixin.test.js`, 20/20 (a promise-passed-to-check()
+  mistake in the first draft was caught and fixed before committing, per
+  this project's own documented convention). Re-pinned the Last-test-run
+  section to `91547c0` (236/236, up from 216/216 across 16, now 17/17
+  suites).
 - **1.11.0** — 2026-09-12 — E.1 (opaque closure factory) shipped:
   `MountainShift.js` composes and boots the already-hardened chain
   (Registry/BIOS/Kernel/Physical/CPU, each secured + graph-structured,
