@@ -106,9 +106,9 @@ async function run() {
     check('run() resolves a capability object with ok:true on a successful boot', () => {
         if (!bootResult || bootResult.ok !== true) throw new Error('expected {ok:true, ...}, got ' + JSON.stringify(bootResult));
     });
-    check('the capability object exposes EXACTLY the six real entry points the Terminal actually needs, nothing else', () => {
+    check('the capability object exposes EXACTLY the real entry points the Terminal actually needs, nothing else', () => {
         const keys = Object.keys(bootResult).sort();
-        const expected = ['cores', 'fork', 'getMemory', 'kill', 'ok', 'ps', 'tick'].sort();
+        const expected = ['bootedFrom', 'cores', 'fork', 'getMemory', 'kill', 'ok', 'ps', 'tick'].sort();
         if (JSON.stringify(keys) !== JSON.stringify(expected)) throw new Error('expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(keys));
         if (bootResult.kernel !== undefined || bootResult.bios !== undefined || bootResult.physical !== undefined || bootResult.registry !== undefined) {
             throw new Error('a raw internal instance leaked into the capability object');
@@ -170,17 +170,38 @@ async function run() {
         if (r1 !== r2 || r2 !== r3) throw new Error('expected identical object references across repeat calls');
     });
 
-    // --- a failed boot (nothing bootable) resolves false, does not crash,
-    // and stays just as opaque ---
+    // --- nothing bootable (no fs/iso configured -- the Terminal's own REAL
+    // deployment shape) is NOT a failure: BIOS.boot() always hands back a
+    // fully working Kernel regardless of bootedFrom, confirmed live before
+    // this contract was finalized. ok stays true; bootedFrom reports the
+    // real status; every capability still works normally. ---
     const os4 = MountainShift({ fs: fakeFs(null) });
-    const failedResult = await os4.run();
-    check('a failed boot resolves {ok:false}, not a crash or a leaked error object', () => {
-        if (!failedResult || failedResult.ok !== false || Object.keys(failedResult).length !== 1) {
-            throw new Error('expected {ok:false} exactly, got ' + JSON.stringify(failedResult));
-        }
+    const nothingBootableResult = await os4.run();
+    check('nothing bootable: ok is still true, bootedFrom reports "none" -- this is NOT a failure', () => {
+        if (!nothingBootableResult || nothingBootableResult.ok !== true) throw new Error('expected ok:true, got ' + JSON.stringify(nothingBootableResult));
+        if (nothingBootableResult.bootedFrom !== 'none') throw new Error('expected bootedFrom "none", got ' + nothingBootableResult.bootedFrom);
     });
-    check('a failed boot still leaves the returned object fully opaque', () => {
-        if (Object.keys(os4).length !== 1 || Object.keys(os4)[0] !== 'run') throw new Error('surface changed after a failed boot');
+    check('nothing bootable: every capability still works normally on a bootedFrom:"none" Kernel', () => {
+        const proc = nothingBootableResult.fork('probe', 0);
+        if (!nothingBootableResult.ps().some((p) => p.pid === proc.pid)) throw new Error('fork()/ps() did not work on a bootedFrom:none kernel');
+    });
+    check('nothing bootable still leaves the returned object fully opaque', () => {
+        if (Object.keys(os4).length !== 1 || Object.keys(os4)[0] !== 'run') throw new Error('surface changed after a bootedFrom:none boot');
+    });
+
+    // --- a GENUINE failure (something inside boot() itself throwing) DOES
+    // propagate as a rejected promise -- the real failure signal this
+    // codebase uses everywhere else, not a parallel {ok:false} sentinel ---
+    const os5 = MountainShift({ fs: { findBootEntry: async () => { throw new Error('simulated disk read error'); } } });
+    let genuineFailureError = null;
+    try {
+        await os5.run();
+    } catch (e) {
+        genuineFailureError = e;
+    }
+    check('a genuine failure inside boot() rejects run(), it does not resolve a fake {ok:false}', () => {
+        if (!genuineFailureError) throw new Error('expected run() to reject');
+        if (genuineFailureError.message !== 'simulated disk read error') throw new Error('unexpected error: ' + genuineFailureError.message);
     });
 
     // --- two separate MountainShift() calls are fully independent ---
