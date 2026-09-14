@@ -11,6 +11,7 @@ var suites = [
   require('./MolecularDescriptors.test.js'),
   require('./Aromaticity.test.js'),
   require('./PDT.test.js'),
+  require('./MolecularReactivity.test.js'),
   require('./MolecularPolarizability.test.js')
 ];
 

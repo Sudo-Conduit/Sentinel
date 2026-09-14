@@ -257,14 +257,25 @@
     // half-filled (open-shell / diradical character — cyclobutadiene's
     // real problem, and exactly why simple closed-shell HMO filling can't
     // honestly report a clean destabilization number for it).
-    function fillElectrons(eigenvalues, piElectrons) {
+    // Shared by fillElectrons, homoLumo, and homoLumoMoIndices below - all
+    // three need the same degenerate-energy-level grouping (consecutive
+    // eigenvalues within EPS treated as one level, e.g. benzene's
+    // degenerate HOMO/LUMO e-pairs), so it's computed once rather than
+    // reimplemented per caller. startIndex lets a caller map a level back
+    // to the actual MO index range it spans.
+    function groupDegenerateLevels(eigenvalues) {
         var EPS = 1e-6;
         var levels = [];
-        eigenvalues.forEach(function(e) {
+        eigenvalues.forEach(function(e, idx) {
             var last = levels[levels.length - 1];
             if (last && Math.abs(last.energy - e) < EPS) last.count++;
-            else levels.push({ energy: e, count: 1 });
+            else levels.push({ energy: e, count: 1, startIndex: idx });
         });
+        return levels;
+    }
+
+    function fillElectrons(eigenvalues, piElectrons) {
+        var levels = groupDegenerateLevels(eigenvalues);
         var remaining = piElectrons;
         var total = 0;
         var openShell = false;
@@ -288,13 +299,7 @@
     // the HOMO level is a degenerate level left half-filled (the same
     // antiaromatic/diradical signal fillElectrons already reports).
     function homoLumo(eigenvalues, piElectrons) {
-        var EPS = 1e-6;
-        var levels = [];
-        eigenvalues.forEach(function(e) {
-            var last = levels[levels.length - 1];
-            if (last && Math.abs(last.energy - e) < EPS) last.count++;
-            else levels.push({ energy: e, count: 1 });
-        });
+        var levels = groupDegenerateLevels(eigenvalues);
         var remaining = piElectrons;
         var homoEnergy = null, lumoEnergy = null, homoOpenShell = false;
         for (var i = 0; i < levels.length; i++) {
@@ -378,6 +383,40 @@
             opticalGapNm: opticalGapNm,
             conductivityClass: conductivityClass
         };
+    }
+
+    // Which MO indices make up the HOMO level and which make up the LUMO
+    // level - same fill-then-stop walk as homoLumo() above (and same
+    // groupDegenerateLevels grouping), but returning index arrays instead
+    // of derived scalars. A degenerate level (e.g. benzene's e-symmetry
+    // HOMO pair) contributes every MO in that level, not just one - that's
+    // the exact wrinkle Fukui functions need to get right: f+/f- sum
+    // |c|^2 over ALL MOs in the frontier level, per Yang & Mortier's 1986
+    // atom-condensed form of Parr & Yang's 1984 Fukui function (electron-
+    // density response to a change in electron count).
+    function homoLumoMoIndices(eigenvalues, piElectrons) {
+        var levels = groupDegenerateLevels(eigenvalues);
+        var remaining = piElectrons;
+        var homoMoIndices = null, lumoMoIndices = null;
+        for (var i = 0; i < levels.length; i++) {
+            if (remaining <= 0) break;
+            var level = levels[i];
+            var indices = [];
+            for (var k = 0; k < level.count; k++) indices.push(level.startIndex + k);
+            homoMoIndices = indices;
+            remaining -= level.count * 2;
+            if (remaining <= 0) {
+                if (i + 1 < levels.length) {
+                    var next = levels[i + 1];
+                    lumoMoIndices = [];
+                    for (var m = 0; m < next.count; m++) lumoMoIndices.push(next.startIndex + m);
+                } else {
+                    lumoMoIndices = null; // no virtual orbitals left in this basis (e.g. full valence pi space)
+                }
+                break;
+            }
+        }
+        return { homoMoIndices: homoMoIndices, lumoMoIndices: lumoMoIndices };
     }
 
     // system = {
@@ -622,6 +661,7 @@
         _jacobiEigenvalues: jacobiEigenvalues,
         _jacobiEigenDecomposition: jacobiEigenDecomposition,
         _homoLumo: homoLumo,
+        _homoLumoMoIndices: homoLumoMoIndices,
         _computeBeta: computeBeta,
         _betaZeffFactor: betaZeffFactor,
         _betaDistanceFactor: betaDistanceFactor,
