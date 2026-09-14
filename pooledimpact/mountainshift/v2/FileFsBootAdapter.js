@@ -1,7 +1,7 @@
 /**
  * @file FileFsBootAdapter.js
  * @author Will Fobbs
- * @version 1.0.0
+ * @version 1.1.0
  * @description Closes the gap BIOS.js's boot sequence left open: turns a
  *   BootDeviceScan hit (a same-named artifact on a storage surface) into a
  *   CONFIRMED boot entry by actually mounting it through FileFsX and
@@ -11,24 +11,40 @@
  *   artifact that happens to share the naming convention but holds no OS.
  *   Implements the findBootEntry(device, firmwareType) contract BIOS.boot()
  *   already calls.
+ *
+ *   v1.1.0 (C.1, MSOS Cleanup Roadmap): optional real ECDSA signature
+ *   verification via Signature.js, ADDITIVE to the existing `.sha` hash
+ *   sidecar check, never replacing it. The hash sidecar alone is
+ *   integrity-only: anyone who tampers with a marker's content can just
+ *   recompute a matching `.sha` for their tampered version -- there is no
+ *   secret involved, so a mismatched hash only ever catches accidental
+ *   corruption, never deliberate tampering. Passing `options.publicKey`
+ *   (a CryptoKey) to the constructor additionally requires a matching
+ *   `.sig` sidecar (as written by Installer.js when given a privateKey)
+ *   to verify against that key before a hit is confirmed bootable -- a
+ *   hit with a valid hash but no genuine signature is rejected exactly
+ *   like a missing/mismatched hash always was. Without a publicKey
+ *   (the default), behavior is UNCHANGED from v1.0.0: today's hash-only
+ *   check, every existing caller/test unaffected.
  * @docs Kernel-Machine-Architecture.md
  * @tests test/NextInjection.audit.test.js
+ * @tests test/Signature.test.js
  */
 (function(root, factory)
 {
     if (typeof define === 'function' && define.amd)
     {
-        define(['./BootDeviceScan.js'], factory);
+        define(['./BootDeviceScan.js', './Signature.js'], factory);
     }
     else if (typeof module === 'object' && module.exports)
     {
-        module.exports = factory(require('./BootDeviceScan.js'));
+        module.exports = factory(require('./BootDeviceScan.js'), require('./Signature.js'));
     }
     else
     {
-        root.FileFsBootAdapter = factory(root.BootDeviceScan);
+        root.FileFsBootAdapter = factory(root.BootDeviceScan, root.Signature);
     }
-}(typeof self !== 'undefined' ? self : this, function(BootDeviceScan)
+}(typeof self !== 'undefined' ? self : this, function(BootDeviceScan, Signature)
 {
     'use strict';
     if (!BootDeviceScan)
@@ -71,22 +87,24 @@
     {
         static name = 'FileFsBootAdapter';
         static author = 'Will Fobbs';
-        static version = '1.0.0';
+        static version = '1.1.0';
         static description = 'Turns a BootDeviceScan hit into a CONFIRMED boot entry by mounting it through FileFsX and checking for a real ESP/bootloader marker.';
         static docs = ['Kernel-Machine-Architecture.md'];
-        static tests = ['test/NextInjection.audit.test.js'];
+        static tests = ['test/NextInjection.audit.test.js', 'test/Signature.test.js'];
 
         /**
          * @param {Object} FileFS - the FileFsX FileFS class
+         * @param {Object} [options={}] - options.publicKey (a CryptoKey, see file header) enables real signature verification, additive to the hash check
          * @throws {Error} if FileFS is not provided
          */
-        constructor(FileFS)
+        constructor(FileFS, options)
         {
             if (!FileFS)
             {
                 throw new Error('FileFsBootAdapter requires the FileFsX FileFS class');
             }
             this.FileFS = FileFS;
+            this.publicKey = (options && options.publicKey) || null;
         }
 
         /**
@@ -125,12 +143,16 @@
                 {
                     const fs = await this.FileFS.create({ backend: hit.surface, key: (hit.removable ? BootDeviceScan.USB_PREFIX : BootDeviceScan.VOLUME_PREFIX) + hit.id });
                     await fs.stat(marker);
-                    // Content check, not just presence: real firmware validates a
-                    // signature before handoff (step 6), on every boot — not only
-                    // once, at install time, the way ISO.verifyIntegrity() runs.
+                    // Content check, not just presence: real firmware re-checks
+                    // before handoff (step 6) on EVERY boot — not only once, at
+                    // install time, the way ISO.verifyIntegrity() runs.
                     // Installer.js writes a "<marker>.sha" sidecar alongside every
                     // installed file; a missing or mismatched sidecar means this
                     // marker is unconfirmed, even though a file exists at the path.
+                    // This is an INTEGRITY check only, not authenticity (C.1,
+                    // MSOS Cleanup Roadmap) -- anyone who tampers with the
+                    // content can just recompute a matching hash for their
+                    // tampered version, since no secret is involved.
                     const content = await fs.readFile(marker, 'utf8');
                     let sidecarOk = false;
                     try
@@ -144,8 +166,34 @@
                     }
                     if (!sidecarOk)
                     {
-                        continue; // present but unsigned/tampered — not bootable, try the next hit
+                        continue; // present but corrupted/tampered — not bootable, try the next hit
                     }
+
+                    // Real authenticity, opt-in: only checked when this instance
+                    // was configured with a trusted publicKey. A hit with a
+                    // VALID hash but no genuine `.sig` signed by the matching
+                    // private key is rejected exactly like a bad hash always
+                    // was -- closing the actual gap the hash-only check above
+                    // cannot: forging a matching hash is trivial, forging a
+                    // matching signature requires the private key.
+                    if (this.publicKey)
+                    {
+                        let sigOk = false;
+                        try
+                        {
+                            const sig = await fs.readFile(marker + '.sig', 'utf8');
+                            sigOk = await Signature.verify(this.publicKey, sig, content);
+                        }
+                        catch (e)
+                        {
+                            sigOk = false;
+                        }
+                        if (!sigOk)
+                        {
+                            continue; // hash matched, but not authentically signed — not bootable, try the next hit
+                        }
+                    }
+
                     return { surface: hit.surface, id: hit.id, removable: hit.removable, path: marker, confirmed: true };
                 }
                 catch (e)

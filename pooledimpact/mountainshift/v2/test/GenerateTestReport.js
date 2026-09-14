@@ -45,7 +45,8 @@ const TEST_FILES = [
     'ExtendX.stacking.test.js',
     'BIOS.firstBoot.test.js',
     'MountainShift.opaque.test.js',
-    'WeightedGraphMixin.test.js'
+    'WeightedGraphMixin.test.js',
+    'Signature.test.js'
 ];
 
 function gitInfo() {
