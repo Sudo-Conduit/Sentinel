@@ -18,5 +18,6 @@ require('./FlatTensor.unit.js')(runner);
 require('./NestedTensor.unit.js')(runner);
 require('./ExtendXIntegration.unit.js')(runner);
 require('./WeightedGraphMixin.unit.js')(runner);
+require('./SystemAdapter.unit.js')(runner);
 
 runner.run().then((result) => { process.exitCode = result.failed > 0 ? 1 : 0; });
