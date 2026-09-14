@@ -2,7 +2,7 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.5.0
+ * @version 1.5.1
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
@@ -59,6 +59,27 @@
  *           plus repeat-call idempotency (a second top-level dispose()
  *           does not re-run any hook) -- test/ExtendX.stacking.test.js
  *           updated from documenting the known gap to asserting the fix.
+ *   v1.5.1  Fixed a token-collision bug in tokenFor(): a mask's bit array
+ *           is reversed before being parsed as a binary literal, so the
+ *           just-disabled bit (always the array's last/highest-index
+ *           element, since disableLayer() never appends past it) becomes
+ *           the FIRST character of that literal -- and BigInt('0b0111')
+ *           === BigInt('0b111'), so a leading zero is numerically
+ *           invisible. Disabling the currently-highest-bitIndex mixin on
+ *           an instance therefore produced the SAME token as the
+ *           all-enabled case, and both the pipeline memo (PIPELINE_CACHE)
+ *           and the per-method dispatch memo (METHOD_CACHE) are keyed by
+ *           this token -- so a stale, all-enabled chain silently served a
+ *           genuinely-disabled configuration. Confirmed live: composing a
+ *           class late enough that reindex() (global, alphabetical,
+ *           re-run on every extend()) lands an existing class's mixin at
+ *           the new highest bit position reproduces it deterministically
+ *           on that mixin's own disableLayer() call, no matter how many
+ *           OTHER classes or mixins are involved. Fixed by prefixing a
+ *           sentinel '1' before the reversed bit string, fixing the
+ *           literal's length in place so a leading (highest-index) 0 is
+ *           an internal digit contributing to the value rather than an
+ *           invisible leading zero.
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -112,7 +133,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.5.0';
+    const VERSION = '1.5.1';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -306,7 +327,19 @@
         {
             return '1';
         }
-        return (((BigInt('0b' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
+        // Leading-zero collision fix: disableLayer() always leaves the
+        // just-disabled bit as the array's LAST (highest-index) element,
+        // which becomes the FIRST character of `binary` after .reverse().
+        // BigInt('0b0111') === BigInt('0b111') -- a leading zero in a binary
+        // literal has no numeric effect, so disabling the currently-highest
+        // bit on an instance previously produced the exact same token as
+        // the all-enabled case, letting a stale cached dispatch chain (with
+        // that mixin still active) leak through for a genuinely different
+        // configuration. A sentinel '1' prefixed before the data bits fixes
+        // the bit-length in place, so a leading (i.e. highest-index) 0 is an
+        // internal digit contributing to the value instead of an invisible
+        // leading zero.
+        return (((BigInt('0b1' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
     }
 
     // Current implementation for a declared mixin: the registry's entry for its
