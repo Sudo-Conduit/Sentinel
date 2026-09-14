@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.14.1
+**Version:** 1.15.0
 **Last updated:** 2026-09-14
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -244,6 +244,7 @@ as shipped above; nothing about that wiring changed.
 | E.1 | Outer Closure / Runtime | Opaque closure factory (`MountainShift()`, full-trap Proxy exposing only `run()`) | ✅ | — | — | — | — | — | — | shipped |
 | E.2 | Outer Closure / Runtime | Black-box (`run()`-only) integrated test tier | ⬜ | 1 | 2 | 4 | 2 | 2 | 4 | **15** |
 | E.3 | Outer Closure / Runtime | DevTools Local Overrides loader (reflection/`CodeComposer`, `CPU.js` ES6 rewrite) | ✅ | — | — | — | — | — | — | shipped |
+| F.1 | Reference Artifact Verification | `Terminal.pdf` reference test: real end-to-end OS load, in a real browser, off the actual shipped artifact — not just `BuildTerminalPdf.test.js`'s build/read-back byte check | ⬜ | 3 | 4 | 5 | 3 | 4 | 4 | **23** |
 
 ## Recommended execution order
 
@@ -373,6 +374,29 @@ with sequencing overrides noted where raw ranking would be wrong:**
    enforcing a flag with no real signature behind it is the same
    "dead config gains false teeth" risk the Confidence dimension warns
    about.
+10. **F.1 — `Terminal.pdf` reference test** (23, the highest composite of
+    any unshipped row on this table) — recipe already proven live this
+    session, ad hoc, not yet formalized as a standing test: headless
+    Chromium (Playwright) served the real `Terminal.pdf`'s extracted
+    `entry.html`/dependencies, booted through `MountainShift()`, and a
+    live `ps` at the rendered prompt returned the exact two processes
+    `_bootKernel()` forks. Scored high on O (this is literally the
+    "full circle" artifact-level proof this session's own C.1 request
+    asked for) and C (the hard part — Chromium not honoring
+    `HTTPS_PROXY` unlike `curl`, and the proxy relay separately closing
+    Chromium's own CONNECT tunnel to `unpkg.com` mid-exchange, worked
+    around via `page.route()` interception through Node's own
+    proxy-aware `fetch()` — is already solved and documented in the
+    1.14.1 changelog entry, not a remaining unknown). What F.1 actually
+    is: promote that ad hoc script into `test/Terminal.e2e.test.js` (or
+    similar) — extract `Terminal.pdf`'s real embedded attachments via
+    `pdf-lib` (not the on-disk source files `BuildTerminalPdf.test.js`
+    already covers, so a regression in the PDF-embedding step itself
+    would be caught too), serve them, drive the boot through Playwright,
+    and assert on a real command's real output — so "does the actual
+    shipped artifact still boot" is a standing, automated regression
+    check instead of a one-off manual proof that ages the moment the
+    next dependency changes.
 
 **Compositional (🤝) queue, by composite descending, with a hard
 dependency override:**
@@ -408,6 +432,19 @@ dependency override:**
 
 ## Changelog
 
+- **1.15.0** — 2026-09-14 — Added **F.1** (new category: Reference
+  Artifact Verification) to the Scored backlog: formalize the
+  `Terminal.pdf` end-to-end browser boot proof done ad hoc in 1.14.1
+  into a standing, automated test — extract the real shipped PDF's
+  embedded attachments (not the on-disk source files
+  `BuildTerminalPdf.test.js` already covers), serve them, drive a real
+  headless-browser boot via Playwright, assert on a real command's
+  real output. Composite **23** — the highest of any unshipped row on
+  this table, scored high on O (this is the literal "full circle"
+  artifact-level proof this session's own C.1 request asked for) and C
+  (the hard part, the Chromium/proxy workaround, is already solved and
+  documented, not a remaining unknown). No re-pin of Last-test-run —
+  no code shipped this entry, backlog/doc only.
 - **1.14.1** — 2026-09-14 — Closed the browser-verification gap 1.14.0
   disclosed as unresolved: `unpkg.com` turned out to be reachable from
   this sandbox after all (confirmed via `curl`) — the earlier
