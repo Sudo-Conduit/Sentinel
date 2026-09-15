@@ -1,59 +1,87 @@
 /**
  * @file ShellHost.js
  * @author Will Fobbs
- * @version 2.0.0
- * @description Instantiates shell.wasm against REAL WASI --
- * `wasi_snapshot_preview1`, fulfilled by Node's own native WASI
- * implementation (`node:wasi`), which calls the real OS directly.
- * This file never touches a real file, a real directory, or the real
- * environment itself -- shell.c's own path_open()/fd_readdir()/
- * environ_get() calls go straight to Node's WASI, not to any JS glue
- * written here. The only two things this file still does at the
- * import boundary are things WASI's capability model has no way to
- * express at all, not things it does instead of shell.c:
+ * @version 1.0.0
+ * @description The entire plumbing shell.wasm needs (WASM instantiation,
+ *   real per-stage spawning via a fresh instance per pipeline stage,
+ *   real pipe()-backed pipes, a generic open-file table), collapsed
+ *   behind one call: `shell.run(cmdline)` returns the command's real
+ *   stdout as a plain string. Everything else stays hidden -- the same
+ *   reasoning `MountainShift()` exposes only `run()`: a caller
+ *   shouldn't need to know there's a whole instantiate/wire/spawn
+ *   dance behind one line.
  *
- *   1. stdio (fd 0/1/2) -- WASI wires these to the REAL process's real
- *      stdin/stdout/stderr, which is correct for a real program but
- *      wrong for `shell.run()`'s job of returning a command's output
- *      as a string, and wrong for a pipeline stage, whose fd 0/1 must
- *      be an in-memory pipe, not the real terminal. So fd 0/1/2 (and
- *      only those three) are intercepted and redirected to an
- *      in-memory buffer instead of being handed to real WASI.
- *   2. process control (spawn/wait/pipe/getuid) -- a WASM module can't
- *      fork() itself, WASI preview1 defines no pipe(2), and WASI has
- *      no user/uid concept at all. These stay on their own "env"
- *      module, matching shell.c's own naming, and every pipe fd they
- *      hand out lives in a numeric range far above anything WASI's
- *      own fd table would ever use, so the two never collide.
+ *   Every import here is the real POSIX function shell.c names it
+ *   after (read, write, open, close, access, chdir, getcwd, getuid,
+ *   pipe) -- shell.c calls these directly, the same way a native
+ *   cat.c/ls.c/whoami.c would, with real signatures: a path argument
+ *   is a plain NUL-terminated C string, not a (ptr, len) pair, because
+ *   this side can find the NUL itself in the module's own linear
+ *   memory, exactly like a real implementation of these calls would.
+ *   getenv() isn't imported at all -- real getenv() is a pure-C scan
+ *   over `environ`, populated once at exec() time, so this file's only
+ *   job for it is _init_environ(), a one-time mirror of `env` into
+ *   shell.wasm's linear memory (see shell.c's own comment on
+ *   _init_environ for why that one call is a bootstrap exception, not
+ *   a disguised getenv).
  *
- * Every other fd -- anything path_open() returned -- is real, and
- * fd_read()/fd_write()/fd_close() on it go straight to
- * `wasi.wasiImport`, completely unmodified.
+ *   No formatting or lookup happens here that shell.c's own commands
+ *   are supposed to do themselves: open() on a directory hands back
+ *   raw NUL-separated names (cmd_ls turns that into a printed listing
+ *   in C, not this file with a string .join()), and getuid() hands
+ *   back a bare integer (cmd_whoami reads and parses /etc/passwd
+ *   itself, in C, through the same open()/read() as any other file --
+ *   this file never resolves an identity string).
+ *
+ *   The module itself is fetched, not read off disk -- `fetch(url)` is
+ *   the one loading primitive that exists identically in a browser and
+ *   in Node, so shell.wasm's bytes come from wherever it's actually
+ *   served, the same way they would once this runs inside
+ *   MountainShift OS itself.
+ *
+ *   This file has NO filesystem access of its own, on purpose -- no
+ *   `fs`, not even for open()/access(). A browser has no `fs` module
+ *   at all, so if this file needed one, it couldn't actually run
+ *   there; it would only ever have been running here because Node
+ *   happened to make disk access convenient, which is exactly the
+ *   kind of host-does-the-command's-job shortcut this project keeps
+ *   catching. Real content for open()/access() comes entirely from
+ *   `options.files` (path -> raw string content, fetched by whoever
+ *   calls createShell() -- a real HTTP request in Node, same as it
+ *   would be `fetch()` in a browser). This file only ever looks
+ *   content up in that map; it never goes and gets it.
  *
  *     const { createShell } = require('./ShellHost.js');
- *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
- *     var a = shell.run('ls /tmp');
+ *     const shell = await createShell({
+ *         wasmUrl: 'http://localhost:PORT/shell.wasm',
+ *         files: { '/etc/passwd': await (await fetch('http://localhost:PORT/fs?p=/etc/passwd')).text() }
+ *     });
+ *     var a = shell.run('whoami');
  *     console.log(a);
  *
  * @tests test/Shell.wasm.test.js
  */
 'use strict';
-const { WASI } = require('node:wasi');
 
 const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
-const PIPE_FD_BASE = 1000000; // far above anything WASI's own fd table uses
 
 /**
  * @param {Object} [options]
  * @param {string} [options.wasmUrl] - fetched via fetch(); defaults to
  *   a file:// URL for shell.wasm next to this file, but Node's fetch()
- *   only actually serves http(s):// -- pass a real URL to load it for
- *   real rather than falling back.
- * @param {Object<string,string>} [options.env] - the real environment
- *   WASI's own environ_sizes_get()/environ_get() will report; shell.c
- *   reads it with its own pure-C getenv(), never through this file.
- * @param {string} [options.stdin] - unused directly; use run()'s own
- *   stdin argument instead.
+ *   only actually serves http(s):// -- pass a real URL (e.g. a small
+ *   local static server) to load it for real rather than falling back.
+ * @param {Object<string,string>} [options.env] - env vars getenv() sees,
+ *   mirrored into linear memory once via _init_environ()
+ * @param {Object<string,string>} [options.files] - path -> plain string
+ *   content, the ONLY source open()/access() ever consult. An "open
+ *   directory" and an "open file" are the same thing here: whatever
+ *   string read() should return. A directory's value must already be
+ *   the raw NUL-separated names cmd_ls expects -- this file does no
+ *   enumeration or formatting of its own. Whoever calls createShell()
+ *   is responsible for fetching real content into this map; this file
+ *   has no way to go get it itself.
+ * @param {string} [options.cwd] - initial working directory
  * @returns {Promise<{run: (cmdline: string, stdin?: string) => string}>}
  */
 async function createShell(options)
@@ -63,16 +91,22 @@ async function createShell(options)
     const wasmModule = await WebAssembly.compile(wasmBytes);
 
     const env = options.env || { HOME: '/home/user', PATH: '/usr/bin:/bin' };
-    // Session-persistent, plain string bookkeeping -- NOT real I/O.
-    // Every shell.run() call gets a fresh WebAssembly.Instance (fresh
-    // linear memory), so sh.cwd can't survive on the C side between
-    // calls on its own; this is relayed in/out via the module's own
-    // cwd_ptr() export, the same category as passing the command line
-    // itself in through ptr/len.
+    const files = options.files || {};
     let cwd = options.cwd || '/';
 
-    const pipes = new Map(); // fd -> { chunks: Buffer, readPos: number }
-    let nextPipeFd = PIPE_FD_BASE;
+    function resolvePathContent(p)
+    {
+        return files[p] !== undefined ? files[p] : null;
+    }
+
+    function pathExists(p)
+    {
+        return files[p] !== undefined;
+    }
+
+    const pipes = new Map();      // fd -> { chunks: Buffer, readPos: number }
+    const openFiles = new Map();  // fd -> { data: Buffer, pos: number }
+    let nextFd = 3;
     let nextPid = 1;
     const pidResults = new Map();
 
@@ -86,125 +120,160 @@ async function createShell(options)
 
     function makeInstanceImports(resolvedInFd, resolvedOutFd)
     {
-        // A fresh WASI instance per pipeline stage, exactly like a
-        // fresh WebAssembly.Instance per stage -- each is its own
-        // isolated real syscall surface, preopened at "/".
-        const wasi = new WASI({ version: 'preview1', args: [], env, preopens: { '/': '/' } });
         let memory;
 
         function readMemStr(ptr, len)
         {
             return Buffer.from(memory.buffer, ptr, len).toString('utf8');
         }
-        function readIovec(iovsPtr)
+        // Real open()/access()/chdir() take a plain C string -- the
+        // callee finds the NUL itself, it isn't handed a length.
+        function readCStr(ptr)
         {
-            const dv = new DataView(memory.buffer);
-            return { ptr: dv.getInt32(iovsPtr, true), len: dv.getInt32(iovsPtr + 4, true) };
+            const bytes = new Uint8Array(memory.buffer, ptr);
+            let end = 0;
+            while (bytes[end] !== 0) end++;
+            return Buffer.from(memory.buffer, ptr, end).toString('utf8');
         }
         function writeI32(ptr, value)
         {
             new DataView(memory.buffer).setInt32(ptr, value, true);
         }
-
-        // fd_read/fd_write take a real WASI iovec (ptr, len) -- shell.c's
-        // own read()/write() wrappers only ever build a single one, so
-        // that's the only shape handled here.
-        function customFdRead(fd, iovsPtr, iovsLen, nreadPtr)
+        // Real getcwd()/getlogin_r() NUL-terminate on success and fail
+        // (rather than silently truncate) if the string doesn't fit --
+        // returns the byte length written, or -1 if it doesn't fit.
+        function writeCStr(ptr, cap, str)
         {
-            const { ptr, len } = readIovec(iovsPtr);
-            let src, pos;
-            if (fd === 0 && resolvedInFd === 'ROOT') { src = currentRootStdinBuf; pos = currentRootStdinPos; }
-            else if (fd === 0) { const p = pipes.get(resolvedInFd); src = p.chunks; pos = p.readPos; }
-            else if (fd >= PIPE_FD_BASE) { const p = pipes.get(fd); src = p.chunks; pos = p.readPos; }
-            else return wasi.wasiImport.fd_read(fd, iovsPtr, iovsLen, nreadPtr);
-
-            const n = Math.max(0, Math.min(src.length - pos, len));
-            new Uint8Array(memory.buffer, ptr, n).set(src.subarray(pos, pos + n));
-            if (fd === 0 && resolvedInFd === 'ROOT') currentRootStdinPos += n;
-            else if (fd === 0) pipes.get(resolvedInFd).readPos += n;
-            else pipes.get(fd).readPos += n;
-            writeI32(nreadPtr, n);
-            return 0;
+            const buf = Buffer.from(str, 'utf8');
+            if (buf.length + 1 > cap) return -1;
+            new Uint8Array(memory.buffer, ptr, buf.length + 1).set(Buffer.concat([buf, Buffer.from([0])]));
+            return buf.length;
         }
 
-        function customFdWrite(fd, iovsPtr, iovsLen, nwrittenPtr)
+        function doRead(fd, bufPtr, bufLen)
         {
-            const { ptr, len } = readIovec(iovsPtr);
-            if (fd === 1 || fd === 2 || fd >= PIPE_FD_BASE)
+            const openFile = openFiles.get(fd);
+            if (openFile)
             {
-                const str = readMemStr(ptr, len);
-                if (fd === 2) currentRootStdoutChunks.push(str);
-                else if (fd === 1 && resolvedOutFd === 'ROOT') currentRootStdoutChunks.push(str);
-                else if (fd === 1) { const p = pipes.get(resolvedOutFd); p.chunks = Buffer.concat([p.chunks, Buffer.from(str, 'utf8')]); }
-                else { const p = pipes.get(fd); p.chunks = Buffer.concat([p.chunks, Buffer.from(str, 'utf8')]); }
-                writeI32(nwrittenPtr, len);
+                const remaining = openFile.data.length - openFile.pos;
+                if (remaining <= 0) return 0;
+                const n = Math.min(remaining, bufLen);
+                new Uint8Array(memory.buffer, bufPtr, n).set(openFile.data.subarray(openFile.pos, openFile.pos + n));
+                openFile.pos += n;
+                return n;
+            }
+            if (fd !== 0) return -1;
+            if (resolvedInFd === 'ROOT')
+            {
+                const remaining = currentRootStdinBuf.length - currentRootStdinPos;
+                if (remaining <= 0) return 0;
+                const n = Math.min(remaining, bufLen);
+                new Uint8Array(memory.buffer, bufPtr, n).set(currentRootStdinBuf.subarray(currentRootStdinPos, currentRootStdinPos + n));
+                currentRootStdinPos += n;
+                return n;
+            }
+            const p = pipes.get(resolvedInFd);
+            const remaining = p.chunks.length - p.readPos;
+            if (remaining <= 0) return 0;
+            const n = Math.min(remaining, bufLen);
+            new Uint8Array(memory.buffer, bufPtr, n).set(p.chunks.subarray(p.readPos, p.readPos + n));
+            p.readPos += n;
+            return n;
+        }
+
+        function doWrite(fd, bufPtr, bufLen)
+        {
+            const str = readMemStr(bufPtr, bufLen);
+            if (fd === 2) { currentRootStdoutChunks.push(str); return bufLen; }
+            if (fd !== 1) return -1;
+            if (resolvedOutFd === 'ROOT')
+            {
+                currentRootStdoutChunks.push(str);
+                return bufLen;
+            }
+            const p = pipes.get(resolvedOutFd);
+            p.chunks = Buffer.concat([p.chunks, Buffer.from(str, 'utf8')]);
+            return bufLen;
+        }
+
+        const imports = { env: {
+            read: doRead,
+            write: doWrite,
+            spawn: (cmdPtr, cmdLen, inFd, outFd) => spawn(readMemStr(cmdPtr, cmdLen), inFd, outFd),
+            wait: (pid) => (pidResults.has(pid) ? pidResults.get(pid) : -1),
+            // The one bootstrap exception, mirroring what a real
+            // exec() does once before main() ever runs: after this,
+            // shell.c's own getenv() is pure C, no import per lookup.
+            _init_environ: (bufPtr, cap) =>
+            {
+                let total = 0;
+                const view = new Uint8Array(memory.buffer, bufPtr, cap);
+                for (const name of Object.keys(env))
+                {
+                    const entry = Buffer.from(name + '=' + env[name] + '\0', 'utf8');
+                    if (total + entry.length > cap) break;
+                    view.set(entry, total);
+                    total += entry.length;
+                }
+                return total;
+            },
+            // A bare integer, nothing resolved -- process.getuid() is
+            // Node's own real getuid(2) wrapper. cmd_whoami looks the
+            // name up itself, in C, by reading /etc/passwd.
+            getuid: () => process.getuid(),
+            chdir: (pathPtr) =>
+            {
+                const p = readCStr(pathPtr);
+                if (!pathExists(p)) return -1;
+                cwd = p;
+                return 0;
+            },
+            getcwd: (bufPtr, bufLen) => (writeCStr(bufPtr, bufLen, cwd) < 0 ? 0 : bufPtr),
+            open: (pathPtr, flags) =>
+            {
+                const content = resolvePathContent(readCStr(pathPtr));
+                if (content === null) return -1;
+                const fd = nextFd++;
+                openFiles.set(fd, { data: Buffer.from(content, 'utf8'), pos: 0 });
+                return fd;
+            },
+            close: (fd) => { openFiles.delete(fd); return 0; },
+            // access(path, mode) -- this file has no notion of
+            // permission bits (F_OK vs X_OK) any more than it has a
+            // filesystem to ask; all it can answer is "is there real
+            // content behind this path," from the same map open() uses.
+            access: (pathPtr, mode) =>
+            {
+                const p = readCStr(pathPtr);
+                return pathExists(p) ? 0 : -1;
+            },
+            // Real pipe(int[2]): one array pointer, [0] read end, [1]
+            // write end -- not two separate out-pointers.
+            pipe: (pipefdPtr) =>
+            {
+                const readFd = nextFd++;
+                const writeFd = nextFd++;
+                const buf = { chunks: Buffer.alloc(0), readPos: 0 };
+                pipes.set(readFd, buf);
+                pipes.set(writeFd, buf);
+                writeI32(pipefdPtr, readFd);
+                writeI32(pipefdPtr + 4, writeFd);
                 return 0;
             }
-            return wasi.wasiImport.fd_write(fd, iovsPtr, iovsLen, nwrittenPtr);
-        }
+        } };
 
-        // Everything else -- path_open, fd_close, fd_readdir,
-        // environ_sizes_get, environ_get, and anything else WASI
-        // defines -- is wasi.wasiImport, completely unmodified.
-        const wasiImport = Object.assign({}, wasi.wasiImport, {
-            fd_read: customFdRead,
-            fd_write: customFdWrite,
-        });
-
-        const imports = {
-            wasi_snapshot_preview1: wasiImport,
-            env: {
-                // WASI has no user/uid concept at all -- the one fact
-                // whoami needs that no real syscall here provides.
-                getuid: () => process.getuid(),
-                spawn: (cmdPtr, cmdLen, inFd, outFd) => spawn(readMemStr(cmdPtr, cmdLen), inFd, outFd),
-                wait: (pid) => (pidResults.has(pid) ? pidResults.get(pid) : -1),
-                // WASI preview1 defines no pipe(2). Real pipe(int[2])
-                // shape: one array pointer, [0] read end, [1] write end.
-                pipe: (pipefdPtr) =>
-                {
-                    const readFd = nextPipeFd++;
-                    const writeFd = nextPipeFd++;
-                    const buf = { chunks: Buffer.alloc(0), readPos: 0 };
-                    pipes.set(readFd, buf);
-                    pipes.set(writeFd, buf);
-                    writeI32(pipefdPtr, readFd);
-                    writeI32(pipefdPtr + 4, writeFd);
-                    return 0;
-                },
-            },
-        };
-
-        return { imports, wasi, setMemory: (m) => { memory = m; } };
+        return { imports, setMemory: (m) => { memory = m; } };
     }
-
-    const MAX_PATH = 4096; // matches shell.c's own MAX_PATH -- sh.cwd's real capacity
 
     function runInstance(resolvedIn, resolvedOut, cmdline)
     {
         const host = makeInstanceImports(resolvedIn, resolvedOut);
         const instance = new WebAssembly.Instance(wasmModule, host.imports);
         host.setMemory(instance.exports.memory);
-        host.wasi.initialize(instance);
-
-        const cwdPtr = instance.exports.cwd_ptr();
-        const cwdBytes = Buffer.from(cwd, 'utf8');
-        new Uint8Array(instance.exports.memory.buffer, cwdPtr, cwdBytes.length + 1).set(Buffer.concat([cwdBytes, Buffer.from([0])]));
-
         const cmdBytes = Buffer.from(cmdline, 'utf8');
         const scratchPtr = instance.exports.memory.buffer.byteLength - 4096;
         new Uint8Array(instance.exports.memory.buffer, scratchPtr, cmdBytes.length).set(cmdBytes);
-        const rc = instance.exports.run(scratchPtr, cmdBytes.length);
-
-        // Read back whatever sh.cwd is now (unchanged unless this call
-        // was a `cd`) so the NEXT fresh instance starts where this one
-        // left off.
-        const cwdOut = new Uint8Array(instance.exports.memory.buffer, cwdPtr, MAX_PATH);
-        let end = 0;
-        while (end < MAX_PATH && cwdOut[end] !== 0) end++;
-        cwd = Buffer.from(cwdOut.subarray(0, end)).toString('utf8');
-
-        return rc;
+        return instance.exports.run(scratchPtr, cmdBytes.length);
     }
 
     function spawn(cmdline, inFd, outFd)
