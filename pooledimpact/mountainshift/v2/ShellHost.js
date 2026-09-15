@@ -152,6 +152,24 @@ const PROXY_CA_PATH = '/root/.ccr/ca-bundle.crt'; // TLS is re-terminated at the
 const PROXY_CA = (() => { try { return fs.readFileSync(PROXY_CA_PATH); } catch { return null; } })();
 const NO_PROXY_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
+// Finds the first byte-index of needle (a plain string) inside a
+// Uint8Array, from fromIndex -- Uint8Array has no Buffer-style
+// indexOf(string), only indexOf(singleByteValue), so this is the
+// standard-JS replacement for that one Buffer convenience.
+function findBytesIndex(haystack, needle, fromIndex)
+{
+    const needleBytes = proto.utf8Bytes(needle);
+    outer: for (let i = fromIndex || 0; i <= haystack.length - needleBytes.length; i++)
+    {
+        for (let j = 0; j < needleBytes.length; j++)
+        {
+            if (haystack[i + j] !== needleBytes[j]) continue outer;
+        }
+        return i;
+    }
+    return -1;
+}
+
 function connectViaProxyTunnel(proxyUrl, host, port)
 {
     return new Promise((resolve, reject) =>
@@ -162,15 +180,15 @@ function connectViaProxyTunnel(proxyUrl, host, port)
             socket.write(`CONNECT ${host}:${port} HTTP/1.1\r\nHost: ${host}:${port}\r\n\r\n`);
         });
 
-        let buf = Buffer.alloc(0);
+        let buf = new Uint8Array(0);
         const onData = (chunk) =>
         {
-            buf = Buffer.concat([buf, chunk]);
-            const headerEnd = buf.indexOf('\r\n\r\n');
+            buf = proto.concatBytes([buf, chunk]);
+            const headerEnd = findBytesIndex(buf, '\r\n\r\n');
             if (headerEnd === -1) return;
             socket.removeListener('data', onData);
 
-            const statusLine = buf.toString('utf8', 0, buf.indexOf('\r\n'));
+            const statusLine = proto.bytesToUtf8(buf, 0, findBytesIndex(buf, '\r\n'));
             if (!/^HTTP\/1\.[01] 200/.test(statusLine))
             {
                 socket.destroy();
@@ -208,7 +226,7 @@ async function performSocketExchange(host, port, useTls, requestBytes)
         {
             if (settled) return;
             settled = true;
-            if (err) reject(err); else resolve(Buffer.concat(chunks));
+            if (err) reject(err); else resolve(proto.concatBytes(chunks));
         };
         socket.on('data', (chunk) => chunks.push(chunk));
         socket.on('close', () => finish());
@@ -221,25 +239,25 @@ async function performSocketExchange(host, port, useTls, requestBytes)
 // every other part of this wire protocol.
 function parseSocketMarker(response)
 {
-    if (!(response.length >= 7 && response.toString('utf8', 0, 6) === 'SOCKET' && response[6] === 0)) return null;
+    if (!(response.length >= 7 && proto.bytesToUtf8(response, 0, 6) === 'SOCKET' && response[6] === 0)) return null;
 
     let off = 7;
     const nulAt = (from) => { let j = from; while (response[j] !== 0) j++; return j; };
 
     let end = nulAt(off);
-    const host = response.toString('utf8', off, end);
+    const host = proto.bytesToUtf8(response, off, end);
     off = end + 1;
 
     end = nulAt(off);
-    const port = parseInt(response.toString('utf8', off, end), 10);
+    const port = parseInt(proto.bytesToUtf8(response, off, end), 10);
     off = end + 1;
 
     end = nulAt(off);
-    const useTls = response.toString('utf8', off, end) === '1';
+    const useTls = proto.bytesToUtf8(response, off, end) === '1';
     off = end + 1;
 
     end = nulAt(off);
-    const requestLen = parseInt(response.toString('utf8', off, end), 10);
+    const requestLen = parseInt(proto.bytesToUtf8(response, off, end), 10);
     off = end + 1;
 
     const requestBytes = response.subarray(off, off + requestLen);
@@ -250,29 +268,29 @@ function parseSocketMarker(response)
 // stdinlen\0<bytes> delegation, if that's what a response is.
 function parseSpawnMarker(response)
 {
-    if (!(response.length >= 6 && response.toString('utf8', 0, 5) === 'SPAWN' && response[5] === 0)) return null;
+    if (!(response.length >= 6 && proto.bytesToUtf8(response, 0, 5) === 'SPAWN' && response[5] === 0)) return null;
 
     let off = 6;
     const nulAt = (from) => { let j = from; while (response[j] !== 0) j++; return j; };
 
     let end = nulAt(off);
-    const program = response.toString('utf8', off, end);
+    const program = proto.bytesToUtf8(response, off, end);
     off = end + 1;
 
     end = nulAt(off);
-    const argc = parseInt(response.toString('utf8', off, end), 10);
+    const argc = parseInt(proto.bytesToUtf8(response, off, end), 10);
     off = end + 1;
 
     const args = [];
     for (let i = 0; i < argc; i++)
     {
         end = nulAt(off);
-        args.push(response.toString('utf8', off, end));
+        args.push(proto.bytesToUtf8(response, off, end));
         off = end + 1;
     }
 
     end = nulAt(off);
-    const stdinLen = parseInt(response.toString('utf8', off, end), 10);
+    const stdinLen = parseInt(proto.bytesToUtf8(response, off, end), 10);
     off = end + 1;
 
     const stdinBytes = response.subarray(off, off + stdinLen);
@@ -295,7 +313,7 @@ function spawnProcess(program, args, stdinBytes)
 {
     if (!isProgramAllowed(program))
     {
-        const result = { exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: ' + program + ' is not on the allowed list\n', 'utf8') };
+        const result = { exitCode: 127, stdout: new Uint8Array(0), stderr: proto.utf8Bytes('spawn: ' + program + ' is not on the allowed list\n') };
         return { child: null, done: Promise.resolve(result) };
     }
 
@@ -306,8 +324,8 @@ function spawnProcess(program, args, stdinBytes)
     child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
     const done = new Promise((resolve) =>
     {
-        child.on('close', (code) => resolve({ exitCode: code === null ? 1 : code, stdout: Buffer.concat(stdoutChunks), stderr: Buffer.concat(stderrChunks) }));
-        child.on('error', () => resolve({ exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: failed to start ' + program + '\n', 'utf8') }));
+        child.on('close', (code) => resolve({ exitCode: code === null ? 1 : code, stdout: proto.concatBytes(stdoutChunks), stderr: proto.concatBytes(stderrChunks) }));
+        child.on('error', () => resolve({ exitCode: 127, stdout: new Uint8Array(0), stderr: proto.utf8Bytes('spawn: failed to start ' + program + '\n') }));
     });
     child.stdin.end(stdinBytes);
     return { child, done };
@@ -320,11 +338,11 @@ async function performProcessSpawn(program, args, stdinBytes)
 
 function buildExecResponseFile(exitCode, stdout, stderr)
 {
-    return Buffer.concat([
-        Buffer.from(String(exitCode) + '\0', 'utf8'),
-        Buffer.from(String(stdout.length) + '\0', 'utf8'),
+    return proto.concatBytes([
+        proto.utf8Bytes(String(exitCode) + '\0'),
+        proto.utf8Bytes(String(stdout.length) + '\0'),
         stdout,
-        Buffer.from(String(stderr.length) + '\0', 'utf8'),
+        proto.utf8Bytes(String(stderr.length) + '\0'),
         stderr
     ]);
 }
@@ -482,11 +500,11 @@ async function createShell(options)
     {
         const response = proto.callModule(instance, memory, requestFields(groupCmdline, stdin));
 
-        if (response.length >= 5 && response.toString('utf8', 0, 4) === 'EXEC' && response[4] === 0)
+        if (response.length >= 5 && proto.bytesToUtf8(response, 0, 4) === 'EXEC' && response[4] === 0)
         {
             let j = 5;
             while (response[j] !== 0) j++;
-            const subCmdline = response.toString('utf8', 5, j);
+            const subCmdline = proto.bytesToUtf8(response, 5, j);
             const subName = subCmdline.split(' ')[0];
 
             const mod = findCommandModule(subName);
@@ -623,7 +641,7 @@ async function createShell(options)
                 const mod = name ? findCommandModule(name) : null;
                 if (mod)
                 {
-                    const pid = startBackgroundDelegated(mod, bgStages[0], Buffer.alloc(0));
+                    const pid = startBackgroundDelegated(mod, bgStages[0], new Uint8Array(0));
                     if (pid !== null) return { rc: 0, stdout: '[' + pid + '] ' + pid + '\n', cwd };
                 }
 
@@ -635,14 +653,14 @@ async function createShell(options)
 
             const groups = groupStages(stages);
 
-            let stdin = Buffer.alloc(0);
+            let stdin = new Uint8Array(0);
             let result = { rc: 0, stdout: '', cwd };
             for (const group of groups)
             {
                 result = group.type === 'module'
                     ? await runExternal(group.mod, group.cmdline, stdin)
                     : await runNative(group.stages.join(' | '), stdin);
-                stdin = Buffer.from(result.stdout, 'utf8');
+                stdin = proto.utf8Bytes(result.stdout);
             }
             return result;
         }
