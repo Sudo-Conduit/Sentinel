@@ -13,6 +13,15 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.3 — Real multi-stage piping. run_pipeline() no longer bypasses
+ *   host_spawn() -- every non-last stage gets a real pipe (new
+ *   host_pipe() import), spawned with its stdout wired to the pipe's
+ *   write end, and the next stage spawned with its stdin wired to that
+ *   pipe's read end. Every spawned pid is waited on via host_wait().
+ *   No command function changed: cmd_cat/cmd_grep/etc. already
+ *   correctly expressed "read fd 0, write fd 1" -- the bug was entirely
+ *   in the executor bypassing the spawn path the file's own comments
+ *   already described as "the real path."
  * v0.0.2 — Collapsed to a single export. alloc_init() is no longer
  *   exported for the host to remember to call separately — run() lazily
  *   initializes the arena on first call instead (checks arena_base ==
@@ -99,6 +108,12 @@ extern i32 host_readdir(i32 path_ptr, i32 path_len, i32 index,
 /* Path lookup for `which` */
 __attribute__((import_module("host"), import_name("access")))
 extern i32 host_access(i32 path_ptr, i32 path_len, i32 mode);
+
+/* Real pipe creation -- writes the new read/write fd numbers into
+ * linear memory at the two given pointers. v0.0.3: this is the one
+ * new host import multi-stage pipelines actually need. */
+__attribute__((import_module("host"), import_name("pipe")))
+extern i32 host_pipe(i32 read_fd_out_ptr, i32 write_fd_out_ptr);
 
 /* ------------------------------------------------------------------ */
 /* Hand-rolled string / memory — no <string.h>                         */
@@ -465,31 +480,59 @@ static int parse(char *line, struct pipeline *pl) {
 /* Executor                                                            */
 /* ------------------------------------------------------------------ */
 
-/*
- * KNOWN LIMITATION, not yet fixed: multi-stage pipelines do not actually
- * pipe data between stages. Every stage below reads STDIN_FILENO and
- * writes STDOUT_FILENO directly regardless of its position, so a real
- * `cat file | grep pattern` would have both stages independently
- * competing for the same real stdin/stdout rather than one feeding the
- * other. Fixing this needs either host-mediated pipes (host_spawn's
- * in_fd/out_fd) or an in-process buffer actually threaded stage to
- * stage -- neither is wired up yet. Single-stage commands are correct.
- */
-
-static int run_external(const struct command *c, int argc, char **argv,
-                        int in_fd, int out_fd) {
-    (void)in_fd; (void)out_fd;
-    return c->fn(argc, argv);
-}
-
 static int run_builtin(const struct command *c, int argc, char **argv) {
     return c->fn(argc, argv);
 }
 
+/* Rejoins a tokenized stage's argv back into a single space-separated
+ * command string for host_spawn(), which takes a command line, not an
+ * argv array. Loses original inter-token whitespace/quoting -- an
+ * accepted simplification for this seed, since tokenize_stage() already
+ * discarded that information in place. */
+static usize rejoin_argv(char *buf, usize buf_cap, char **argv, int argc) {
+    usize len = 0;
+    for (int i = 0; i < argc; i++) {
+        if (i > 0) {
+            if (len + 1 >= buf_cap) break;
+            buf[len++] = ' ';
+        }
+        usize alen = str_len(argv[i]);
+        if (len + alen >= buf_cap) alen = buf_cap - len - 1;
+        mem_copy(buf + len, argv[i], alen);
+        len += alen;
+    }
+    buf[len] = '\0';
+    return len;
+}
+
+/*
+ * v0.0.3: real multi-stage piping. Every stage still just says "read fd
+ * 0, write fd 1" -- that was already correct and needed no change. What
+ * was wrong was this function bypassing host_spawn() entirely and
+ * calling each command in-process, so every stage's fd 0/1 resolved to
+ * the SAME real stdin/stdout no matter its position. Now: a real pipe
+ * (host_pipe()) is created between every adjacent pair of stages, each
+ * stage is handed off to host_spawn() with the correct in_fd/out_fd
+ * (STDIN_FILENO only for the first stage, STDOUT_FILENO only for the
+ * last), and every spawned pid is waited on via host_wait().
+ *
+ * All stages are spawned first, then all are waited on, matching real
+ * pipeline semantics (every stage notionally running concurrently) even
+ * though today's host may in practice run each spawn synchronously to
+ * completion -- host_wait() still gets called on every pid either way,
+ * so a host that DOES spawn real concurrent processes needs no change
+ * here to actually behave correctly.
+ */
 static int run_pipeline(struct pipeline *pl) {
     if (pl->nstages == 1) {
         const struct command *c = lookup(pl->stages[0].argv[0]);
-        if (c && c->is_builtin) {
+        if (!c) {
+            fd_puts(STDERR_FILENO, "shell: command not found: ");
+            fd_puts(STDERR_FILENO, pl->stages[0].argv[0]);
+            fd_puts(STDERR_FILENO, "\n");
+            return 127;
+        }
+        if (c->is_builtin) {
             if (pl->background) {
                 fd_puts(STDERR_FILENO,
                         "shell: builtins cannot run in background\n");
@@ -497,15 +540,24 @@ static int run_pipeline(struct pipeline *pl) {
             }
             return run_builtin(c, pl->stages[0].argc, pl->stages[0].argv);
         }
+        /* A lone external command runs directly, in-process, on the
+         * real STDIN_FILENO/STDOUT_FILENO -- no spawn/pipe needed.
+         * This bypass is load-bearing, not an optimization: host_spawn()
+         * exists to isolate ONE STAGE OF A PIPELINE, and its host-side
+         * implementation re-enters this same module's run() to actually
+         * execute the command. Removing this bypass (v0.0.3's first
+         * draft did) makes a lone command spawn itself, which re-parses
+         * the same single-stage command line, which spawns itself again
+         * -- infinite recursion, confirmed live as "Maximum call stack
+         * size exceeded" before this fix, not a hypothetical concern. */
+        return c->fn(pl->stages[0].argc, pl->stages[0].argv);
     }
 
-    int rc = 0;
     for (int i = 0; i < pl->nstages; i++) {
-        struct stage *st = &pl->stages[i];
-        const struct command *c = lookup(st->argv[0]);
+        const struct command *c = lookup(pl->stages[i].argv[0]);
         if (!c) {
             fd_puts(STDERR_FILENO, "shell: command not found: ");
-            fd_puts(STDERR_FILENO, st->argv[0]);
+            fd_puts(STDERR_FILENO, pl->stages[i].argv[0]);
             fd_puts(STDERR_FILENO, "\n");
             return 127;
         }
@@ -514,7 +566,44 @@ static int run_pipeline(struct pipeline *pl) {
                     "shell: builtin in pipeline not supported\n");
             return 1;
         }
-        rc = run_external(c, st->argc, st->argv, STDIN_FILENO, STDOUT_FILENO);
+    }
+
+    i32 pids[MAX_STAGES];
+    int in_fd = STDIN_FILENO;
+
+    for (int i = 0; i < pl->nstages; i++) {
+        int out_fd;
+        i32 next_in_fd = -1;
+
+        if (i < pl->nstages - 1) {
+            /* host_pipe() writes both fd numbers into linear memory at
+             * these two arena-allocated slots. */
+            i32 *slots = (i32 *)arena_alloc(sizeof(i32) * 2);
+            if (!slots) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); return 1; }
+            if (host_pipe((i32)(usize)&slots[0], (i32)(usize)&slots[1]) != 0) {
+                fd_puts(STDERR_FILENO, "shell: pipe() failed\n");
+                return 1;
+            }
+            out_fd = slots[1];
+            next_in_fd = slots[0];
+        } else {
+            out_fd = STDOUT_FILENO;
+        }
+
+        char cmdbuf[MAX_LINE];
+        usize cmdlen = rejoin_argv(cmdbuf, sizeof cmdbuf,
+                                   pl->stages[i].argv, pl->stages[i].argc);
+
+        pids[i] = host_spawn((i32)(usize)cmdbuf, (i32)cmdlen,
+                             in_fd, out_fd, STDERR_FILENO);
+
+        in_fd = (int)next_in_fd;
+    }
+
+    int rc = 0;
+    for (int i = 0; i < pl->nstages; i++) {
+        int stage_rc = host_wait(pids[i]);
+        if (i == pl->nstages - 1) rc = stage_rc;
     }
 
     return rc;
