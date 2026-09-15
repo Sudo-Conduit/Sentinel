@@ -84,13 +84,13 @@
  *   exits, hand the exit code + bytes back as a file
  *   (/dev/exec_response) for the module's own second call to parse.
  *
- *   Real content (file bytes, directory listings, /etc/passwd, the
- *   real uid) never arrives via a call shell.c makes mid-execution --
- *   it can't, there's no import to make it through. Whoever calls
- *   createShell()/run() is responsible for gathering that content
- *   itself (real disk, a real fetch, whatever) entirely OUTSIDE any
- *   WASM interaction, and handing it in via options.files -- a plain
- *   path -> content map this file only ever serializes, never fetches.
+ *   This file never reads a file. It does not require('fs') at all,
+ *   and nothing here gathers disk content ahead of time to stage for a
+ *   module to find. A command that wants a directory or a file opens
+ *   it and reads it itself -- see wasm/lsreal.c, which does its own
+ *   fd_readdir, and native/msos.c, which does the same work through
+ *   the raw syscall instruction. The two builds are the same logic
+ *   written against different syscall ABIs.
  *
  *     const { createShell } = require('./ShellHost.js');
  *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
@@ -103,7 +103,6 @@
 
 const net = require('net');
 const tls = require('tls');
-const fs = require('fs');
 const { spawn } = require('child_process');
 const proto = require('./WasmBlobProtocol.js');
 const { createProcessTable } = require('./ProcessTable.js');
@@ -148,8 +147,10 @@ function isProgramAllowed(program)
 // one more hop: CONNECT establishes a raw byte tunnel to the real
 // origin, opaque to the proxy, before any TLS/HTTP happens inside it.
 const PROXY_URL = process.env.HTTPS_PROXY || process.env.https_proxy || null;
-const PROXY_CA_PATH = '/root/.ccr/ca-bundle.crt'; // TLS is re-terminated at the proxy in this sandbox
-const PROXY_CA = (() => { try { return fs.readFileSync(PROXY_CA_PATH); } catch { return null; } })();
+// TLS is re-terminated at the proxy in this sandbox, so its CA has to be
+// trusted. That trust is established by Node itself, at process start,
+// from NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt -- this file reads
+// no certificate, and no file, ever.
 const NO_PROXY_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
 
 // Finds the first byte-index of needle (a plain string) inside a
@@ -214,7 +215,7 @@ async function performSocketExchange(host, port, useTls, requestBytes)
     const rawSocket = useProxy ? await connectViaProxyTunnel(PROXY_URL, host, port) : null;
 
     const socket = useTls
-        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host, ca: PROXY_CA || undefined }, () => socket.end(requestBytes))
+        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host }, () => socket.end(requestBytes))
         : (rawSocket || net.connect({ host, port }));
     if (!useTls) socket.end(requestBytes);
 
@@ -351,11 +352,6 @@ function buildExecResponseFile(exitCode, stdout, stderr)
  * @param {Object} [options]
  * @param {string} [options.wasmUrl] - fetched via fetch(); Node's
  *   fetch() only speaks http(s), not file:// -- pass a real URL.
- * @param {Object<string,string>} [options.files] - path -> raw string
- *   content, serialized into every request's file table verbatim.
- *   Whoever calls createShell() is responsible for having already
- *   fetched this; this file does no fetching, no formatting, no
- *   enumeration of its own.
  * @param {string} [options.cwd] - initial working directory
  * @param {number} [options.uid] - the real uid to report; defaults to
  *   process.getuid() where available
@@ -369,10 +365,14 @@ async function createShell(options)
     const instance = new WebAssembly.Instance(wasmModule, {});
     const memory = instance.exports.memory;
 
-    const files = options.files || {};
     const uid = options.uid !== undefined ? options.uid : (typeof process !== 'undefined' && process.getuid ? process.getuid() : 0);
     let cwd = options.cwd || '/';
 
+    // The only entries that ever ride along are a delegation's own
+    // answer -- /dev/socket_response, /dev/exec_response -- which are
+    // the bytes that came back from the knock the module itself asked
+    // for. Nothing is gathered ahead of time and staged for a module to
+    // find; a module that wants a file reads the file.
     function requestFields(cmdline, stdin, extraFiles)
     {
         return {
@@ -380,7 +380,7 @@ async function createShell(options)
             home: options.env && options.env.HOME,
             path: options.env && options.env.PATH,
             cmdline, stdin,
-            files: extraFiles ? { ...files, ...extraFiles } : files
+            files: extraFiles || {}
         };
     }
 

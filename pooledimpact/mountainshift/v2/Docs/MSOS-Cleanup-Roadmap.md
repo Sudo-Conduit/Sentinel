@@ -81,11 +81,10 @@ own note on that below.)
 | Spawn.wasm.test.js | ALL PASS |
 | Top.wasm.test.js | ALL PASS |
 | JobControl.test.js | ALL PASS |
-| ShellServer.test.js | ALL PASS |
 
 **Total: 311/311 numbered checks passing across 23 check()/report()
-suites, plus 6 assert()-style suites (Shell.wasm/Curl.wasm/Spawn.wasm/
-Top.wasm/JobControl/ShellServer — Category G's WASM command-engine
+suites, plus 5 assert()-style suites (Shell.wasm/Curl.wasm/Spawn.wasm/
+Top.wasm/JobControl — Category G's WASM command-engine
 tier, which uses Node's own `assert` + `ALL PASS`/thrown-
 `AssertionError` instead of this doc's usual `check()`/`report()`
 harness; both conventions exist in this repo today and `test/run-all.js`
@@ -285,7 +284,9 @@ as shipped above; nothing about that wiring changed.
 | G.8 | Shell/WASM Command Engine | `KernelVisibilityMixin.js` — mirrors a Shell background-job start into a real Kernel's `fork()` for unified `ps` listing (listing only, pid spaces deliberately not unified — see G.9) | ✅ | — | — | — | — | — | — | shipped |
 | G.9 | Shell/WASM Command Engine | Pid-space unification between Shell's `ProcessTable` and Kernel's process table (real bidirectional `kill()` forwarding, not just listing) | ⬜ | 3 | 3 | 3 | 3 | 4 | 2 | **18** |
 | G.10 | Shell/WASM Command Engine | Automatic cross-call cookie jar for `curl.wasm` (session state threaded like `cwd` already is, vs. today's explicit `--cookie` only) | ⬜ | 4 | 2 | 2 | 2 | 1 | 4 | **15** |
-| G.11 | Shell/WASM Command Engine | `Shell-Terminal.html` + `ShellServer.js` — a thin, "fairly dumb" HTML SPA terminal over `Shell.js`'s IIFE, hosted by a minimal Node server (real sockets/`child_process`/WASM are inherently server-side capabilities no browser sandbox has at all, so this was never a candidate for running in-page directly) | ✅ | — | — | — | — | — | — | shipped |
+| G.11 | Shell/WASM Command Engine | ~~`Shell-Terminal.html` + `ShellServer.js`~~ — **removed.** Both existed to let a host gather disk content and hand it down to the modules; with the modules reading for themselves there is nothing left for a shell server to serve | ❌ | — | — | — | — | — | — | reverted |
+| G.12 | Shell/WASM Command Engine | Commands read for themselves: `wasm/lsreal.c` does its own `fd_readdir`, `native/msos.c` the same work through the raw syscall instruction — same logic, two syscall ABIs. `fs` removed from `ShellHost.js` entirely, along with the `options.files` staging it fed | ✅ | — | — | — | — | — | — | shipped |
+| G.13 | Shell/WASM Command Engine | Port `shell.c`'s `cat`/`grep`/`whoami` and `ls.c` off the `g_vfiles` blob onto real `path_open`/`fd_read`, retiring the request blob's file table | ⬜ | 5 | 5 | 4 | 3 | 2 | 5 | **24** |
 
 ## Recommended execution order
 
