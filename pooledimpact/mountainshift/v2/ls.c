@@ -13,9 +13,14 @@
  *         -Wl,--export=run -Wl,--initial-memory=1048576 \
  *         -Wl,--export-memory -o ls.wasm ls.c
  *
- * Request blob:  cwd\0 uid\0 home\0 PATH\0 cmdline\0 nfiles\0
+ * Request blob:  cwd\0 uid\0 home\0 PATH\0 cmdline\0 stdinlen\0
+ *                <stdinlen raw bytes> nfiles\0
  *                (path\0 length\0 <length raw bytes>){nfiles}
  * Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>
+ *
+ * ls has no use for stdin -- it just has to parse past the stdinlen
+ * field so the wire format stays identical to shell.wasm's, since the
+ * same host code builds a request for either module.
  */
 
 typedef unsigned char      u8;
@@ -127,8 +132,15 @@ i32 run(i32 ptr, i32 len) {
     const char *home_field = take_field(&cursor, end); (void)home_field;
     const char *path_field = take_field(&cursor, end); (void)path_field;
     const char *cmd_field = take_field(&cursor, end);
+    const char *stdinlen_field = take_field(&cursor, end);
+    if (!cwd_field || !cmd_field || !stdinlen_field) return 0;
+
+    usize stdin_len = (usize)parse_int(stdinlen_field);
+    if (cursor + stdin_len > end) return 0;
+    cursor += stdin_len; /* ls doesn't read stdin -- just skip past it */
+
     const char *nfiles_field = take_field(&cursor, end);
-    if (!cwd_field || !cmd_field || !nfiles_field) return 0;
+    if (!nfiles_field) return 0;
 
     int nfiles = parse_int(nfiles_field);
     for (int i = 0; i < nfiles && i < MAX_VFILES; i++) {

@@ -24,12 +24,18 @@
  *     likes, entirely outside any WASM interaction) bundles everything
  *     a command might touch into the SAME string this module already
  *     only ever needed: a request in, a response out.
- *   - Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 nfiles\0
- *     (path\0 length\0 <length raw bytes>){nfiles} -- length-prefixed
- *     file content, not NUL-terminated, because file bytes can
- *     legitimately contain a NUL (this project's own MemoryMapArena.js
- *     already documents exactly why an in-band terminator is the wrong
- *     call for raw byte payloads).
+ *   - Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 stdinlen\0
+ *     <stdinlen raw bytes> nfiles\0 (path\0 length\0 <length raw
+ *     bytes>){nfiles} -- length-prefixed, not NUL-terminated, because
+ *     file bytes (and stdin bytes) can legitimately contain a NUL
+ *     (this project's own MemoryMapArena.js already documents exactly
+ *     why an in-band terminator is the wrong call for raw byte
+ *     payloads). stdinlen/stdin let the host feed real external input
+ *     into stage 0 of the pipeline this cmdline names -- needed when
+ *     an earlier stage of the caller's actual pipeline already ran
+ *     outside this module entirely (an EXEC-delegated command.wasm),
+ *     and its output has to reach a native stage this module still
+ *     owns. When there's no such input, stdinlen is just "0".
  *   - Response blob is either new_cwd\0 rc\0 <stdout>, OR, when the
  *     parsed command names a module this file has no implementation
  *     of (ls first), EXEC\0 cmdline\0 -- a delegation, not an answer.
@@ -266,6 +272,7 @@ static i32 chdir(const char *path) {
 
 struct iobuf { const char *data; usize len; usize pos; };
 static struct iobuf *g_stdin_src;   /* NULL = no stdin for this stage */
+static struct iobuf  g_ext_stdin;   /* backs g_stdin_src when the host passed real external input for stage 0 */
 static char  *g_stdout_dst;
 static usize *g_stdout_len;
 static usize  g_stdout_cap;
@@ -733,7 +740,7 @@ static int run_pipeline(struct pipeline *pl) {
         }
     }
 
-    struct iobuf *stage_in = NULL; /* stage 0 reads the real stdin */
+    struct iobuf *stage_in = g_stdin_src; /* stage 0 reads whatever run() set up -- real external stdin, or none */
     int rc = 0;
 
     for (int i = 0; i < pl->nstages; i++) {
@@ -829,10 +836,18 @@ i32 run(i32 ptr, i32 len) {
     const char *home_field = take_field(&cursor, end);
     const char *path_field = take_field(&cursor, end);
     const char *cmd_field  = take_field(&cursor, end);
-    const char *nfiles_field = take_field(&cursor, end);
+    const char *stdinlen_field = take_field(&cursor, end);
 
-    if (!cwd_field || !uid_field || !home_field || !path_field || !cmd_field || !nfiles_field)
+    if (!cwd_field || !uid_field || !home_field || !path_field || !cmd_field || !stdinlen_field)
         return 0; /* malformed request -- nothing sensible to do */
+
+    usize stdin_len = (usize)parse_int(stdinlen_field);
+    if (cursor + stdin_len > end) return 0;
+    const char *stdin_data = cursor;
+    cursor += stdin_len;
+
+    const char *nfiles_field = take_field(&cursor, end);
+    if (!nfiles_field) return 0;
 
     usize n = str_len(cwd_field);
     mem_copy(sh.cwd, cwd_field, n < MAX_PATH ? n + 1 : MAX_PATH - 1);
@@ -882,7 +897,14 @@ i32 run(i32 ptr, i32 len) {
     if (!stdout_buf) return 0;
     usize stdout_len = 0;
 
-    g_stdin_src = NULL;
+    if (stdin_len > 0) {
+        g_ext_stdin.data = stdin_data;
+        g_ext_stdin.len = stdin_len;
+        g_ext_stdin.pos = 0;
+        g_stdin_src = &g_ext_stdin;
+    } else {
+        g_stdin_src = NULL;
+    }
     g_stdout_dst = stdout_buf;
     g_stdout_len = &stdout_len;
     g_stdout_cap = output_cap;

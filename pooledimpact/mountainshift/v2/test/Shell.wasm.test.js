@@ -77,12 +77,11 @@ async function main() {
     show('ls');
     show('ls /bin');
     show('cat /etc/passwd');
-    // ls is now delegated to ls.wasm via shell.wasm's EXEC marker (see
-    // ShellHost.js) -- but that delegation is only wired for a single,
-    // unpiped stage so far. An external command inside a pipeline is
-    // explicitly deferred, so this one still reports "not found" until
-    // run_pipeline()'s multi-stage branch also checks
-    // is_external_command().
+    // ls is a command module (ls.wasm); grep is Native (shell.wasm).
+    // ShellHost.js splits this pipeline itself before either module
+    // ever runs: ls.wasm executes as its own atomic stage, and its
+    // stdout becomes the stdinlen/stdin field of the call to
+    // shell.wasm that actually runs grep.
     show('ls /etc | grep pass');
     show('cat /etc/passwd | grep root');
     show('cd /etc');

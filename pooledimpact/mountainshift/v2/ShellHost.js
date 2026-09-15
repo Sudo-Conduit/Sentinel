@@ -17,26 +17,38 @@
  *   shared flat buffer at fixed byte offsets, gated by exported entry
  *   points, not a back-and-forth of imported/exported calls.
  *
- *   Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 nfiles\0
- *     (path\0 length\0 <length raw bytes>){nfiles}
+ *   Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 stdinlen\0
+ *     <stdinlen raw bytes> nfiles\0 (path\0 length\0 <length raw
+ *     bytes>){nfiles}
  *   Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>
  *     -- OR, when shell.wasm doesn't implement the command itself --
  *   Response blob: EXEC\0 cmdline\0
  *
- *   shell.wasm is an orchestrator: it parses, and it runs what it owns
- *   internally (cd, cat, grep, whoami, which, exit), but a command like
- *   `ls` lives in its own small single-purpose module (ls.wasm) instead.
- *   When shell.wasm's response is the EXEC marker, this file is the one
- *   that resolves the command name to a command module (see
- *   commands/*.js, each a base64-embedded .wasm + a name, decoded and
- *   instantiated fully synchronously since every command module is also
- *   zero-import), runs IT with the identical request/response blob
- *   protocol, and returns its answer as the final result. shell.wasm
- *   never sees ls.wasm's bytes and ls.wasm never sees shell.wasm's --
- *   this file is the only thing that ever holds both at once, and all it
- *   does with that is relay one cmdline string to the right module and
- *   relay its answer back. Same "pass a string, get a string" shape as
- *   the shell.wasm <-> caller boundary itself, one level down.
+ *   shell.wasm is Native-only: it parses and runs the pipeline stages
+ *   it owns (cd, cat, grep, whoami, which, exit), but a command like
+ *   `ls` lives in its own small single-purpose module (ls.wasm)
+ *   instead. Deciding what's Native vs. VFS vs. machine-to-machine is
+ *   never shell.c's job -- this file owns all of that, same as a real
+ *   shell process owns job control while the kernel just runs
+ *   processes. Concretely, that means THIS file also parses the
+ *   pipeline (a cheap top-level split on `|`, see splitPipeline()
+ *   below) before ever calling shell.wasm, so it can route each stage
+ *   to the right place up front instead of finding out mid-pipeline --
+ *   the same reason a real local shell never asks a remote shell to
+ *   parse a pipeline that mixes local and remote stages: `ssh host
+ *   'ls | grep x'` runs entirely on the remote side because the WHOLE
+ *   quoted pipeline was handed to one shell; splitting it any other
+ *   way isn't how Unix does this. A stage this file resolves to a
+ *   command module (see commands/*.js, each a base64-embedded .wasm +
+ *   a name, decoded and instantiated fully synchronously since every
+ *   command module is also zero-import) runs as its own atomic unit;
+ *   everything else is grouped into the largest contiguous run
+ *   shell.wasm can execute as one real pipeline, with the previous
+ *   group's stdout threaded in as the next group's stdinlen/stdin
+ *   field. shell.wasm's own EXEC marker still exists as a fallback for
+ *   a single unsplit call (e.g. a direct caller that skips the
+ *   splitter) but the splitter resolves routing before shell.wasm ever
+ *   sees an ambiguous stage.
  *
  *   Real content (file bytes, directory listings, /etc/passwd, the
  *   real uid) never arrives via a call shell.c makes mid-execution --
@@ -99,14 +111,17 @@ async function createShell(options)
     const uid = options.uid !== undefined ? options.uid : (typeof process !== 'undefined' && process.getuid ? process.getuid() : 0);
     let cwd = options.cwd || '/';
 
-    function buildRequest(cmdline)
+    function buildRequest(cmdline, stdin)
     {
+        stdin = stdin || Buffer.alloc(0);
         const parts = [];
         parts.push(Buffer.from(cwd + '\0', 'utf8'));
         parts.push(Buffer.from(String(uid) + '\0', 'utf8'));
         parts.push(Buffer.from((options.env && options.env.HOME || '') + '\0', 'utf8'));
         parts.push(Buffer.from((options.env && options.env.PATH || '') + '\0', 'utf8'));
         parts.push(Buffer.from(cmdline + '\0', 'utf8'));
+        parts.push(Buffer.from(String(stdin.length) + '\0', 'utf8'));
+        parts.push(stdin);
 
         const fileEntries = Object.keys(files);
         parts.push(Buffer.from(String(fileEntries.length) + '\0', 'utf8'));
@@ -125,9 +140,9 @@ async function createShell(options)
     // command.wasm alike. Returns the raw response bytes; parsing them
     // into {rc, stdout} or checking for the EXEC marker is the caller's
     // job, same division shell.c/ls.c themselves don't care about.
-    function callModule(moduleInstance, moduleMemory, cmdline)
+    function callModule(moduleInstance, moduleMemory, cmdline, stdin)
     {
-        const request = buildRequest(cmdline);
+        const request = buildRequest(cmdline, stdin);
         const totalBytes = moduleMemory.buffer.byteLength;
         const requestOffset = totalBytes - RESPONSE_CAP; // top 1MB: request region
         if (request.length > RESPONSE_CAP) throw new Error('request too large for the fixed request region');
@@ -159,7 +174,7 @@ async function createShell(options)
     // to await), runs it with the delegated sub-cmdline, and returns its
     // answer as the final result.
     const compiledCommandModules = new Map();
-    function runExternal(mod, subCmdline)
+    function runExternal(mod, subCmdline, stdin)
     {
         let compiledModule = compiledCommandModules.get(mod.name);
         if (!compiledModule)
@@ -170,10 +185,78 @@ async function createShell(options)
         const cmdInstance = new WebAssembly.Instance(compiledModule, {});
         const cmdMemory = cmdInstance.exports.memory;
 
-        const response = callModule(cmdInstance, cmdMemory, subCmdline);
+        const response = callModule(cmdInstance, cmdMemory, subCmdline, stdin);
         const { rc, stdout, newCwd } = parseAnswer(response);
         cwd = newCwd;
         return { rc, stdout, cwd };
+    }
+
+    // Runs one call against shell.wasm, honoring its EXEC fallback for
+    // the rare case a stage reaches it unresolved (a direct caller that
+    // bypassed the splitter, or a registry that's out of sync with
+    // shell.c's own external_commands[]). The splitter below is what
+    // keeps this from being the normal path.
+    function runNative(groupCmdline, stdin)
+    {
+        const response = callModule(instance, memory, groupCmdline, stdin);
+
+        if (response.length >= 5 && response.toString('utf8', 0, 4) === 'EXEC' && response[4] === 0)
+        {
+            let j = 5;
+            while (response[j] !== 0) j++;
+            const subCmdline = response.toString('utf8', 5, j);
+            const subName = subCmdline.split(' ')[0];
+
+            const mod = findCommandModule(subName);
+            if (!mod) return { rc: 127, stdout: 'shell: command not found: ' + subName + '\n', cwd };
+            return runExternal(mod, subCmdline, stdin);
+        }
+
+        const { rc, stdout, newCwd } = parseAnswer(response);
+        cwd = newCwd;
+        return { rc, stdout, cwd };
+    }
+
+    // Splits a pipeline on top-level `|` -- the same, deliberately
+    // simple tokenization shell.c's own tokenize_stage()/parse() do (no
+    // quoting support on either side yet).
+    function splitPipeline(cmdline)
+    {
+        return cmdline.split('|').map((s) => s.trim()).filter((s) => s.length > 0);
+    }
+
+    function commandNameOf(stageCmdline)
+    {
+        const sp = stageCmdline.indexOf(' ');
+        return sp === -1 ? stageCmdline : stageCmdline.slice(0, sp);
+    }
+
+    // Groups pipeline stages into the units that will actually get
+    // executed: a stage whose command name is a registered command
+    // module is its own atomic group (module.wasm has no pipeline
+    // support of its own); everything else joins the largest
+    // contiguous run of Native stages, which shell.wasm executes as
+    // one real pipeline in one call, exactly as it always has.
+    function groupStages(stages)
+    {
+        const groups = [];
+        for (const stageCmdline of stages)
+        {
+            const mod = findCommandModule(commandNameOf(stageCmdline));
+            if (mod)
+            {
+                groups.push({ type: 'module', mod, cmdline: stageCmdline });
+            }
+            else if (groups.length > 0 && groups[groups.length - 1].type === 'native')
+            {
+                groups[groups.length - 1].stages.push(stageCmdline);
+            }
+            else
+            {
+                groups.push({ type: 'native', stages: [stageCmdline] });
+            }
+        }
+        return groups;
     }
 
     return {
@@ -188,29 +271,21 @@ async function createShell(options)
         /** @returns {{rc: number, stdout: string, cwd: string}} */
         runDetailed(cmdline)
         {
-            const response = callModule(instance, memory, cmdline);
+            const stages = splitPipeline(cmdline);
+            if (stages.length === 0) return { rc: 0, stdout: '', cwd };
 
-            // "EXEC\0" -- shell.wasm doesn't own this command itself;
-            // it wants the named command module to run it instead.
-            if (response.length >= 5 && response.toString('utf8', 0, 4) === 'EXEC' && response[4] === 0)
+            const groups = groupStages(stages);
+
+            let stdin = Buffer.alloc(0);
+            let result = { rc: 0, stdout: '', cwd };
+            for (const group of groups)
             {
-                let j = 5;
-                while (response[j] !== 0) j++;
-                const subCmdline = response.toString('utf8', 5, j);
-                const subName = subCmdline.split(' ')[0];
-
-                const mod = findCommandModule(subName);
-                if (!mod)
-                {
-                    return { rc: 127, stdout: 'shell: command not found: ' + subName + '\n', cwd };
-                }
-
-                return runExternal(mod, subCmdline);
+                result = group.type === 'module'
+                    ? runExternal(group.mod, group.cmdline, stdin)
+                    : runNative(group.stages.join(' | '), stdin);
+                stdin = Buffer.from(result.stdout, 'utf8');
             }
-
-            const { rc, stdout, newCwd } = parseAnswer(response);
-            cwd = newCwd;
-            return { rc, stdout, cwd };
+            return result;
         }
     };
 }
