@@ -27,5 +27,6 @@ require('./MathPrecision.unit.js')(runner);
 require('./MathExt.unit.js')(runner);
 require('./Vector.unit.js')(runner);
 require('./Polynomial.unit.js')(runner);
+require('./KnotVector.unit.js')(runner);
 
 runner.run().then((result) => { process.exitCode = result.failed > 0 ? 1 : 0; });

@@ -1,7 +1,7 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.1.0
-**Last updated:** 2026-09-14
+**Version:** 1.2.0
+**Last updated:** 2026-09-15
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
 Hamiltonian` (a finite-dimensional Hilbert-space algebra), the `ExtendX`
@@ -31,8 +31,8 @@ stale in an obvious, checkable way (the pinned commit stops matching
 this repo's HEAD) rather than a silent, unverifiable way. Re-run and
 re-paste whenever a shipped item changes.
 
-**Commit:** `4aa7669` (git.pooledimpact.com/Claude/Romans, branch
-`claude/repo-connection-ns90c5`)
+**Commit:** pending (this commit) (git.pooledimpact.com/Claude/Romans,
+branch `claude/repo-connection-ns90c5`)
 
 | Suite | Result |
 |---|---|
@@ -45,6 +45,7 @@ re-paste whenever a shipped item changes.
 | NestedTensor | 8/8 |
 | ExtendX integration (Structure/Security over Tensor) | 5/5 |
 | StructureMixin (relational/both modes) | 6/6 |
+| SecurityMixin (mixinId-collision regression) | 5/5 |
 | WeightedGraphMixin (edges + `walk()`) | 21/21 |
 | SystemAdapter | 16/16 |
 | Geodesic | 5/5 |
@@ -53,8 +54,10 @@ re-paste whenever a shipped item changes.
 | MathPrecision | 16/16 |
 | MathExt | 7/7 |
 | Vector | 14/14 |
+| Polynomial | 13/13 |
+| KnotVector | 19/19 |
 
-**Total: 265/265 checks passing, 17/17 suites green.**
+**Total: 302/302 checks passing, 20/20 suites green.**
 
 ## Status legend
 
@@ -147,22 +150,25 @@ discipline applied to process, not just code.
 | G.1 | Math Extension Host | `MathPrecision.js` — `Math.fround(x, type)`, F16/F8_E4M3/F8_E5M2/F4_E2M1/F64 | ✅ | — | — | — | — | — | — | shipped |
 | G.2 | Math Extension Host | `MathExt.js` — `Math.ext`/`Math.init`, `ExtendX.override()`-style collision policy | ✅ | — | — | — | — | — | — | shipped |
 | G.3 | Math Extension Host | `Vector.js` — plain linear algebra, zero dependency, `round()` leveraging `MathPrecision` | ✅ | — | — | — | — | — | — | shipped |
-| H.1 | Math Extension Host (next) | `Polynomial` — shared coefficients+degree primitive under Bezier/B-spline | ⬜ | 3 | 5 | 4 | 2 | 3 | 3 | **20** |
-| H.2 | Math Extension Host (next) | `KnotVector` — validated (monotonic, length-contract) data layer under B-spline/NURBS | ⬜ | 3 | 4 | 4 | 2 | 4 | 3 | **20** |
+| H.1 | Math Extension Host | `Polynomial` — shared coefficients+degree primitive under Bezier/B-spline | ✅ | — | — | — | — | — | — | shipped |
+| H.2 | Math Extension Host | `KnotVector` — validated (monotonic, length-contract) data layer under B-spline/NURBS | ✅ | — | — | — | — | — | — | shipped |
 | H.3 | Math Extension Host (next) | `BSpline` — Cox-de Boor `basis`/`basisDerivative`, cross-validated against GeoJS's and Beacon's independent implementations | ⬜ | 2 | 3 | 5 | 2 | 4 | 2 | **18** |
 | H.4 | Math Extension Host (next) | `Bezier` — Bernstein basis, control-point blending via `Vector.linearCombination` | ⬜ | 4 | 2 | 4 | 1 | 2 | 4 | **17** |
 | H.5 | Math Extension Host (next) | `NURBS` — rational weighting over `BSpline`'s basis | ⬜ | 2 | 1 | 3 | 3 | 4 | 2 | **15** |
 
 ## Recommended execution order
 
-1. **H.1 — `Polynomial`** (20) — first: both `Bezier`'s Bernstein basis and
-   each `BSpline` knot-span are genuine polynomials, so this is the real
-   shared foundation, not a nice-to-have abstraction.
-2. **H.2 — `KnotVector`** (20, tied) — before any basis-function math
-   touches a knot vector at all, matching the `Data → Tensor` discipline
-   (canonical, validated structure before the algorithm that assumes it
-   holds). Default `OPEN`, explicit `CLAMPED` opt-in, static enum.
-3. **H.3 — `BSpline`** (18) — depends on both H.1 and H.2; the one
+1. ~~**H.1 — `Polynomial`** (20)~~ — **shipped.** Both `Bezier`'s Bernstein
+   basis and each `BSpline` knot-span are genuine polynomials, so this
+   was the real shared foundation, not a nice-to-have abstraction.
+2. ~~**H.2 — `KnotVector`** (20, tied)~~ — **shipped.** Validated
+   (monotonic, length-contract) knot data ahead of any basis-function
+   math touching it, matching the `Data → Tensor` discipline (canonical,
+   validated structure before the algorithm that assumes it holds).
+   `MODE.OPEN` default (monotonic + length contract only), explicit
+   `MODE.CLAMPED` opt-in (endpoint multiplicity = degree+1), plus
+   `uniform()`/`clamped()` canonical generators for each mode.
+3. **H.3 — `BSpline`** (18) — next up. Depends on both H.1 and H.2; the one
    explicitly WASM-bound item, and the one with a real, independent
    cross-validation opportunity (GeoJS's iterative Cox-de Boor vs.
    Beacon's recursive one, both already in this repo's reference
@@ -266,22 +272,59 @@ without redesigning it each time.
   independently hand-computed quadratic Bezier point, not just internal
   self-consistency — see `Vector.unit.js`.
 
-### H — Coming Next (preview, code not yet written)
+### H — Curve Substrate
+
+- **Horner's method (Polynomial).** `evaluate([c₀,c₁,...,cₙ], t) =
+  c₀ + t(c₁ + t(c₂ + ... ))` — fewer multiplications than the naive
+  `Σᵢ cᵢtⁱ`, and the numerically standard choice. **Code:**
+  `Polynomial.js:evaluate`. **Why:** both `Bezier`'s Bernstein basis and
+  each `BSpline` knot-span are genuine polynomials in `t` (see below) —
+  this is the one evaluation routine they'll both actually call.
+- **The knot-vector length contract.** `m+1 = n+p+2` — a degree-`p`
+  curve with `n+1` control points needs exactly `n+p+2` knots (Piegl &
+  Tiller, "The NURBS Book", eq. 2.1). **Code:**
+  `KnotVector.js:expectedLength`. **Why:** this is checked *before* any
+  basis function ever reads the knot vector, matching `Data → Tensor`'s
+  own "validate the structure, then trust it" discipline — a `BSpline`
+  built on a malformed knot vector would fail silently or wrong, far
+  from where the actual mistake was made.
+- **Clamped (interpolating) knot vectors.** First/last knot value
+  repeated with multiplicity exactly `degree+1`. **Code:**
+  `KnotVector.js:clamped`. **Why:** this is what makes a B-spline curve
+  pass through its first and last control points — without it, a
+  "clamped-looking" curve is actually just a curve that happens not to
+  touch its own endpoint, a much easier mistake to make than it sounds.
+
+### Coming next (preview, code not yet written)
 
 - **Bernstein basis (Bezier).** `Bᵢ,ₙ(t) = C(n,i)·tⁱ·(1−t)^(n−i)` — an
-  explicit polynomial of degree `n`. **Why it's a polynomial, concretely:**
-  expand the binomial and every term is a plain power of `t`.
+  explicit polynomial of degree `n`, evaluable via `Polynomial.evaluate`
+  once expanded. **Why it's a polynomial, concretely:** expand the
+  binomial and every term is a plain power of `t`.
 - **Cox-de Boor recursion (B-spline).** `Nᵢ,ₚ(t)` built from `Nᵢ,₀(t) =
   1` if `t` falls in knot span `i`, else `0`, recursively blended up to
-  degree `p`. **Why it's a polynomial too:** on any single knot span, it's
-  a genuine polynomial of degree `p` — a *different* polynomial per span,
-  stitched together with `C^{p-1}` continuity at simple knots.
+  degree `p`, over a `KnotVector`-validated knot array. **Why it's a
+  polynomial too:** on any single knot span, it's a genuine polynomial
+  of degree `p` — a *different* polynomial per span, stitched together
+  with `C^{p-1}` continuity at simple knots.
 - **NURBS rational weighting.** A ratio of two weighted B-spline basis
   combinations, not a polynomial itself — the numerator and denominator
   both are, but the quotient generally isn't.
 
 ## Changelog
 
+- **1.2.0** — 2026-09-15 — Shipped **H.1 `Polynomial`** and **H.2
+  `KnotVector`**, closing out the tied-score pair at the top of the H
+  backlog. `Polynomial`: `evaluate` (Horner's method), `derivative`,
+  `integral`, `degree`, `add`, `scale` — zero dependency, ascending
+  coefficient convention. `KnotVector`: `MODE.OPEN`/`MODE.CLAMPED` static
+  enum, `isMonotonic`/`multiplicityAt`/`expectedLength`/`validate`
+  (fail-fast, matching `Vector.assertSameLength`'s convention), and
+  `uniform()`/`clamped()` canonical generators. Both registered through
+  `Math.init`. Test suite grew from 265/265 (17 suites) to 302/302 (30
+  suites, including the SecurityMixin mixinId-collision regression suite
+  added on this branch). H.3 (`BSpline`) is next — the first item that
+  actually depends on both of these.
 - **1.1.0** — 2026-09-14 — Added the Supplemental Addendum (Math Theory
   & Formulas Study Guide): a fast, formula-first on-ramp for a junior
   engineer, one entry per load-bearing concept (Formula → Code → Why),
