@@ -1,0 +1,4 @@
+# The compiled binary is x86-64 Linux specific -- unlike the .wasm
+# artifacts, it can't be checked in and reused anywhere else. Build it
+# with the command in msos.c's header.
+msos
