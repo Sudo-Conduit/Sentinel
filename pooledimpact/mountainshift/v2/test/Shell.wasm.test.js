@@ -66,28 +66,28 @@ async function main() {
     });
     server.close();
 
-    function show(cmdline) {
-        const r = shell.runDetailed(cmdline);
+    async function show(cmdline) {
+        const r = await shell.runDetailed(cmdline);
         console.log('$ ' + cmdline);
         process.stdout.write(r.stdout);
         console.log('(rc=' + r.rc + ')\n');
     }
 
-    show('whoami');
-    show('ls');
-    show('ls /bin');
-    show('cat /etc/passwd');
+    await show('whoami');
+    await show('ls');
+    await show('ls /bin');
+    await show('cat /etc/passwd');
     // ls is a command module (ls.wasm); grep is Native (shell.wasm).
     // ShellHost.js splits this pipeline itself before either module
     // ever runs: ls.wasm executes as its own atomic stage, and its
     // stdout becomes the stdinlen/stdin field of the call to
     // shell.wasm that actually runs grep.
-    show('ls /etc | grep pass');
-    show('cat /etc/passwd | grep root');
-    show('cd /etc');
-    show('ls');
-    show('cat /nonexistent.txt');
-    show('bogus');
+    await show('ls /etc | grep pass');
+    await show('cat /etc/passwd | grep root');
+    await show('cd /etc');
+    await show('ls');
+    await show('cat /nonexistent.txt');
+    await show('bogus');
 }
 
 main();

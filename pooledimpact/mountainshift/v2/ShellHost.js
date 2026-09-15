@@ -1,7 +1,7 @@
 /**
  * @file ShellHost.js
  * @author Will Fobbs
- * @version 3.1.0
+ * @version 3.2.0
  * @description shell.wasm has ZERO imports -- `WebAssembly.Module.
  *   imports()` on it returns an empty array. There is no host surface
  *   at all for this file to implement, because shell.c makes no calls
@@ -47,13 +47,27 @@
  *   splitter) but the splitter resolves routing before shell.wasm ever
  *   sees an ambiguous stage.
  *
- *   Only ONE-SHOT command modules (ls.wasm: fresh instance per call,
- *   no state to preserve) are registered here and reachable through a
- *   normal pipeline. A STATEFUL module like top.wasm -- one that has
- *   to keep the same instance alive across calls so its own linear
- *   memory can hold state (a running tick count) between them -- isn't
- *   something a one-shot run()/runDetailed() call can express at all;
- *   that's JobTable.js's job, not this file's.
+ *   Only ONE-SHOT command modules (ls.wasm, curl.wasm: fresh instance
+ *   per call, no state to preserve BETWEEN separate command
+ *   invocations) are registered here and reachable through a normal
+ *   pipeline. A STATEFUL module like top.wasm -- one that has to keep
+ *   the same instance alive across many calls of the SAME invocation
+ *   so its own linear memory can hold state (a running tick count)
+ *   between them -- isn't something a one-shot run()/runDetailed()
+ *   call can express at all; that's JobTable.js's job, not this file's.
+ *
+ *   curl.wasm is one-shot but not single-round-trip: it can respond
+ *   with its OWN delegation marker, SOCKET\0host\0port\0tls\0
+ *   requestlen\0<raw bytes>, when it needs a real network round-trip
+ *   it can't do itself (no live import exists to make one mid-call).
+ *   This file's entire response to that is a dumb byte relay -- open a
+ *   real TCP/TLS connection to host:port, write the exact bytes it was
+ *   given, collect everything until the peer closes -- never any HTTP
+ *   interpretation here; curl.wasm gets the raw response back as a
+ *   file (/dev/socket_response, same mechanism whoami uses for
+ *   /etc/passwd) and parses status/headers/body itself on a second
+ *   call. This is why runExternal() and therefore run()/runDetailed()
+ *   are async now: a real socket round-trip can't be synchronous.
  *
  *   Real content (file bytes, directory listings, /etc/passwd, the
  *   real uid) never arrives via a call shell.c makes mid-execution --
@@ -65,32 +79,140 @@
  *
  *     const { createShell } = require('./ShellHost.js');
  *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
- *     var a = shell.run('ls /tmp');
+ *     var a = await shell.run('ls /tmp');
  *     console.log(a);
  *
- * @tests test/Shell.wasm.test.js
+ * @tests test/Shell.wasm.test.js, test/Curl.wasm.test.js
  */
 'use strict';
 
+const net = require('net');
+const tls = require('tls');
+const fs = require('fs');
 const proto = require('./WasmBlobProtocol.js');
 
 const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
 
-// One-shot command modules shell.wasm delegates to via the EXEC marker
-// -- each a {name, base64} pair, the base64 being that command's own
-// compiled .wasm bytes (also zero imports, same request/response blob
-// shape). Registering a new one-shot command.wasm is exactly: build
-// it, embed it, add its module here. No other change to this file or
-// to shell.c. (Stateful modules like top.wasm are NOT listed here --
-// see the file header and JobTable.js.)
+// One-shot command modules -- each a {name, base64} pair, the base64
+// being that command's own compiled .wasm bytes (also zero imports,
+// same request/response blob shape). Registering a new one-shot
+// command.wasm is exactly: build it, embed it, add its module here.
+// No other change to this file or to shell.c. (Stateful modules like
+// top.wasm are NOT listed here -- see the file header and JobTable.js.)
 const COMMAND_MODULES = [
-    require('./commands/ls.js')
+    require('./commands/ls.js'),
+    require('./commands/curl.js')
 ];
 
 function findCommandModule(name)
 {
     for (const mod of COMMAND_MODULES) if (mod.name === name) return mod;
     return null;
+}
+
+// Real curl respects HTTPS_PROXY too -- this environment's own egress
+// policy requires it (outbound TCP to the open internet is only
+// reachable through a local CONNECT proxy; see /root/.ccr/README.md).
+// Honoring it here is the same "dumb transport" contract, just with
+// one more hop: CONNECT establishes a raw byte tunnel to the real
+// origin, opaque to the proxy, before any TLS/HTTP happens inside it.
+const PROXY_URL = process.env.HTTPS_PROXY || process.env.https_proxy || null;
+const PROXY_CA_PATH = '/root/.ccr/ca-bundle.crt'; // TLS is re-terminated at the proxy in this sandbox
+const PROXY_CA = (() => { try { return fs.readFileSync(PROXY_CA_PATH); } catch { return null; } })();
+const NO_PROXY_HOSTS = new Set(['127.0.0.1', 'localhost', '::1']);
+
+function connectViaProxyTunnel(proxyUrl, host, port)
+{
+    return new Promise((resolve, reject) =>
+    {
+        const proxy = new URL(proxyUrl);
+        const socket = net.connect(Number(proxy.port), proxy.hostname, () =>
+        {
+            socket.write(`CONNECT ${host}:${port} HTTP/1.1\r\nHost: ${host}:${port}\r\n\r\n`);
+        });
+
+        let buf = Buffer.alloc(0);
+        const onData = (chunk) =>
+        {
+            buf = Buffer.concat([buf, chunk]);
+            const headerEnd = buf.indexOf('\r\n\r\n');
+            if (headerEnd === -1) return;
+            socket.removeListener('data', onData);
+
+            const statusLine = buf.toString('utf8', 0, buf.indexOf('\r\n'));
+            if (!/^HTTP\/1\.[01] 200/.test(statusLine))
+            {
+                socket.destroy();
+                reject(new Error('proxy CONNECT failed: ' + statusLine));
+                return;
+            }
+            resolve(socket);
+        };
+        socket.on('data', onData);
+        socket.on('error', reject);
+    });
+}
+
+// The one real thing this file ever does outside the WASM boundary
+// besides gathering files: open a real socket and move exact bytes.
+// No HTTP interpretation happens here -- curl.wasm built the request
+// bytes and will parse the response bytes; this is a dumb transport,
+// same shape as read()/write() are for the virtual file table, just
+// backed by a live connection instead of pre-supplied bytes.
+async function performSocketExchange(host, port, useTls, requestBytes)
+{
+    const useProxy = PROXY_URL && !NO_PROXY_HOSTS.has(host);
+    const rawSocket = useProxy ? await connectViaProxyTunnel(PROXY_URL, host, port) : null;
+
+    const socket = useTls
+        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host, ca: PROXY_CA || undefined }, () => socket.end(requestBytes))
+        : (rawSocket || net.connect({ host, port }));
+    if (!useTls) socket.end(requestBytes);
+
+    return new Promise((resolve, reject) =>
+    {
+        let settled = false;
+        const chunks = [];
+        const finish = (err) =>
+        {
+            if (settled) return;
+            settled = true;
+            if (err) reject(err); else resolve(Buffer.concat(chunks));
+        };
+        socket.on('data', (chunk) => chunks.push(chunk));
+        socket.on('close', () => finish());
+        socket.on('error', (err) => finish(err));
+    });
+}
+
+// Parses curl.wasm's SOCKET\0host\0port\0tls\0requestlen\0<bytes>
+// delegation, if that's what a response is. Same NUL-field shape as
+// every other part of this wire protocol.
+function parseSocketMarker(response)
+{
+    if (!(response.length >= 7 && response.toString('utf8', 0, 6) === 'SOCKET' && response[6] === 0)) return null;
+
+    let off = 7;
+    const nulAt = (from) => { let j = from; while (response[j] !== 0) j++; return j; };
+
+    let end = nulAt(off);
+    const host = response.toString('utf8', off, end);
+    off = end + 1;
+
+    end = nulAt(off);
+    const port = parseInt(response.toString('utf8', off, end), 10);
+    off = end + 1;
+
+    end = nulAt(off);
+    const useTls = response.toString('utf8', off, end) === '1';
+    off = end + 1;
+
+    end = nulAt(off);
+    const requestLen = parseInt(response.toString('utf8', off, end), 10);
+    off = end + 1;
+
+    const requestBytes = response.subarray(off, off + requestLen);
+    return { host, port, useTls, requestBytes };
 }
 
 /**
@@ -105,7 +227,7 @@ function findCommandModule(name)
  * @param {string} [options.cwd] - initial working directory
  * @param {number} [options.uid] - the real uid to report; defaults to
  *   process.getuid() where available
- * @returns {Promise<{run: (cmdline: string) => string}>}
+ * @returns {Promise<{run: (cmdline: string) => Promise<string>}>}
  */
 async function createShell(options)
 {
@@ -119,13 +241,14 @@ async function createShell(options)
     const uid = options.uid !== undefined ? options.uid : (typeof process !== 'undefined' && process.getuid ? process.getuid() : 0);
     let cwd = options.cwd || '/';
 
-    function requestFields(cmdline, stdin)
+    function requestFields(cmdline, stdin, extraFiles)
     {
         return {
             cwd, uid,
             home: options.env && options.env.HOME,
             path: options.env && options.env.PATH,
-            cmdline, stdin, files
+            cmdline, stdin,
+            files: extraFiles ? { ...files, ...extraFiles } : files
         };
     }
 
@@ -133,10 +256,12 @@ async function createShell(options)
     // synchronously (decoding base64 and compiling a zero-import WASM
     // module are both synchronous -- no network, no fetch, nothing to
     // await), runs it fresh, and returns its answer as the final
-    // result. Fresh instance every call -- ls.wasm has nothing that
-    // needs to survive between one run and the next.
+    // result. Fresh instance every call -- ls.wasm/curl.wasm have
+    // nothing that needs to survive between one run and the next, only
+    // curl's own two phases within ONE invocation (handled by the
+    // recursive extraFiles call below).
     const compiledCommandModules = new Map();
-    function runExternal(mod, subCmdline, stdin)
+    async function runExternal(mod, subCmdline, stdin, extraFiles)
     {
         let compiledModule = compiledCommandModules.get(mod.name);
         if (!compiledModule)
@@ -146,7 +271,15 @@ async function createShell(options)
         }
         const { instance: cmdInstance, memory: cmdMemory } = proto.instantiate(compiledModule);
 
-        const response = proto.callModule(cmdInstance, cmdMemory, requestFields(subCmdline, stdin));
+        const response = proto.callModule(cmdInstance, cmdMemory, requestFields(subCmdline, stdin, extraFiles));
+
+        const socketReq = parseSocketMarker(response);
+        if (socketReq)
+        {
+            const rawResponse = await performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes);
+            return runExternal(mod, subCmdline, stdin, { '/dev/socket_response': rawResponse });
+        }
+
         const { rc, stdout, newCwd } = proto.parseAnswer(response);
         cwd = newCwd;
         return { rc, stdout, cwd };
@@ -157,7 +290,7 @@ async function createShell(options)
     // bypassed the splitter, or a registry that's out of sync with
     // shell.c's own external_commands[]). The splitter below is what
     // keeps this from being the normal path.
-    function runNative(groupCmdline, stdin)
+    async function runNative(groupCmdline, stdin)
     {
         const response = proto.callModule(instance, memory, requestFields(groupCmdline, stdin));
 
@@ -180,7 +313,9 @@ async function createShell(options)
 
     // Splits a pipeline on top-level `|` -- the same, deliberately
     // simple tokenization shell.c's own tokenize_stage()/parse() do (no
-    // quoting support on either side yet).
+    // quoting support on either side yet; curl.wasm does its OWN
+    // quote-aware tokenizing of its own stage's cmdline, since that
+    // string still carries whatever quote characters were in it).
     function splitPipeline(cmdline)
     {
         return cmdline.split('|').map((s) => s.trim()).filter((s) => s.length > 0);
@@ -223,14 +358,14 @@ async function createShell(options)
     return {
         /**
          * Runs one command line and returns its real stdout as a
-         * plain string. @param {string} cmdline @returns {string}
+         * plain string. @param {string} cmdline @returns {Promise<string>}
          */
-        run(cmdline)
+        async run(cmdline)
         {
-            return this.runDetailed(cmdline).stdout;
+            return (await this.runDetailed(cmdline)).stdout;
         },
-        /** @returns {{rc: number, stdout: string, cwd: string}} */
-        runDetailed(cmdline)
+        /** @returns {Promise<{rc: number, stdout: string, cwd: string}>} */
+        async runDetailed(cmdline)
         {
             const stages = splitPipeline(cmdline);
             if (stages.length === 0) return { rc: 0, stdout: '', cwd };
@@ -242,8 +377,8 @@ async function createShell(options)
             for (const group of groups)
             {
                 result = group.type === 'module'
-                    ? runExternal(group.mod, group.cmdline, stdin)
-                    : runNative(group.stages.join(' | '), stdin);
+                    ? await runExternal(group.mod, group.cmdline, stdin)
+                    : await runNative(group.stages.join(' | '), stdin);
                 stdin = Buffer.from(result.stdout, 'utf8');
             }
             return result;
