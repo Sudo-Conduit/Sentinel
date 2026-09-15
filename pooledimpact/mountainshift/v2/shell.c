@@ -1,19 +1,74 @@
 /*
- * shell.c — WASM module, stage 2
+ * shell.c — WASM module, stage 3: zero imports
  *
  * Build (freestanding, no libc):
- *   clang --target=wasm32 -O2 -nostdlib -Wl,--no-entry \
- *         -Wl,--export=run -Wl,--export-memory -o shell.wasm shell.c
+ *   clang --target=wasm32 -O2 -ffreestanding -nostdlib -Wl,--no-entry \
+ *         -Wl,--export=run -Wl,--initial-memory=4194304 \
+ *         -Wl,--export-memory -o shell.wasm shell.c
  *
  * Design:
- *   - One export: run(ptr, len)
- *   - Imports: real POSIX names and shapes (read, write, open, close,
- *     access, chdir, getcwd, getuid, pipe) -- only spawn()/wait()
- *     and _init_environ() have no native single-process equivalent
- *   - All state in linear memory, allocated from a bump arena
+ *   - ONE export: run(ptr, len) -> i32 (the response blob's length).
+ *     Nothing else. WebAssembly.Module.imports(this module) is empty
+ *     -- there is no "host" surface at all, not even a name for one.
+ *   - The host's only two operations, ever: write a request blob into
+ *     this module's OWN linear memory at a fixed offset, call run(),
+ *     then read a response blob back out of another fixed offset. No
+ *     function of any kind crosses the boundary in either direction --
+ *     same shape as this project's own memorymap.c (a shared flat
+ *     buffer at fixed byte offsets, gated by a couple of exported
+ *     entry points), just with one entry point instead of several.
+ *   - Real content (file bytes, a directory's raw listing, /etc/passwd,
+ *     the real uid) never arrives via a call shell.c makes mid-
+ *     execution -- there IS no mid-execution call to make. Whoever
+ *     prepares the request blob (fetching real bytes however it
+ *     likes, entirely outside any WASM interaction) bundles everything
+ *     a command might touch into the SAME string this module already
+ *     only ever needed: a request in, a response out.
+ *   - Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 nfiles\0
+ *     (path\0 length\0 <length raw bytes>){nfiles} -- length-prefixed
+ *     file content, not NUL-terminated, because file bytes can
+ *     legitimately contain a NUL (this project's own MemoryMapArena.js
+ *     already documents exactly why an in-band terminator is the wrong
+ *     call for raw byte payloads).
+ *   - Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>.
+ *   - Multi-stage pipelines no longer spawn anything -- there's
+ *     nothing to spawn without a host. Each stage is a plain function
+ *     call within this same run(), stdout redirected to a small
+ *     in-memory buffer that becomes the next stage's stdin. Real
+ *     concurrency was never actually happening under the old
+ *     spawn()/wait() design either (this environment always ran each
+ *     stage to completion before the next); this makes that honest.
+ *   - All state in linear memory, allocated from a bump arena.
  *   - No libc. Hand-declared. Own contracts.
- *   - Commands are small, dumb, external.
- *   - Stage-list parser, N pipes, builtin flag.
+ *
+ * v0.1 (stage 3) — Every import is gone, including the real WASI ones.
+ *   WASI's path_open() turned out to still be "something else doing
+ *   the command's job," just relocated: it enforces WASI's OWN rights-
+ *   bitmask/capability policy (the FD_READ|FD_READDIR mask, preopen-
+ *   relative resolution, WASI-specific errno mapping) before the real
+ *   OS call underneath it ever runs -- Node's WASI implementation
+ *   deciding things, not a dumb relay of a raw syscall. The only way
+ *   to make shell.wasm the one and only thing touching real bytes was
+ *   to stop crossing the import boundary at all, in either direction,
+ *   for anything. WebAssembly.Module.imports(this module) is now [].
+ *   The host's only two operations are the ones this project's own
+ *   memorymap.c already established as the pattern: write into a
+ *   fixed offset in the module's own linear memory, call one exported
+ *   entry point, read a fixed offset back out. Real content (file
+ *   bytes, a directory's raw listing, /etc/passwd, the real uid) is
+ *   gathered entirely outside any WASM interaction and bundled into
+ *   the SAME request blob the command line already travels in --
+ *   nothing shell.c ever needed was "a call," only ever "a string."
+ *   Multi-stage pipelines stopped spawning anything, because there's
+ *   no host left to spawn via: each stage is a plain function call
+ *   within the same run(), stdout redirected to an in-memory buffer
+ *   that becomes the next stage's stdin. A real caught bug along the
+ *   way: the new vfd table's open() returned raw array indices
+ *   starting at 0, colliding with STDIN_FILENO (also 0) -- the first
+ *   file opened in any command was silently read back as stdin
+ *   instead, producing empty output with a misleadingly successful
+ *   rc=0 for every real ls/cat until fd numbering was moved to start
+ *   at 3, same as a real fd table reserves 0/1/2 for stdio.
  *
  * v0.0.10 — Renaming host_open()/host_whoami() to open()/getlogin_r()
  *   in v0.0.9 wasn't enough: the host side of ls and whoami was still
@@ -159,68 +214,7 @@ typedef long               isize;
 /* WASM memory intrinsics                                              */
 /* ------------------------------------------------------------------ */
 
-/* Provided by the linker when --export-memory is used. */
 extern u8 __heap_base;
-
-/* ------------------------------------------------------------------ */
-/* Imports — real POSIX names and shapes, nothing invented              */
-/* ------------------------------------------------------------------ */
-
-/*
- * v0.0.9: every one of these is the actual libc/syscall it's named
- * after, not a stand-in ("host_open", "sys_open") for one. A path
- * argument is a plain NUL-terminated C string, exactly like the real
- * function takes -- no extra _len parameter, because the callee can
- * read the same linear memory this module owns and find the NUL
- * itself, the same way real open()/access()/chdir() do. Only two
- * things here couldn't exist on a real system and are named plainly
- * as what they are: spawn()/wait() (WASM can't fork() itself, so
- * something has to stand in for process creation) and _init_environ()
- * (see below). Every other declaration is what a native build's
- * <unistd.h>/<fcntl.h> would already give this file for free -- swap
- * these externs for those two includes and cat/grep/ls/whoami/which/cd
- * don't change a line.
- */
-
-extern i32 read(i32 fd, i32 buf_ptr, i32 count)
-    __attribute__((import_module("env"), import_name("read")));
-extern i32 write(i32 fd, i32 buf_ptr, i32 count)
-    __attribute__((import_module("env"), import_name("write")));
-extern i32 open(i32 path_ptr, i32 flags)
-    __attribute__((import_module("env"), import_name("open")));
-extern i32 close(i32 fd)
-    __attribute__((import_module("env"), import_name("close")));
-extern i32 access(i32 path_ptr, i32 amode)
-    __attribute__((import_module("env"), import_name("access")));
-extern i32 chdir(i32 path_ptr)
-    __attribute__((import_module("env"), import_name("chdir")));
-extern i32 getcwd(i32 buf_ptr, i32 size)  /* returns buf_ptr, or 0 on failure -- same convention as real getcwd() returning buf or NULL */
-    __attribute__((import_module("env"), import_name("getcwd")));
-extern i32 getuid(void) /* real POSIX: the raw fact whoami's own real implementation starts from */
-    __attribute__((import_module("env"), import_name("getuid")));
-extern i32 pipe(i32 pipefd_ptr) /* pipefd_ptr -> int[2], exactly like real pipe(2) */
-    __attribute__((import_module("env"), import_name("pipe")));
-
-/* Process control -- the one pair with no real single-process C
- * equivalent, because a WASM module cannot fork() itself. Named
- * plainly as the exception it is, the same way run() itself is. */
-extern i32 spawn(i32 cmd_ptr, i32 cmd_len, i32 in_fd, i32 out_fd, i32 err_fd)
-    __attribute__((import_module("env"), import_name("spawn")));
-extern i32 wait(i32 pid)
-    __attribute__((import_module("env"), import_name("wait")));
-
-/*
- * getenv() is NOT a syscall on a real system -- glibc's own
- * implementation is a linear scan over the `environ` array, which the
- * kernel populates once, at exec() time, before main() ever runs.
- * There is no per-lookup round-trip to anything in real getenv(); see
- * the pure-C implementation below. _init_environ() is this module's
- * one-time stand-in for that exec()-time hand-off -- an exception in
- * the same category as run() itself, not a "getenv" that happens to
- * round-trip every call.
- */
-extern i32 _init_environ(i32 buf_ptr, i32 cap)
-    __attribute__((import_module("env"), import_name("_init_environ")));
 
 /* ------------------------------------------------------------------ */
 /* Hand-rolled string / memory — no <string.h>                         */
@@ -275,30 +269,39 @@ static int parse_int(const char *s) {
     return neg ? -v : v;
 }
 
+/* Writes the decimal digits of v (>= 0) to out, NUL-terminated.
+ * Returns the number of digit characters written (not counting the
+ * NUL). No fprintf/itoa -- hand-rolled, same discipline as the rest
+ * of this file. */
+static usize write_uint(char *out, usize v) {
+    char tmp[24];
+    int n = 0;
+    if (v == 0) tmp[n++] = '0';
+    while (v > 0) { tmp[n++] = (char)('0' + (v % 10)); v /= 10; }
+    for (int i = 0; i < n; i++) out[i] = tmp[n - 1 - i];
+    out[n] = '\0';
+    return (usize)n;
+}
+
 /* ------------------------------------------------------------------ */
 /* Bump arena — mmap-equivalent for WASM                               */
 /* ------------------------------------------------------------------ */
-
-/*
- * In WASM, linear memory grows via memory.grow. We use a bump allocator
- * over the region above __heap_base. No free — reset between commands.
- */
 
 static u8  *arena_base = NULL;
 static u8  *arena_ptr  = NULL;
 static usize arena_cap = 0;
 
-/* Lazily initialized from run() on first call -- no longer a separate
- * export the host has to remember to invoke first (v0.0.2). */
 static void alloc_init(void) {
     arena_base = &__heap_base;
-    /* Round up to 8-byte alignment */
     usize a = (usize)arena_base;
     a = (a + 7) & ~(usize)7;
     arena_base = (u8 *)a;
     arena_ptr  = arena_base;
-    /* Leave a fixed cap — the host can grow memory if needed */
-    arena_cap  = 64 * 1024;
+    /* Must comfortably fit the 1MB stdout_buf run() allocates from it
+     * (plus the cmdline copy and any pipeline stage buffers), while
+     * staying clear of the 2MB response/request region reserved at
+     * the top of the module's 4MB total memory. */
+    arena_cap  = 1536 * 1024;
 }
 
 static void *arena_alloc(usize n) {
@@ -322,9 +325,6 @@ static void arena_reset(void) {
 #define STDERR_FILENO  2
 
 #define O_RDONLY       0
-
-/* Real values (<unistd.h>: F_OK=0, X_OK=1) -- access() itself already
- * has the real signature, so these need to already be the real ones. */
 #define F_OK 0
 #define X_OK 1
 
@@ -333,44 +333,127 @@ static void arena_reset(void) {
 #define MAX_LINE   8192
 #define MAX_PATH   4096
 #define MAX_ENVIRON 4096
+#define MAX_VFILES  64   /* how many real (path, content) pairs a single request can carry */
+#define MAX_VFDS    16   /* how many of those a single command run can have open at once */
 
 /* ------------------------------------------------------------------ */
-/* Shell context                                                       */
+/* Virtual filesystem — populated ONCE per run() from the request      */
+/* blob, never touched again after that                                */
 /* ------------------------------------------------------------------ */
 
-struct stage {
-    char *argv[MAX_ARGS];
-    int   argc;
-};
+struct vfile { const char *path; const char *data; usize len; };
+static struct vfile g_vfiles[MAX_VFILES];
+static int g_nvfiles;
 
-struct pipeline {
-    struct stage stages[MAX_STAGES];
-    int          nstages;
-    int          background;
-};
+static const struct vfile *vfs_find(const char *path) {
+    for (int i = 0; i < g_nvfiles; i++) {
+        if (str_cmp(g_vfiles[i].path, path) == 0) return &g_vfiles[i];
+    }
+    return NULL;
+}
 
-struct shell {
-    int  last_status;
-    char cwd[MAX_PATH];
-};
-
-static struct shell sh;
-
-/* ------------------------------------------------------------------ */
-/* environ / getenv() — pure C, exactly like real libc                 */
-/* ------------------------------------------------------------------ */
+struct vfd { const char *data; usize len; usize pos; int used; };
+static struct vfd g_vfds[MAX_VFDS];
 
 /*
- * A real process's `environ` is populated once, at exec() time, by the
- * kernel handing envp to the new process -- getenv() itself is then
- * just glibc walking that array in the process's own memory, no
- * syscall involved. _init_environ() is this module's one-time stand-in
- * for that exec()-time hand-off (called once, lazily, alongside the
- * arena in run()); every getenv() call after that is pure C, same as
- * on a real system.
+ * open()/close()/read()/write()/access()/chdir() below have the real
+ * POSIX shapes, but they are ordinary static C functions now, not
+ * imports -- there is no host on the other side of them any more.
+ * "Opening a file" means finding it in the vfs table the request blob
+ * already populated; "reading" it means copying out of memory this
+ * module already owns. Nothing here reaches outside the module.
  */
+/* vfd slots start at 3 -- 0/1/2 are reserved for stdin/stdout/stderr,
+ * exactly like a real fd table. Returning a raw array index starting
+ * at 0 here would collide fd 0 (the first opened file) with
+ * STDIN_FILENO, and read() would silently serve stdin instead of the
+ * file just opened. */
+#define VFD_BASE 3
+static i32 open(const char *path, i32 flags) {
+    (void)flags;
+    const struct vfile *f = vfs_find(path);
+    if (!f) return -1;
+    for (i32 i = 0; i < MAX_VFDS; i++) {
+        if (!g_vfds[i].used) {
+            g_vfds[i].data = f->data;
+            g_vfds[i].len = f->len;
+            g_vfds[i].pos = 0;
+            g_vfds[i].used = 1;
+            return i + VFD_BASE;
+        }
+    }
+    return -1;
+}
+static i32 close(i32 fd) {
+    i32 i = fd - VFD_BASE;
+    if (i < 0 || i >= MAX_VFDS) return -1;
+    g_vfds[i].used = 0;
+    return 0;
+}
+static i32 access(const char *path, i32 mode) {
+    (void)mode;
+    return vfs_find(path) ? 0 : -1;
+}
+static i32 chdir(const char *path) {
+    return access(path, F_OK);
+}
+
+/* ------------------------------------------------------------------ */
+/* stdin/stdout redirection — pure in-memory, swapped per pipeline     */
+/* stage by run_pipeline() below, never by anything outside this file  */
+/* ------------------------------------------------------------------ */
+
+struct iobuf { const char *data; usize len; usize pos; };
+static struct iobuf *g_stdin_src;   /* NULL = no stdin for this stage */
+static char  *g_stdout_dst;
+static usize *g_stdout_len;
+static usize  g_stdout_cap;
+
+static i32 read(i32 fd, char *buf, i32 count) {
+    if (fd == STDIN_FILENO) {
+        if (!g_stdin_src) return 0;
+        usize remaining = g_stdin_src->len - g_stdin_src->pos;
+        usize n = (usize)count < remaining ? (usize)count : remaining;
+        mem_copy(buf, g_stdin_src->data + g_stdin_src->pos, n);
+        g_stdin_src->pos += n;
+        return (i32)n;
+    }
+    i32 vi = fd - VFD_BASE;
+    if (vi < 0 || vi >= MAX_VFDS || !g_vfds[vi].used) return -1;
+    struct vfd *v = &g_vfds[vi];
+    usize remaining = v->len - v->pos;
+    usize n = (usize)count < remaining ? (usize)count : remaining;
+    mem_copy(buf, v->data + v->pos, n);
+    v->pos += n;
+    return (i32)n;
+}
+
+static i32 write(i32 fd, const char *buf, i32 count) {
+    if (fd != STDOUT_FILENO && fd != STDERR_FILENO) return -1;
+    usize n = (usize)count;
+    usize room = g_stdout_cap - *g_stdout_len;
+    if (n > room) n = room;
+    mem_copy(g_stdout_dst + *g_stdout_len, buf, n);
+    *g_stdout_len += n;
+    return (i32)n;
+}
+
+/* ------------------------------------------------------------------ */
+/* environ / getenv() — pure C                                         */
+/* ------------------------------------------------------------------ */
+
 static char  g_environ[MAX_ENVIRON];
 static usize g_environ_len;
+
+static void environ_add(const char *name, const char *value) {
+    if (!value) return;
+    usize nlen = str_len(name), vlen = str_len(value);
+    if (g_environ_len + nlen + 1 + vlen + 1 > sizeof g_environ) return;
+    mem_copy(g_environ + g_environ_len, name, nlen); g_environ_len += nlen;
+    g_environ[g_environ_len++] = '=';
+    mem_copy(g_environ + g_environ_len, value, vlen); g_environ_len += vlen;
+    g_environ[g_environ_len++] = '\0';
+}
 
 static char *getenv(const char *name) {
     usize nlen = str_len(name);
@@ -391,7 +474,7 @@ static char *getenv(const char *name) {
 static i32 fd_write_all(i32 fd, const char *buf, usize len) {
     usize off = 0;
     while (off < len) {
-        i32 n = write(fd, (i32)(usize)(buf + off), (i32)(len - off));
+        i32 n = write(fd, buf + off, (i32)(len - off));
         if (n <= 0) return -1;
         off += (usize)n;
     }
@@ -402,38 +485,32 @@ static i32 fd_puts(i32 fd, const char *s) {
     return fd_write_all(fd, s, str_len(s));
 }
 
-/* Read one byte. Returns 1 on success, 0 on EOF, -1 on error. */
 static int fd_read_byte(i32 fd, char *out) {
-    i32 n = read(fd, (i32)(usize)out, 1);
+    i32 n = read(fd, out, 1);
     return (n == 1) ? 1 : (n == 0 ? 0 : -1);
 }
 
 /* ------------------------------------------------------------------ */
-/* Path resolution — pure C, the one thing no import does for you      */
+/* Path resolution — pure C                                            */
 /* ------------------------------------------------------------------ */
 
-/*
- * Relative paths get joined against sh.cwd before reaching open() --
- * pure string work. Real open() has no idea what "current directory"
- * means either; the kernel resolves relative paths starting from the
- * calling process's own cwd entry, which is exactly what this does in
- * user space here, before the real open() call. Absolute paths pass
- * through untouched.
- */
+struct shell {
+    int  last_status;
+    char cwd[MAX_PATH];
+};
+static struct shell sh;
+
 static const char *resolve_path(const char *path, char *out, usize out_cap) {
     if (path[0] == '/') return path;
-
     usize cwd_len  = str_len(sh.cwd);
     usize path_len = str_len(path);
     int   need_sep = (cwd_len == 0 || sh.cwd[cwd_len - 1] != '/');
     usize total    = cwd_len + (need_sep ? 1 : 0) + path_len;
-
-    if (total >= out_cap) return path; /* too long to join -- let open() fail on it */
-
+    if (total >= out_cap) return path;
     mem_copy(out, sh.cwd, cwd_len);
     usize pos = cwd_len;
     if (need_sep) out[pos++] = '/';
-    mem_copy(out + pos, path, path_len + 1); /* + NUL */
+    mem_copy(out + pos, path, path_len + 1);
     return out;
 }
 
@@ -450,17 +527,18 @@ static int builtin_cd(int argc, char **argv) {
         const char *home = getenv("HOME");
         path = home ? home : "/";
     }
-    if (chdir((i32)(usize)path) != 0) {
+    if (chdir(path) != 0) {
         fd_puts(STDERR_FILENO, "cd: no such directory\n");
         return 1;
     }
-    getcwd((i32)(usize)sh.cwd, MAX_PATH);
+    usize n = str_len(path);
+    mem_copy(sh.cwd, path, n < MAX_PATH ? n + 1 : MAX_PATH - 1);
+    if (n >= MAX_PATH) sh.cwd[MAX_PATH - 1] = '\0';
     return 0;
 }
 
 static int builtin_exit(int argc, char **argv) {
     int code = (argc >= 2) ? parse_int(argv[1]) : 0;
-    /* In WASM there's no exit — the host decides. We return a sentinel. */
     return code & 0xff;
 }
 
@@ -468,14 +546,10 @@ static int builtin_exit(int argc, char **argv) {
 /* External commands — read fd 0, write fd 1, errors to fd 2           */
 /* ------------------------------------------------------------------ */
 
-/* Drains fd to STDOUT_FILENO until EOF -- the one loop cat/ls both
- * need. From C's side, an open file and an open directory are the same
- * thing: a stream of bytes read via the ordinary read() every command
- * already uses. */
 static int drain_fd_to_stdout(i32 fd) {
     char buf[4096];
     for (;;) {
-        i32 n = read(fd, (i32)(usize)buf, sizeof buf);
+        i32 n = read(fd, buf, sizeof buf);
         if (n < 0) return 1;
         if (n == 0) break;
         if (fd_write_all(STDOUT_FILENO, buf, (usize)n) < 0) return 1;
@@ -484,13 +558,11 @@ static int drain_fd_to_stdout(i32 fd) {
 }
 
 static int cmd_cat(int argc, char **argv) {
-    if (argc < 2) {
-        return drain_fd_to_stdout(STDIN_FILENO);
-    }
+    if (argc < 2) return drain_fd_to_stdout(STDIN_FILENO);
     for (int i = 1; i < argc; i++) {
         char resolved[MAX_PATH];
         const char *path = resolve_path(argv[i], resolved, sizeof resolved);
-        i32 fd = open((i32)(usize)path, O_RDONLY);
+        i32 fd = open(path, O_RDONLY);
         if (fd < 0) {
             fd_puts(STDERR_FILENO, "cat: cannot open ");
             fd_puts(STDERR_FILENO, argv[i]);
@@ -529,32 +601,24 @@ static int cmd_grep(int argc, char **argv) {
     return 0;
 }
 
-/*
- * v0.0.10: open() on a directory streams raw entries, NUL-separated --
- * the same shape a real getdents() gives a real ls.c: unformatted
- * names, no separator a human would ever want to see. Turning that
- * into a printed listing (one name per line) is ls's own job, same as
- * on a real system; it used to be done for this file, by whatever
- * produced the newline-joined string drain_fd_to_stdout() just copied
- * through untouched. cat still uses drain_fd_to_stdout() for regular
- * files -- their content isn't structured, so nothing should
- * reinterpret it. A directory listing is structured, so this file
- * does the interpreting.
- */
 static int cmd_ls(int argc, char **argv) {
     char resolved[MAX_PATH];
     const char *path = (argc >= 2) ? resolve_path(argv[1], resolved, sizeof resolved) : sh.cwd;
 
-    i32 fd = open((i32)(usize)path, O_RDONLY);
+    i32 fd = open(path, O_RDONLY);
     if (fd < 0) {
         fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
         return 1;
     }
-
+    /* The vfile behind this fd is a NUL-separated raw listing --
+     * whoever built the request blob is responsible for that shape,
+     * same contract as before. cmd_ls turns it into a printed listing
+     * (one name per line) itself, exactly like a real ls.c does after
+     * getdents(). */
     char buf[16384];
     usize total = 0;
     for (;;) {
-        i32 n = read(fd, (i32)(usize)(buf + total), (i32)(sizeof(buf) - total));
+        i32 n = read(fd, buf + total, (i32)(sizeof(buf) - total));
         if (n < 0) { close(fd); fd_puts(STDERR_FILENO, "ls: read error\n"); return 1; }
         if (n == 0) break;
         total += (usize)n;
@@ -579,27 +643,23 @@ static int cmd_ls(int argc, char **argv) {
     return 0;
 }
 
+static i32 g_uid = -1;
+
 /*
- * v0.0.10: whoami no longer asks for a pre-resolved name string --
- * that was still just a relayed answer, this time from getlogin_r()
- * instead of $USER. getuid() gives a raw integer with nothing left to
- * interpret; the actual identity lookup -- reading /etc/passwd and
- * matching the uid field, exactly what a minimal getpwuid() does --
- * happens here, in C, through the SAME open()+read() every other
- * command already uses. No environment variable and no pre-formatted
- * string crosses the import boundary; only a number and raw file
- * bytes do.
+ * whoami's real work: read and parse /etc/passwd for the entry whose
+ * uid field matches g_uid (passwd(5): name:x:uid:gid:gecos:home:shell)
+ * -- exactly what a minimal getpwuid() does internally. g_uid itself
+ * is a bare fact from the request blob, not a resolved name; nothing
+ * about identity is decided anywhere except here.
  */
 static int cmd_whoami(int argc, char **argv) {
     (void)argc; (void)argv;
-    i32 uid = getuid();
-
-    i32 fd = open((i32)(usize)"/etc/passwd", O_RDONLY);
+    i32 fd = open("/etc/passwd", O_RDONLY);
     if (fd < 0) { fd_puts(STDOUT_FILENO, "unknown\n"); return 0; }
     char buf[8192];
     usize total = 0;
     for (;;) {
-        i32 n = read(fd, (i32)(usize)(buf + total), (i32)(sizeof(buf) - total));
+        i32 n = read(fd, buf + total, (i32)(sizeof(buf) - total));
         if (n <= 0) break;
         total += (usize)n;
         if (total >= sizeof buf) break;
@@ -608,13 +668,10 @@ static int cmd_whoami(int argc, char **argv) {
     if (total >= sizeof buf) total = sizeof buf - 1;
     buf[total] = '\0';
 
-    /* passwd(5): name:passwd:uid:gid:gecos:home:shell, one entry per
-     * line. */
     char *line = buf;
     while (line && *line) {
         char *nl = str_chr(line, '\n');
         if (nl) *nl = '\0';
-
         char *name = line;
         char *c1 = str_chr(name, ':');
         if (c1) {
@@ -624,7 +681,7 @@ static int cmd_whoami(int argc, char **argv) {
                 char *uidfield = c2 + 1;
                 char *c3 = str_chr(uidfield, ':');
                 if (c3) *c3 = '\0';
-                if (parse_int(uidfield) == uid) {
+                if (parse_int(uidfield) == g_uid) {
                     fd_puts(STDOUT_FILENO, name);
                     fd_puts(STDOUT_FILENO, "\n");
                     return 0;
@@ -651,7 +708,7 @@ static int cmd_which(int argc, char **argv) {
             mem_copy(buf, p, len);
             buf[len] = '/';
             mem_copy(buf + len + 1, argv[1], str_len(argv[1]) + 1);
-            if (access((i32)(usize)buf, X_OK) == 0) {
+            if (access(buf, X_OK) == 0) {
                 fd_puts(STDOUT_FILENO, buf);
                 fd_puts(STDOUT_FILENO, "\n");
                 return 0;
@@ -696,6 +753,17 @@ static const struct command *lookup(const char *name) {
 /* ------------------------------------------------------------------ */
 /* Parser                                                              */
 /* ------------------------------------------------------------------ */
+
+struct stage {
+    char *argv[MAX_ARGS];
+    int   argc;
+};
+
+struct pipeline {
+    struct stage stages[MAX_STAGES];
+    int          nstages;
+    int          background;
+};
 
 static int tokenize_stage(char *s, char **argv) {
     int argc = 0;
@@ -748,44 +816,17 @@ static int run_builtin(const struct command *c, int argc, char **argv) {
     return c->fn(argc, argv);
 }
 
-/* Rejoins a tokenized stage's argv back into a single space-separated
- * command string for spawn(), which takes a command line, not an
- * argv array. Loses original inter-token whitespace/quoting -- an
- * accepted simplification for this seed, since tokenize_stage() already
- * discarded that information in place. */
-static usize rejoin_argv(char *buf, usize buf_cap, char **argv, int argc) {
-    usize len = 0;
-    for (int i = 0; i < argc; i++) {
-        if (i > 0) {
-            if (len + 1 >= buf_cap) break;
-            buf[len++] = ' ';
-        }
-        usize alen = str_len(argv[i]);
-        if (len + alen >= buf_cap) alen = buf_cap - len - 1;
-        mem_copy(buf + len, argv[i], alen);
-        len += alen;
-    }
-    buf[len] = '\0';
-    return len;
-}
-
 /*
- * v0.0.3: real multi-stage piping. Every stage still just says "read fd
- * 0, write fd 1" -- that was already correct and needed no change. What
- * was wrong was this function bypassing spawn() entirely and calling
- * each command in-process, so every stage's fd 0/1 resolved to the
- * SAME real stdin/stdout no matter its position. Now: a real pipe
- * (pipe()) is created between every adjacent pair of stages, each
- * stage is handed off to spawn() with the correct in_fd/out_fd
- * (STDIN_FILENO only for the first stage, STDOUT_FILENO only for the
- * last), and every spawned pid is waited on via wait().
- *
- * All stages are spawned first, then all are waited on, matching real
- * pipeline semantics (every stage notionally running concurrently) even
- * though today's implementation may in practice run each spawn
- * synchronously to completion -- wait() still gets called on every pid
- * either way, so an implementation that DOES spawn real concurrent
- * processes needs no change here to actually behave correctly.
+ * v3: no spawn(), no pipe(), no wait() -- there's no host to ask for
+ * any of them any more. Every stage of a pipeline is a plain function
+ * call within this same run(), one after another (this environment
+ * never actually ran them concurrently under the old spawn()/wait()
+ * design either -- every "spawn" resolved to a synchronous call before
+ * the next line ran). A non-last stage's stdout is redirected to a
+ * small arena buffer, which becomes the next stage's stdin -- pure
+ * in-memory handoff, the exact same "stage N's real stdout becomes
+ * stage N+1's real stdin" behavior as before, just without a host
+ * coordinating fds to make it happen.
  */
 static int run_pipeline(struct pipeline *pl) {
     if (pl->nstages == 1) {
@@ -798,22 +839,11 @@ static int run_pipeline(struct pipeline *pl) {
         }
         if (c->is_builtin) {
             if (pl->background) {
-                fd_puts(STDERR_FILENO,
-                        "shell: builtins cannot run in background\n");
+                fd_puts(STDERR_FILENO, "shell: builtins cannot run in background\n");
                 return 1;
             }
             return run_builtin(c, pl->stages[0].argc, pl->stages[0].argv);
         }
-        /* A lone external command runs directly, in-process, on the
-         * real STDIN_FILENO/STDOUT_FILENO -- no spawn/pipe needed.
-         * This bypass is load-bearing, not an optimization: spawn()
-         * exists to isolate ONE STAGE OF A PIPELINE, and its own
-         * implementation re-enters this same module's run() to actually
-         * execute the command. Removing this bypass (v0.0.3's first
-         * draft did) makes a lone command spawn itself, which re-parses
-         * the same single-stage command line, which spawns itself again
-         * -- infinite recursion, confirmed live as "Maximum call stack
-         * size exceeded" before this fix, not a hypothetical concern. */
         return c->fn(pl->stages[0].argc, pl->stages[0].argv);
     }
 
@@ -826,51 +856,75 @@ static int run_pipeline(struct pipeline *pl) {
             return 127;
         }
         if (c->is_builtin) {
-            fd_puts(STDERR_FILENO,
-                    "shell: builtin in pipeline not supported\n");
+            fd_puts(STDERR_FILENO, "shell: builtin in pipeline not supported\n");
             return 1;
         }
     }
 
-    i32 pids[MAX_STAGES];
-    int in_fd = STDIN_FILENO;
-
-    for (int i = 0; i < pl->nstages; i++) {
-        int out_fd;
-        i32 next_in_fd = -1;
-
-        if (i < pl->nstages - 1) {
-            /* pipe(int[2]) -- real signature: one array, [0] read end,
-             * [1] write end. */
-            i32 *pipefd = (i32 *)arena_alloc(sizeof(i32) * 2);
-            if (!pipefd) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); return 1; }
-            if (pipe((i32)(usize)pipefd) != 0) {
-                fd_puts(STDERR_FILENO, "shell: pipe() failed\n");
-                return 1;
-            }
-            out_fd = pipefd[1];
-            next_in_fd = pipefd[0];
-        } else {
-            out_fd = STDOUT_FILENO;
-        }
-
-        char cmdbuf[MAX_LINE];
-        usize cmdlen = rejoin_argv(cmdbuf, sizeof cmdbuf,
-                                   pl->stages[i].argv, pl->stages[i].argc);
-
-        pids[i] = spawn((i32)(usize)cmdbuf, (i32)cmdlen,
-                        in_fd, out_fd, STDERR_FILENO);
-
-        in_fd = (int)next_in_fd;
-    }
-
+    struct iobuf *stage_in = NULL; /* stage 0 reads the real stdin */
     int rc = 0;
+
     for (int i = 0; i < pl->nstages; i++) {
-        int stage_rc = wait(pids[i]);
-        if (i == pl->nstages - 1) rc = stage_rc;
+        const struct command *c = lookup(pl->stages[i].argv[0]);
+
+        struct iobuf *saved_in = g_stdin_src;
+        char *saved_out_dst = g_stdout_dst;
+        usize *saved_out_len = g_stdout_len;
+        usize saved_out_cap = g_stdout_cap;
+
+        g_stdin_src = stage_in;
+
+        int is_last = (i == pl->nstages - 1);
+        char *stage_buf = NULL;
+        usize stage_cap = 0;
+        usize stage_len = 0;
+
+        if (!is_last) {
+            stage_cap = 65536;
+            stage_buf = (char *)arena_alloc(stage_cap);
+            if (!stage_buf) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); rc = 1; break; }
+            g_stdout_dst = stage_buf;
+            g_stdout_len = &stage_len;
+            g_stdout_cap = stage_cap;
+        }
+        /* else: leave g_stdout_dst/_len/_cap as whatever the caller
+         * (run(), or an outer pipeline) already set them to -- the
+         * last stage writes to the real destination. */
+
+        rc = c->fn(pl->stages[i].argc, pl->stages[i].argv);
+
+        g_stdin_src = saved_in;
+        if (!is_last) {
+            g_stdout_dst = saved_out_dst;
+            g_stdout_len = saved_out_len;
+            g_stdout_cap = saved_out_cap;
+
+            struct iobuf *next_in = (struct iobuf *)arena_alloc(sizeof *next_in);
+            if (!next_in) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); rc = 1; break; }
+            next_in->data = stage_buf;
+            next_in->len = stage_len;
+            next_in->pos = 0;
+            stage_in = next_in;
+        }
     }
 
     return rc;
+}
+
+/* ------------------------------------------------------------------ */
+/* Request/response blob parsing                                       */
+/* ------------------------------------------------------------------ */
+
+/* Reads one NUL-terminated field starting at *cursor (which must be <
+ * end); advances *cursor past the NUL. Returns NULL if the field runs
+ * past end without a NUL (malformed request). */
+static const char *take_field(const char **cursor, const char *end) {
+    const char *start = *cursor;
+    const char *p = start;
+    while (p < end && *p != '\0') p++;
+    if (p >= end) return NULL;
+    *cursor = p + 1;
+    return start;
 }
 
 /* ------------------------------------------------------------------ */
@@ -878,43 +932,110 @@ static int run_pipeline(struct pipeline *pl) {
 /* ------------------------------------------------------------------ */
 
 /*
- * run(ptr, len): the WASM module's only entry point.
- *
- * The host writes the command line into linear memory at ptr, sets len,
- * and calls this. The module parses, dispatches, and returns the exit
- * status. All I/O goes through host imports. Lazily initializes the
- * bump arena on first call -- no separate export the host has to
- * remember to invoke first.
+ * run(ptr, len): the ONLY thing anything outside this module ever
+ * calls. ptr/len describe the request blob (see the file header for
+ * its shape) already sitting in this module's own linear memory --
+ * the host wrote it there before calling this, exactly like this
+ * project's own memorymap.c expects a caller to populate its shared
+ * buffer before calling one of its exported entry points. The
+ * response blob is written to a fixed offset (see OUTPUT_OFFSET
+ * below); this function's return value is that response's length.
  */
 __attribute__((export_name("run")))
-int run(i32 ptr, i32 len) {
-    if (arena_base == NULL) {
-        alloc_init();
-        /* sh.cwd is a zero-initialized static -- without this, ls and
-         * anything else defaulting to sh.cwd silently operates on an
-         * empty path until the first successful cd. Caught live by
-         * actually running the module, not by reading the source. */
-        getcwd((i32)(usize)sh.cwd, MAX_PATH);
-        /* The one-time exec()-time hand-off getenv() depends on -- see
-         * the comment above g_environ. */
-        g_environ_len = (usize)_init_environ((i32)(usize)g_environ, sizeof g_environ);
+i32 run(i32 ptr, i32 len) {
+    alloc_init();
+    g_nvfiles = 0;
+    g_environ_len = 0;
+    mem_set(g_vfds, 0, sizeof g_vfds);
+
+    const char *cursor = (const char *)(usize)ptr;
+    const char *end = cursor + (usize)len;
+
+    const char *cwd_field  = take_field(&cursor, end);
+    const char *uid_field  = take_field(&cursor, end);
+    const char *home_field = take_field(&cursor, end);
+    const char *path_field = take_field(&cursor, end);
+    const char *cmd_field  = take_field(&cursor, end);
+    const char *nfiles_field = take_field(&cursor, end);
+
+    if (!cwd_field || !uid_field || !home_field || !path_field || !cmd_field || !nfiles_field)
+        return 0; /* malformed request -- nothing sensible to do */
+
+    usize n = str_len(cwd_field);
+    mem_copy(sh.cwd, cwd_field, n < MAX_PATH ? n + 1 : MAX_PATH - 1);
+    if (n >= MAX_PATH) sh.cwd[MAX_PATH - 1] = '\0';
+
+    g_uid = parse_int(uid_field);
+    if (*home_field) environ_add("HOME", home_field);
+    if (*path_field) environ_add("PATH", path_field);
+
+    int nfiles = parse_int(nfiles_field);
+    for (int i = 0; i < nfiles && i < MAX_VFILES; i++) {
+        const char *path_f = take_field(&cursor, end);
+        const char *len_f  = take_field(&cursor, end);
+        if (!path_f || !len_f) break;
+        usize flen = (usize)parse_int(len_f);
+        if (cursor + flen > end) break;
+        g_vfiles[g_nvfiles].path = path_f;
+        g_vfiles[g_nvfiles].data = cursor;
+        g_vfiles[g_nvfiles].len = flen;
+        g_nvfiles++;
+        cursor += flen;
     }
 
-    if (len <= 0 || len >= MAX_LINE) return 2;
+    /* Command line gets its own arena copy since parse() tokenizes
+     * (writes NULs) into it, and cmd_field points into the read-only
+     * request blob. */
+    usize cmdlen = str_len(cmd_field);
+    char *line = (char *)arena_alloc(cmdlen + 1);
+    if (!line) return 0;
+    mem_copy(line, cmd_field, cmdlen + 1);
 
-    char *line = (char *)arena_alloc((usize)len + 1);
-    if (!line) return 2;
-    mem_copy(line, (const void *)(usize)ptr, (usize)len);
-    line[len] = '\0';
+    /* Response area: a fixed 1MB region at [total-2MB, total-1MB) in
+     * this module's own linear memory -- computed from the module's
+     * actual memory size, not a hardcoded constant, so it agrees with
+     * whatever the caller computes the same way. The request blob the
+     * host wrote to call this run() lives in the 1MB region above it,
+     * [total-1MB, total). */
+    usize total_bytes = (usize)__builtin_wasm_memory_size(0) * 65536;
+    usize output_cap = 1024 * 1024;
+    char *out = (char *)(total_bytes - 2 * output_cap);
+    usize out_len = 0;
+
+    /* stdout is built into its own arena buffer first (rc and a
+     * possibly-changed cwd aren't known until the command has run),
+     * then assembled into the response region afterward. */
+    char *stdout_buf = (char *)arena_alloc(output_cap);
+    if (!stdout_buf) return 0;
+    usize stdout_len = 0;
+
+    g_stdin_src = NULL;
+    g_stdout_dst = stdout_buf;
+    g_stdout_len = &stdout_len;
+    g_stdout_cap = output_cap;
 
     struct pipeline pl;
+    int rc;
     if (!parse(line, &pl)) {
-        arena_reset();
-        return sh.last_status;
+        rc = sh.last_status;
+    } else {
+        rc = run_pipeline(&pl);
+        sh.last_status = rc;
     }
 
-    int rc = run_pipeline(&pl);
-    sh.last_status = rc;
-    arena_reset();
-    return rc;
+    usize cwd_len = str_len(sh.cwd);
+    mem_copy(out, sh.cwd, cwd_len + 1);
+    out_len = cwd_len + 1;
+
+    char rcbuf[24];
+    usize rclen = write_uint(rcbuf, (usize)rc);
+    mem_copy(out + out_len, rcbuf, rclen + 1);
+    out_len += rclen + 1;
+
+    usize room = output_cap - out_len;
+    if (stdout_len > room) stdout_len = room;
+    mem_copy(out + out_len, stdout_buf, stdout_len);
+    out_len += stdout_len;
+
+    return (i32)out_len;
 }
