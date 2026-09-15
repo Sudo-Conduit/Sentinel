@@ -1,5 +1,5 @@
 /*
- * shell.c — WASM module, stage 3: zero imports
+ * shell.c — WASM module
  *
  * Build (freestanding, no libc):
  *   clang --target=wasm32 -O2 -ffreestanding -nostdlib -Wl,--no-entry \
@@ -31,166 +31,21 @@
  *     already documents exactly why an in-band terminator is the wrong
  *     call for raw byte payloads).
  *   - Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>.
- *   - Multi-stage pipelines no longer spawn anything -- there's
- *     nothing to spawn without a host. Each stage is a plain function
- *     call within this same run(), stdout redirected to a small
- *     in-memory buffer that becomes the next stage's stdin. Real
- *     concurrency was never actually happening under the old
- *     spawn()/wait() design either (this environment always ran each
- *     stage to completion before the next); this makes that honest.
+ *   - Multi-stage pipelines don't spawn anything -- there's no host to
+ *     spawn via. Each stage is a plain function call within this same
+ *     run(), stdout redirected to a small in-memory buffer that
+ *     becomes the next stage's stdin.
  *   - All state in linear memory, allocated from a bump arena.
  *   - No libc. Hand-declared. Own contracts.
  *
- * v0.1 (stage 3) — Every import is gone, including the real WASI ones.
- *   WASI's path_open() turned out to still be "something else doing
- *   the command's job," just relocated: it enforces WASI's OWN rights-
- *   bitmask/capability policy (the FD_READ|FD_READDIR mask, preopen-
- *   relative resolution, WASI-specific errno mapping) before the real
- *   OS call underneath it ever runs -- Node's WASI implementation
- *   deciding things, not a dumb relay of a raw syscall. The only way
- *   to make shell.wasm the one and only thing touching real bytes was
- *   to stop crossing the import boundary at all, in either direction,
- *   for anything. WebAssembly.Module.imports(this module) is now [].
- *   The host's only two operations are the ones this project's own
- *   memorymap.c already established as the pattern: write into a
- *   fixed offset in the module's own linear memory, call one exported
- *   entry point, read a fixed offset back out. Real content (file
- *   bytes, a directory's raw listing, /etc/passwd, the real uid) is
- *   gathered entirely outside any WASM interaction and bundled into
- *   the SAME request blob the command line already travels in --
- *   nothing shell.c ever needed was "a call," only ever "a string."
- *   Multi-stage pipelines stopped spawning anything, because there's
- *   no host left to spawn via: each stage is a plain function call
- *   within the same run(), stdout redirected to an in-memory buffer
- *   that becomes the next stage's stdin. A real caught bug along the
- *   way: the new vfd table's open() returned raw array indices
- *   starting at 0, colliding with STDIN_FILENO (also 0) -- the first
- *   file opened in any command was silently read back as stdin
- *   instead, producing empty output with a misleadingly successful
- *   rc=0 for every real ls/cat until fd numbering was moved to start
- *   at 3, same as a real fd table reserves 0/1/2 for stdio.
- *
- * v0.0.10 — Renaming host_open()/host_whoami() to open()/getlogin_r()
- *   in v0.0.9 wasn't enough: the host side of ls and whoami was still
- *   doing the actual work of ls and whoami. ShellHost.js's open() was
- *   handing back an ALREADY newline-joined directory listing
- *   (fs.readdirSync(p).join('\n')) -- Node had already enumerated AND
- *   formatted it before cmd_ls ever saw a byte; drain_fd_to_stdout()
- *   just copied that finished string through untouched. Its
- *   getlogin_r() handed back os.userInfo().username -- Node's own
- *   built-in whoami, already resolved to a name; cmd_whoami just
- *   printed it. A PASS on either command proved only that Node's
- *   fs/os modules produce the expected string, never that shell.c
- *   does. Fixed by moving the actual command logic into C: open() on
- *   a directory now streams raw, NUL-separated names -- unformatted,
- *   the same shape a real getdents() gives a real ls.c -- and cmd_ls
- *   itself turns that into a printed listing. getuid() replaces
- *   getlogin_r() entirely: it hands back a bare integer with nothing
- *   left to interpret, and cmd_whoami looks its own name up by
- *   reading and parsing /etc/passwd (passwd(5): name:x:uid:...),
- *   through the exact same open()+read() every other command already
- *   uses -- exactly what a minimal getpwuid() does internally, just
- *   written out in this file instead of hidden inside a library call.
- * v0.0.9 — Every host_ and sys_ name is gone. Deleting sys_open(),
- *   fd_read_byte(), fd_puts(), fd_write_all(), and sys_whoami() to
- *   check whether the code still worked (it didn't -- 20 implicit-
- *   function-declaration errors, one at every real call site) proved
- *   they weren't decorative: they WERE the only path any command had
- *   to the outside world. The actual fix wasn't removing that path,
- *   it was naming it honestly. Every import is now the real POSIX
- *   function it stands for -- read, write, open, close, access,
- *   chdir, getcwd, getuid, pipe(int[2]) -- with real signatures
- *   (a path is a plain NUL-terminated C string, no invented _len
- *   parameter, because the callee can find the NUL itself in the same
- *   linear memory this module owns). cmd_cat/cmd_ls/cmd_whoami/
- *   cmd_which/builtin_cd call these names directly, the same way a
- *   native cat.c/ls.c/whoami.c would -- no sys_open()/sys_whoami()
- *   wrapper in between, because wrapping a real call in a same-shaped
- *   function that only forwards to it isn't a syscall boundary, it's
- *   just a longer name for the same call. getenv() stopped being a
- *   per-call import entirely: real getenv() is not a syscall, it's
- *   glibc scanning the `environ` array the kernel populates once at
- *   exec() time, so this module now mirrors that once, in
- *   _init_environ() (a bootstrap exception in the same category as
- *   run() itself, not a disguised getenv), and getenv() below it is
- *   pure C, zero per-lookup import calls, same as on a real system.
- *   The only names left that a native single-process build couldn't
- *   give this file for free via <unistd.h>/<fcntl.h> are spawn()/
- *   wait() (a WASM module can't fork() itself) and _init_environ().
- * v0.0.8 — cmd_whoami() no longer reads $USER/$LOGNAME. Real whoami
- *   asks the kernel for the real effective user; it never consults
- *   the environment (confirmed live: `USER=hacker whoami` on a real
- *   system still prints the real user). Reading an env var was a
- *   shell-convention shortcut that happened to produce a plausible-
- *   looking name, not the actual behavior it was standing in for --
- *   the kind of gap a test asserting only "whoami reads USER from the
- *   host" can pass while validating the wrong thing entirely. Added
- *   host_whoami()/sys_whoami() -- a real identity fact, immune to
- *   environment overrides -- and rewired cmd_whoami() to use it.
- * v0.0.7 — Added resolve_path(): path resolution (joining a relative
- *   argument against sh.cwd) is pure C string work and belongs in C,
- *   not the host. cmd_cat, cmd_ls, and builtin_cd all resolve their
- *   path argument before calling sys_open()/host_chdir() with it.
- *   Before this, a relative path (`cat notes.txt`) went to the host
- *   unresolved and only worked if the host's own notion of "current
- *   directory" happened to match sh.cwd -- an accident, not a
- *   contract. The host's job stays exactly "receive a string, return
- *   a string": nothing about cwd or path-joining is its concern.
- * v0.0.6 — Replaced host_readdir()/sys_readdir() entirely. An open
- *   directory doesn't need its own packed-array host contract -- it is
- *   just a stream of bytes, read via the SAME host_fd_read every other
- *   command already uses. New generic host_open()/host_close() resolve
- *   a path to a plain fd; cmd_ls is now sys_open() + drain_fd_to_stdout()
- *   + host_close(), the identical shape cmd_cat uses for its own file
- *   args (previously unsupported -- "cat: file args not supported in
- *   WASM seed" -- fixed for free by the same primitive). C land needs
- *   nothing from the host except the string.
- * v0.0.5 — cmd_ls no longer names host_readdir() directly. Added
- *   sys_readdir(), a syscall-shaped boundary cmd_ls calls instead --
- *   for now it just forwards to host_readdir(), but the point is the
- *   caller no longer knows that. Real Unix userspace never calls
- *   VOP_READDIR itself; it calls getdents(2), and the kernel decides
- *   how to fulfill it. When the real fd table/VFS dispatch lands, only
- *   sys_readdir()'s body changes -- cmd_ls never will.
- * v0.0.4 — host_readdir() changed from "give me entry N" (one host call
- *   per entry, each re-resolving the same path string from scratch, no
- *   persistent directory-stream state) to "fill this buffer with every
- *   entry, NUL-separated, in one call" -- the same "loop once, pack
- *   results into one buffer" shape a real getdirentries()-family
- *   syscall uses (see kern_getdirentries: one tbuf, one VOP_READDIR
- *   call, one copyout), minus the fd/vnode/VFS-dispatch layer real
- *   Unix has underneath it -- deliberately deferred, not forgotten:
- *   the next real step is a per-process fd table (a natural fit for
- *   Kernel.js's existing process table) and dispatching through
- *   FileFsX.js's Mount abstraction instead of a flat host-side path
- *   lookup, but this first cut gets the actual data flow (resolve
- *   once, enumerate once, emit via stdout) right before adding that.
- * v0.0.3 — Real multi-stage piping. run_pipeline() no longer bypasses
- *   host_spawn() -- every non-last stage gets a real pipe (new
- *   host_pipe() import), spawned with its stdout wired to the pipe's
- *   write end, and the next stage spawned with its stdin wired to that
- *   pipe's read end. Every spawned pid is waited on via host_wait().
- *   No command function changed: cmd_cat/cmd_grep/etc. already
- *   correctly expressed "read fd 0, write fd 1" -- the bug was entirely
- *   in the executor bypassing the spawn path the file's own comments
- *   already described as "the real path."
- * v0.0.2 — Collapsed to a single export. alloc_init() is no longer
- *   exported for the host to remember to call separately — run() lazily
- *   initializes the arena on first call instead (checks arena_base ==
- *   NULL). Same reasoning as MountainShift()'s own opaque run()-only
- *   surface: the host shouldn't need to know there's a second setup
- *   step to get right. Also fixed a bug the same lazy-init path exposed
- *   live, not by reading the source: sh.cwd is a zero-initialized
- *   static, so `ls` (and anything else defaulting to sh.cwd) silently
- *   operated on an empty path until the first successful `cd` -- fixed
- *   by seeding sh.cwd via host_getcwd() on first run() call, same as
- *   the arena.
- * v0.0.1 — Initial seed. Had a real compile-blocking bug: str_copy_lit()
- *   was called from cmd_which() before it was declared or defined
- *   anywhere earlier in the file, and clang's default
- *   -Werror=implicit-function-declaration rejects that outright. Fixed
- *   by moving str_copy_lit() up next to the other string helpers,
- *   before its first use.
+ * v1.0 — First stable cut of the zero-import design. Commands (cat,
+ *   grep, ls, whoami, which, cd) run entirely in C against a virtual
+ *   file table populated once per run() from the request blob; no
+ *   function this file declares is ever fulfilled by anything outside
+ *   the module. Confirmed live: whoami, real directory listings (via
+ *   a real filesystem snapshot bundled into the request), cd, two
+ *   real pipelines, and both real failure cases (missing file, unknown
+ *   command).
  */
 
 /* ------------------------------------------------------------------ */
