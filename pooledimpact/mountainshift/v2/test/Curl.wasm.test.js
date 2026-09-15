@@ -48,6 +48,16 @@ function startServer() {
                     res.end('X-Test was: ' + (req.headers['x-test'] || '(missing)'));
                     return;
                 }
+                if (req.url === '/set-cookie') {
+                    res.writeHead(200, { 'Set-Cookie': 'session=abc123; Path=/; HttpOnly' });
+                    res.end('cookie set');
+                    return;
+                }
+                if (req.url === '/echo-cookie') {
+                    res.writeHead(200, { 'Content-Type': 'text/plain' });
+                    res.end('cookie was: ' + (req.headers['cookie'] || '(missing)'));
+                    return;
+                }
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ method: req.method, body }));
             });
@@ -103,6 +113,22 @@ async function main() {
     const r5 = await shell.runDetailed(`curl --request GET --url http://127.0.0.1:${server.port}/ | grep GET`);
     console.log('curl | grep ->', JSON.stringify(r5.stdout));
     assert.strictEqual(r5.stdout.trim(), '{"method":"GET","body":""}');
+
+    // No automatic cookie jar (same as real curl without -c/-b <file>):
+    // a Set-Cookie is only visible via -i, and is never sent back
+    // automatically on a later call.
+    const r6 = await shell.runDetailed(`curl --request GET --url http://127.0.0.1:${server.port}/set-cookie -i`);
+    console.log('GET /set-cookie -i ->', JSON.stringify(r6.stdout.split('\r\n').find((l) => /^set-cookie/i.test(l))));
+    assert.ok(/set-cookie: session=abc123/i.test(r6.stdout));
+
+    const r7 = await shell.runDetailed(`curl --request GET --url http://127.0.0.1:${server.port}/echo-cookie`);
+    console.log('GET /echo-cookie (no --cookie) ->', JSON.stringify(r7.stdout));
+    assert.strictEqual(r7.stdout, 'cookie was: (missing)');
+
+    // --cookie/-b sends an explicit Cookie header, same as real curl.
+    const r8 = await shell.runDetailed(`curl --request GET --url http://127.0.0.1:${server.port}/echo-cookie --cookie 'session=abc123'`);
+    console.log('GET /echo-cookie --cookie ->', JSON.stringify(r8.stdout));
+    assert.strictEqual(r8.stdout, 'cookie was: session=abc123');
 
     server.close();
     console.log('\nALL PASS');

@@ -37,7 +37,11 @@
  *                <stdinlen raw bytes> nfiles\0
  *                (path\0 length\0 <length raw bytes>){nfiles}
  *   cmdline: curl --request GET|POST --url URL [--header 'K: V']...
- *            [--data BODY] [-i|--include]
+ *            [--data BODY] [-i|--include] [--cookie|-b 'name=value; ...']
+ *   No automatic cookie jar (same as real curl without -c/-b <file>):
+ *   whoever wants a Set-Cookie from one response to reach the next
+ *   request passes it back in explicitly via --cookie, same as
+ *   sequencing curl calls in a real shell script would.
  *   /dev/socket_response (phase 2 only): the raw bytes read off the
  *   real socket, verbatim.
  *
@@ -209,12 +213,14 @@ static i32 respond_socket_request(char *cmd_field, char *out) {
     const char *headers[MAX_HEADERS];
     int nheaders = 0;
     const char *body = NULL;
+    const char *cookie = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (str_cmp(argv[i], "--request") == 0 && i + 1 < argc) method = argv[++i];
         else if (str_cmp(argv[i], "--url") == 0 && i + 1 < argc) url = argv[++i];
         else if (str_cmp(argv[i], "--header") == 0 && i + 1 < argc && nheaders < MAX_HEADERS) headers[nheaders++] = argv[++i];
         else if (str_cmp(argv[i], "--data") == 0 && i + 1 < argc) body = argv[++i];
+        else if ((str_cmp(argv[i], "--cookie") == 0 || str_cmp(argv[i], "-b") == 0) && i + 1 < argc) cookie = argv[++i];
     }
     if (!url) return 0;
 
@@ -232,6 +238,11 @@ static i32 respond_socket_request(char *cmd_field, char *out) {
     write_str(req, &req_len, sizeof req, "\r\n");
     for (int i = 0; i < nheaders; i++) {
         write_str(req, &req_len, sizeof req, headers[i]);
+        write_str(req, &req_len, sizeof req, "\r\n");
+    }
+    if (cookie) {
+        write_str(req, &req_len, sizeof req, "Cookie: ");
+        write_str(req, &req_len, sizeof req, cookie);
         write_str(req, &req_len, sizeof req, "\r\n");
     }
     usize body_len = body ? str_len(body) : 0;

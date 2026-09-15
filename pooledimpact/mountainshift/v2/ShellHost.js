@@ -106,6 +106,8 @@ const tls = require('tls');
 const fs = require('fs');
 const { spawn } = require('child_process');
 const proto = require('./WasmBlobProtocol.js');
+const { createProcessTable } = require('./ProcessTable.js');
+const TOP_MODULE = require('./commands/top.js'); // stateful -- deliberately not in COMMAND_MODULES, see below
 
 const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
 
@@ -283,25 +285,37 @@ function parseSpawnMarker(response)
 // the program does happens here -- node.wasm/php.wasm parse the
 // result themselves on their second call, same as curl.wasm parses
 // the raw socket response.
-function performProcessSpawn(program, args, stdinBytes)
+//
+// `child` is returned synchronously (or null, if the whitelist
+// rejected it before anything real started) so a caller backgrounding
+// this job can register it for a real kill() immediately, without
+// waiting on `done` -- the real OS process runs on its own regardless
+// of whether anything is still awaiting its completion.
+function spawnProcess(program, args, stdinBytes)
 {
-    return new Promise((resolve) =>
+    if (!isProgramAllowed(program))
     {
-        if (!isProgramAllowed(program))
-        {
-            resolve({ exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: ' + program + ' is not on the allowed list\n', 'utf8') });
-            return;
-        }
+        const result = { exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: ' + program + ' is not on the allowed list\n', 'utf8') };
+        return { child: null, done: Promise.resolve(result) };
+    }
 
-        const child = spawn(program, args, { stdio: ['pipe', 'pipe', 'pipe'] });
-        const stdoutChunks = [];
-        const stderrChunks = [];
-        child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
-        child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
+    const child = spawn(program, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+    const stdoutChunks = [];
+    const stderrChunks = [];
+    child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
+    child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
+    const done = new Promise((resolve) =>
+    {
         child.on('close', (code) => resolve({ exitCode: code === null ? 1 : code, stdout: Buffer.concat(stdoutChunks), stderr: Buffer.concat(stderrChunks) }));
         child.on('error', () => resolve({ exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: failed to start ' + program + '\n', 'utf8') }));
-        child.stdin.end(stdinBytes);
     });
+    child.stdin.end(stdinBytes);
+    return { child, done };
+}
+
+async function performProcessSpawn(program, args, stdinBytes)
+{
+    return spawnProcess(program, args, stdinBytes).done;
 }
 
 function buildExecResponseFile(exitCode, stdout, stderr)
@@ -361,7 +375,7 @@ async function createShell(options)
     // curl's own two phases within ONE invocation (handled by the
     // recursive extraFiles call below).
     const compiledCommandModules = new Map();
-    async function runExternal(mod, subCmdline, stdin, extraFiles)
+    function getCompiledModule(mod)
     {
         let compiledModule = compiledCommandModules.get(mod.name);
         if (!compiledModule)
@@ -369,9 +383,25 @@ async function createShell(options)
             compiledModule = proto.compile(mod.base64);
             compiledCommandModules.set(mod.name, compiledModule);
         }
-        const { instance: cmdInstance, memory: cmdMemory } = proto.instantiate(compiledModule);
+        return compiledModule;
+    }
 
+    // One raw call against a fresh instance of a one-shot module --
+    // the shared first step both the normal (foreground, awaited)
+    // path and the background-dispatch path need, since backgrounding
+    // a SPAWN/SOCKET delegation means doing exactly this part inline
+    // (cheap, synchronous) and then NOT awaiting the real socket/
+    // process work before returning control to the caller.
+    function callFreshModule(mod, subCmdline, stdin, extraFiles)
+    {
+        const { instance: cmdInstance, memory: cmdMemory } = proto.instantiate(getCompiledModule(mod));
         const response = proto.callModule(cmdInstance, cmdMemory, requestFields(subCmdline, stdin, extraFiles));
+        return response;
+    }
+
+    async function runExternal(mod, subCmdline, stdin, extraFiles)
+    {
+        const response = callFreshModule(mod, subCmdline, stdin, extraFiles);
 
         const socketReq = parseSocketMarker(response);
         if (socketReq)
@@ -390,6 +420,57 @@ async function createShell(options)
         const { rc, stdout, newCwd } = proto.parseAnswer(response);
         cwd = newCwd;
         return { rc, stdout, cwd };
+    }
+
+    // Job control lives entirely here, in JS -- same split as a real
+    // kernel (which only ever understands kill(pid, sig)) and a shell
+    // process (which owns bg/fg/jobs bookkeeping the kernel never
+    // sees). shell.wasm/command.wasm modules never learn a "job"
+    // concept exists.
+    const processTable = createProcessTable();
+
+    // Starts a SPAWN/SOCKET-delegating module in the background: does
+    // the cheap synchronous phase-1 call inline to learn what real
+    // work is needed, kicks that real work off WITHOUT awaiting it,
+    // and registers it in the process table immediately. The real
+    // socket/process work keeps running regardless of whether anything
+    // is still awaiting it -- same as a real backgrounded process
+    // keeps running whether or not the shell that spawned it is still
+    // watching.
+    // Finishes a delegation's second phase WITHOUT touching the shell's
+    // own `cwd` -- a background job's completion can land long after
+    // the user has `cd`'d elsewhere, and node.wasm/php.wasm/curl.wasm
+    // only ever echo back the same cwd they were given anyway (none of
+    // them are cd), so there is nothing worth committing from it.
+    function finishDelegatedPhase2(mod, subCmdline, stdin, extraFiles)
+    {
+        const response = callFreshModule(mod, subCmdline, stdin, extraFiles);
+        const { rc, stdout } = proto.parseAnswer(response);
+        return { rc, stdout };
+    }
+
+    function startBackgroundDelegated(mod, subCmdline, stdin)
+    {
+        const response = callFreshModule(mod, subCmdline, stdin);
+
+        const spawnReq = parseSpawnMarker(response);
+        if (spawnReq)
+        {
+            const { child, done } = spawnProcess(spawnReq.program, spawnReq.args, spawnReq.stdinBytes);
+            const finalized = done.then(({ exitCode, stdout: procStdout, stderr: procStderr }) =>
+                finishDelegatedPhase2(mod, subCmdline, stdin, { '/dev/exec_response': buildExecResponseFile(exitCode, procStdout, procStderr) }));
+            return processTable.startProcess(mod.name, subCmdline, child, finalized);
+        }
+
+        const socketReq = parseSocketMarker(response);
+        if (socketReq)
+        {
+            const finalized = performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes)
+                .then((rawResponse) => finishDelegatedPhase2(mod, subCmdline, stdin, { '/dev/socket_response': rawResponse }));
+            return processTable.startProcess(mod.name, subCmdline, null, finalized);
+        }
+
+        return null; // nothing to background -- this module answered immediately
     }
 
     // Runs one call against shell.wasm, honoring its EXEC fallback for
@@ -462,6 +543,27 @@ async function createShell(options)
         return groups;
     }
 
+    // ps/jobs/fg/bg/kill are pure JS builtins, intercepted before any
+    // pipeline splitting or WASM call at all -- same as the words
+    // themselves only ever mean something to a shell process, never to
+    // a kernel (which only understands kill(pid, sig)). Formatting is
+    // this file's job precisely because the job table itself is this
+    // file's own bookkeeping, not something any WASM module could ever
+    // know to format.
+    function formatProcessList(kind)
+    {
+        const jobs = processTable.list();
+        if (kind === 'ps')
+        {
+            let out = 'PID\tSTATE\tCMD\n';
+            for (const j of jobs) out += j.pid + '\t' + j.state + '\t' + j.cmdline + '\n';
+            return out;
+        }
+        let out = '';
+        for (const j of jobs) out += '[' + j.pid + '] ' + j.state + '  ' + j.cmdline + '  (' + j.detail + ')\n';
+        return out;
+    }
+
     return {
         /**
          * Runs one command line and returns its real stdout as a
@@ -474,6 +576,60 @@ async function createShell(options)
         /** @returns {Promise<{rc: number, stdout: string, cwd: string}>} */
         async runDetailed(cmdline)
         {
+            const trimmed = cmdline.trim();
+
+            if (trimmed === 'ps' || trimmed === 'jobs') return { rc: 0, stdout: formatProcessList(trimmed), cwd };
+
+            const fgMatch = /^fg\s+(\d+)$/.exec(trimmed);
+            if (fgMatch)
+            {
+                const result = await processTable.fg(Number(fgMatch[1]));
+                return result ? { rc: result.rc, stdout: result.stdout, cwd } : { rc: 1, stdout: 'fg: no such job\n', cwd };
+            }
+
+            const bgMatch = /^bg\s+(\d+)$/.exec(trimmed);
+            if (bgMatch)
+            {
+                const result = processTable.bg(Number(bgMatch[1]));
+                return result ? { rc: result.rc, stdout: result.stdout, cwd } : { rc: 1, stdout: 'bg: no such job\n', cwd };
+            }
+
+            const killMatch = /^kill\s+(\d+)$/.exec(trimmed);
+            if (killMatch)
+            {
+                const result = processTable.kill(Number(killMatch[1]));
+                return result ? { rc: 0, stdout: '', cwd } : { rc: 1, stdout: 'kill: no such job\n', cwd };
+            }
+
+            // Trailing `&`: background dispatch, JS-side only -- a
+            // single command (not a pipeline; composing a backgrounded
+            // pipeline is out of scope here) that's either the stateful
+            // top.wasm (auto-ticked on an interval) or a SPAWN/SOCKET-
+            // delegating module (node/php/curl: the real work is kicked
+            // off and NOT awaited before returning).
+            if (trimmed.endsWith('&'))
+            {
+                const bgStages = splitPipeline(trimmed.slice(0, -1));
+                const name = bgStages.length === 1 ? commandNameOf(bgStages[0]) : null;
+
+                if (name === 'top')
+                {
+                    const started = processTable.startWasmTicking(TOP_MODULE, {
+                        cwd, uid, home: options.env && options.env.HOME, path: options.env && options.env.PATH
+                    });
+                    return { rc: 0, stdout: '[' + started.pid + '] ' + started.pid + '\n', cwd };
+                }
+
+                const mod = name ? findCommandModule(name) : null;
+                if (mod)
+                {
+                    const pid = startBackgroundDelegated(mod, bgStages[0], Buffer.alloc(0));
+                    if (pid !== null) return { rc: 0, stdout: '[' + pid + '] ' + pid + '\n', cwd };
+                }
+
+                return { rc: 1, stdout: 'shell: background not supported for this command\n', cwd };
+            }
+
             const stages = splitPipeline(cmdline);
             if (stages.length === 0) return { rc: 0, stdout: '', cwd };
 
