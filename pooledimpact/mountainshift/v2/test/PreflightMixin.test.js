@@ -116,6 +116,30 @@ function run() {
         });
     }
 
+    // --- MSOS-Cleanup-Roadmap.md's own recurring lesson, applied here:
+    // ExtendX's dispatcher always appends its own injected next()
+    // callback as a trailing argument to every dispatched call
+    // (confirmed live in ExtendX.js's makeDispatcher/invokeNext) -- the
+    // exact hazard class that once silently corrupted Kernel.fork()'s
+    // ppid/memBytes and StructureMixin.linkTo's label. A generic
+    // before/after hook that naively read ctx.args would see that
+    // injected function as an extra trailing "argument," which is
+    // exactly what this checks does NOT happen. ---
+    {
+        let seenArgs = null;
+        const Probed = ExtendX.extend(Greeter, createPreflightMixin(Greeter, {
+            label: 'argHazard',
+            before(ctx) { seenArgs = ctx.args; }
+        }));
+        const g = new Probed();
+        g.greet('world');
+        check('ctx.args never leaks ExtendX\'s injected next() callback', () => {
+            if (seenArgs.length !== 1 || seenArgs[0] !== 'world') {
+                throw new Error('expected exactly [\'world\'], got ' + JSON.stringify(seenArgs.map(a => typeof a)));
+            }
+        });
+    }
+
     // --- construction guards ---
     expectThrows('createPreflightMixin() requires a constructor function', () => createPreflightMixin({}, { before() {} }));
     expectThrows('createPreflightMixin() requires at least one hook', () => createPreflightMixin(Greeter, {}));

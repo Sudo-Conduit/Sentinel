@@ -116,9 +116,40 @@
 
         methodNames.forEach(function(name)
         {
-            mixin[name] = function(...args)
+            // Declared arity of the REAL method -- Function.prototype.length
+            // counts only named, non-default, non-rest parameters, so this
+            // is the same signal Kernel.js's own typeof-guards defend
+            // against, generalized: ExtendX's dispatcher (see ExtendX.js's
+            // makeDispatcher -> invokeNext) ALWAYS appends its own injected
+            // next() callback as one extra trailing argument to every
+            // dispatched call -- confirmed live, not assumed (see
+            // test/PreflightMixin.test.js's own "next()-injection" check).
+            // Recorded once per method here, at mixin-build time, not
+            // per-call.
+            const arity = BaseClass.prototype[name].length;
+
+            mixin[name] = function(...rawArgs)
             {
                 const self = this;
+
+                // Strip the injected next() before it ever reaches a
+                // before/after hook or gets forwarded to this.super --
+                // this.super[name](...) manages its OWN chain continuation
+                // internally and does not need this layer's particular
+                // next passed through, so trimming it here is strictly
+                // more correct, not just cosmetic. Heuristic, not a
+                // guarantee: it only fires when MORE arguments arrived
+                // than the method declares AND the extra trailing one is a
+                // function -- exactly the shape ExtendX's dispatcher
+                // produces. It cannot (no generic mechanism can) rescue
+                // the OTHER half of this hazard class -- a caller omitting
+                // a real trailing argument the method expects, the way
+                // `Kernel.fork(cmd)` alone once corrupted `ppid` -- that
+                // still needs a typeof-guard INSIDE the real method, same
+                // as Kernel.js's own fix; this mixin cannot know that
+                // method's real parameter types.
+                const hasInjectedNext = rawArgs.length > arity && typeof rawArgs[rawArgs.length - 1] === 'function';
+                const args = hasInjectedNext ? rawArgs.slice(0, -1) : rawArgs;
 
                 function afterHook(finalArgs, value)
                 {
