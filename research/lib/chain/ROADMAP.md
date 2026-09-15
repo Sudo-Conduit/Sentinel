@@ -1,6 +1,6 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.2.0
+**Version:** 1.3.0
 **Last updated:** 2026-09-15
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
@@ -56,8 +56,9 @@ re-paste whenever a shipped item changes.
 | Vector | 14/14 |
 | Polynomial | 13/13 |
 | KnotVector | 19/19 |
+| BSpline | 9/9 |
 
-**Total: 302/302 checks passing, 20/20 suites green.**
+**Total: 311/311 checks passing, 21/21 suites green.**
 
 ## Status legend
 
@@ -110,6 +111,20 @@ lessons, not in the abstract:
 - **`MathPrecision`'s missing `F64` case** — a real gap (explicit `Math.fround(x,
   'f64')` threw instead of being a no-op) that testing alone never
   surfaced; it took directly asking "what does explicit F64 do" to find it.
+- **`GeoJS._computeBasis`'s off-by-one degree bug** (`pooledimpact/mountainshift/apps/GeoAPI.js`,
+  found via H.3's own required cross-validation, not gone looking for)
+  — a `GeoJS` configured with `degree: 3` ("cubic, minimum for C²" per
+  its own docblock) actually evaluates a **degree-2** basis: its
+  recursion loop (`for (p = 2; p <= k; p++)`, starting from a degree-0
+  base case) performs `k-1` degree raises, not `k`. Confirmed live
+  (not just read) — `BSpline.unit.js`'s GeoAPI cross-validation suite
+  requires the real file and shows its `degree: 3` output matches
+  `BSpline.basisAll(t, 2, ...)` exactly and does *not* match
+  `BSpline.basisAll(t, 3, ...)` at interior parameter values. Left
+  unfixed here deliberately — `GeoAPI.js` is a different project's file
+  outside `research/lib/chain/`'s scope; this is recorded as a finding
+  for whoever owns that file to act on, not something this branch
+  silently patched.
 
 Any row below whose one-liner is "just extend/compose the established
 pattern" should be scored low on Confidence and distrusted until
@@ -152,7 +167,7 @@ discipline applied to process, not just code.
 | G.3 | Math Extension Host | `Vector.js` — plain linear algebra, zero dependency, `round()` leveraging `MathPrecision` | ✅ | — | — | — | — | — | — | shipped |
 | H.1 | Math Extension Host | `Polynomial` — shared coefficients+degree primitive under Bezier/B-spline | ✅ | — | — | — | — | — | — | shipped |
 | H.2 | Math Extension Host | `KnotVector` — validated (monotonic, length-contract) data layer under B-spline/NURBS | ✅ | — | — | — | — | — | — | shipped |
-| H.3 | Math Extension Host (next) | `BSpline` — Cox-de Boor `basis`/`basisDerivative`, cross-validated against GeoJS's and Beacon's independent implementations | ⬜ | 2 | 3 | 5 | 2 | 4 | 2 | **18** |
+| H.3 | Math Extension Host | `BSpline` — Cox-de Boor `basis`/`basisDerivative`, cross-validated against GeoJS's and Beacon's independent implementations | ✅ | — | — | — | — | — | — | shipped |
 | H.4 | Math Extension Host (next) | `Bezier` — Bernstein basis, control-point blending via `Vector.linearCombination` | ⬜ | 4 | 2 | 4 | 1 | 2 | 4 | **17** |
 | H.5 | Math Extension Host (next) | `NURBS` — rational weighting over `BSpline`'s basis | ⬜ | 2 | 1 | 3 | 3 | 4 | 2 | **15** |
 
@@ -168,13 +183,16 @@ discipline applied to process, not just code.
    `MODE.OPEN` default (monotonic + length contract only), explicit
    `MODE.CLAMPED` opt-in (endpoint multiplicity = degree+1), plus
    `uniform()`/`clamped()` canonical generators for each mode.
-3. **H.3 — `BSpline`** (18) — next up. Depends on both H.1 and H.2; the one
-   explicitly WASM-bound item, and the one with a real, independent
-   cross-validation opportunity (GeoJS's iterative Cox-de Boor vs.
-   Beacon's recursive one, both already in this repo's reference
-   material).
-4. **H.4 — `Bezier`** (17) — depends on H.1 only; could move ahead of H.3
-   if `BSpline`'s cross-validation work stalls, since Bezier doesn't need
+3. ~~**H.3 — `BSpline`** (18)~~ — **shipped.** Depended on both H.1 and
+   H.2. Cross-validation against GeoJS's iterative Cox-de Boor and
+   Beacon's recursive one (both already in this repo's reference
+   material) found a real, previously-unnoticed off-by-one degree bug in
+   `GeoJS._computeBasis` — see the Confidence-dimension lessons above.
+   Implemented as the plain textbook recursive `basis`/`basisDerivative`
+   (matching Beacon's shape exactly), not the more efficient
+   `findSpan`-localized algorithm — deliberately, per this chain's own
+   "stay direct over prematurely optimized" convention.
+4. **H.4 — `Bezier`** (17) — next up. Depends on H.1 only; doesn't need
    `KnotVector` at all (no knots in a plain Bezier curve).
 5. **H.5 — `NURBS`** (15) — strictly after H.3; it's additional rational
    weighting on top of `BSpline`'s basis, not an independent construction.
@@ -294,6 +312,23 @@ without redesigning it each time.
   pass through its first and last control points — without it, a
   "clamped-looking" curve is actually just a curve that happens not to
   touch its own endpoint, a much easier mistake to make than it sounds.
+- **Cox-de Boor recursion (B-spline).** `Nᵢ,ₚ(t) = [(t-tᵢ)/(tᵢ₊ₚ-tᵢ)]·Nᵢ,ₚ₋₁(t)
+  + [(tᵢ₊ₚ₊₁-t)/(tᵢ₊ₚ₊₁-tᵢ₊₁)]·Nᵢ₊₁,ₚ₋₁(t)`, from the base case `Nᵢ,₀(t) = 1`
+  if `t` falls in knot span `i`, else `0`. **Code:**
+  `BSpline.js:basis`. **Why it's a polynomial too:** on any single knot
+  span, it's a genuine polynomial of degree `p` — a *different*
+  polynomial per span, stitched together with `C^{p-1}` continuity at
+  simple knots. **Why the plain recursive form, not the more efficient
+  `findSpan`-localized algorithm (Piegl & Tiller Algorithm A2.2):**
+  matches `Vector`/`Torus`'s own "stay direct over prematurely
+  optimized" precedent, and it's what made the term-for-term
+  cross-validation against `Anomalies_Test017.js`'s private
+  `_bsplineBasis` closure possible — same recursion shape, same
+  variable names even.
+- **Curve evaluation via control-point blending.** `C(t) = Σᵢ Nᵢ,ₚ(t)·Pᵢ`.
+  **Code:** `BSpline.js:evaluate`, which validates the knot vector first
+  (`KnotVector.validate`) and then calls straight into `Vector.linearCombination`
+  — no reimplementation, exactly the reuse the G addendum entry above predicted.
 
 ### Coming next (preview, code not yet written)
 
@@ -301,18 +336,32 @@ without redesigning it each time.
   explicit polynomial of degree `n`, evaluable via `Polynomial.evaluate`
   once expanded. **Why it's a polynomial, concretely:** expand the
   binomial and every term is a plain power of `t`.
-- **Cox-de Boor recursion (B-spline).** `Nᵢ,ₚ(t)` built from `Nᵢ,₀(t) =
-  1` if `t` falls in knot span `i`, else `0`, recursively blended up to
-  degree `p`, over a `KnotVector`-validated knot array. **Why it's a
-  polynomial too:** on any single knot span, it's a genuine polynomial
-  of degree `p` — a *different* polynomial per span, stitched together
-  with `C^{p-1}` continuity at simple knots.
 - **NURBS rational weighting.** A ratio of two weighted B-spline basis
   combinations, not a polynomial itself — the numerator and denominator
   both are, but the quotient generally isn't.
 
 ## Changelog
 
+- **1.3.0** — 2026-09-15 — Shipped **H.3 `BSpline`**: `basis`/`basisDerivative`
+  (plain recursive Cox-de Boor, deliberately not the `findSpan`-localized
+  algorithm — see the Category H addendum), `basisAll`, `evaluate`, and
+  `derivative`, built directly on `KnotVector.validate` (H.2) and
+  `Vector.linearCombination` (G) rather than reimplementing either.
+  **Cross-validated against two independent implementations already in
+  this repository, as scored**: `Anomalies_Test017.js`'s private
+  recursive `_bsplineBasis`/`_bsplineDerivative` (reproduced verbatim in
+  the test file, since they're unexported closures) match term for term;
+  `GeoAPI.js`'s `GeoJS._computeBasis` (required live, not reproduced)
+  does **not** match at its own configured degree — cross-validating it
+  found a real, previously-undocumented off-by-one bug (a `degree: 3`
+  `GeoJS` actually evaluates a degree-2 basis), recorded in the
+  Confidence-dimension lessons above and left unfixed here deliberately,
+  since `GeoAPI.js` sits outside `research/lib/chain/`'s scope. The
+  original H.3 row also flagged "explicitly WASM-bound" as a property to
+  watch for; no WASM tooling exists anywhere in this chain yet and
+  building one was out of scope for "ship the basis functions" — noted
+  here rather than silently dropped. Test suite grew from 302/302 (20
+  suites) to 311/311 (21 suites).
 - **1.2.0** — 2026-09-15 — Shipped **H.1 `Polynomial`** and **H.2
   `KnotVector`**, closing out the tied-score pair at the top of the H
   backlog. `Polynomial`: `evaluate` (Horner's method), `derivative`,
