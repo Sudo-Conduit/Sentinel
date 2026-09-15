@@ -316,12 +316,11 @@ static int fd_read_byte(i32 fd, char *out) {
 /*
  * A command must never name a host_* import directly -- that's the
  * flattening a real kernel avoids: userspace calls a syscall (open(2)),
- * never a vnode operation itself. This file's fd table doesn't exist
- * yet (no per-process table, no dispatch through FileFsX.js's Mount
- * abstraction), so sys_open() for now just forwards to host_open(). The
- * point isn't that this function does more than the host call yet;
- * it's that callers only ever know sys_open()'s signature. When the
- * real fd table lands, ONLY this function's body changes.
+ * never a vnode operation itself. sys_open() is that syscall boundary:
+ * a path string goes in, a byte-stream fd comes back. What that fd
+ * actually streams -- a file's bytes, a directory's listing, anything
+ * else -- is entirely the host's business. This function, and this
+ * file, only ever deal in a string in, a string out.
  */
 static i32 sys_open(const char *path, i32 flags) {
     return host_open((i32)(usize)path, (i32)str_len(path), flags);
@@ -424,10 +423,9 @@ static int cmd_grep(int argc, char **argv) {
  * file's own header talks about -- read exactly like any other fd, via
  * drain_fd_to_stdout(), the same loop cat uses. No packed-array
  * contract invented to match one C function's expectations; no
- * directory-specific host primitive at all. The host resolves the
- * open() to whatever it wants underneath (today: a plain listing
- * string; eventually: real FileFsX.js Mount dispatch) -- C never knows
- * or needs to know which.
+ * directory-specific host primitive at all. sys_open() hands the host
+ * a path string and gets back an fd streaming a string -- what's on
+ * the other side of that string is not this file's concern.
  */
 static int cmd_ls(int argc, char **argv) {
     const char *path = (argc >= 2) ? argv[1] : sh.cwd;
