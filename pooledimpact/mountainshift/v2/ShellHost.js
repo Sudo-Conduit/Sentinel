@@ -33,13 +33,17 @@
  *   itself, in C, through the same open()/read() as any other file --
  *   this file never resolves an identity string).
  *
- *   Synchronous end to end -- `new WebAssembly.Module(bytes)` compiles
- *   synchronously in Node (unlike the browser-recommended async
- *   `WebAssembly.compile()`), so `createShell()` and `run()` both
- *   return directly, no `await` anywhere:
+ *   The module itself is fetched, not read off disk -- `fetch(url)` is
+ *   the one loading primitive that exists identically in a browser and
+ *   in Node, so shell.wasm's bytes come from wherever it's actually
+ *   served, the same way they would once this runs inside
+ *   MountainShift OS itself. `fs` still appears below, but only inside
+ *   open()/access() -- shell.c's OWN filesystem commands resolving a
+ *   real path on this machine, a completely different concern from how
+ *   the module's own bytes got loaded.
  *
  *     const { createShell } = require('./ShellHost.js');
- *     const shell = createShell();
+ *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
  *     var a = shell.run('ls /tmp');
  *     console.log(a);
  *
@@ -48,11 +52,14 @@
 'use strict';
 const fs = require('fs');
 
-const DEFAULT_WASM_PATH = __dirname + '/shell.wasm';
+const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
 
 /**
  * @param {Object} [options]
- * @param {string} [options.wasmPath] - defaults to ./shell.wasm
+ * @param {string} [options.wasmUrl] - fetched via fetch(); defaults to
+ *   a file:// URL for shell.wasm next to this file, but Node's fetch()
+ *   only actually serves http(s):// -- pass a real URL (e.g. a small
+ *   local static server) to load it for real rather than falling back.
  * @param {Object<string,string>} [options.env] - env vars getenv() sees,
  *   mirrored into linear memory once via _init_environ()
  * @param {Object<string,string>} [options.files] - path -> plain string
@@ -60,13 +67,13 @@ const DEFAULT_WASM_PATH = __dirname + '/shell.wasm';
  *   here: whatever bytes read() returns. No packed structure, no
  *   contract invented to match one C function's expectations.
  * @param {string} [options.cwd] - initial working directory
- * @returns {{run: (cmdline: string, stdin?: string) => string}}
+ * @returns {Promise<{run: (cmdline: string, stdin?: string) => string}>}
  */
-function createShell(options)
+async function createShell(options)
 {
     options = options || {};
-    const wasmBytes = fs.readFileSync(options.wasmPath || DEFAULT_WASM_PATH);
-    const wasmModule = new WebAssembly.Module(wasmBytes);
+    const wasmBytes = await fetch(options.wasmUrl || DEFAULT_WASM_URL).then((r) => r.arrayBuffer());
+    const wasmModule = await WebAssembly.compile(wasmBytes);
 
     const env = options.env || { HOME: '/home/user', PATH: '/usr/bin:/bin' };
     // Real by default, resolved via Node's fs -- but this is an internal
