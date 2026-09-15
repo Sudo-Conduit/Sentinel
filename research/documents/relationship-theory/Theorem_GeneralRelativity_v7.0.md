@@ -167,7 +167,7 @@ asserted away.
 ---
 
 **Next:** Chaos (v8.0) — a refinement of Axiom 4/Theorem 4.2, not a new
-manifold structure, expected to be the lighter of the two remaining
-documents. The Torus-Infinity capstone follows both, and is expected to
-draw on Axiom 8 (time as a reflexive pattern) and whatever GR.4 above
-resolves to, for the "time is relative" half of its unification claim.
+manifold structure. **Update:** `Theorem_Torus_v9.0.md` now exists and
+proposes a partial resolution to Question GR.4 above (Theorem Torus.2)
+— the timelike half only; the spacelike proper-distance half named in
+GR.4 remains open (see Torus v9.0's Question T.3).
