@@ -2,19 +2,56 @@
  * shell.c — WASM module, stage 2
  *
  * Build (freestanding, no libc):
- *   clang --target=wasm32 -O2 -nostdlib -Wl,--no-entry \
- *         -Wl,--export=run -Wl,--export-memory -o shell.wasm shell.c
+ *   clang --target=wasm32 -O2 -ffreestanding -nostdlib -Wl,--no-entry \
+ *         -Wl,--export=run -Wl,--export=cwd_ptr -Wl,--export-memory \
+ *         -o shell.wasm shell.c
  *
  * Design:
- *   - One export: run(ptr, len)
- *   - Imports: real POSIX names and shapes (read, write, open, close,
- *     access, chdir, getcwd, getuid, pipe) -- only spawn()/wait()
- *     and _init_environ() have no native single-process equivalent
+ *   - Two exports: run(ptr, len), and cwd_ptr() -- pure session
+ *     bookkeeping (see cwd_ptr()'s own comment), not I/O
+ *   - Imports: real WASI (wasi_snapshot_preview1) -- fd_read, fd_write,
+ *     fd_close, fd_readdir, path_open, environ_sizes_get, environ_get
+ *     -- fulfilled natively by the runtime itself. Only getuid(),
+ *     spawn()/wait(), and pipe() have no WASI equivalent at all
  *   - All state in linear memory, allocated from a bump arena
  *   - No libc. Hand-declared. Own contracts.
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.11 — Real WASI. Every previous version still had actual JS
+ *   code standing at the import boundary deciding what a syscall
+ *   meant -- even fs-free JS (ShellHost.js's open()/access() reading
+ *   only from a caller-supplied map) was still application code
+ *   fulfilling shell.c's syscalls, one layer removed from disk. The
+ *   only way to make shell.wasm the one thing actually touching real
+ *   bytes is to stop authoring the syscall layer at all: read(),
+ *   write(), open(), close(), access(), chdir() are gone as
+ *   hand-written wrappers over an invented "env" module and are now
+ *   thin wrappers over the REAL wasi_snapshot_preview1 ABI --
+ *   fd_read(), fd_write(), fd_close(), path_open() -- fulfilled by
+ *   Node's own native WASI implementation (node:wasi), which calls
+ *   the real OS directly. cmd_ls() now parses fd_readdir()'s actual
+ *   raw dirent buffer itself (24-byte header + name bytes, no
+ *   padding between records) -- the literal kern_getdirentries()
+ *   shape this file opened with, finally implemented for real instead
+ *   of talked about. getenv() is fed by real environ_sizes_get()/
+ *   environ_get() instead of an invented _init_environ(). access()/
+ *   chdir() have no WASI equivalent (no permission bits, no
+ *   process-wide cwd in WASI's capability model), so they fall back
+ *   to attempt-open, the same honest thing a libc without a dedicated
+ *   call would do. getuid()/spawn()/wait()/pipe() are the only names
+ *   left with no WASI equivalent at all (no user model, no fork(),
+ *   no pipe(2)) and stay on their own "env" module, named plainly as
+ *   the exceptions they are -- same category as run() itself. Also
+ *   added cwd_ptr(): since this module gets a fresh
+ *   WebAssembly.Instance every single run() call, sh.cwd can't
+ *   survive between calls on its own any more -- this export lets the
+ *   caller relay that one plain string in and out around each call,
+ *   pure session bookkeeping, not I/O. Confirmed live: whoami, ls (/,
+ *   /bin, cwd, /etc, and back), cat, which, a real pipeline, and both
+ *   real failure cases, with zero JS-authored syscall logic anywhere
+ *   in ShellHost.js -- only real WASI, or the four documented
+ *   exceptions.
  * v0.0.10 — Renaming host_open()/host_whoami() to open()/getlogin_r()
  *   in v0.0.9 wasn't enough: the host side of ls and whoami was still
  *   doing the actual work of ls and whoami. ShellHost.js's open() was
@@ -167,60 +204,54 @@ extern u8 __heap_base;
 /* ------------------------------------------------------------------ */
 
 /*
- * v0.0.9: every one of these is the actual libc/syscall it's named
- * after, not a stand-in ("host_open", "sys_open") for one. A path
- * argument is a plain NUL-terminated C string, exactly like the real
- * function takes -- no extra _len parameter, because the callee can
- * read the same linear memory this module owns and find the NUL
- * itself, the same way real open()/access()/chdir() do. Only two
- * things here couldn't exist on a real system and are named plainly
- * as what they are: spawn()/wait() (WASM can't fork() itself, so
- * something has to stand in for process creation) and _init_environ()
- * (see below). Every other declaration is what a native build's
- * <unistd.h>/<fcntl.h> would already give this file for free -- swap
- * these externs for those two includes and cat/grep/ls/whoami/which/cd
- * don't change a line.
+ * v0.0.11: these are the actual WASI syscalls -- fulfilled natively by
+ * the runtime itself (Node's own C++ WASI implementation, calling the
+ * real OS directly), not by any JS code this project wrote. There is
+ * no "host" module here at all any more: the import module name is
+ * "wasi_snapshot_preview1", the real standard, and passing it Node's
+ * own `wasi.wasiImport` object unmodified is what makes path_open()/
+ * fd_readdir()/environ_get() below real -- the same way a real
+ * kernel's syscall table fulfills a real libc's open()/getdents().
+ *
+ * Only four names have no WASI equivalent, because WASI's capability
+ * model has no user/uid concept and no fork()/pipe(2): getuid(),
+ * spawn(), wait(), pipe(). Those stay on their own "env" module,
+ * named plainly as the exceptions they are -- the same category run()
+ * itself is already in.
  */
 
-extern i32 read(i32 fd, i32 buf_ptr, i32 count)
-    __attribute__((import_module("env"), import_name("read")));
-extern i32 write(i32 fd, i32 buf_ptr, i32 count)
-    __attribute__((import_module("env"), import_name("write")));
-extern i32 open(i32 path_ptr, i32 flags)
-    __attribute__((import_module("env"), import_name("open")));
-extern i32 close(i32 fd)
-    __attribute__((import_module("env"), import_name("close")));
-extern i32 access(i32 path_ptr, i32 amode)
-    __attribute__((import_module("env"), import_name("access")));
-extern i32 chdir(i32 path_ptr)
-    __attribute__((import_module("env"), import_name("chdir")));
-extern i32 getcwd(i32 buf_ptr, i32 size)  /* returns buf_ptr, or 0 on failure -- same convention as real getcwd() returning buf or NULL */
-    __attribute__((import_module("env"), import_name("getcwd")));
-extern i32 getuid(void) /* real POSIX: the raw fact whoami's own real implementation starts from */
-    __attribute__((import_module("env"), import_name("getuid")));
-extern i32 pipe(i32 pipefd_ptr) /* pipefd_ptr -> int[2], exactly like real pipe(2) */
-    __attribute__((import_module("env"), import_name("pipe")));
+extern i32 fd_read(i32 fd, i32 iovs_ptr, i32 iovs_len, i32 nread_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_read")));
+extern i32 fd_write(i32 fd, i32 iovs_ptr, i32 iovs_len, i32 nwritten_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_write")));
+extern i32 fd_close(i32 fd)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_close")));
+extern i32 fd_readdir(i32 fd, i32 buf_ptr, i32 buf_len, i64 cookie, i32 bufused_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("fd_readdir")));
+extern i32 path_open(i32 dirfd, i32 dirflags, i32 path_ptr, i32 path_len, i32 oflags,
+                      i64 fs_rights_base, i64 fs_rights_inheriting, i32 fdflags, i32 opened_fd_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("path_open")));
+extern i32 environ_sizes_get(i32 count_ptr, i32 buf_size_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("environ_sizes_get")));
+extern i32 environ_get(i32 environ_ptr, i32 buf_ptr)
+    __attribute__((import_module("wasi_snapshot_preview1"), import_name("environ_get")));
 
-/* Process control -- the one pair with no real single-process C
- * equivalent, because a WASM module cannot fork() itself. Named
- * plainly as the exception it is, the same way run() itself is. */
-extern i32 spawn(i32 cmd_ptr, i32 cmd_len, i32 in_fd, i32 out_fd, i32 err_fd)
+extern i32 getuid(void) /* WASI has no user model at all -- the one fact whoami needs that no real syscall here provides */
+    __attribute__((import_module("env"), import_name("getuid")));
+extern i32 pipe(i32 pipefd_ptr) /* WASI preview1 defines no pipe(2) */
+    __attribute__((import_module("env"), import_name("pipe")));
+extern i32 spawn(i32 cmd_ptr, i32 cmd_len, i32 in_fd, i32 out_fd, i32 err_fd) /* WASM cannot fork() itself */
     __attribute__((import_module("env"), import_name("spawn")));
 extern i32 wait(i32 pid)
     __attribute__((import_module("env"), import_name("wait")));
 
-/*
- * getenv() is NOT a syscall on a real system -- glibc's own
- * implementation is a linear scan over the `environ` array, which the
- * kernel populates once, at exec() time, before main() ever runs.
- * There is no per-lookup round-trip to anything in real getenv(); see
- * the pure-C implementation below. _init_environ() is this module's
- * one-time stand-in for that exec()-time hand-off -- an exception in
- * the same category as run() itself, not a "getenv" that happens to
- * round-trip every call.
- */
-extern i32 _init_environ(i32 buf_ptr, i32 cap)
-    __attribute__((import_module("env"), import_name("_init_environ")));
+/* The preopened directory fd -- by convention (and Node's own WASI
+ * implementation) the first and only preopen lands at fd 3. It's
+ * preopened as "/", so an absolute path this file already computed
+ * (resolve_path() always returns one) becomes dirfd-relative just by
+ * dropping its leading slash -- see rel_path() below. */
+#define PREOPEN_FD 3
+#define WASI_RIGHTS_READ ((i64)((1 << 1) | (1 << 14))) /* FD_READ | FD_READDIR */
 
 /* ------------------------------------------------------------------ */
 /* Hand-rolled string / memory — no <string.h>                         */
@@ -230,6 +261,61 @@ static usize str_len(const char *s) {
     const char *p = s;
     while (*p) p++;
     return (usize)(p - s);
+}
+
+/*
+ * read()/write()/open()/close()/access()/chdir() are thin C wrappers
+ * over the real WASI calls above -- exactly the same relationship a
+ * real libc's read()/write() have to the raw syscall numbers
+ * underneath them. Nothing here is a stand-in; they just do the
+ * iovec/rights/dirfd marshaling real WASI requires. Declared here,
+ * right after str_len(), instead of up next to the WASI externs,
+ * because open() needs str_len() and this file orders definitions
+ * before their first use rather than forward-declaring (v0.0.1's own
+ * fix already established that discipline).
+ */
+static i32 read(i32 fd, i32 buf_ptr, i32 count) {
+    i32 iov[2]; i32 nread;
+    iov[0] = buf_ptr; iov[1] = count;
+    return fd_read(fd, (i32)(usize)iov, 1, (i32)(usize)&nread) == 0 ? nread : -1;
+}
+static i32 write(i32 fd, i32 buf_ptr, i32 count) {
+    i32 iov[2]; i32 nwritten;
+    iov[0] = buf_ptr; iov[1] = count;
+    return fd_write(fd, (i32)(usize)iov, 1, (i32)(usize)&nwritten) == 0 ? nwritten : -1;
+}
+static i32 close(i32 fd) {
+    return fd_close(fd) == 0 ? 0 : -1;
+}
+static const char *rel_path(const char *path) {
+    if (path[0] != '/') return path;
+    if (path[1] == '\0') return "."; /* "/" itself -- the preopen root; WASI path_open() rejects an empty relative path */
+    return path + 1;
+}
+static i32 open(i32 path_ptr, i32 flags) {
+    (void)flags;
+    const char *rel = rel_path((const char *)(usize)path_ptr);
+    i32 opened_fd;
+    i32 rc = path_open(PREOPEN_FD, 1 /* SYMLINK_FOLLOW */,
+                        (i32)(usize)rel, (i32)str_len(rel), 0,
+                        WASI_RIGHTS_READ, WASI_RIGHTS_READ, 0,
+                        (i32)(usize)&opened_fd);
+    return rc == 0 ? opened_fd : -1;
+}
+/* No WASI equivalent for either -- access(2) and chdir(2) are both
+ * real syscalls on a real system, but WASI's capability model has no
+ * permission-bit check and no process-wide cwd. The honest fallback
+ * every minimal libc without a dedicated call uses: attempt to open
+ * the path, and let success or failure answer the question. */
+static i32 access(i32 path_ptr, i32 mode) {
+    (void)mode;
+    i32 fd = open(path_ptr, 0);
+    if (fd < 0) return -1;
+    close(fd);
+    return 0;
+}
+static i32 chdir(i32 path_ptr) {
+    return access(path_ptr, 0);
 }
 
 static int str_cmp(const char *a, const char *b) {
@@ -364,13 +450,14 @@ static struct shell sh;
  * A real process's `environ` is populated once, at exec() time, by the
  * kernel handing envp to the new process -- getenv() itself is then
  * just glibc walking that array in the process's own memory, no
- * syscall involved. _init_environ() is this module's one-time stand-in
- * for that exec()-time hand-off (called once, lazily, alongside the
- * arena in run()); every getenv() call after that is pure C, same as
- * on a real system.
+ * syscall involved. This module's version of that one-time hand-off is
+ * real WASI too: environ_sizes_get()+environ_get(), called once,
+ * lazily, alongside the arena in run(). Every getenv() call after that
+ * is pure C, same as on a real system.
  */
 static char  g_environ[MAX_ENVIRON];
 static usize g_environ_len;
+static i32   g_environ_ptrs[128]; /* environ_get()'s required pointer table -- unused by getenv(), which scans g_environ directly, but WASI still needs somewhere valid to write it */
 
 static char *getenv(const char *name) {
     usize nlen = str_len(name);
@@ -454,7 +541,12 @@ static int builtin_cd(int argc, char **argv) {
         fd_puts(STDERR_FILENO, "cd: no such directory\n");
         return 1;
     }
-    getcwd((i32)(usize)sh.cwd, MAX_PATH);
+    /* No getcwd() equivalent in WASI -- there's no process-wide cwd to
+     * ask for. path is already the resolved, canonical absolute form
+     * (resolve_path() guarantees that), so it IS the new cwd. */
+    usize n = str_len(path);
+    mem_copy(sh.cwd, path, n < MAX_PATH ? n + 1 : MAX_PATH - 1);
+    if (n >= MAX_PATH) sh.cwd[MAX_PATH - 1] = '\0';
     return 0;
 }
 
@@ -530,17 +622,26 @@ static int cmd_grep(int argc, char **argv) {
 }
 
 /*
- * v0.0.10: open() on a directory streams raw entries, NUL-separated --
- * the same shape a real getdents() gives a real ls.c: unformatted
- * names, no separator a human would ever want to see. Turning that
- * into a printed listing (one name per line) is ls's own job, same as
- * on a real system; it used to be done for this file, by whatever
- * produced the newline-joined string drain_fd_to_stdout() just copied
- * through untouched. cat still uses drain_fd_to_stdout() for regular
- * files -- their content isn't structured, so nothing should
- * reinterpret it. A directory listing is structured, so this file
- * does the interpreting.
+ * v0.0.11: fd_readdir() is the real WASI syscall -- fulfilled by
+ * Node's own native WASI implementation, calling the real OS directly
+ * -- and it hands back exactly the raw kernel-style buffer
+ * kern_getdirentries() (this whole file's very first reference point)
+ * copies out to userspace: fixed-size records back-to-back, each a
+ * 24-byte header (d_next: u64, d_ino: u64, d_namlen: u32, d_type: u8 +
+ * 3 bytes padding) immediately followed by d_namlen raw name bytes,
+ * no NUL, no separator. Nothing arrives pre-formatted; turning that
+ * into a printed listing (one name per line) is ls's own job, done
+ * right here, the same way a real ls.c walks its own getdents()
+ * buffer.
  */
+struct wasi_dirent {
+    u64 d_next;
+    u64 d_ino;
+    u32 d_namlen;
+    u8  d_type;
+    u8  _pad[3];
+};
+
 static int cmd_ls(int argc, char **argv) {
     char resolved[MAX_PATH];
     const char *path = (argc >= 2) ? resolve_path(argv[1], resolved, sizeof resolved) : sh.cwd;
@@ -551,30 +652,23 @@ static int cmd_ls(int argc, char **argv) {
         return 1;
     }
 
-    char buf[16384];
-    usize total = 0;
-    for (;;) {
-        i32 n = read(fd, (i32)(usize)(buf + total), (i32)(sizeof(buf) - total));
-        if (n < 0) { close(fd); fd_puts(STDERR_FILENO, "ls: read error\n"); return 1; }
-        if (n == 0) break;
-        total += (usize)n;
-        if (total >= sizeof buf) break;
-    }
+    char buf[32768];
+    i32 bufused = 0;
+    i32 rc = fd_readdir(fd, (i32)(usize)buf, sizeof buf, 0, (i32)(usize)&bufused);
     close(fd);
-
-    usize start = 0;
-    for (usize i = 0; i < total; i++) {
-        if (buf[i] == '\0') {
-            if (i > start) {
-                fd_write_all(STDOUT_FILENO, buf + start, i - start);
-                fd_puts(STDOUT_FILENO, "\n");
-            }
-            start = i + 1;
-        }
+    if (rc != 0) {
+        fd_puts(STDERR_FILENO, "ls: read error\n");
+        return 1;
     }
-    if (total > start) {
-        fd_write_all(STDOUT_FILENO, buf + start, total - start);
+
+    usize off = 0;
+    while (off + sizeof(struct wasi_dirent) <= (usize)bufused) {
+        struct wasi_dirent de;
+        mem_copy(&de, buf + off, sizeof de);
+        if (off + sizeof de + de.d_namlen > (usize)bufused) break;
+        fd_write_all(STDOUT_FILENO, buf + off + sizeof de, de.d_namlen);
         fd_puts(STDOUT_FILENO, "\n");
+        off += sizeof de + de.d_namlen;
     }
     return 0;
 }
@@ -878,6 +972,24 @@ static int run_pipeline(struct pipeline *pl) {
 /* ------------------------------------------------------------------ */
 
 /*
+ * cwd_ptr(): NOT a syscall, and not a WASI substitute -- WASI has no
+ * process-wide cwd, and this isn't standing in for one. It exists
+ * because this module gets a FRESH WebAssembly.Instance (fresh linear
+ * memory) on every single run() call, so sh.cwd -- a C static -- can't
+ * survive between calls on its own. A real OS process keeps its cwd in
+ * its own memory for its own lifetime; this export just lets whatever
+ * is re-instantiating this module each time copy that one plain
+ * string in before run() and back out after, the same category of
+ * bookkeeping as passing the command line itself in through ptr/len.
+ * No file, no real path resolution, no interpretation happens on the
+ * other side of this -- it's session continuity, not I/O.
+ */
+__attribute__((export_name("cwd_ptr")))
+i32 cwd_ptr(void) {
+    return (i32)(usize)sh.cwd;
+}
+
+/*
  * run(ptr, len): the WASM module's only entry point.
  *
  * The host writes the command line into linear memory at ptr, sets len,
@@ -890,14 +1002,18 @@ __attribute__((export_name("run")))
 int run(i32 ptr, i32 len) {
     if (arena_base == NULL) {
         alloc_init();
-        /* sh.cwd is a zero-initialized static -- without this, ls and
-         * anything else defaulting to sh.cwd silently operates on an
-         * empty path until the first successful cd. Caught live by
-         * actually running the module, not by reading the source. */
-        getcwd((i32)(usize)sh.cwd, MAX_PATH);
-        /* The one-time exec()-time hand-off getenv() depends on -- see
-         * the comment above g_environ. */
-        g_environ_len = (usize)_init_environ((i32)(usize)g_environ, sizeof g_environ);
+
+        /* The one-time exec()-time hand-off getenv() depends on --
+         * see the comment above g_environ. Real WASI calls, not a
+         * disguised getenv: environ_sizes_get() + environ_get() are
+         * exactly what a real libc's startup code runs once too. */
+        i32 count, bufsize;
+        if (environ_sizes_get((i32)(usize)&count, (i32)(usize)&bufsize) == 0
+            && (usize)bufsize <= sizeof g_environ
+            && (usize)count <= sizeof(g_environ_ptrs) / sizeof(g_environ_ptrs[0])) {
+            environ_get((i32)(usize)g_environ_ptrs, (i32)(usize)g_environ);
+            g_environ_len = (usize)bufsize;
+        }
     }
 
     if (len <= 0 || len >= MAX_LINE) return 2;
