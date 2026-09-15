@@ -7,12 +7,40 @@
  *
  * Design:
  *   - One export: run(ptr, len)
- *   - Imports: fd_read, fd_write, host_* for the rest
+ *   - Imports: real POSIX names and shapes (read, write, open, close,
+ *     access, chdir, getcwd, getlogin_r, pipe) -- only spawn()/wait()
+ *     and _init_environ() have no native single-process equivalent
  *   - All state in linear memory, allocated from a bump arena
  *   - No libc. Hand-declared. Own contracts.
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.9 — Every host_ and sys_ name is gone. Deleting sys_open(),
+ *   fd_read_byte(), fd_puts(), fd_write_all(), and sys_whoami() to
+ *   check whether the code still worked (it didn't -- 20 implicit-
+ *   function-declaration errors, one at every real call site) proved
+ *   they weren't decorative: they WERE the only path any command had
+ *   to the outside world. The actual fix wasn't removing that path,
+ *   it was naming it honestly. Every import is now the real POSIX
+ *   function it stands for -- read, write, open, close, access,
+ *   chdir, getcwd, getlogin_r, pipe(int[2]) -- with real signatures
+ *   (a path is a plain NUL-terminated C string, no invented _len
+ *   parameter, because the callee can find the NUL itself in the same
+ *   linear memory this module owns). cmd_cat/cmd_ls/cmd_whoami/
+ *   cmd_which/builtin_cd call these names directly, the same way a
+ *   native cat.c/ls.c/whoami.c would -- no sys_open()/sys_whoami()
+ *   wrapper in between, because wrapping a real call in a same-shaped
+ *   function that only forwards to it isn't a syscall boundary, it's
+ *   just a longer name for the same call. getenv() stopped being a
+ *   per-call import entirely: real getenv() is not a syscall, it's
+ *   glibc scanning the `environ` array the kernel populates once at
+ *   exec() time, so this module now mirrors that once, in
+ *   _init_environ() (a bootstrap exception in the same category as
+ *   run() itself, not a disguised getenv), and getenv() below it is
+ *   pure C, zero per-lookup import calls, same as on a real system.
+ *   The only names left that a native single-process build couldn't
+ *   give this file for free via <unistd.h>/<fcntl.h> are spawn()/
+ *   wait() (a WASM module can't fork() itself) and _init_environ().
  * v0.0.8 — cmd_whoami() no longer reads $USER/$LOGNAME. Real whoami
  *   asks the kernel for the real effective user; it never consults
  *   the environment (confirmed live: `USER=hacker whoami` on a real
@@ -114,75 +142,64 @@ typedef long               isize;
 extern u8 __heap_base;
 
 /* ------------------------------------------------------------------ */
-/* Host imports — the only things the module can call                  */
+/* Imports — real POSIX names and shapes, nothing invented              */
 /* ------------------------------------------------------------------ */
 
 /*
- * Everything the module needs from the outside goes through here.
- * No syscalls, no libc, no ambient authority. Just these.
+ * v0.0.9: every one of these is the actual libc/syscall it's named
+ * after, not a stand-in ("host_open", "sys_open") for one. A path
+ * argument is a plain NUL-terminated C string, exactly like the real
+ * function takes -- no extra _len parameter, because the callee can
+ * read the same linear memory this module owns and find the NUL
+ * itself, the same way real open()/access()/chdir() do. Only two
+ * things here couldn't exist on a real system and are named plainly
+ * as what they are: spawn()/wait() (WASM can't fork() itself, so
+ * something has to stand in for process creation) and _init_environ()
+ * (see below). Every other declaration is what a native build's
+ * <unistd.h>/<fcntl.h> would already give this file for free -- swap
+ * these externs for those two includes and cat/grep/ls/whoami/which/cd
+ * don't change a line.
  */
 
-/* I/O */
-__attribute__((import_module("host"), import_name("fd_read")))
-extern i32 host_fd_read(i32 fd, i32 buf_ptr, i32 buf_len);
+extern i32 read(i32 fd, i32 buf_ptr, i32 count)
+    __attribute__((import_module("env"), import_name("read")));
+extern i32 write(i32 fd, i32 buf_ptr, i32 count)
+    __attribute__((import_module("env"), import_name("write")));
+extern i32 open(i32 path_ptr, i32 flags)
+    __attribute__((import_module("env"), import_name("open")));
+extern i32 close(i32 fd)
+    __attribute__((import_module("env"), import_name("close")));
+extern i32 access(i32 path_ptr, i32 amode)
+    __attribute__((import_module("env"), import_name("access")));
+extern i32 chdir(i32 path_ptr)
+    __attribute__((import_module("env"), import_name("chdir")));
+extern i32 getcwd(i32 buf_ptr, i32 size)  /* returns buf_ptr, or 0 on failure -- same convention as real getcwd() returning buf or NULL */
+    __attribute__((import_module("env"), import_name("getcwd")));
+extern i32 getlogin_r(i32 buf_ptr, i32 bufsize) /* real POSIX: the actual call whoami's own real implementation is built on */
+    __attribute__((import_module("env"), import_name("getlogin_r")));
+extern i32 pipe(i32 pipefd_ptr) /* pipefd_ptr -> int[2], exactly like real pipe(2) */
+    __attribute__((import_module("env"), import_name("pipe")));
 
-__attribute__((import_module("host"), import_name("fd_write")))
-extern i32 host_fd_write(i32 fd, i32 buf_ptr, i32 buf_len);
+/* Process control -- the one pair with no real single-process C
+ * equivalent, because a WASM module cannot fork() itself. Named
+ * plainly as the exception it is, the same way run() itself is. */
+extern i32 spawn(i32 cmd_ptr, i32 cmd_len, i32 in_fd, i32 out_fd, i32 err_fd)
+    __attribute__((import_module("env"), import_name("spawn")));
+extern i32 wait(i32 pid)
+    __attribute__((import_module("env"), import_name("wait")));
 
 /*
- * open()/close() -- resolves a path into a plain fd, readable via the
- * SAME host_fd_read every command already uses. This is the one real
- * generic primitive a directory listing needs: from C's side, an open
- * directory is nothing but a stream of bytes (the same shape pre-
- * readdir(3) Unix used, before directories got their own read-entry
- * API) -- not a specialized packed-array contract invented to match
- * what one C function expects. Returns an fd (>= 0) or -1.
+ * getenv() is NOT a syscall on a real system -- glibc's own
+ * implementation is a linear scan over the `environ` array, which the
+ * kernel populates once, at exec() time, before main() ever runs.
+ * There is no per-lookup round-trip to anything in real getenv(); see
+ * the pure-C implementation below. _init_environ() is this module's
+ * one-time stand-in for that exec()-time hand-off -- an exception in
+ * the same category as run() itself, not a "getenv" that happens to
+ * round-trip every call.
  */
-__attribute__((import_module("host"), import_name("open")))
-extern i32 host_open(i32 path_ptr, i32 path_len, i32 flags);
-
-__attribute__((import_module("host"), import_name("close")))
-extern i32 host_close(i32 fd);
-
-/* Process / job interface */
-__attribute__((import_module("host"), import_name("spawn")))
-extern i32 host_spawn(i32 cmd_ptr, i32 cmd_len,
-                      i32 in_fd, i32 out_fd, i32 err_fd);
-
-__attribute__((import_module("host"), import_name("wait")))
-extern i32 host_wait(i32 pid);
-
-/* Environment */
-__attribute__((import_module("host"), import_name("getenv")))
-extern i32 host_getenv(i32 name_ptr, i32 name_len,
-                       i32 buf_ptr, i32 buf_len);
-
-__attribute__((import_module("host"), import_name("chdir")))
-extern i32 host_chdir(i32 path_ptr, i32 path_len);
-
-__attribute__((import_module("host"), import_name("getcwd")))
-extern i32 host_getcwd(i32 buf_ptr, i32 buf_len);
-
-/* Path lookup for `which` */
-__attribute__((import_module("host"), import_name("access")))
-extern i32 host_access(i32 path_ptr, i32 path_len, i32 mode);
-
-/*
- * Real identity -- NOT the environment. Real whoami asks the kernel
- * for the effective user (geteuid() -> getpwuid()); it does not read
- * $USER, and `USER=hacker whoami` on a real system still prints the
- * real user. host_whoami() is that same fact, shaped the same way:
- * the host hands back whatever real identity it actually is, with no
- * environment variable able to override it.
- */
-__attribute__((import_module("host"), import_name("whoami")))
-extern i32 host_whoami(i32 buf_ptr, i32 buf_len);
-
-/* Real pipe creation -- writes the new read/write fd numbers into
- * linear memory at the two given pointers. v0.0.3: this is the one
- * new host import multi-stage pipelines actually need. */
-__attribute__((import_module("host"), import_name("pipe")))
-extern i32 host_pipe(i32 read_fd_out_ptr, i32 write_fd_out_ptr);
+extern i32 _init_environ(i32 buf_ptr, i32 cap)
+    __attribute__((import_module("env"), import_name("_init_environ")));
 
 /* ------------------------------------------------------------------ */
 /* Hand-rolled string / memory — no <string.h>                         */
@@ -214,15 +231,6 @@ static char *str_str(const char *hay, const char *needle) {
     return NULL;
 }
 
-/* Moved up next to the other string helpers, above every call site --
- * v0.0.1 had this declared after cmd_which() used it, with no forward
- * declaration, which clang rejects as an implicit-function-declaration
- * error rather than silently defaulting an int return the way older C
- * compilers might. */
-static void str_copy_lit(char *dst, const char *lit) {
-    while ((*dst++ = *lit++)) ;
-}
-
 static void mem_copy(void *d, const void *s, usize n) {
     u8 *dp = d; const u8 *sp = s;
     while (n--) *dp++ = *sp++;
@@ -231,6 +239,12 @@ static void mem_copy(void *d, const void *s, usize n) {
 static void mem_set(void *d, int c, usize n) {
     u8 *dp = d;
     while (n--) *dp++ = (u8)c;
+}
+
+static int mem_cmp(const void *a, const void *b, usize n) {
+    const u8 *pa = a, *pb = b;
+    while (n--) { if (*pa != *pb) return (int)*pa - (int)*pb; pa++; pb++; }
+    return 0;
 }
 
 static int parse_int(const char *s) {
@@ -288,10 +302,16 @@ static void arena_reset(void) {
 
 #define O_RDONLY       0
 
+/* Real values (<unistd.h>: F_OK=0, X_OK=1) -- access() itself already
+ * has the real signature, so these need to already be the real ones. */
+#define F_OK 0
+#define X_OK 1
+
 #define MAX_STAGES 16
 #define MAX_ARGS   64
 #define MAX_LINE   8192
 #define MAX_PATH   4096
+#define MAX_ENVIRON 4096
 
 /* ------------------------------------------------------------------ */
 /* Shell context                                                       */
@@ -316,13 +336,41 @@ struct shell {
 static struct shell sh;
 
 /* ------------------------------------------------------------------ */
+/* environ / getenv() — pure C, exactly like real libc                 */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A real process's `environ` is populated once, at exec() time, by the
+ * kernel handing envp to the new process -- getenv() itself is then
+ * just glibc walking that array in the process's own memory, no
+ * syscall involved. _init_environ() is this module's one-time stand-in
+ * for that exec()-time hand-off (called once, lazily, alongside the
+ * arena in run()); every getenv() call after that is pure C, same as
+ * on a real system.
+ */
+static char  g_environ[MAX_ENVIRON];
+static usize g_environ_len;
+
+static char *getenv(const char *name) {
+    usize nlen = str_len(name);
+    const char *p = g_environ, *end = g_environ + g_environ_len;
+    while (p < end) {
+        usize elen = str_len(p);
+        if (elen > nlen && p[nlen] == '=' && mem_cmp(p, name, nlen) == 0)
+            return (char *)(p + nlen + 1);
+        p += elen + 1;
+    }
+    return NULL;
+}
+
+/* ------------------------------------------------------------------ */
 /* I/O helpers                                                         */
 /* ------------------------------------------------------------------ */
 
 static i32 fd_write_all(i32 fd, const char *buf, usize len) {
     usize off = 0;
     while (off < len) {
-        i32 n = host_fd_write(fd, (i32)(usize)(buf + off), (i32)(len - off));
+        i32 n = write(fd, (i32)(usize)(buf + off), (i32)(len - off));
         if (n <= 0) return -1;
         off += (usize)n;
     }
@@ -335,22 +383,21 @@ static i32 fd_puts(i32 fd, const char *s) {
 
 /* Read one byte. Returns 1 on success, 0 on EOF, -1 on error. */
 static int fd_read_byte(i32 fd, char *out) {
-    i32 n = host_fd_read(fd, (i32)(usize)out, 1);
+    i32 n = read(fd, (i32)(usize)out, 1);
     return (n == 1) ? 1 : (n == 0 ? 0 : -1);
 }
 
 /* ------------------------------------------------------------------ */
-/* Syscalls — the boundary a command is allowed to call                */
+/* Path resolution — pure C, the one thing no import does for you      */
 /* ------------------------------------------------------------------ */
 
 /*
- * v0.0.7: path resolution belongs here, in C, not the host. Relative
- * paths get joined against sh.cwd -- pure string work, no host call --
- * so the host's job stays exactly "receive a string, return a string,"
- * nothing more. Before this, a relative argument (e.g. `cat notes.txt`)
- * went to host_open() unresolved and only worked by accident, if the
- * host's own idea of "current directory" happened to line up with
- * sh.cwd. Absolute paths pass through untouched.
+ * Relative paths get joined against sh.cwd before reaching open() --
+ * pure string work. Real open() has no idea what "current directory"
+ * means either; the kernel resolves relative paths starting from the
+ * calling process's own cwd entry, which is exactly what this does in
+ * user space here, before the real open() call. Absolute paths pass
+ * through untouched.
  */
 static const char *resolve_path(const char *path, char *out, usize out_cap) {
     if (path[0] == '/') return path;
@@ -360,36 +407,13 @@ static const char *resolve_path(const char *path, char *out, usize out_cap) {
     int   need_sep = (cwd_len == 0 || sh.cwd[cwd_len - 1] != '/');
     usize total    = cwd_len + (need_sep ? 1 : 0) + path_len;
 
-    if (total >= out_cap) return path; /* too long to join -- let sys_open fail on it */
+    if (total >= out_cap) return path; /* too long to join -- let open() fail on it */
 
     mem_copy(out, sh.cwd, cwd_len);
     usize pos = cwd_len;
     if (need_sep) out[pos++] = '/';
     mem_copy(out + pos, path, path_len + 1); /* + NUL */
     return out;
-}
-
-/*
- * A command must never name a host_* import directly -- that's the
- * flattening a real kernel avoids: userspace calls a syscall (open(2)),
- * never a vnode operation itself. sys_open() is that syscall boundary:
- * a path string goes in, a byte-stream fd comes back. What that fd
- * actually streams -- a file's bytes, a directory's listing, anything
- * else -- is entirely the host's business. This function, and this
- * file, only ever deal in a string in, a string out.
- */
-static i32 sys_open(const char *path, i32 flags) {
-    return host_open((i32)(usize)path, (i32)str_len(path), flags);
-}
-
-/*
- * sys_whoami() -- the identity syscall. No path, no flags, nothing to
- * resolve: just "who is this, really." A command asks this, never
- * host_whoami() directly, for the same reason it never names any
- * other host_* import directly.
- */
-static i32 sys_whoami(i32 buf_ptr, i32 buf_len) {
-    return host_whoami(buf_ptr, buf_len);
 }
 
 /* ------------------------------------------------------------------ */
@@ -402,17 +426,14 @@ static int builtin_cd(int argc, char **argv) {
     if (argc >= 2) {
         path = resolve_path(argv[1], resolved, sizeof resolved);
     } else {
-        char home[MAX_PATH];
-        i32 n = host_getenv((i32)(usize)"HOME", 4,
-                            (i32)(usize)home, MAX_PATH);
-        if (n <= 0) path = "/";
-        else { home[n < MAX_PATH ? n : MAX_PATH - 1] = '\0'; path = home; }
+        const char *home = getenv("HOME");
+        path = home ? home : "/";
     }
-    if (host_chdir((i32)(usize)path, (i32)str_len(path)) != 0) {
+    if (chdir((i32)(usize)path) != 0) {
         fd_puts(STDERR_FILENO, "cd: no such directory\n");
         return 1;
     }
-    host_getcwd((i32)(usize)sh.cwd, MAX_PATH);
+    getcwd((i32)(usize)sh.cwd, MAX_PATH);
     return 0;
 }
 
@@ -426,14 +447,14 @@ static int builtin_exit(int argc, char **argv) {
 /* External commands — read fd 0, write fd 1, errors to fd 2           */
 /* ------------------------------------------------------------------ */
 
-/* Drains fd to STDOUT_FILENO until EOF. The one loop cat/ls both need --
- * from C's side, an open file and an open directory are the same thing:
- * a stream of bytes read via the ordinary host_fd_read every command
+/* Drains fd to STDOUT_FILENO until EOF -- the one loop cat/ls both
+ * need. From C's side, an open file and an open directory are the same
+ * thing: a stream of bytes read via the ordinary read() every command
  * already uses. */
 static int drain_fd_to_stdout(i32 fd) {
     char buf[4096];
     for (;;) {
-        i32 n = host_fd_read(fd, (i32)(usize)buf, sizeof buf);
+        i32 n = read(fd, (i32)(usize)buf, sizeof buf);
         if (n < 0) return 1;
         if (n == 0) break;
         if (fd_write_all(STDOUT_FILENO, buf, (usize)n) < 0) return 1;
@@ -447,7 +468,8 @@ static int cmd_cat(int argc, char **argv) {
     }
     for (int i = 1; i < argc; i++) {
         char resolved[MAX_PATH];
-        i32 fd = sys_open(resolve_path(argv[i], resolved, sizeof resolved), O_RDONLY);
+        const char *path = resolve_path(argv[i], resolved, sizeof resolved);
+        i32 fd = open((i32)(usize)path, O_RDONLY);
         if (fd < 0) {
             fd_puts(STDERR_FILENO, "cat: cannot open ");
             fd_puts(STDERR_FILENO, argv[i]);
@@ -455,7 +477,7 @@ static int cmd_cat(int argc, char **argv) {
             return 1;
         }
         int rc = drain_fd_to_stdout(fd);
-        host_close(fd);
+        close(fd);
         if (rc != 0) return rc;
     }
     return 0;
@@ -487,44 +509,41 @@ static int cmd_grep(int argc, char **argv) {
 }
 
 /*
- * v0.0.6: an open directory IS a stream of bytes -- the string this
- * file's own header talks about -- read exactly like any other fd, via
- * drain_fd_to_stdout(), the same loop cat uses. No packed-array
- * contract invented to match one C function's expectations; no
- * directory-specific host primitive at all. sys_open() hands the host
- * a path string and gets back an fd streaming a string -- what's on
- * the other side of that string is not this file's concern.
+ * v0.0.6: an open directory IS a stream of bytes, read exactly like
+ * any other fd via drain_fd_to_stdout() -- the same loop cat uses. No
+ * packed-array contract invented to match one C function's
+ * expectations; no directory-specific primitive at all. open() on a
+ * directory path returns an fd streaming its content, same as it does
+ * for a regular file.
  */
 static int cmd_ls(int argc, char **argv) {
     char resolved[MAX_PATH];
     const char *path = (argc >= 2) ? resolve_path(argv[1], resolved, sizeof resolved) : sh.cwd;
 
-    i32 fd = sys_open(path, O_RDONLY);
+    i32 fd = open((i32)(usize)path, O_RDONLY);
     if (fd < 0) {
         fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
         return 1;
     }
     int rc = drain_fd_to_stdout(fd);
-    host_close(fd);
+    close(fd);
     return rc;
 }
 
 /*
  * v0.0.8: whoami no longer reads $USER/$LOGNAME. Real whoami never
- * consults the environment -- it asks the kernel for the real
- * effective user (geteuid() -> getpwuid()), which is why
- * `USER=hacker whoami` on a real system still prints the real user,
- * not "hacker". Reading $USER was a shell-convention shortcut wearing
- * whoami's name, not what the command actually does. sys_whoami() is
- * the real fact instead, with no environment variable able to spoof
- * it.
+ * consults the environment -- `USER=hacker whoami` on a real system
+ * still prints the real user, because it asks the kernel, not the
+ * environment. getlogin_r() is the actual real POSIX call this is
+ * built on -- not a stand-in for one.
  */
 static int cmd_whoami(int argc, char **argv) {
     (void)argc; (void)argv;
     char buf[256];
-    i32 n = sys_whoami((i32)(usize)buf, sizeof buf);
-    if (n <= 0) { fd_puts(STDOUT_FILENO, "unknown\n"); return 0; }
-    buf[n < 256 ? n : 255] = '\0';
+    if (getlogin_r((i32)(usize)buf, sizeof buf) != 0) {
+        fd_puts(STDOUT_FILENO, "unknown\n");
+        return 0;
+    }
     fd_puts(STDOUT_FILENO, buf);
     fd_puts(STDOUT_FILENO, "\n");
     return 0;
@@ -532,10 +551,8 @@ static int cmd_whoami(int argc, char **argv) {
 
 static int cmd_which(int argc, char **argv) {
     if (argc < 2) return 2;
-    char path[MAX_PATH];
-    i32 n = host_getenv((i32)(usize)"PATH", 4, (i32)(usize)path, sizeof path);
-    if (n <= 0) { str_copy_lit(path, "/usr/bin:/bin"); n = (i32)str_len(path); }
-    path[n < MAX_PATH ? n : MAX_PATH - 1] = '\0';
+    const char *path = getenv("PATH");
+    if (!path) path = "/usr/bin:/bin";
 
     char buf[MAX_PATH];
     const char *p = path;
@@ -546,7 +563,7 @@ static int cmd_which(int argc, char **argv) {
             mem_copy(buf, p, len);
             buf[len] = '/';
             mem_copy(buf + len + 1, argv[1], str_len(argv[1]) + 1);
-            if (host_access((i32)(usize)buf, (i32)str_len(buf), 1) == 0) {
+            if (access((i32)(usize)buf, X_OK) == 0) {
                 fd_puts(STDOUT_FILENO, buf);
                 fd_puts(STDOUT_FILENO, "\n");
                 return 0;
@@ -644,7 +661,7 @@ static int run_builtin(const struct command *c, int argc, char **argv) {
 }
 
 /* Rejoins a tokenized stage's argv back into a single space-separated
- * command string for host_spawn(), which takes a command line, not an
+ * command string for spawn(), which takes a command line, not an
  * argv array. Loses original inter-token whitespace/quoting -- an
  * accepted simplification for this seed, since tokenize_stage() already
  * discarded that information in place. */
@@ -667,20 +684,20 @@ static usize rejoin_argv(char *buf, usize buf_cap, char **argv, int argc) {
 /*
  * v0.0.3: real multi-stage piping. Every stage still just says "read fd
  * 0, write fd 1" -- that was already correct and needed no change. What
- * was wrong was this function bypassing host_spawn() entirely and
- * calling each command in-process, so every stage's fd 0/1 resolved to
- * the SAME real stdin/stdout no matter its position. Now: a real pipe
- * (host_pipe()) is created between every adjacent pair of stages, each
- * stage is handed off to host_spawn() with the correct in_fd/out_fd
+ * was wrong was this function bypassing spawn() entirely and calling
+ * each command in-process, so every stage's fd 0/1 resolved to the
+ * SAME real stdin/stdout no matter its position. Now: a real pipe
+ * (pipe()) is created between every adjacent pair of stages, each
+ * stage is handed off to spawn() with the correct in_fd/out_fd
  * (STDIN_FILENO only for the first stage, STDOUT_FILENO only for the
- * last), and every spawned pid is waited on via host_wait().
+ * last), and every spawned pid is waited on via wait().
  *
  * All stages are spawned first, then all are waited on, matching real
  * pipeline semantics (every stage notionally running concurrently) even
- * though today's host may in practice run each spawn synchronously to
- * completion -- host_wait() still gets called on every pid either way,
- * so a host that DOES spawn real concurrent processes needs no change
- * here to actually behave correctly.
+ * though today's implementation may in practice run each spawn
+ * synchronously to completion -- wait() still gets called on every pid
+ * either way, so an implementation that DOES spawn real concurrent
+ * processes needs no change here to actually behave correctly.
  */
 static int run_pipeline(struct pipeline *pl) {
     if (pl->nstages == 1) {
@@ -701,8 +718,8 @@ static int run_pipeline(struct pipeline *pl) {
         }
         /* A lone external command runs directly, in-process, on the
          * real STDIN_FILENO/STDOUT_FILENO -- no spawn/pipe needed.
-         * This bypass is load-bearing, not an optimization: host_spawn()
-         * exists to isolate ONE STAGE OF A PIPELINE, and its host-side
+         * This bypass is load-bearing, not an optimization: spawn()
+         * exists to isolate ONE STAGE OF A PIPELINE, and its own
          * implementation re-enters this same module's run() to actually
          * execute the command. Removing this bypass (v0.0.3's first
          * draft did) makes a lone command spawn itself, which re-parses
@@ -735,16 +752,16 @@ static int run_pipeline(struct pipeline *pl) {
         i32 next_in_fd = -1;
 
         if (i < pl->nstages - 1) {
-            /* host_pipe() writes both fd numbers into linear memory at
-             * these two arena-allocated slots. */
-            i32 *slots = (i32 *)arena_alloc(sizeof(i32) * 2);
-            if (!slots) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); return 1; }
-            if (host_pipe((i32)(usize)&slots[0], (i32)(usize)&slots[1]) != 0) {
+            /* pipe(int[2]) -- real signature: one array, [0] read end,
+             * [1] write end. */
+            i32 *pipefd = (i32 *)arena_alloc(sizeof(i32) * 2);
+            if (!pipefd) { fd_puts(STDERR_FILENO, "shell: out of memory\n"); return 1; }
+            if (pipe((i32)(usize)pipefd) != 0) {
                 fd_puts(STDERR_FILENO, "shell: pipe() failed\n");
                 return 1;
             }
-            out_fd = slots[1];
-            next_in_fd = slots[0];
+            out_fd = pipefd[1];
+            next_in_fd = pipefd[0];
         } else {
             out_fd = STDOUT_FILENO;
         }
@@ -753,15 +770,15 @@ static int run_pipeline(struct pipeline *pl) {
         usize cmdlen = rejoin_argv(cmdbuf, sizeof cmdbuf,
                                    pl->stages[i].argv, pl->stages[i].argc);
 
-        pids[i] = host_spawn((i32)(usize)cmdbuf, (i32)cmdlen,
-                             in_fd, out_fd, STDERR_FILENO);
+        pids[i] = spawn((i32)(usize)cmdbuf, (i32)cmdlen,
+                        in_fd, out_fd, STDERR_FILENO);
 
         in_fd = (int)next_in_fd;
     }
 
     int rc = 0;
     for (int i = 0; i < pl->nstages; i++) {
-        int stage_rc = host_wait(pids[i]);
+        int stage_rc = wait(pids[i]);
         if (i == pl->nstages - 1) rc = stage_rc;
     }
 
@@ -789,7 +806,10 @@ int run(i32 ptr, i32 len) {
          * anything else defaulting to sh.cwd silently operates on an
          * empty path until the first successful cd. Caught live by
          * actually running the module, not by reading the source. */
-        host_getcwd((i32)(usize)sh.cwd, MAX_PATH);
+        getcwd((i32)(usize)sh.cwd, MAX_PATH);
+        /* The one-time exec()-time hand-off getenv() depends on -- see
+         * the comment above g_environ. */
+        g_environ_len = (usize)_init_environ((i32)(usize)g_environ, sizeof g_environ);
     }
 
     if (len <= 0 || len >= MAX_LINE) return 2;

@@ -2,14 +2,28 @@
  * @file ShellHost.js
  * @author Will Fobbs
  * @version 1.0.0
- * @description The entire host-side plumbing shell.wasm needs (WASM
- *   instantiation, real per-stage spawning via a fresh instance per
- *   pipeline stage, real host_pipe()-backed pipes, a generic open-file
- *   table), collapsed behind one call: `shell.run(cmdline)` returns the
- *   command's real stdout as a plain string. Everything else stays
- *   hidden -- the same reasoning `MountainShift()` exposes only
- *   `run()`: a caller shouldn't need to know there's a whole
- *   instantiate/wire/spawn dance behind one line.
+ * @description The entire plumbing shell.wasm needs (WASM instantiation,
+ *   real per-stage spawning via a fresh instance per pipeline stage,
+ *   real pipe()-backed pipes, a generic open-file table), collapsed
+ *   behind one call: `shell.run(cmdline)` returns the command's real
+ *   stdout as a plain string. Everything else stays hidden -- the same
+ *   reasoning `MountainShift()` exposes only `run()`: a caller
+ *   shouldn't need to know there's a whole instantiate/wire/spawn
+ *   dance behind one line.
+ *
+ *   Every import here is the real POSIX function shell.c names it
+ *   after (read, write, open, close, access, chdir, getcwd,
+ *   getlogin_r, pipe) -- shell.c calls these directly, the same way a
+ *   native cat.c/ls.c/whoami.c would, with real signatures: a path
+ *   argument is a plain NUL-terminated C string, not a (ptr, len)
+ *   pair, because this side can find the NUL itself in the module's
+ *   own linear memory, exactly like a real implementation of these
+ *   calls would. getenv() isn't imported at all -- real getenv() is a
+ *   pure-C scan over `environ`, populated once at exec() time, so this
+ *   file's only job for it is _init_environ(), a one-time mirror of
+ *   `env` into shell.wasm's linear memory (see shell.c's own comment
+ *   on _init_environ for why that one call is a bootstrap exception,
+ *   not a disguised getenv).
  *
  *   Synchronous end to end -- `new WebAssembly.Module(bytes)` compiles
  *   synchronously in Node (unlike the browser-recommended async
@@ -33,10 +47,11 @@ const DEFAULT_WASM_PATH = path.join(__dirname, 'shell.wasm');
 /**
  * @param {Object} [options]
  * @param {string} [options.wasmPath] - defaults to ./shell.wasm
- * @param {Object<string,string>} [options.env] - env vars getenv() sees
+ * @param {Object<string,string>} [options.env] - env vars getenv() sees,
+ *   mirrored into linear memory once via _init_environ()
  * @param {Object<string,string>} [options.files] - path -> plain string
  *   content. An "open directory" and an "open file" are the same thing
- *   here: whatever bytes fd_read() returns. No packed structure, no
+ *   here: whatever bytes read() returns. No packed structure, no
  *   contract invented to match one C function's expectations.
  * @param {string} [options.cwd] - initial working directory
  * @returns {{run: (cmdline: string, stdin?: string) => string}}
@@ -51,7 +66,7 @@ function createShell(options)
     // Real by default, resolved via Node's fs -- but this is an internal
     // detail of open()'s own implementation below, never part of C's
     // contract or shell.run()'s own signature. C only ever sees "a
-    // string" through the ordinary fd_read path; it has no idea Node or
+    // string" through the ordinary read() path; it has no idea Node or
     // a real disk exists on the other side of that string. options.files
     // (path -> plain string content) overrides this with fixed,
     // deterministic content instead -- the one legitimate use is test
@@ -95,16 +110,28 @@ function createShell(options)
         {
             return Buffer.from(memory.buffer, ptr, len).toString('utf8');
         }
-        function writeStr(ptr, maxLen, str)
+        // Real open()/access()/chdir() take a plain C string -- the
+        // callee finds the NUL itself, it isn't handed a length.
+        function readCStr(ptr)
         {
-            const buf = Buffer.from(str, 'utf8');
-            const n = Math.min(buf.length, maxLen);
-            new Uint8Array(memory.buffer, ptr, n).set(buf.subarray(0, n));
-            return n;
+            const bytes = new Uint8Array(memory.buffer, ptr);
+            let end = 0;
+            while (bytes[end] !== 0) end++;
+            return Buffer.from(memory.buffer, ptr, end).toString('utf8');
         }
         function writeI32(ptr, value)
         {
             new DataView(memory.buffer).setInt32(ptr, value, true);
+        }
+        // Real getcwd()/getlogin_r() NUL-terminate on success and fail
+        // (rather than silently truncate) if the string doesn't fit --
+        // returns the byte length written, or -1 if it doesn't fit.
+        function writeCStr(ptr, cap, str)
+        {
+            const buf = Buffer.from(str, 'utf8');
+            if (buf.length + 1 > cap) return -1;
+            new Uint8Array(memory.buffer, ptr, buf.length + 1).set(Buffer.concat([buf, Buffer.from([0])]));
+            return buf.length;
         }
 
         function doRead(fd, bufPtr, bufLen)
@@ -153,53 +180,69 @@ function createShell(options)
             return bufLen;
         }
 
-        const imports = { host: {
-            fd_read: doRead,
-            fd_write: doWrite,
+        const imports = { env: {
+            read: doRead,
+            write: doWrite,
             spawn: (cmdPtr, cmdLen, inFd, outFd) => spawn(readMemStr(cmdPtr, cmdLen), inFd, outFd),
             wait: (pid) => (pidResults.has(pid) ? pidResults.get(pid) : -1),
-            getenv: (namePtr, nameLen, bufPtr, bufLen) =>
+            // The one bootstrap exception, mirroring what a real
+            // exec() does once before main() ever runs: after this,
+            // shell.c's own getenv() is pure C, no import per lookup.
+            _init_environ: (bufPtr, cap) =>
             {
-                const val = env[readMemStr(namePtr, nameLen)];
-                return val === undefined ? -1 : writeStr(bufPtr, bufLen, val);
+                let total = 0;
+                const view = new Uint8Array(memory.buffer, bufPtr, cap);
+                for (const name of Object.keys(env))
+                {
+                    const entry = Buffer.from(name + '=' + env[name] + '\0', 'utf8');
+                    if (total + entry.length > cap) break;
+                    view.set(entry, total);
+                    total += entry.length;
+                }
+                return total;
             },
             // Real identity, not the environment -- os.userInfo().username
             // is backed by the real uid the way getpwuid(geteuid()) is, so
             // no amount of tampering with the env object above can spoof
             // what whoami reports, matching real whoami's own behavior.
-            whoami: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, os.userInfo().username),
-            chdir: (pathPtr, pathLen) =>
+            getlogin_r: (bufPtr, bufLen) => (writeCStr(bufPtr, bufLen, os.userInfo().username) < 0 ? -1 : 0),
+            chdir: (pathPtr) =>
             {
-                const p = readMemStr(pathPtr, pathLen);
+                const p = readCStr(pathPtr);
                 if (!pathExists(p)) return -1;
                 cwd = p;
                 return 0;
             },
-            getcwd: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, cwd),
-            open: (pathPtr, pathLen) =>
+            getcwd: (bufPtr, bufLen) => (writeCStr(bufPtr, bufLen, cwd) < 0 ? 0 : bufPtr),
+            open: (pathPtr, flags) =>
             {
-                const content = resolvePathContent(readMemStr(pathPtr, pathLen));
+                const content = resolvePathContent(readCStr(pathPtr));
                 if (content === null) return -1;
                 const fd = nextFd++;
                 openFiles.set(fd, { data: Buffer.from(content, 'utf8'), pos: 0 });
                 return fd;
             },
             close: (fd) => { openFiles.delete(fd); return 0; },
-            access: (pathPtr, pathLen) =>
+            // Real access(path, mode) -- amode 1 is X_OK, 0 is F_OK,
+            // matching <unistd.h> exactly. Checks the real filesystem;
+            // no hardcoded candidate list.
+            access: (pathPtr, mode) =>
             {
-                const p = readMemStr(pathPtr, pathLen);
-                const base = '/usr/bin:/bin'.split(':').some((dir) => p === dir + '/' + p.split('/').pop());
-                return base ? 0 : -1;
+                const p = readCStr(pathPtr);
+                try { fs.accessSync(p, mode === 1 ? fs.constants.X_OK : fs.constants.F_OK); return 0; }
+                catch (e) { return -1; }
             },
-            pipe: (readFdOutPtr, writeFdOutPtr) =>
+            // Real pipe(int[2]): one array pointer, [0] read end, [1]
+            // write end -- not two separate out-pointers.
+            pipe: (pipefdPtr) =>
             {
                 const readFd = nextFd++;
                 const writeFd = nextFd++;
                 const buf = { chunks: Buffer.alloc(0), readPos: 0 };
                 pipes.set(readFd, buf);
                 pipes.set(writeFd, buf);
-                writeI32(readFdOutPtr, readFd);
-                writeI32(writeFdOutPtr, writeFd);
+                writeI32(pipefdPtr, readFd);
+                writeI32(pipefdPtr + 4, writeFd);
                 return 0;
             }
         } };
