@@ -2,7 +2,7 @@
  * @file ExtendX.js
  * @author Wilbert Fobbs III
  * @company Pooled Impact
- * @version 1.5.1
+ * @version 1.5.2
  * @license Proprietary — All Rights Reserved
  * @description MountainShift OS Runtime Composition Engine.
  *
@@ -80,6 +80,29 @@
  *           literal's length in place so a leading (highest-index) 0 is
  *           an internal digit contributing to the value rather than an
  *           invisible leading zero.
+ *   v1.5.2  Fixed a `_wrapped` aliasing bug in installWrappers(), found
+ *           while chasing a SecurityMixin bug report: `Subclass._wrapped
+ *           || (Subclass._wrapped = new Set())` reads the property
+ *           BEFORE checking ownership, so a NEW extend() call over an
+ *           already-composed BaseClass (e.g. Hilbert, itself built via
+ *           an internal extend() call in Hilbert.js) inherited that
+ *           BaseClass's own `_wrapped` Set through the static prototype
+ *           chain (Object.setPrototypeOf(Subclass, BaseClass)) and
+ *           mutated it BY REFERENCE instead of getting a fresh Set of
+ *           its own. Confirmed live: composing two different mixins onto
+ *           two different descendants of the same already-composed base
+ *           (e.g. two separately secured classes both built on top of
+ *           Hilbert) caused the second composition to see a method name
+ *           the first one had already claimed and skip installing its
+ *           OWN dispatch wrapper for it -- silently falling through to
+ *           the ancestor's wrapper instead, which is closed over the
+ *           ANCESTOR's own pipeline/mixins, not the new Subclass's. A
+ *           composed security mixin could therefore fail to gate a
+ *           method it was supposed to be wrapping. Fixed by checking
+ *           `Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')`
+ *           instead of a bare truthy read, so every newly composed
+ *           Subclass always gets its own fresh, empty Set -- never one
+ *           inherited by reference from an ancestor.
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -133,7 +156,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.5.1';
+    const VERSION = '1.5.2';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -616,7 +639,28 @@
     function installWrappers(Subclass)
     {
         const BaseClass = Subclass._extendXBase;
-        const installed = Subclass._wrapped || (Subclass._wrapped = new Set());
+        // Object.setPrototypeOf(Subclass, BaseClass) (below, in extend())
+        // makes STATIC properties inherit -- so `Subclass._wrapped` alone,
+        // read before this exact Subclass has ever set its own, silently
+        // falls through to an ALREADY-COMPOSED BaseClass's own `_wrapped`
+        // Set (e.g. Hilbert's, built by Hilbert.js's own internal extend()
+        // call). `||` then treats that inherited Set as "already have
+        // one" and reuses it BY REFERENCE instead of creating this
+        // Subclass's own -- so `installed.add(key)` mutates the ANCESTOR's
+        // Set, and a method name a sibling composition over the same
+        // ancestor already claimed gets silently skipped here, leaving
+        // Subclass.prototype without its OWN wrapper for it. That matters:
+        // the inherited wrapper on the ancestor's prototype was built by
+        // makeDispatcher(ancestor, ...), closed over the ANCESTOR's own
+        // _resolvePipeline/_rawMixins, not this Subclass's -- so a call
+        // that falls through to it skips this Subclass's own mixins
+        // entirely (e.g. a security mixin composed onto an already-
+        // composed base silently failed to gate that method). Checking
+        // hasOwnProperty forces a fresh, empty Set for every NEW Subclass,
+        // never reusing an inherited one by reference.
+        const installed = Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+            ? Subclass._wrapped
+            : (Subclass._wrapped = new Set());
         (Subclass._rawMixins || []).forEach(m =>
         {
             dispatchKeys(current(m)).forEach(key =>
