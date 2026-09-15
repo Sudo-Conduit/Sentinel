@@ -118,11 +118,20 @@ class GeoJS {
     t = Math.max(0, Math.min(1, t));
 
     const n = this._controlPoints.length - 1;
-    const k = this.degree;
+    // _computeBasis's own recursion (see its docstring) is written in
+    // terms of ORDER k, not degree: its base case N_i,1 is the order-1
+    // (degree-0) characteristic function, and each recursive step raises
+    // the order by exactly one. `this.degree` is a true polynomial degree
+    // ("3 = cubic" per this class's own config docstring) -- passing it
+    // straight through as _computeBasis's k previously under-raised the
+    // basis by one order every time, so a curve configured with
+    // degree:3 silently evaluated a degree-2 basis instead. Converting
+    // degree to order (order = degree+1) here is the fix.
+    const k = this.degree + 1;
 
     if (n < 0) return null;
 
-    // Compute NURBS rational basis functions R_i,k(t)
+    // Compute NURBS rational basis functions R_i,k(t) (k = order = degree+1)
     const N = this._computeBasis(t, n, k);
     const W = this._weights;
 
@@ -154,17 +163,29 @@ class GeoJS {
 
   /**
    * Cox-de Boor basis function recursion.
+   *
+   * IMPORTANT: `k` here is ORDER (order = degree+1), not degree -- this
+   * matches the standard textbook indexing this recursion is written in
+   * (N_i,1 is the order-1, degree-0 base case). Callers passing a true
+   * polynomial degree (e.g. `this.degree`, "3 = cubic" per this class's
+   * config) must convert it to order first: `_computeBasis(t, n,
+   * this.degree + 1)`. Passing degree directly under-raises the basis
+   * by one order -- this was a real, previously shipped bug (evaluate()
+   * passed `this.degree` unconverted, so a degree:3 curve silently
+   * evaluated a degree-2 basis), fixed at evaluate()'s own call site.
+   *
    * N_i,1(t) = 1 if t_i <= t < t_{i+1}, else 0
    * N_i,k(t) = [(t-t_i)/(t_{i+k-1}-t_i)] * N_i,k-1(t)
    *           + [(t_{i+k}-t)/(t_{i+k}-t_{i+1})] * N_{i+1,k-1}(t)
-   * 
+   *
+   * @param {number} t @param {number} n @param {number} k ORDER (degree+1), not degree
    * @private
    */
   _computeBasis(t, n, k) {
     const m = this._knots.length - 1;
     const N = new Float64Array(n + 1);
 
-    // Base case: degree 1
+    // Base case: order 1 (degree 0) -- the characteristic function of each knot span
     for (let i = 0; i <= n; i++) {
       N[i] = (t >= this._knots[i] && t < this._knots[i + 1]) ? 1 : 0;
     }

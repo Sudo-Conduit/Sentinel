@@ -8,14 +8,17 @@
  *
  *              1. Against `pooledimpact/mountainshift/apps/GeoAPI.js`'s
  *                 `GeoJS._computeBasis` (iterative) -- this is a live
- *                 require of the real file, not a reproduction, and the
- *                 comparison FOUND a real bug there (see BSpline.js's own
- *                 header): a `GeoJS` configured with `degree: 3` actually
- *                 evaluates a degree-2 basis, due to an off-by-one in its
- *                 recursion's loop bound. Asserted two ways: this file's
- *                 `basisAll(t, 2, ...)` matches GeoAPI's degree-3-config
- *                 output exactly, and this file's `basisAll(t, 3, ...)`
- *                 (the actually-correct degree-3 basis) does NOT.
+ *                 require of the real file, not a reproduction. The
+ *                 comparison originally FOUND a real bug there (see
+ *                 BSpline.js's own header): `evaluate()` passed a true
+ *                 polynomial degree where `_computeBasis` expected order
+ *                 (degree+1), so a `GeoJS` configured with `degree: 3`
+ *                 silently evaluated a degree-2 basis. That bug is now
+ *                 fixed in `GeoAPI.js` itself; this suite asserts the fix
+ *                 (both `_computeBasis`'s own output and the full public
+ *                 `evaluate()` path agree with this file's own,
+ *                 independently correct degree-3 basis) as a regression
+ *                 test, not a documented-and-left finding.
  *              2. Against `pooledimpact/mountainshift/v2/Anomalies_Test017.js`'s
  *                 `_bsplineBasis`/`_bsplineDerivative` -- a private,
  *                 unexported closure, so reproduced verbatim here
@@ -138,7 +141,7 @@ function register(runner)
       });
     });
 
-    runner.test('cross-validation (GeoJS, GeoAPI.js): degree-3-configured GeoJS actually computes a degree-2 basis (found bug, confirmed live)', () =>
+    runner.test('cross-validation (GeoJS, GeoAPI.js): degree-3-configured GeoJS now correctly computes a degree-3 basis (regression test for a fixed bug)', () =>
     {
       let GeoJS;
       try
@@ -154,35 +157,38 @@ function register(runner)
         return;
       }
       const g = new GeoJS({ dimensions: 1, degree: 3 });
-      g._controlPoints = [0, 1, 2, 3, 4].map((i) => ({ coordinates: [i], timestamp: i }));
-      g._weights = new Float64Array([1, 1, 1, 1, 1]);
+      // GeoJS._rebuildKnots() reads each control point's own .weight,
+      // not a separate parallel array -- omitting it left _weights as
+      // NaN in earlier ad hoc scripts; set it explicitly here.
+      g._controlPoints = [0, 1, 2, 3, 4].map((i) => ({ coordinates: [i], timestamp: i, weight: 1 }));
       g._rebuildKnots();
       const knots = Array.from(g._knots);
       const n = g._controlPoints.length - 1;
 
-      // Exact match against THIS file's degree-2 basis on GeoJS's own
-      // "degree 3" knot vector -- across the full domain, endpoints included.
+      // GeoJS._computeBasis's own `k` parameter is ORDER (degree+1), per
+      // its own docstring recursion -- callers convert degree to order
+      // themselves (this is exactly the conversion evaluate() itself now
+      // performs, `this.degree + 1`, after the fix documented in this
+      // file's own header).
       [0, 0.1, 0.25, 0.5, 0.75, 0.9, 1].forEach((t) =>
       {
-        const geo = Array.from(g._computeBasis(t, n, 3)).slice(0, 5);
-        const mineDeg2 = BSpline.basisAll(t, 2, knots, 5);
+        const geo = Array.from(g._computeBasis(t, n, g.degree + 1)).slice(0, 5);
+        const mineDeg3 = BSpline.basisAll(t, 3, knots, 5);
         geo.forEach((v, i) =>
         {
-          assert.ok(Math.abs(v - mineDeg2[i]) < 1e-9, 't=' + t + ' i=' + i + ': GeoJS degree-3-config=' + v + ', this file degree-2=' + mineDeg2[i]);
+          assert.ok(Math.abs(v - mineDeg3[i]) < 1e-9, 't=' + t + ' i=' + i + ': GeoJS(fixed)=' + v + ', this file degree-3=' + mineDeg3[i]);
         });
       });
 
-      // And genuinely NOT a match against the degree GeoJS claims to
-      // compute (3), at interior parameter values where degree actually
-      // changes the shape (both endpoints collapse to the same [0,1] or
-      // [0,...,1] vector regardless of degree, so they are excluded --
-      // that agreement there is expected and not informative).
-      [0.1, 0.25, 0.5, 0.75, 0.9].forEach((t) =>
+      // And the full public evaluate() path, not just the private basis
+      // computation -- reduces exactly to this file's own BSpline.evaluate
+      // on the same control points/knots/degree (uniform weights).
+      const controlPoints = [[0], [1], [2], [3], [4]];
+      [0, 0.1, 0.25, 0.4, 0.5, 0.6, 0.75, 0.9, 1].forEach((t) =>
       {
-        const geo = Array.from(g._computeBasis(t, n, 3)).slice(0, 5);
-        const mineDeg3 = BSpline.basisAll(t, 3, knots, 5);
-        const allClose = geo.every((v, i) => Math.abs(v - mineDeg3[i]) < 1e-9);
-        assert.strictEqual(allClose, false, 't=' + t + ': GeoJS degree-3-config unexpectedly matched an actual degree-3 basis -- the off-by-one this test documents may have been fixed upstream');
+        const geoPoint = g.evaluate(t).coordinates[0];
+        const minePoint = BSpline.evaluate(controlPoints, knots, 3, t)[0];
+        assert.ok(Math.abs(geoPoint - minePoint) < 1e-9, 't=' + t + ': GeoJS.evaluate()=' + geoPoint + ', BSpline.evaluate()=' + minePoint);
       });
     });
 

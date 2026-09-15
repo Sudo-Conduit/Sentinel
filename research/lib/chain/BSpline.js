@@ -30,21 +30,27 @@
  *              - `pooledimpact/mountainshift/apps/GeoAPI.js`
  *                (`GeoJS._computeBasis`, an iterative, whole-array Cox-de
  *                Boor) -- cross-checking this FOUND A REAL BUG in that
- *                file, not merely confirmed agreement: its recursive
- *                loop runs `for (p = 2; p <= k; p++)` starting from a
- *                degree-0 base case, which performs only `k-1` degree
- *                raises, not `k` -- so a `GeoJS` instance configured with
- *                `degree: 3` ("cubic, minimum for C²" per its own
- *                docblock) actually evaluates a DEGREE-2 basis. Confirmed
- *                directly: `GeoJS._computeBasis(t, n, 3)` on a given knot
- *                vector matches THIS file's `basisAll(t, 2, knots, ...)`
- *                on that same knot vector exactly (see
- *                `BSpline.unit.js`'s GeoAPI cross-validation suite for
- *                the reproduction) -- not this file's `basisAll(t, 3,
- *                ...)`, which is what `GeoJS`'s own docblock claims it
- *                computes. This file's loop bound (`p` runs `1..degree`
- *                inclusive from the degree-0 base case, `degree`
- *                iterations) does not have this off-by-one.
+ *                file (since fixed there): `_computeBasis`'s own
+ *                recursion is written in terms of ORDER (its base case
+ *                is the order-1/degree-0 characteristic function, and
+ *                its docstring formula uses order-`k` notation
+ *                throughout), but `evaluate()` passed `this.degree` (a
+ *                true polynomial degree, "3 = cubic" per that class's
+ *                own config docblock) straight through as `k` -- so a
+ *                `GeoJS` instance configured with `degree: 3` silently
+ *                evaluated a DEGREE-2 basis, one order short. Confirmed
+ *                directly (see `BSpline.unit.js`'s GeoAPI
+ *                cross-validation suite): before the fix,
+ *                `GeoJS._computeBasis(t, n, 3)` matched THIS file's
+ *                `basisAll(t, 2, knots, ...)`, not `basisAll(t, 3,
+ *                ...)` (what `GeoJS`'s own docblock claimed it
+ *                computed). Fixed at the call site --
+ *                `evaluate()` now passes `this.degree + 1` (order),
+ *                converting degree to order explicitly -- and
+ *                `BSpline.unit.js` now asserts the fixed agreement
+ *                (`GeoJS._computeBasis(t, n, this.degree + 1)` matches
+ *                this file's `basisAll(t, 3, ...)` exactly) as a
+ *                regression test, not a documented-and-left bug.
  *              - `pooledimpact/mountainshift/v2/Anomalies_Test017.js`
  *                (`_bsplineBasis`/`_bsplineDerivative`, a private,
  *                unexported recursive Cox-de Boor and its derivative) --

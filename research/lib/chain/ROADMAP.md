@@ -1,6 +1,6 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.5.0
+**Version:** 1.5.1
 **Last updated:** 2026-09-15
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
@@ -113,20 +113,27 @@ lessons, not in the abstract:
 - **`MathPrecision`'s missing `F64` case** — a real gap (explicit `Math.fround(x,
   'f64')` threw instead of being a no-op) that testing alone never
   surfaced; it took directly asking "what does explicit F64 do" to find it.
-- **`GeoJS._computeBasis`'s off-by-one degree bug** (`pooledimpact/mountainshift/apps/GeoAPI.js`,
-  found via H.3's own required cross-validation, not gone looking for)
-  — a `GeoJS` configured with `degree: 3` ("cubic, minimum for C²" per
-  its own docblock) actually evaluates a **degree-2** basis: its
-  recursion loop (`for (p = 2; p <= k; p++)`, starting from a degree-0
-  base case) performs `k-1` degree raises, not `k`. Confirmed live
-  (not just read) — `BSpline.unit.js`'s GeoAPI cross-validation suite
-  requires the real file and shows its `degree: 3` output matches
-  `BSpline.basisAll(t, 2, ...)` exactly and does *not* match
-  `BSpline.basisAll(t, 3, ...)` at interior parameter values. Left
-  unfixed here deliberately — `GeoAPI.js` is a different project's file
-  outside `research/lib/chain/`'s scope; this is recorded as a finding
-  for whoever owns that file to act on, not something this branch
-  silently patched.
+- **`GeoJS._computeBasis`'s off-by-one degree bug, found and fixed**
+  (`pooledimpact/mountainshift/apps/GeoAPI.js`, found via H.3's own
+  required cross-validation, not gone looking for) — a `GeoJS`
+  configured with `degree: 3` ("cubic, minimum for C²" per its own
+  docblock) actually evaluated a **degree-2** basis. Root cause was
+  narrower than it first looked: `_computeBasis`'s own recursion is
+  self-consistently written in terms of ORDER (its base case is the
+  order-1/degree-0 characteristic function, matching its own docstring
+  formula), but `evaluate()` passed `this.degree` straight through as
+  that order parameter, unconverted — a units mismatch at the call
+  site, not a defect in `_computeBasis`'s own math. Confirmed live
+  before AND after the fix — `BSpline.unit.js`'s GeoAPI cross-validation
+  suite requires the real file; it originally showed `degree: 3` output
+  matching `BSpline.basisAll(t, 2, ...)` (the bug), now shows it
+  matching `BSpline.basisAll(t, 3, ...)` and the fixed public
+  `evaluate()` matching `BSpline.evaluate()` exactly (the regression
+  test for the fix). Fixed directly in `GeoAPI.js` at `evaluate()`'s own
+  call site (`this.degree + 1`, converting degree to order), not worked
+  around here — this instance, this session's git identity has write
+  access to that file too, so "outside `research/lib/chain/`'s scope"
+  was a reason to flag it clearly, not a reason to leave it broken.
 
 Any row below whose one-liner is "just extend/compose the established
 pattern" should be scored low on Confidence and distrusted until
@@ -188,8 +195,9 @@ discipline applied to process, not just code.
 3. ~~**H.3 — `BSpline`** (18)~~ — **shipped.** Depended on both H.1 and
    H.2. Cross-validation against GeoJS's iterative Cox-de Boor and
    Beacon's recursive one (both already in this repo's reference
-   material) found a real, previously-unnoticed off-by-one degree bug in
-   `GeoJS._computeBasis` — see the Confidence-dimension lessons above.
+   material) found — and this session later fixed — a real,
+   previously-unnoticed off-by-one degree bug in `GeoJS._computeBasis`
+   — see the Confidence-dimension lessons above.
    Implemented as the plain textbook recursive `basis`/`basisDerivative`
    (matching Beacon's shape exactly), not the more efficient
    `findSpan`-localized algorithm — deliberately, per this chain's own
@@ -379,6 +387,20 @@ ROADMAP.md's own dependency notes said it would and nothing more.
 
 ## Changelog
 
+- **1.5.1** — 2026-09-15 — Fixed the `GeoJS._computeBasis` off-by-one
+  degree bug found during H.3's cross-validation (previously recorded
+  here as a left-unfixed finding). Root cause: `_computeBasis`'s own
+  recursion is self-consistently written in terms of order, not degree
+  (its base case is the order-1/degree-0 characteristic function,
+  matching its own docstring formula), but `evaluate()` passed
+  `this.degree` straight through unconverted. Fixed in `GeoAPI.js`
+  itself, at `evaluate()`'s own call site (`this.degree + 1`) — not
+  worked around in `research/lib/chain/`. `BSpline.unit.js`'s GeoAPI
+  cross-validation suite now asserts the fix (both `_computeBasis`'s
+  own output and the full public `evaluate()` path) as a regression
+  test rather than documenting a live bug. No test-count change (335/335
+  still) — an existing test's assertions were corrected to match the
+  fixed behavior, not a new suite added.
 - **1.5.0** — 2026-09-15 — Shipped **H.5 `NURBS`**, completing the H
   backlog (H.1–H.5, all five items). `rationalBasisAll` (`R_{i,p} =
   wᵢNᵢ,ₚ / Σⱼ wⱼNⱼ,ₚ`), `evaluate`, and `derivative` (quotient rule on
