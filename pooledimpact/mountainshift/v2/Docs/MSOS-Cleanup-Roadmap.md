@@ -44,13 +44,12 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `0ae90cd` (git.pooledimpact.com/Claude/Romans, branch
-`claude/wasm-shell-experimental` — a merge commit bringing `main`'s
-unrelated `research/lib/chain/` changes in clean, zero conflicts,
-on top of this branch's own Category G work below; the prior pin
-(`f499535`, branch `claude/devtools-overrides-robustness-8we96z`) is
-this same account's own prior session, not a different author's work
-— see this section's own note on that below.)
+**Commit:** `71e4127` (git.pooledimpact.com/Claude/Romans, branch
+`claude/wasm-shell-experimental` — ships G.11 plus the `wasm/` folder
+cleanup and `MSOS-Shell.md`; the prior pin (`f499535`, branch
+`claude/devtools-overrides-robustness-8we96z`) is this same account's
+own prior session, not a different author's work — see this section's
+own note on that below.)
 
 | Suite | Result |
 |---|---|
@@ -518,9 +517,9 @@ dependency override:**
   output, job control (`top &`/`jobs`/`kill`) reachable the same way,
   and a plain 404 on an unknown route. `test/run-all.js` gained this
   entry; `Docs/MSOS-Cleanup-Roadmap.md` gained **G.11** (shipped) in
-  the scored backlog. Re-pinned Last-test-run to the commit that ships
-  this entry (311/311 numbered checks, 6 green assert()-style suites —
-  29/29 total, up from 28/28).
+  the scored backlog. Re-pinned Last-test-run to `71e4127` (311/311
+  numbered checks, 6 green assert()-style suites — 29/29 total, up
+  from 28/28).
 - **1.16.0** — 2026-09-15 — Added **Category G (Shell/WASM Command
   Engine)**: a separate branch's work (`claude/wasm-shell-experimental`,
   PR #22), same account, first tracked in this roadmap here. G.1–G.8
