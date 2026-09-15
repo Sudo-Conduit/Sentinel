@@ -191,8 +191,7 @@ numerical question against existing code output, not an open-ended one.
 
 ---
 
-**Next:** the Torus-Infinity capstone, drawing on Axiom 8 (time as a
-reflexive pattern) for its "quantum time" half and GR.4 (`Theorem_GeneralRelativity_v7.0.md`,
-the Lorentzian `D(t)` split) for its "time is relative" half — both
-already-flagged open items this capstone is expected to actually resolve
-or at least unify, not merely restate.
+**Update:** `Theorem_Torus_v9.0.md` now exists and ties Open Question
+C.1 above to circle-map/Arnold-tongue theory (Torus v9.0 Part VI) — a
+candidate geometric explanation for *why* `λ` might sit near zero during
+a plateau phase, not yet a checked answer to C.1 itself.
