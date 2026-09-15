@@ -1,7 +1,7 @@
 /**
  * @file SecurityMixin.js
  * @author Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)
- * @version 3.1.0
+ * @version 3.2.0
  * @description Activation-token-gated dispatch, composed onto any class via
  *   ExtendX.extend(). Mirrors the first of Gen 2 kernel.js's three tokens
  *   (activation token: proof a call came through a sanctioned path),
@@ -71,6 +71,43 @@
  *   createSecurityMixin() calls on the SAME BaseClass stay idempotent
  *   (same id every time), which is what keeps MIXIN_FINGERPRINTS and
  *   verify() self-consistent per class.
+ *
+ *   v5 fixed a second real, reported bug, found right after v4: securing a
+ *   composed or subclassed target left the BASE class's own methods
+ *   completely ungated. createSecurityMixin() read method names from
+ *   `Object.getOwnPropertyNames(BaseClass.prototype)` alone -- but that
+ *   only sees properties declared DIRECTLY on that one prototype object.
+ *   A composed class's prototype carries only the dispatch wrappers
+ *   ExtendX installed for whatever mixins that particular extend() call
+ *   passed; the underlying base's real methods are further up the chain,
+ *   reached only through inheritance, invisible to getOwnPropertyNames on
+ *   the derived level. Same story for an ordinary subclass (Hilbert
+ *   extends Tensor): Hilbert.prototype's own properties are Hilbert's
+ *   methods only, Tensor's are inherited. The old code wrapped whatever
+ *   thin layer happened to be on top and nothing underneath it -- exactly
+ *   backwards from what a security mixin is for. Fixed by
+ *   collectMethodNames() walking the full prototype chain up to (not
+ *   including) Object.prototype, using property descriptors rather than
+ *   indexed property access so an accessor property (Hilbert.prototype's
+ *   `values` getter) is never invoked with the wrong `this` along the way.
+ *
+ *   Known related issue, NOT fixed here (lives in ExtendX.js, not this
+ *   file): ExtendX.js's installWrappers() reads `Subclass._wrapped ||
+ *   (Subclass._wrapped = new Set())` -- since `Object.setPrototypeOf(
+ *   Subclass, BaseClass)` makes static properties inherit, and an
+ *   already-composed BaseClass (e.g. Hilbert, itself built via an
+ *   internal ExtendX.extend() call) already has its OWN `_wrapped` Set,
+ *   a NEW extend() call over that same BaseClass (or over one of its
+ *   other composed descendants) inherits and MUTATES that shared Set
+ *   instead of getting a fresh one of its own. Securing several
+ *   DIFFERENT composed descendants of the same already-composed base in
+ *   one process can silently skip installing a dispatch wrapper for a
+ *   method name a sibling composition already claimed -- this file's own
+ *   test suite (SecurityMixin.unit.js) works around it by keeping each
+ *   already-composed base (Hilbert) touched by only one extend() call.
+ *   Production code composing a security layer directly onto a fresh,
+ *   never-before-extended BaseClass (the documented, intended usage) is
+ *   unaffected.
  * @tests test/CPU.security.test.js
  * @tests test/Physical.security.test.js
  * @tests test/Kernel.security.test.js
@@ -283,17 +320,74 @@
     }
 
     /**
+     * Walk BaseClass's own prototype chain (not just BaseClass.prototype
+     * itself) collecting every method name found, most-derived level
+     * first, stopping at Object.prototype.
+     *
+     * v5 fix: a composed class's OWN prototype only carries the dispatch
+     * wrappers ExtendX installed for the mixins passed to that specific
+     * extend() call (see installWrappers()/dispatchKeys() in ExtendX.js) --
+     * the underlying base's real methods live further up the chain,
+     * inherited rather than own properties of BaseClass.prototype. The
+     * same is true for any plain subclass (e.g. Hilbert extends Tensor):
+     * Hilbert.prototype's own properties are Hilbert's methods only,
+     * Tensor's methods are inherited. Reading ONLY
+     * `Object.getOwnPropertyNames(BaseClass.prototype)`, as this function
+     * used to, silently missed every inherited method -- securing a
+     * composed or subclassed target left the base class's real surface
+     * completely ungated, wrapping nothing but whatever the most recent
+     * layer added.
+     *
+     * Uses property descriptors rather than indexed access (`proto[name]`)
+     * at each level so an accessor property (e.g. Hilbert.prototype's
+     * `values` getter) is never invoked here -- invoking a getter with
+     * `this` bound to a bare prototype object, not a real instance, would
+     * be unsound (the getter's own logic expects instance state) and is
+     * unrelated to what this function is trying to discover (methods, not
+     * computed accessors).
+     *
+     * @param {Function} BaseClass - constructor/class to walk
+     * @returns {string[]} de-duplicated method names, closest-level wins on a name shared by two levels
+     */
+    function collectMethodNames(BaseClass)
+    {
+        const seen = new Set();
+        const names = [];
+        let proto = BaseClass.prototype;
+        while (proto && proto !== Object.prototype)
+        {
+            Object.getOwnPropertyNames(proto).forEach(function(name)
+            {
+                if (name === 'constructor' || name.charAt(0) === '_' || seen.has(name))
+                {
+                    return;
+                }
+                seen.add(name);
+                const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+                if (typeof descriptor.value === 'function')
+                {
+                    names.push(name);
+                }
+            });
+            proto = Object.getPrototypeOf(proto);
+        }
+        return names;
+    }
+
+    /**
      * Build a security mixin for BaseClass: a same-named wrapper for every
-     * one of BaseClass.prototype's own methods, each checking this
-     * instance's activation token before calling this.super.<method>(...).
+     * method BaseClass's prototype chain offers (its own plus every
+     * inherited level), each checking this instance's activation token
+     * before calling this.super.<method>(...).
      *
      * Generated per-class, not one shared hand-written object, because
      * ExtendX's fast dispatch only wraps method names actually present on
      * the mixin (see dispatchKeys() in ExtendX.js) -- a hand-written mixin
      * would need to already know every target class's method names in
-     * advance and be kept in sync by hand. Introspecting
-     * BaseClass.prototype instead means CPU, Physical, Kernel, BIOS (or
-     * anything else) all get full method coverage automatically.
+     * advance and be kept in sync by hand. Walking BaseClass's full
+     * prototype chain instead means CPU, Physical, Kernel, BIOS (or
+     * anything else) all get full method coverage automatically -- their
+     * own methods AND anything they inherit.
      *
      * mixinId is derived from BaseClass.name so each target's security
      * layer is its own independently toggleable bit -- ExtendX.extend()
@@ -353,18 +447,11 @@
         // exemption for existing code not yet using real private methods --
         // skipped here defensively, but unlike '#foo' this is enforced by
         // agreement, not by the language.
-        const methodNames = Object.getOwnPropertyNames(BaseClass.prototype).filter(function(name)
-        {
-            if (name === 'constructor')
-            {
-                return false;
-            }
-            if (name.charAt(0) === '_')
-            {
-                return false;
-            }
-            return typeof BaseClass.prototype[name] === 'function';
-        });
+        //
+        // collectMethodNames() walks the WHOLE prototype chain (see its own
+        // doc comment for why stopping at BaseClass.prototype's own
+        // properties alone left every inherited/base method ungated).
+        const methodNames = collectMethodNames(BaseClass);
 
         // locked (ExtendX.js v1.2.0+): refuses enableLayer/disableLayer for
         // THIS mixin on every instance, unconditionally, from construction
@@ -492,7 +579,7 @@
         _isArmed: isArmed,
         name: 'SecurityMixin',
         author: 'Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)',
-        version: '3.1.0',
+        version: '3.2.0',
         description: 'Activation-token-gated dispatch, composed onto any class via ExtendX.extend() -- proof a call came through a sanctioned path.',
         tests: [
             'test/CPU.security.test.js',

@@ -30,10 +30,17 @@ function register(runner)
     // for both, reproducing the exact shape of the reported bug (securing
     // two DIFFERENT composed classes, not two raw classes that happen to
     // share a literal name).
+    // Both built over Tensor (not Hilbert): Tensor is never itself the
+    // product of an extend() call, so it carries no own `_wrapped`
+    // bookkeeping Set for ExtendX.extend() to inherit and mutate -- each
+    // extend() call over it gets an independent Set. Hilbert IS already a
+    // composed class (built internally via ExtendX.extend(Tensor, ...) in
+    // Hilbert.js) and is reserved for the separate suite below, which
+    // needs Hilbert untouched by any other extend() call first.
     const NoopMixinA = { mixinId: 'noop:a', ping: function() { return 'a'; } };
     const NoopMixinB = { mixinId: 'noop:b', ping: function() { return 'b'; } };
     const ComposedA = ExtendX.extend(Tensor, NoopMixinA);
-    const ComposedB = ExtendX.extend(Hilbert, NoopMixinB);
+    const ComposedB = ExtendX.extend(Tensor, NoopMixinB);
 
     assert.strictEqual(ComposedA.name, 'Subclass');
     assert.strictEqual(ComposedB.name, 'Subclass');
@@ -80,6 +87,51 @@ function register(runner)
       assert.ok(secB._securityArmed.call(b));
       assert.deepStrictEqual(a.toFlat().data, [1, 2]);
       assert.deepStrictEqual(b.toFlat().data, [3, 4]);
+    });
+  });
+
+  runner.suite('SecurityMixin: base-class (inherited) methods must be gated too', () =>
+  {
+    // Hilbert extends Tensor -- Hilbert.prototype's OWN properties are
+    // Hilbert's methods only (add/norm/etc. from HilbertMixins); Tensor's
+    // own methods (toFlat, etc.) are reached purely through inheritance.
+    // securing Hilbert must gate BOTH levels, not just Hilbert's own.
+    const secHilbert = SecurityMixin.createSecurityMixin(Hilbert);
+
+    runner.test('an inherited (Tensor-level) method name is present in the gated set', () =>
+    {
+      assert.strictEqual(typeof secHilbert.toFlat, 'function', 'toFlat lives on Tensor.prototype, inherited by Hilbert -- must still be wrapped');
+    });
+
+    runner.test('a composed class (BaseClass.prototype = only dispatch wrappers) still gates the underlying base methods', () =>
+    {
+      const NoopMixinC = { mixinId: 'noop:c', ping: function() { return 'c'; } };
+      const Composed = ExtendX.extend(Tensor, NoopMixinC);
+      // Composed.prototype's OWN properties are just the 'ping' dispatch
+      // wrapper installWrappers() installed for NoopMixinC -- Tensor's
+      // real methods (toFlat, etc.) are inherited, not own, on
+      // Composed.prototype.
+      const secComposed = SecurityMixin.createSecurityMixin(Composed);
+      assert.strictEqual(typeof secComposed.toFlat, 'function', 'Tensor.prototype.toFlat is inherited by Composed.prototype, not own -- must still be gated');
+      assert.strictEqual(typeof secComposed.ping, 'function', 'the composed-in mixin method itself must still be gated too');
+    });
+
+    runner.test('gated inherited methods actually enforce the activation token at runtime', () =>
+    {
+      const GuardedHilbert = ExtendX.extend(Hilbert, secHilbert);
+      const h = new GuardedHilbert().init({ shape: [2] }, [1, 0]);
+      h.dispose();
+      assert.throws(() => h.toFlat(), /no activation token/, 'toFlat is inherited from Tensor -- must be blocked once disposed, same as an own method would be');
+    });
+
+    runner.test('an accessor property on the prototype chain (Hilbert.prototype.values, a getter) is never invoked during introspection', () =>
+    {
+      // createSecurityMixin(Hilbert) above must not have thrown or hung --
+      // if collectMethodNames() indexed into the prototype instead of
+      // reading descriptors, evaluating the `values` getter with `this`
+      // bound to the bare prototype object (not a real instance) would be
+      // unsound. Confirmed here by the mere fact secHilbert exists, plus:
+      assert.strictEqual(typeof secHilbert.values, 'undefined', 'values is an accessor, not a method -- must not be wrapped as one');
     });
   });
 }
