@@ -30,7 +30,13 @@
  *     legitimately contain a NUL (this project's own MemoryMapArena.js
  *     already documents exactly why an in-band terminator is the wrong
  *     call for raw byte payloads).
- *   - Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>.
+ *   - Response blob is either new_cwd\0 rc\0 <stdout>, OR, when the
+ *     parsed command names a module this file has no implementation
+ *     of (ls first), EXEC\0 cmdline\0 -- a delegation, not an answer.
+ *     Whoever is driving this module runs the named command.wasm
+ *     itself (same request/response shape) and treats ITS response as
+ *     the real answer. This file only ever decides WHICH module to
+ *     ask for; it never sees what that module actually does.
  *   - Multi-stage pipelines don't spawn anything -- there's no host to
  *     spawn via. Each stage is a plain function call within this same
  *     run(), stdout redirected to a small in-memory buffer that
@@ -456,47 +462,9 @@ static int cmd_grep(int argc, char **argv) {
     return 0;
 }
 
-static int cmd_ls(int argc, char **argv) {
-    char resolved[MAX_PATH];
-    const char *path = (argc >= 2) ? resolve_path(argv[1], resolved, sizeof resolved) : sh.cwd;
-
-    i32 fd = open(path, O_RDONLY);
-    if (fd < 0) {
-        fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
-        return 1;
-    }
-    /* The vfile behind this fd is a NUL-separated raw listing --
-     * whoever built the request blob is responsible for that shape,
-     * same contract as before. cmd_ls turns it into a printed listing
-     * (one name per line) itself, exactly like a real ls.c does after
-     * getdents(). */
-    char buf[16384];
-    usize total = 0;
-    for (;;) {
-        i32 n = read(fd, buf + total, (i32)(sizeof(buf) - total));
-        if (n < 0) { close(fd); fd_puts(STDERR_FILENO, "ls: read error\n"); return 1; }
-        if (n == 0) break;
-        total += (usize)n;
-        if (total >= sizeof buf) break;
-    }
-    close(fd);
-
-    usize start = 0;
-    for (usize i = 0; i < total; i++) {
-        if (buf[i] == '\0') {
-            if (i > start) {
-                fd_write_all(STDOUT_FILENO, buf + start, i - start);
-                fd_puts(STDOUT_FILENO, "\n");
-            }
-            start = i + 1;
-        }
-    }
-    if (total > start) {
-        fd_write_all(STDOUT_FILENO, buf + start, total - start);
-        fd_puts(STDOUT_FILENO, "\n");
-    }
-    return 0;
-}
+/* ls used to live here. It's ls.wasm now -- see external_commands[]
+ * below and the EXEC delegation this file's response protocol gained
+ * to hand it off. */
 
 static i32 g_uid = -1;
 
@@ -590,7 +558,6 @@ struct command {
 static const struct command commands[] = {
     { "cat",    cmd_cat,      0 },
     { "grep",   cmd_grep,     0 },
-    { "ls",     cmd_ls,       0 },
     { "whoami", cmd_whoami,   0 },
     { "which",  cmd_which,    0 },
     { "cd",     builtin_cd,   1 },
@@ -603,6 +570,24 @@ static const struct command *lookup(const char *name) {
         if (str_cmp(c->name, name) == 0) return c;
     }
     return NULL;
+}
+
+/*
+ * Commands this file has no implementation of at all any more -- they
+ * live in their own single-purpose command.wasm modules (ls.wasm
+ * first). lookup() failing doesn't mean "not found" for these; it
+ * means "someone else's job." The orchestrator's response says so
+ * (see run()'s EXEC delegation), and whoever's driving this module
+ * (a JS wrapper, or eventually another WASM module) is responsible
+ * for actually running the named module and treating its result as
+ * the answer -- this file never sees what that module did.
+ */
+static const char *external_commands[] = { "ls", NULL };
+
+static int is_external_command(const char *name) {
+    for (int i = 0; external_commands[i]; i++)
+        if (str_cmp(external_commands[i], name) == 0) return 1;
+    return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -683,10 +668,42 @@ static int run_builtin(const struct command *c, int argc, char **argv) {
  * stage N+1's real stdin" behavior as before, just without a host
  * coordinating fds to make it happen.
  */
+/*
+ * When run() finds this set after run_pipeline() returns, the normal
+ * new_cwd/rc/stdout response is replaced entirely by an EXEC
+ * delegation (see run()'s own comment on the response protocol).
+ * g_exec_cmdline is rejoined from argv here because tokenize_stage()
+ * already NUL-split the original command line in place -- the pieces
+ * need to travel back out as one string again.
+ */
+static int g_exec_pending;
+static char g_exec_cmdline[MAX_LINE];
+
+static usize rejoin_argv(char *buf, usize buf_cap, char **argv, int argc) {
+    usize len = 0;
+    for (int i = 0; i < argc; i++) {
+        if (i > 0) {
+            if (len + 1 >= buf_cap) break;
+            buf[len++] = ' ';
+        }
+        usize alen = str_len(argv[i]);
+        if (len + alen >= buf_cap) alen = buf_cap - len - 1;
+        mem_copy(buf + len, argv[i], alen);
+        len += alen;
+    }
+    buf[len] = '\0';
+    return len;
+}
+
 static int run_pipeline(struct pipeline *pl) {
     if (pl->nstages == 1) {
         const struct command *c = lookup(pl->stages[0].argv[0]);
         if (!c) {
+            if (is_external_command(pl->stages[0].argv[0])) {
+                rejoin_argv(g_exec_cmdline, sizeof g_exec_cmdline, pl->stages[0].argv, pl->stages[0].argc);
+                g_exec_pending = 1;
+                return 0;
+            }
             fd_puts(STDERR_FILENO, "shell: command not found: ");
             fd_puts(STDERR_FILENO, pl->stages[0].argv[0]);
             fd_puts(STDERR_FILENO, "\n");
@@ -801,6 +818,7 @@ i32 run(i32 ptr, i32 len) {
     alloc_init();
     g_nvfiles = 0;
     g_environ_len = 0;
+    g_exec_pending = 0;
     mem_set(g_vfds, 0, sizeof g_vfds);
 
     const char *cursor = (const char *)(usize)ptr;
@@ -876,6 +894,26 @@ i32 run(i32 ptr, i32 len) {
     } else {
         rc = run_pipeline(&pl);
         sh.last_status = rc;
+    }
+
+    /*
+     * EXEC delegation: the parsed command names a module this file
+     * doesn't implement (see external_commands[]/is_external_command()
+     * above). The entire response becomes "EXEC\0<cmdline>\0" instead
+     * of the usual new_cwd/rc/stdout shape -- whoever is driving this
+     * module is responsible for running the named command.wasm itself
+     * and treating ITS response as the answer. This file never sees
+     * what that module does; it only ever decided WHICH one to ask
+     * for, which is the one thing only the parser can know.
+     */
+    if (g_exec_pending) {
+        static const char marker[] = "EXEC";
+        mem_copy(out, marker, sizeof marker); /* includes the NUL */
+        usize elen = sizeof marker;
+        usize cmdlen2 = str_len(g_exec_cmdline);
+        mem_copy(out + elen, g_exec_cmdline, cmdlen2 + 1);
+        elen += cmdlen2 + 1;
+        return (i32)elen;
     }
 
     usize cwd_len = str_len(sh.cwd);
