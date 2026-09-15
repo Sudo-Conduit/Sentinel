@@ -13,6 +13,19 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.4 — host_readdir() changed from "give me entry N" (one host call
+ *   per entry, each re-resolving the same path string from scratch, no
+ *   persistent directory-stream state) to "fill this buffer with every
+ *   entry, NUL-separated, in one call" -- the same "loop once, pack
+ *   results into one buffer" shape a real getdirentries()-family
+ *   syscall uses (see kern_getdirentries: one tbuf, one VOP_READDIR
+ *   call, one copyout), minus the fd/vnode/VFS-dispatch layer real
+ *   Unix has underneath it -- deliberately deferred, not forgotten:
+ *   the next real step is a per-process fd table (a natural fit for
+ *   Kernel.js's existing process table) and dispatching through
+ *   FileFsX.js's Mount abstraction instead of a flat host-side path
+ *   lookup, but this first cut gets the actual data flow (resolve
+ *   once, enumerate once, emit via stdout) right before adding that.
  * v0.0.3 — Real multi-stage piping. run_pipeline() no longer bypasses
  *   host_spawn() -- every non-last stage gets a real pipe (new
  *   host_pipe() import), spawned with its stdout wired to the pipe's
@@ -100,10 +113,17 @@ extern i32 host_chdir(i32 path_ptr, i32 path_len);
 __attribute__((import_module("host"), import_name("getcwd")))
 extern i32 host_getcwd(i32 buf_ptr, i32 buf_len);
 
-/* Directory listing — one entry per call, returns 0 at end */
+/*
+ * Directory listing — ONE call fills buf with every entry name,
+ * NUL-separated, back-to-back (the same "loop once, pack into one
+ * buffer" shape a real getdirentries()-family syscall uses, just
+ * without the fd/vnode machinery yet -- see shell.c's own v0.0.4 note).
+ * Returns the number of bytes written into buf, 0 if the directory is
+ * empty, -1 on error (path not found, buf too small, etc.).
+ */
 __attribute__((import_module("host"), import_name("readdir")))
-extern i32 host_readdir(i32 path_ptr, i32 path_len, i32 index,
-                        i32 name_ptr, i32 name_len);
+extern i32 host_readdir(i32 path_ptr, i32 path_len,
+                        i32 buf_ptr, i32 buf_len);
 
 /* Path lookup for `which` */
 __attribute__((import_module("host"), import_name("access")))
@@ -344,16 +364,33 @@ static int cmd_grep(int argc, char **argv) {
     return 0;
 }
 
+/*
+ * v0.0.4: reads the whole directory in ONE host call instead of one
+ * host call per entry, each re-resolving the same path string. The
+ * host loops through the real directory exactly once and packs every
+ * name into buf, NUL-separated -- this function's only job is to walk
+ * that one buffer and print each name, one per line.
+ */
 static int cmd_ls(int argc, char **argv) {
     const char *path = (argc >= 2) ? argv[1] : sh.cwd;
-    char name[256];
-    for (int i = 0; ; i++) {
-        i32 n = host_readdir((i32)(usize)path, (i32)str_len(path), i,
-                             (i32)(usize)name, sizeof name);
-        if (n <= 0) break;
-        name[n < 256 ? n : 255] = '\0';
-        fd_puts(STDOUT_FILENO, name);
+
+    char *buf = (char *)arena_alloc(4096);
+    if (!buf) { fd_puts(STDERR_FILENO, "ls: out of memory\n"); return 1; }
+
+    i32 n = host_readdir((i32)(usize)path, (i32)str_len(path),
+                         (i32)(usize)buf, 4096);
+    if (n < 0) {
+        fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
+        return 1;
+    }
+
+    usize pos = 0;
+    while ((usize)n > pos) {
+        const char *entry = buf + pos;
+        usize elen = str_len(entry);
+        fd_puts(STDOUT_FILENO, entry);
         fd_puts(STDOUT_FILENO, "\n");
+        pos += elen + 1; /* skip the NUL separator */
     }
     return 0;
 }

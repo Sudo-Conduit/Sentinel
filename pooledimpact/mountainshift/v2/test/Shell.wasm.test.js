@@ -28,6 +28,7 @@ function makeOS(wasmModule) {
     const env = { USER: 'meshos', HOME: '/home/user', PATH: '/usr/bin:/bin' };
     const files = { '/home/user': ['README.md', 'projects', 'notes.txt', 'main.c', 'shell.c'] };
     let cwd = '/home/user';
+    let readdirCallCounter = null;
 
     // Shared across every spawned instance -- pipes connect stages that
     // live in genuinely separate WebAssembly instances.
@@ -117,9 +118,19 @@ function makeOS(wasmModule) {
                     return 0;
                 },
                 getcwd: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, cwd),
-                readdir: (pathPtr, pathLen, index, namePtr, nameLen) => {
-                    const entries = files[readMemStr(pathPtr, pathLen)] || [];
-                    return index >= entries.length ? 0 : writeStr(namePtr, nameLen, entries[index]);
+                // v0.0.4 contract: one call, every entry NUL-separated
+                // into buf, returns total bytes written (0 = empty dir,
+                // -1 = path not found or buf too small).
+                readdir: (pathPtr, pathLen, bufPtr, bufLen) => {
+                    if (readdirCallCounter) readdirCallCounter.n++;
+                    const path = readMemStr(pathPtr, pathLen);
+                    if (!files[path]) return -1;
+                    const entries = files[path];
+                    if (entries.length === 0) return 0;
+                    const packed = Buffer.concat(entries.map((name) => Buffer.concat([Buffer.from(name, 'utf8'), Buffer.from([0])])));
+                    if (packed.length > bufLen) return -1;
+                    new Uint8Array(memory.buffer, bufPtr, packed.length).set(packed);
+                    return packed.length;
                 },
                 access: (pathPtr, pathLen) => {
                     const p = readMemStr(pathPtr, pathLen);
@@ -176,7 +187,8 @@ function makeOS(wasmModule) {
             currentRootStdinPos = 0;
             const rc = runInstance('ROOT', 'ROOT', cmdline);
             return { rc, stdout: currentRootStdoutChunks.join('') };
-        }
+        },
+        _instrumentReaddirCalls(counter) { readdirCallCounter = counter; }
     };
 }
 
@@ -217,6 +229,15 @@ async function run() {
         const r = os.runTopLevel('ls', '');
         if (r.rc !== 0) throw new Error('unexpected rc: ' + r.rc);
         if (!r.stdout.includes('README.md')) throw new Error('ls did not list the real cwd: ' + JSON.stringify(r.stdout));
+    });
+
+    check('ls calls host_readdir exactly ONCE for a 5-entry directory, not once per entry -- the actual point of the v0.0.4 bulk contract, verified rather than assumed', () => {
+        const callCount = { n: 0 };
+        os._instrumentReaddirCalls(callCount);
+        const r = os.runTopLevel('ls', '');
+        os._instrumentReaddirCalls(null);
+        if (r.rc !== 0) throw new Error('unexpected rc: ' + r.rc);
+        if (callCount.n !== 1) throw new Error('expected exactly 1 host_readdir call for the whole directory, got ' + callCount.n);
     });
 
     check('a single-stage grep still works exactly as before (no regression from the pipeline rewrite)', () => {
