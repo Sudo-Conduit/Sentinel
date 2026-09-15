@@ -25,7 +25,8 @@ const files = [
     'MountainShift.opaque.test.js',
     'WeightedGraphMixin.test.js',
     'Signature.test.js',
-    'BuildTerminalPdf.test.js'
+    'BuildTerminalPdf.test.js',
+    'DocMeta.test.js'
 ];
 
 let anyFailed = false;
