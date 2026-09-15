@@ -13,6 +13,16 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.8 — cmd_whoami() no longer reads $USER/$LOGNAME. Real whoami
+ *   asks the kernel for the real effective user; it never consults
+ *   the environment (confirmed live: `USER=hacker whoami` on a real
+ *   system still prints the real user). Reading an env var was a
+ *   shell-convention shortcut that happened to produce a plausible-
+ *   looking name, not the actual behavior it was standing in for --
+ *   the kind of gap a test asserting only "whoami reads USER from the
+ *   host" can pass while validating the wrong thing entirely. Added
+ *   host_whoami()/sys_whoami() -- a real identity fact, immune to
+ *   environment overrides -- and rewired cmd_whoami() to use it.
  * v0.0.7 — Added resolve_path(): path resolution (joining a relative
  *   argument against sh.cwd) is pure C string work and belongs in C,
  *   not the host. cmd_cat, cmd_ls, and builtin_cd all resolve their
@@ -156,6 +166,17 @@ extern i32 host_getcwd(i32 buf_ptr, i32 buf_len);
 /* Path lookup for `which` */
 __attribute__((import_module("host"), import_name("access")))
 extern i32 host_access(i32 path_ptr, i32 path_len, i32 mode);
+
+/*
+ * Real identity -- NOT the environment. Real whoami asks the kernel
+ * for the effective user (geteuid() -> getpwuid()); it does not read
+ * $USER, and `USER=hacker whoami` on a real system still prints the
+ * real user. host_whoami() is that same fact, shaped the same way:
+ * the host hands back whatever real identity it actually is, with no
+ * environment variable able to override it.
+ */
+__attribute__((import_module("host"), import_name("whoami")))
+extern i32 host_whoami(i32 buf_ptr, i32 buf_len);
 
 /* Real pipe creation -- writes the new read/write fd numbers into
  * linear memory at the two given pointers. v0.0.3: this is the one
@@ -361,6 +382,16 @@ static i32 sys_open(const char *path, i32 flags) {
     return host_open((i32)(usize)path, (i32)str_len(path), flags);
 }
 
+/*
+ * sys_whoami() -- the identity syscall. No path, no flags, nothing to
+ * resolve: just "who is this, really." A command asks this, never
+ * host_whoami() directly, for the same reason it never names any
+ * other host_* import directly.
+ */
+static i32 sys_whoami(i32 buf_ptr, i32 buf_len) {
+    return host_whoami(buf_ptr, buf_len);
+}
+
 /* ------------------------------------------------------------------ */
 /* Builtins — run in the module, never in a child                      */
 /* ------------------------------------------------------------------ */
@@ -478,12 +509,20 @@ static int cmd_ls(int argc, char **argv) {
     return rc;
 }
 
+/*
+ * v0.0.8: whoami no longer reads $USER/$LOGNAME. Real whoami never
+ * consults the environment -- it asks the kernel for the real
+ * effective user (geteuid() -> getpwuid()), which is why
+ * `USER=hacker whoami` on a real system still prints the real user,
+ * not "hacker". Reading $USER was a shell-convention shortcut wearing
+ * whoami's name, not what the command actually does. sys_whoami() is
+ * the real fact instead, with no environment variable able to spoof
+ * it.
+ */
 static int cmd_whoami(int argc, char **argv) {
     (void)argc; (void)argv;
     char buf[256];
-    i32 n = host_getenv((i32)(usize)"USER", 4, (i32)(usize)buf, sizeof buf);
-    if (n <= 0) n = host_getenv((i32)(usize)"LOGNAME", 7,
-                                (i32)(usize)buf, sizeof buf);
+    i32 n = sys_whoami((i32)(usize)buf, sizeof buf);
     if (n <= 0) { fd_puts(STDOUT_FILENO, "unknown\n"); return 0; }
     buf[n < 256 ? n : 255] = '\0';
     fd_puts(STDOUT_FILENO, buf);

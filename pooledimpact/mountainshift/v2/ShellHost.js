@@ -25,6 +25,7 @@
  */
 'use strict';
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const DEFAULT_WASM_PATH = path.join(__dirname, 'shell.wasm');
@@ -162,6 +163,11 @@ function createShell(options)
                 const val = env[readMemStr(namePtr, nameLen)];
                 return val === undefined ? -1 : writeStr(bufPtr, bufLen, val);
             },
+            // Real identity, not the environment -- os.userInfo().username
+            // is backed by the real uid the way getpwuid(geteuid()) is, so
+            // no amount of tampering with the env object above can spoof
+            // what whoami reports, matching real whoami's own behavior.
+            whoami: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, os.userInfo().username),
             chdir: (pathPtr, pathLen) =>
             {
                 const p = readMemStr(pathPtr, pathLen);

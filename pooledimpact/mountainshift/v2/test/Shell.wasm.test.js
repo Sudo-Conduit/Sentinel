@@ -134,6 +134,11 @@ function makeOS(wasmModule) {
                     const val = env[readMemStr(namePtr, nameLen)];
                     return val === undefined ? -1 : writeStr(bufPtr, bufLen, val);
                 },
+                // Deliberately NOT env.USER -- proves whoami is wired to a
+                // real identity fact, not the environment. Real whoami
+                // ignores $USER entirely (confirmed live: `USER=hacker
+                // whoami` on a real system still prints the real user).
+                whoami: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, 'real-identity'),
                 chdir: (pathPtr, pathLen) => {
                     const p = readMemStr(pathPtr, pathLen);
                     if (files[p] === undefined) return -1;
@@ -238,7 +243,7 @@ async function run() {
             .filter((i) => i.module === 'host')
             .map((i) => i.name)
             .sort();
-        const expected = ['access', 'chdir', 'close', 'fd_read', 'fd_write', 'getcwd', 'getenv', 'open', 'pipe', 'spawn', 'wait'].sort();
+        const expected = ['access', 'chdir', 'close', 'fd_read', 'fd_write', 'getcwd', 'getenv', 'open', 'pipe', 'spawn', 'wait', 'whoami'].sort();
         if (JSON.stringify(importsList) !== JSON.stringify(expected)) {
             throw new Error('expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(importsList));
         }
@@ -246,9 +251,10 @@ async function run() {
 
     let os = makeOS(wasmModule);
 
-    check('whoami reads USER from the host environment', () => {
+    check('whoami reports the real identity, NOT $USER -- real whoami ignores the environment entirely (confirmed live: `USER=hacker whoami` on a real system still prints the real user), so the mock deliberately answers whoami() with a value that differs from env.USER to prove the two are decoupled', () => {
         const r = os.runTopLevel('whoami', '');
-        if (r.rc !== 0 || r.stdout !== 'meshos\n') throw new Error('unexpected result: ' + JSON.stringify(r));
+        if (r.rc !== 0 || r.stdout !== 'real-identity\n') throw new Error('unexpected result: ' + JSON.stringify(r));
+        if (r.stdout.includes('meshos')) throw new Error('whoami leaked $USER (\'meshos\') instead of using the real identity fact');
     });
 
     check('ls with no argument lists the current directory (sh.cwd seeded from host_getcwd() on first run())', () => {
