@@ -69,6 +69,21 @@
  *   call. This is why runExternal() and therefore run()/runDetailed()
  *   are async now: a real socket round-trip can't be synchronous.
  *
+ *   node.wasm/php.wasm are the same idea one level up: SPAWN\0program\0
+ *   argc\0(arg\0){argc}stdinlen\0<bytes> asks the host to run a real
+ *   external PROGRAM (never taken from argv -- node.c/php.c each
+ *   hardcode the one program they exist to run, same as curl.c always
+ *   builds an HTTP request but never lets argv name an arbitrary raw
+ *   byte target). The host enforces an explicit whitelist
+ *   (ALLOWED_SPAWN_PROGRAMS) before honoring it -- defense in depth,
+ *   since the module could in principle be recompiled to ask for
+ *   anything, and the host is the actual authority here, same as it
+ *   would be for a socket target. This file's job on seeing SPAWN is
+ *   still a dumb relay: run the real process via child_process.spawn,
+ *   feed it the exact stdin bytes, collect real stdout/stderr until it
+ *   exits, hand the exit code + bytes back as a file
+ *   (/dev/exec_response) for the module's own second call to parse.
+ *
  *   Real content (file bytes, directory listings, /etc/passwd, the
  *   real uid) never arrives via a call shell.c makes mid-execution --
  *   it can't, there's no import to make it through. Whoever calls
@@ -82,13 +97,14 @@
  *     var a = await shell.run('ls /tmp');
  *     console.log(a);
  *
- * @tests test/Shell.wasm.test.js, test/Curl.wasm.test.js
+ * @tests test/Shell.wasm.test.js, test/Curl.wasm.test.js, test/Spawn.wasm.test.js
  */
 'use strict';
 
 const net = require('net');
 const tls = require('tls');
 const fs = require('fs');
+const { spawn } = require('child_process');
 const proto = require('./WasmBlobProtocol.js');
 
 const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
@@ -101,13 +117,26 @@ const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
 // top.wasm are NOT listed here -- see the file header and JobTable.js.)
 const COMMAND_MODULES = [
     require('./commands/ls.js'),
-    require('./commands/curl.js')
+    require('./commands/curl.js'),
+    require('./commands/node.js'),
+    require('./commands/php.js')
 ];
 
 function findCommandModule(name)
 {
     for (const mod of COMMAND_MODULES) if (mod.name === name) return mod;
     return null;
+}
+
+// The real authority over what node.wasm/php.wasm are allowed to spawn
+// -- exported so it can be tested directly, not just exercised through
+// a full command run. A module can only ever ASK for its own hardcoded
+// program name; this is what actually decides whether that ask is
+// honored.
+const ALLOWED_SPAWN_PROGRAMS = new Set(['node', 'php']);
+function isProgramAllowed(program)
+{
+    return ALLOWED_SPAWN_PROGRAMS.has(program);
 }
 
 // Real curl respects HTTPS_PROXY too -- this environment's own egress
@@ -215,6 +244,77 @@ function parseSocketMarker(response)
     return { host, port, useTls, requestBytes };
 }
 
+// Parses node.wasm's/php.wasm's SPAWN\0program\0argc\0(arg\0){argc}
+// stdinlen\0<bytes> delegation, if that's what a response is.
+function parseSpawnMarker(response)
+{
+    if (!(response.length >= 6 && response.toString('utf8', 0, 5) === 'SPAWN' && response[5] === 0)) return null;
+
+    let off = 6;
+    const nulAt = (from) => { let j = from; while (response[j] !== 0) j++; return j; };
+
+    let end = nulAt(off);
+    const program = response.toString('utf8', off, end);
+    off = end + 1;
+
+    end = nulAt(off);
+    const argc = parseInt(response.toString('utf8', off, end), 10);
+    off = end + 1;
+
+    const args = [];
+    for (let i = 0; i < argc; i++)
+    {
+        end = nulAt(off);
+        args.push(response.toString('utf8', off, end));
+        off = end + 1;
+    }
+
+    end = nulAt(off);
+    const stdinLen = parseInt(response.toString('utf8', off, end), 10);
+    off = end + 1;
+
+    const stdinBytes = response.subarray(off, off + stdinLen);
+    return { program, args, stdinBytes };
+}
+
+// The one real thing this file does for a SPAWN delegation: run the
+// real, whitelisted program with real argv and real stdin, and
+// collect its real stdout/stderr/exit code. No interpretation of what
+// the program does happens here -- node.wasm/php.wasm parse the
+// result themselves on their second call, same as curl.wasm parses
+// the raw socket response.
+function performProcessSpawn(program, args, stdinBytes)
+{
+    return new Promise((resolve) =>
+    {
+        if (!isProgramAllowed(program))
+        {
+            resolve({ exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: ' + program + ' is not on the allowed list\n', 'utf8') });
+            return;
+        }
+
+        const child = spawn(program, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+        const stdoutChunks = [];
+        const stderrChunks = [];
+        child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
+        child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
+        child.on('close', (code) => resolve({ exitCode: code === null ? 1 : code, stdout: Buffer.concat(stdoutChunks), stderr: Buffer.concat(stderrChunks) }));
+        child.on('error', () => resolve({ exitCode: 127, stdout: Buffer.alloc(0), stderr: Buffer.from('spawn: failed to start ' + program + '\n', 'utf8') }));
+        child.stdin.end(stdinBytes);
+    });
+}
+
+function buildExecResponseFile(exitCode, stdout, stderr)
+{
+    return Buffer.concat([
+        Buffer.from(String(exitCode) + '\0', 'utf8'),
+        Buffer.from(String(stdout.length) + '\0', 'utf8'),
+        stdout,
+        Buffer.from(String(stderr.length) + '\0', 'utf8'),
+        stderr
+    ]);
+}
+
 /**
  * @param {Object} [options]
  * @param {string} [options.wasmUrl] - fetched via fetch(); Node's
@@ -278,6 +378,13 @@ async function createShell(options)
         {
             const rawResponse = await performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes);
             return runExternal(mod, subCmdline, stdin, { '/dev/socket_response': rawResponse });
+        }
+
+        const spawnReq = parseSpawnMarker(response);
+        if (spawnReq)
+        {
+            const { exitCode, stdout: procStdout, stderr: procStderr } = await performProcessSpawn(spawnReq.program, spawnReq.args, spawnReq.stdinBytes);
+            return runExternal(mod, subCmdline, stdin, { '/dev/exec_response': buildExecResponseFile(exitCode, procStdout, procStderr) });
         }
 
         const { rc, stdout, newCwd } = proto.parseAnswer(response);
@@ -386,4 +493,4 @@ async function createShell(options)
     };
 }
 
-module.exports = { createShell };
+module.exports = { createShell, isProgramAllowed };
