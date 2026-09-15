@@ -21,7 +21,7 @@ const server = http.createServer((req, res) => {
     const u = new URL(req.url, 'http://localhost');
     if (u.pathname === '/shell.wasm') {
         res.writeHead(200, { 'Content-Type': 'application/wasm' });
-        res.end(fs.readFileSync(path.join(V2_DIR, 'shell.wasm')));
+        res.end(fs.readFileSync(path.join(V2_DIR, 'wasm', 'shell.wasm')));
         return;
     }
     if (u.pathname === '/fs') {

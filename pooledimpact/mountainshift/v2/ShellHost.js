@@ -109,7 +109,7 @@ const proto = require('./WasmBlobProtocol.js');
 const { createProcessTable } = require('./ProcessTable.js');
 const TOP_MODULE = require('./commands/top.js'); // stateful -- deliberately not in COMMAND_MODULES, see below
 
-const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
+const DEFAULT_WASM_URL = 'file://' + __dirname + '/wasm/shell.wasm';
 
 // One-shot command modules -- each a {name, base64} pair, the base64
 // being that command's own compiled .wasm bytes (also zero imports,

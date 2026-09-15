@@ -1,6 +1,6 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.16.0
+**Version:** 1.17.0
 **Last updated:** 2026-09-15
 
 Source: the DevTools Local Overrides hardening pass that opened this
@@ -82,14 +82,15 @@ this same account's own prior session, not a different author's work
 | Spawn.wasm.test.js | ALL PASS |
 | Top.wasm.test.js | ALL PASS |
 | JobControl.test.js | ALL PASS |
+| ShellServer.test.js | ALL PASS |
 
 **Total: 311/311 numbered checks passing across 23 check()/report()
-suites, plus 5 assert()-style suites (Shell.wasm/Curl.wasm/Spawn.wasm/
-Top.wasm/JobControl — Category G's WASM command-engine tier, which
-uses Node's own `assert` + `ALL PASS`/thrown-`AssertionError` instead
-of this doc's usual `check()`/`report()` harness; both conventions
-exist in this repo today and `test/run-all.js` treats them identically
-via exit code) — 28/28 suites green.**
+suites, plus 6 assert()-style suites (Shell.wasm/Curl.wasm/Spawn.wasm/
+Top.wasm/JobControl/ShellServer — Category G's WASM command-engine
+tier, which uses Node's own `assert` + `ALL PASS`/thrown-
+`AssertionError` instead of this doc's usual `check()`/`report()`
+harness; both conventions exist in this repo today and `test/run-all.js`
+treats them identically via exit code) — 29/29 suites green.**
 
 **DocMeta.test.js note:** already present and passing on this branch
 before today's session touched anything (`git log` shows it landed in
@@ -285,6 +286,7 @@ as shipped above; nothing about that wiring changed.
 | G.8 | Shell/WASM Command Engine | `KernelVisibilityMixin.js` — mirrors a Shell background-job start into a real Kernel's `fork()` for unified `ps` listing (listing only, pid spaces deliberately not unified — see G.9) | ✅ | — | — | — | — | — | — | shipped |
 | G.9 | Shell/WASM Command Engine | Pid-space unification between Shell's `ProcessTable` and Kernel's process table (real bidirectional `kill()` forwarding, not just listing) | ⬜ | 3 | 3 | 3 | 3 | 4 | 2 | **18** |
 | G.10 | Shell/WASM Command Engine | Automatic cross-call cookie jar for `curl.wasm` (session state threaded like `cwd` already is, vs. today's explicit `--cookie` only) | ⬜ | 4 | 2 | 2 | 2 | 1 | 4 | **15** |
+| G.11 | Shell/WASM Command Engine | `Shell-Terminal.html` + `ShellServer.js` — a thin, "fairly dumb" HTML SPA terminal over `Shell.js`'s IIFE, hosted by a minimal Node server (real sockets/`child_process`/WASM are inherently server-side capabilities no browser sandbox has at all, so this was never a candidate for running in-page directly) | ✅ | — | — | — | — | — | — | shipped |
 
 ## Recommended execution order
 
@@ -489,6 +491,36 @@ dependency override:**
 
 ## Changelog
 
+- **1.17.0** — 2026-09-15 — Folder cleanup + G.11 shipped. Moved every
+  Category G command module's C source and its compiled `.wasm` into
+  one `wasm/` folder (`shell`/`ls`/`curl`/`node`/`php`/`top` — 12 files,
+  6 pairs), updating every real path reference (`ShellHost.js`'s
+  `DEFAULT_WASM_URL`, `commands/*.js`'s own regenerate-instructions
+  comments, every test file that reads `shell.wasm` directly, `test/
+  fs-server.js`) — prose mentions of "shell.wasm" as a concept name
+  were left alone, only actual filesystem paths changed. Authored
+  `MSOS-Shell.md` (this Category's own architecture doc, the same role
+  `Kernel-Machine-Architecture.md` plays for the OS core) and repointed
+  `Shell.js`'s `@docs` tag at it instead of the unrelated Kernel doc it
+  was borrowing before. Shipped **G.11**: `Shell-Terminal.html` (a
+  genuinely dumb HTML/vanilla-JS terminal -- no framework, no business
+  logic beyond POST /exec and render-the-response) + `ShellServer.js`
+  (the minimal Node host: boots `Shell.js`'s factory once, serves the
+  page and `wasm/shell.wasm` itself since Node's `fetch()` can't do
+  `file://`, and exposes exactly one real endpoint). Documented, not
+  glossed over: this was never a candidate for running directly in a
+  browser page at all, framework or no framework -- `curl`/`node`/`php`
+  delegate to real raw sockets and real `child_process`, neither of
+  which any browser sandbox can do regardless of how `ShellHost.js`'s
+  module loading is shaped. `test/ShellServer.test.js` (new, 5 checks
+  via `assert`) proves it by driving the actual boot process over real
+  HTTP only -- the real terminal page byte-served, real `whoami`/`node`
+  output, job control (`top &`/`jobs`/`kill`) reachable the same way,
+  and a plain 404 on an unknown route. `test/run-all.js` gained this
+  entry; `Docs/MSOS-Cleanup-Roadmap.md` gained **G.11** (shipped) in
+  the scored backlog. Re-pinned Last-test-run to the commit that ships
+  this entry (311/311 numbered checks, 6 green assert()-style suites —
+  29/29 total, up from 28/28).
 - **1.16.0** — 2026-09-15 — Added **Category G (Shell/WASM Command
   Engine)**: a separate branch's work (`claude/wasm-shell-experimental`,
   PR #22), same account, first tracked in this roadmap here. G.1–G.8

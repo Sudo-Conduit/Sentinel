@@ -8,8 +8,8 @@
 // SPAWN-marker handling for the real, whitelisted child_process spawn
 // this module delegates to.
 //
-// Regenerate after rebuilding php.wasm:
-//   node -e "console.log(require('fs').readFileSync('php.wasm').toString('base64'))"
+// Regenerate after rebuilding wasm/php.wasm:
+//   node -e "console.log(require('fs').readFileSync('wasm/php.wasm').toString('base64'))"
 'use strict';
 module.exports = {
     name: 'php',

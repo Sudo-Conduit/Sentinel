@@ -18,7 +18,7 @@ const { check, report } = require('./helpers.js');
 
 function startWasmServer() {
     return new Promise((resolve) => {
-        const bytes = fs.readFileSync(path.join(V2, 'shell.wasm'));
+        const bytes = fs.readFileSync(path.join(V2, 'wasm', 'shell.wasm'));
         const server = http.createServer((req, res) => { res.end(bytes); });
         server.listen(0, '127.0.0.1', () => {
             const { port } = server.address();

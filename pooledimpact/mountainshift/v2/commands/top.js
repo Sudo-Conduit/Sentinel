@@ -9,8 +9,8 @@
 // what actually keeps one instance alive for a job's whole lifetime;
 // this flag just tells ShellHost.js "don't run this the ls.wasm way."
 //
-// Regenerate after rebuilding top.wasm:
-//   node -e "console.log(require('fs').readFileSync('top.wasm').toString('base64'))"
+// Regenerate after rebuilding wasm/top.wasm:
+//   node -e "console.log(require('fs').readFileSync('wasm/top.wasm').toString('base64'))"
 'use strict';
 module.exports = {
     name: 'top',

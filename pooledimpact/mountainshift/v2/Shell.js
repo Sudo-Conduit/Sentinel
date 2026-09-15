@@ -76,7 +76,7 @@
  *   peer runtime engine, exactly like MountainShift.js itself, CPU.js,
  *   Kernel.js -- never install-manifest data.
  *
- * @docs Kernel-Machine-Architecture.md
+ * @docs MSOS-Shell.md
  * @tests test/Shell.opaque.test.js
  */
 (function(root, factory)
@@ -227,7 +227,7 @@
     ShellFactory.author = 'Will Fobbs';
     ShellFactory.version = '1.0.0';
     ShellFactory.description = 'Opaque closure factory over ShellHost.js\'s WASM command engine -- ExtendX-composable, capability-object surface, no Kernel dependency.';
-    ShellFactory.docs = ['Kernel-Machine-Architecture.md'];
+    ShellFactory.docs = ['MSOS-Shell.md'];
     ShellFactory.tests = ['test/Shell.opaque.test.js'];
 
     return ShellFactory;

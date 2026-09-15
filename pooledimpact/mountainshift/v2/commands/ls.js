@@ -5,8 +5,8 @@
 // command.wasm into "a JS module you require()" needs nothing more
 // than this.
 //
-// Regenerate after rebuilding ls.wasm:
-//   node -e "console.log(require('fs').readFileSync('ls.wasm').toString('base64'))"
+// Regenerate after rebuilding wasm/ls.wasm:
+//   node -e "console.log(require('fs').readFileSync('wasm/ls.wasm').toString('base64'))"
 'use strict';
 module.exports = {
     name: 'ls',

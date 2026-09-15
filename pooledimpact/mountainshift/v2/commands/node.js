@@ -8,8 +8,8 @@
 // SPAWN-marker handling for the real, whitelisted child_process spawn
 // this module delegates to.
 //
-// Regenerate after rebuilding node.wasm:
-//   node -e "console.log(require('fs').readFileSync('node.wasm').toString('base64'))"
+// Regenerate after rebuilding wasm/node.wasm:
+//   node -e "console.log(require('fs').readFileSync('wasm/node.wasm').toString('base64'))"
 'use strict';
 module.exports = {
     name: 'node',

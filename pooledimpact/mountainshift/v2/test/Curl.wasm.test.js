@@ -20,7 +20,7 @@ const { createShell } = require('../ShellHost.js');
 // same reason test/fs-server.js exists for Shell.wasm.test.js.
 function startWasmServer() {
     return new Promise((resolve) => {
-        const bytes = fs.readFileSync(path.join(__dirname, '..', 'shell.wasm'));
+        const bytes = fs.readFileSync(path.join(__dirname, '..', 'wasm', 'shell.wasm'));
         const server = http.createServer((req, res) => { res.end(bytes); });
         server.listen(0, '127.0.0.1', () => {
             const { port } = server.address();

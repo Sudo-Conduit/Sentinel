@@ -7,8 +7,8 @@
 // already re-sent in the cmdline). See ShellHost.js's SOCKET-marker
 // handling for the real connect+write+read this module delegates to.
 //
-// Regenerate after rebuilding curl.wasm:
-//   node -e "console.log(require('fs').readFileSync('curl.wasm').toString('base64'))"
+// Regenerate after rebuilding wasm/curl.wasm:
+//   node -e "console.log(require('fs').readFileSync('wasm/curl.wasm').toString('base64'))"
 'use strict';
 module.exports = {
     name: 'curl',

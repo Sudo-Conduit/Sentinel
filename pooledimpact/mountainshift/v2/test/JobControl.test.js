@@ -16,7 +16,7 @@ function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 function startWasmServer() {
     return new Promise((resolve) => {
-        const bytes = fs.readFileSync(__dirname + '/../shell.wasm');
+        const bytes = fs.readFileSync(__dirname + '/../wasm/shell.wasm');
         const server = http.createServer((req, res) => { res.end(bytes); });
         server.listen(0, '127.0.0.1', () => {
             const { port } = server.address();
