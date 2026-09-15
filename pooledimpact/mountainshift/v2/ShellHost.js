@@ -37,20 +37,31 @@
  *   the one loading primitive that exists identically in a browser and
  *   in Node, so shell.wasm's bytes come from wherever it's actually
  *   served, the same way they would once this runs inside
- *   MountainShift OS itself. `fs` still appears below, but only inside
- *   open()/access() -- shell.c's OWN filesystem commands resolving a
- *   real path on this machine, a completely different concern from how
- *   the module's own bytes got loaded.
+ *   MountainShift OS itself.
+ *
+ *   This file has NO filesystem access of its own, on purpose -- no
+ *   `fs`, not even for open()/access(). A browser has no `fs` module
+ *   at all, so if this file needed one, it couldn't actually run
+ *   there; it would only ever have been running here because Node
+ *   happened to make disk access convenient, which is exactly the
+ *   kind of host-does-the-command's-job shortcut this project keeps
+ *   catching. Real content for open()/access() comes entirely from
+ *   `options.files` (path -> raw string content, fetched by whoever
+ *   calls createShell() -- a real HTTP request in Node, same as it
+ *   would be `fetch()` in a browser). This file only ever looks
+ *   content up in that map; it never goes and gets it.
  *
  *     const { createShell } = require('./ShellHost.js');
- *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
- *     var a = shell.run('ls /tmp');
+ *     const shell = await createShell({
+ *         wasmUrl: 'http://localhost:PORT/shell.wasm',
+ *         files: { '/etc/passwd': await (await fetch('http://localhost:PORT/fs?p=/etc/passwd')).text() }
+ *     });
+ *     var a = shell.run('whoami');
  *     console.log(a);
  *
  * @tests test/Shell.wasm.test.js
  */
 'use strict';
-const fs = require('fs');
 
 const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
 
@@ -63,9 +74,13 @@ const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
  * @param {Object<string,string>} [options.env] - env vars getenv() sees,
  *   mirrored into linear memory once via _init_environ()
  * @param {Object<string,string>} [options.files] - path -> plain string
- *   content. An "open directory" and an "open file" are the same thing
- *   here: whatever bytes read() returns. No packed structure, no
- *   contract invented to match one C function's expectations.
+ *   content, the ONLY source open()/access() ever consult. An "open
+ *   directory" and an "open file" are the same thing here: whatever
+ *   string read() should return. A directory's value must already be
+ *   the raw NUL-separated names cmd_ls expects -- this file does no
+ *   enumeration or formatting of its own. Whoever calls createShell()
+ *   is responsible for fetching real content into this map; this file
+ *   has no way to go get it itself.
  * @param {string} [options.cwd] - initial working directory
  * @returns {Promise<{run: (cmdline: string, stdin?: string) => string}>}
  */
@@ -76,33 +91,17 @@ async function createShell(options)
     const wasmModule = await WebAssembly.compile(wasmBytes);
 
     const env = options.env || { HOME: '/home/user', PATH: '/usr/bin:/bin' };
-    // Real by default, resolved via Node's fs -- but this is an internal
-    // detail of open()'s own implementation below, never part of C's
-    // contract or shell.run()'s own signature. C only ever sees "a
-    // string" through the ordinary read() path; it has no idea Node or
-    // a real disk exists on the other side of that string. options.files
-    // (path -> plain string content) overrides this with fixed,
-    // deterministic content instead -- the one legitimate use is test
-    // assertions that must not depend on whatever happens to be on disk.
-    const fixedFiles = options.files || null;
-    let cwd = options.cwd || process.cwd();
+    const files = options.files || {};
+    let cwd = options.cwd || '/';
 
     function resolvePathContent(p)
     {
-        if (fixedFiles) { return fixedFiles[p] !== undefined ? fixedFiles[p] : null; }
-        let stat;
-        try { stat = fs.statSync(p); } catch (e) { return null; }
-        // Raw names, NUL-joined -- no formatting a human would want
-        // (that's cmd_ls's job in C, not this file's). Enumerating what
-        // exists is the one thing only the real filesystem can answer;
-        // fs.readdirSync() is that raw fact, nothing more.
-        return stat.isDirectory() ? fs.readdirSync(p).join('\0') + '\0' : fs.readFileSync(p, 'utf8');
+        return files[p] !== undefined ? files[p] : null;
     }
 
     function pathExists(p)
     {
-        if (fixedFiles) { return fixedFiles[p] !== undefined; }
-        return fs.existsSync(p);
+        return files[p] !== undefined;
     }
 
     const pipes = new Map();      // fd -> { chunks: Buffer, readPos: number }
@@ -239,14 +238,14 @@ async function createShell(options)
                 return fd;
             },
             close: (fd) => { openFiles.delete(fd); return 0; },
-            // Real access(path, mode) -- amode 1 is X_OK, 0 is F_OK,
-            // matching <unistd.h> exactly. Checks the real filesystem;
-            // no hardcoded candidate list.
+            // access(path, mode) -- this file has no notion of
+            // permission bits (F_OK vs X_OK) any more than it has a
+            // filesystem to ask; all it can answer is "is there real
+            // content behind this path," from the same map open() uses.
             access: (pathPtr, mode) =>
             {
                 const p = readCStr(pathPtr);
-                try { fs.accessSync(p, mode === 1 ? fs.constants.X_OK : fs.constants.F_OK); return 0; }
-                catch (e) { return -1; }
+                return pathExists(p) ? 0 : -1;
             },
             // Real pipe(int[2]): one array pointer, [0] read end, [1]
             // write end -- not two separate out-pointers.
