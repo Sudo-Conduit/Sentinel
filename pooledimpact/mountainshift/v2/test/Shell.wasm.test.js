@@ -5,60 +5,38 @@
 // ShellHost.js itself has NO filesystem access -- no `fs`, not even
 // for open()/access(). Everything shell.wasm's commands can see comes
 // from a `files` map THIS file builds by making real HTTP requests
-// against a real local server (which does use `fs`, because something
-// has to actually have disk access to serve real content -- exactly
-// the role a real web server plays, not the role ShellHost.js plays).
-// shell.wasm's own bytes are loaded the same way, via fetch(), not
-// fs.readFileSync().
+// against test/fs-server.js, spawned here as a genuinely separate OS
+// process (not a function living in this same script) -- the real
+// disk access something has to do to originate real bytes happens
+// over there, in a different process, reached only through a real
+// socket, the same way a browser would reach a real remote server.
 //
 // Run with: node test/Shell.wasm.test.js
 'use strict';
-const http = require('http');
-const fs = require('fs');
+const { spawn } = require('child_process');
 const path = require('path');
+const readline = require('readline');
 const { createShell } = require('../ShellHost.js');
 
 const V2_DIR = path.join(__dirname, '..');
 
-// The one place in this whole demo allowed to touch real disk: a
-// small real HTTP server, standing in for wherever shell.wasm and its
-// content would actually be served from in production.
 function startServer() {
-    return new Promise((resolve) => {
-        const server = http.createServer((req, res) => {
-            const u = new URL(req.url, 'http://localhost');
-            if (u.pathname === '/shell.wasm') {
-                res.writeHead(200, { 'Content-Type': 'application/wasm' });
-                res.end(fs.readFileSync(path.join(V2_DIR, 'shell.wasm')));
-                return;
-            }
-            if (u.pathname === '/fs') {
-                const p = u.searchParams.get('p');
-                try {
-                    const stat = fs.statSync(p);
-                    const body = stat.isDirectory() ? fs.readdirSync(p).join('\0') + '\0' : fs.readFileSync(p);
-                    res.writeHead(200, { 'Content-Type': 'application/octet-stream' });
-                    res.end(body);
-                } catch (e) {
-                    res.writeHead(404);
-                    res.end();
-                }
-                return;
-            }
-            res.writeHead(404);
-            res.end();
+    return new Promise((resolve, reject) => {
+        const child = spawn(process.execPath, [path.join(__dirname, 'fs-server.js'), '0'], { stdio: ['ignore', 'pipe', 'inherit'] });
+        const rl = readline.createInterface({ input: child.stdout });
+        rl.once('line', (line) => {
+            const m = /^READY (\d+)$/.exec(line);
+            if (!m) { reject(new Error('fs-server.js did not report READY: ' + line)); return; }
+            resolve({ baseUrl: `http://127.0.0.1:${m[1]}`, close: () => child.kill() });
         });
-        server.listen(0, '127.0.0.1', () => {
-            const port = server.address().port;
-            resolve({ baseUrl: `http://127.0.0.1:${port}`, close: () => server.close() });
-        });
+        child.once('error', reject);
     });
 }
 
-// Fetches one real path's content over HTTP. Returns undefined (not
-// added to the files map) on 404 -- so paths deliberately left
-// unfetched, like the nonexistent-file demo below, stay genuinely
-// absent rather than silently resolving.
+// Fetches one real path's content over HTTP, from the separate server
+// process. Returns undefined (not added to the files map) on 404 --
+// so paths deliberately left unfetched, like the nonexistent-file demo
+// below, stay genuinely absent rather than silently resolving.
 async function fetchPath(baseUrl, absPath) {
     const res = await fetch(`${baseUrl}/fs?p=${encodeURIComponent(absPath)}`);
     if (!res.ok) return undefined;
