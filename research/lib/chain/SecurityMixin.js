@@ -91,23 +91,13 @@
  *   indexed property access so an accessor property (Hilbert.prototype's
  *   `values` getter) is never invoked with the wrong `this` along the way.
  *
- *   Known related issue, NOT fixed here (lives in ExtendX.js, not this
- *   file): ExtendX.js's installWrappers() reads `Subclass._wrapped ||
- *   (Subclass._wrapped = new Set())` -- since `Object.setPrototypeOf(
- *   Subclass, BaseClass)` makes static properties inherit, and an
- *   already-composed BaseClass (e.g. Hilbert, itself built via an
- *   internal ExtendX.extend() call) already has its OWN `_wrapped` Set,
- *   a NEW extend() call over that same BaseClass (or over one of its
- *   other composed descendants) inherits and MUTATES that shared Set
- *   instead of getting a fresh one of its own. Securing several
- *   DIFFERENT composed descendants of the same already-composed base in
- *   one process can silently skip installing a dispatch wrapper for a
- *   method name a sibling composition already claimed -- this file's own
- *   test suite (SecurityMixin.unit.js) works around it by keeping each
- *   already-composed base (Hilbert) touched by only one extend() call.
- *   Production code composing a security layer directly onto a fresh,
- *   never-before-extended BaseClass (the documented, intended usage) is
- *   unaffected.
+ *   A related bug surfaced by v5's own test suite -- ExtendX.js's
+ *   installWrappers() was aliasing an already-composed BaseClass's
+ *   `_wrapped` bookkeeping Set through the static prototype chain
+ *   instead of always creating a fresh one per Subclass, which could
+ *   silently suppress a security mixin's dispatch wrapper for a method
+ *   name a sibling composition over the same base had already claimed --
+ *   is fixed in ExtendX.js itself (v1.5.2), not in this file.
  * @tests test/CPU.security.test.js
  * @tests test/Physical.security.test.js
  * @tests test/Kernel.security.test.js

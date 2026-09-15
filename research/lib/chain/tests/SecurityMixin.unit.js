@@ -1,18 +1,42 @@
 /**
  * @file research/lib/chain/tests/SecurityMixin.unit.js
  * @author Will Fobbs
- * @description Regression coverage for the reported mixinId-collision bug:
- *              createSecurityMixin() derived mixinId from BaseClass.name,
- *              but every class ExtendX.extend() composes is generated with
- *              the literal name "Subclass" -- so two independently secured
- *              composed classes collided on the identical mixinId
- *              'security:Subclass'. That collision hit twice: extend()'s
- *              registry guard refused the second composition, and
- *              MIXIN_FINGERPRINTS silently overwrote the first class's
- *              recorded fingerprint with the second's, corrupting verify()
- *              for the first. This suite builds exactly that scenario --
- *              two different ExtendX-composed classes, both named
- *              "Subclass" -- and asserts both collisions are gone.
+ * @description Regression coverage for three bugs found in one pass:
+ *
+ *              1. mixinId collision: createSecurityMixin() derived
+ *                 mixinId from BaseClass.name, but every class
+ *                 ExtendX.extend() composes is generated with the
+ *                 literal name "Subclass" -- so two independently
+ *                 secured composed classes collided on the identical
+ *                 mixinId 'security:Subclass'. Hit twice: extend()'s
+ *                 registry guard refused the second composition, and
+ *                 MIXIN_FINGERPRINTS silently overwrote the first
+ *                 class's recorded fingerprint with the second's,
+ *                 corrupting verify() for the first.
+ *
+ *              2. Base-class methods left ungated: createSecurityMixin()
+ *                 read method names from
+ *                 Object.getOwnPropertyNames(BaseClass.prototype) alone,
+ *                 which misses everything reached only through
+ *                 inheritance -- an ordinary subclass's base methods, or
+ *                 a composed class's underlying base methods (its
+ *                 prototype carries only that composition's own dispatch
+ *                 wrappers).
+ *
+ *              3. ExtendX.js's own `_wrapped` aliasing bug, found while
+ *                 reproducing bug 2 against Hilbert (itself an
+ *                 already-composed class): installWrappers() inherited
+ *                 an already-composed BaseClass's own `_wrapped`
+ *                 bookkeeping Set through the static prototype chain and
+ *                 mutated it by reference, so a later, unrelated
+ *                 composition over the same base could see a method
+ *                 name an earlier one had already claimed and skip
+ *                 installing its OWN wrapper for it. The "gated inherited
+ *                 methods actually enforce the activation token at
+ *                 runtime" test below exercises this exact cross-
+ *                 composition scenario (ComposedB from suite 1, built on
+ *                 Hilbert, followed by securing Hilbert directly in
+ *                 suite 2) and is the test that caught it.
  */
 const assert = require('assert');
 const Tensor = require('../Tensor.js');
@@ -30,17 +54,10 @@ function register(runner)
     // for both, reproducing the exact shape of the reported bug (securing
     // two DIFFERENT composed classes, not two raw classes that happen to
     // share a literal name).
-    // Both built over Tensor (not Hilbert): Tensor is never itself the
-    // product of an extend() call, so it carries no own `_wrapped`
-    // bookkeeping Set for ExtendX.extend() to inherit and mutate -- each
-    // extend() call over it gets an independent Set. Hilbert IS already a
-    // composed class (built internally via ExtendX.extend(Tensor, ...) in
-    // Hilbert.js) and is reserved for the separate suite below, which
-    // needs Hilbert untouched by any other extend() call first.
     const NoopMixinA = { mixinId: 'noop:a', ping: function() { return 'a'; } };
     const NoopMixinB = { mixinId: 'noop:b', ping: function() { return 'b'; } };
     const ComposedA = ExtendX.extend(Tensor, NoopMixinA);
-    const ComposedB = ExtendX.extend(Tensor, NoopMixinB);
+    const ComposedB = ExtendX.extend(Hilbert, NoopMixinB);
 
     assert.strictEqual(ComposedA.name, 'Subclass');
     assert.strictEqual(ComposedB.name, 'Subclass');
