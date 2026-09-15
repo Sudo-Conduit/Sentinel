@@ -1,7 +1,7 @@
 /**
  * @file ShellHost.js
  * @author Will Fobbs
- * @version 3.0.0
+ * @version 3.1.0
  * @description shell.wasm has ZERO imports -- `WebAssembly.Module.
  *   imports()` on it returns an empty array. There is no host surface
  *   at all for this file to implement, because shell.c makes no calls
@@ -12,17 +12,14 @@
  *     2. call run(ptr, len)
  *     3. read a response blob back out of a fixed offset
  *
- *   No function of shell.c's own crosses this boundary in either
- *   direction -- same shape as this project's own memorymap.c: a
- *   shared flat buffer at fixed byte offsets, gated by exported entry
- *   points, not a back-and-forth of imported/exported calls.
+ *   (see WasmBlobProtocol.js, which now owns that mechanics -- the
+ *   exact same encode/call/decode logic JobTable.js needs too, for a
+ *   module it has to keep alive across many calls instead of one-shot).
  *
- *   Request blob: cwd\0 uid\0 home\0 PATH\0 cmdline\0 stdinlen\0
- *     <stdinlen raw bytes> nfiles\0 (path\0 length\0 <length raw
- *     bytes>){nfiles}
- *   Response blob: new_cwd\0 rc\0 <remaining bytes are stdout>
- *     -- OR, when shell.wasm doesn't implement the command itself --
- *   Response blob: EXEC\0 cmdline\0
+ *   Request/response blob shapes: see WasmBlobProtocol.js's header.
+ *   shell.wasm's response is either the normal new_cwd/rc/stdout shape,
+ *   or, when it doesn't implement the parsed command itself, EXEC\0
+ *   cmdline\0 -- a delegation, not an answer.
  *
  *   shell.wasm is Native-only: it parses and runs the pipeline stages
  *   it owns (cd, cat, grep, whoami, which, exit), but a command like
@@ -50,6 +47,14 @@
  *   splitter) but the splitter resolves routing before shell.wasm ever
  *   sees an ambiguous stage.
  *
+ *   Only ONE-SHOT command modules (ls.wasm: fresh instance per call,
+ *   no state to preserve) are registered here and reachable through a
+ *   normal pipeline. A STATEFUL module like top.wasm -- one that has
+ *   to keep the same instance alive across calls so its own linear
+ *   memory can hold state (a running tick count) between them -- isn't
+ *   something a one-shot run()/runDetailed() call can express at all;
+ *   that's JobTable.js's job, not this file's.
+ *
  *   Real content (file bytes, directory listings, /etc/passwd, the
  *   real uid) never arrives via a call shell.c makes mid-execution --
  *   it can't, there's no import to make it through. Whoever calls
@@ -67,14 +72,17 @@
  */
 'use strict';
 
-const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
-const RESPONSE_CAP = 1024 * 1024; // must match shell.c's own output_cap
+const proto = require('./WasmBlobProtocol.js');
 
-// Command modules shell.wasm delegates to via the EXEC marker -- each a
-// {name, base64} pair, the base64 being that command's own compiled
-// .wasm bytes (also zero imports, same request/response blob shape).
-// Registering a new command.wasm is exactly: build it, embed it, add
-// its module here. No other change to this file or to shell.c.
+const DEFAULT_WASM_URL = 'file://' + __dirname + '/shell.wasm';
+
+// One-shot command modules shell.wasm delegates to via the EXEC marker
+// -- each a {name, base64} pair, the base64 being that command's own
+// compiled .wasm bytes (also zero imports, same request/response blob
+// shape). Registering a new one-shot command.wasm is exactly: build
+// it, embed it, add its module here. No other change to this file or
+// to shell.c. (Stateful modules like top.wasm are NOT listed here --
+// see the file header and JobTable.js.)
 const COMMAND_MODULES = [
     require('./commands/ls.js')
 ];
@@ -111,82 +119,35 @@ async function createShell(options)
     const uid = options.uid !== undefined ? options.uid : (typeof process !== 'undefined' && process.getuid ? process.getuid() : 0);
     let cwd = options.cwd || '/';
 
-    function buildRequest(cmdline, stdin)
+    function requestFields(cmdline, stdin)
     {
-        stdin = stdin || Buffer.alloc(0);
-        const parts = [];
-        parts.push(Buffer.from(cwd + '\0', 'utf8'));
-        parts.push(Buffer.from(String(uid) + '\0', 'utf8'));
-        parts.push(Buffer.from((options.env && options.env.HOME || '') + '\0', 'utf8'));
-        parts.push(Buffer.from((options.env && options.env.PATH || '') + '\0', 'utf8'));
-        parts.push(Buffer.from(cmdline + '\0', 'utf8'));
-        parts.push(Buffer.from(String(stdin.length) + '\0', 'utf8'));
-        parts.push(stdin);
-
-        const fileEntries = Object.keys(files);
-        parts.push(Buffer.from(String(fileEntries.length) + '\0', 'utf8'));
-        for (const path of fileEntries)
-        {
-            const content = Buffer.from(files[path], 'utf8');
-            parts.push(Buffer.from(path + '\0', 'utf8'));
-            parts.push(Buffer.from(String(content.length) + '\0', 'utf8'));
-            parts.push(content);
-        }
-        return Buffer.concat(parts);
+        return {
+            cwd, uid,
+            home: options.env && options.env.HOME,
+            path: options.env && options.env.PATH,
+            cmdline, stdin, files
+        };
     }
 
-    // Runs one request/response cycle against ANY zero-import module
-    // that speaks this same blob protocol -- shell.wasm or a delegated
-    // command.wasm alike. Returns the raw response bytes; parsing them
-    // into {rc, stdout} or checking for the EXEC marker is the caller's
-    // job, same division shell.c/ls.c themselves don't care about.
-    function callModule(moduleInstance, moduleMemory, cmdline, stdin)
-    {
-        const request = buildRequest(cmdline, stdin);
-        const totalBytes = moduleMemory.buffer.byteLength;
-        const requestOffset = totalBytes - RESPONSE_CAP; // top 1MB: request region
-        if (request.length > RESPONSE_CAP) throw new Error('request too large for the fixed request region');
-        new Uint8Array(moduleMemory.buffer, requestOffset, request.length).set(request);
-
-        const responseLen = moduleInstance.exports.run(requestOffset, request.length);
-
-        const responseOffset = totalBytes - 2 * RESPONSE_CAP; // the 1MB region just below it
-        return Buffer.from(moduleMemory.buffer, responseOffset, responseLen);
-    }
-
-    function parseAnswer(response)
-    {
-        let i = 0;
-        const nulAt = (from) => { let j = from; while (response[j] !== 0) j++; return j; };
-        const cwdEnd = nulAt(i);
-        const newCwd = response.toString('utf8', i, cwdEnd);
-        i = cwdEnd + 1;
-        const rcEnd = nulAt(i);
-        const rc = parseInt(response.toString('utf8', i, rcEnd), 10);
-        i = rcEnd + 1;
-        const stdout = response.toString('utf8', i, response.length);
-        return { rc, stdout, newCwd };
-    }
-
-    // Compiles/instantiates the named command module synchronously
-    // (decoding a base64 string and compiling a zero-import WASM module
-    // are both synchronous operations -- no network, no fetch, nothing
-    // to await), runs it with the delegated sub-cmdline, and returns its
-    // answer as the final result.
+    // Compiles/instantiates the named one-shot command module
+    // synchronously (decoding base64 and compiling a zero-import WASM
+    // module are both synchronous -- no network, no fetch, nothing to
+    // await), runs it fresh, and returns its answer as the final
+    // result. Fresh instance every call -- ls.wasm has nothing that
+    // needs to survive between one run and the next.
     const compiledCommandModules = new Map();
     function runExternal(mod, subCmdline, stdin)
     {
         let compiledModule = compiledCommandModules.get(mod.name);
         if (!compiledModule)
         {
-            compiledModule = new WebAssembly.Module(Buffer.from(mod.base64, 'base64'));
+            compiledModule = proto.compile(mod.base64);
             compiledCommandModules.set(mod.name, compiledModule);
         }
-        const cmdInstance = new WebAssembly.Instance(compiledModule, {});
-        const cmdMemory = cmdInstance.exports.memory;
+        const { instance: cmdInstance, memory: cmdMemory } = proto.instantiate(compiledModule);
 
-        const response = callModule(cmdInstance, cmdMemory, subCmdline, stdin);
-        const { rc, stdout, newCwd } = parseAnswer(response);
+        const response = proto.callModule(cmdInstance, cmdMemory, requestFields(subCmdline, stdin));
+        const { rc, stdout, newCwd } = proto.parseAnswer(response);
         cwd = newCwd;
         return { rc, stdout, cwd };
     }
@@ -198,7 +159,7 @@ async function createShell(options)
     // keeps this from being the normal path.
     function runNative(groupCmdline, stdin)
     {
-        const response = callModule(instance, memory, groupCmdline, stdin);
+        const response = proto.callModule(instance, memory, requestFields(groupCmdline, stdin));
 
         if (response.length >= 5 && response.toString('utf8', 0, 4) === 'EXEC' && response[4] === 0)
         {
@@ -212,7 +173,7 @@ async function createShell(options)
             return runExternal(mod, subCmdline, stdin);
         }
 
-        const { rc, stdout, newCwd } = parseAnswer(response);
+        const { rc, stdout, newCwd } = proto.parseAnswer(response);
         cwd = newCwd;
         return { rc, stdout, cwd };
     }
