@@ -31,7 +31,7 @@ stale in an obvious, checkable way (the pinned commit stops matching
 this repo's HEAD) rather than a silent, unverifiable way. Re-run and
 re-paste whenever a shipped item changes.
 
-**Commit:** `3ea3e4d` (git.pooledimpact.com/Claude/Romans, branch
+**Commit:** `cdf21dc` (git.pooledimpact.com/Claude/Romans, branch
 `claude/repo-connection-ns90c5`)
 
 | Suite | Result |
