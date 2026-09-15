@@ -8,13 +8,34 @@
  * Design:
  *   - One export: run(ptr, len)
  *   - Imports: real POSIX names and shapes (read, write, open, close,
- *     access, chdir, getcwd, getlogin_r, pipe) -- only spawn()/wait()
+ *     access, chdir, getcwd, getuid, pipe) -- only spawn()/wait()
  *     and _init_environ() have no native single-process equivalent
  *   - All state in linear memory, allocated from a bump arena
  *   - No libc. Hand-declared. Own contracts.
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.10 — Renaming host_open()/host_whoami() to open()/getlogin_r()
+ *   in v0.0.9 wasn't enough: the host side of ls and whoami was still
+ *   doing the actual work of ls and whoami. ShellHost.js's open() was
+ *   handing back an ALREADY newline-joined directory listing
+ *   (fs.readdirSync(p).join('\n')) -- Node had already enumerated AND
+ *   formatted it before cmd_ls ever saw a byte; drain_fd_to_stdout()
+ *   just copied that finished string through untouched. Its
+ *   getlogin_r() handed back os.userInfo().username -- Node's own
+ *   built-in whoami, already resolved to a name; cmd_whoami just
+ *   printed it. A PASS on either command proved only that Node's
+ *   fs/os modules produce the expected string, never that shell.c
+ *   does. Fixed by moving the actual command logic into C: open() on
+ *   a directory now streams raw, NUL-separated names -- unformatted,
+ *   the same shape a real getdents() gives a real ls.c -- and cmd_ls
+ *   itself turns that into a printed listing. getuid() replaces
+ *   getlogin_r() entirely: it hands back a bare integer with nothing
+ *   left to interpret, and cmd_whoami looks its own name up by
+ *   reading and parsing /etc/passwd (passwd(5): name:x:uid:...),
+ *   through the exact same open()+read() every other command already
+ *   uses -- exactly what a minimal getpwuid() does internally, just
+ *   written out in this file instead of hidden inside a library call.
  * v0.0.9 — Every host_ and sys_ name is gone. Deleting sys_open(),
  *   fd_read_byte(), fd_puts(), fd_write_all(), and sys_whoami() to
  *   check whether the code still worked (it didn't -- 20 implicit-
@@ -23,7 +44,7 @@
  *   to the outside world. The actual fix wasn't removing that path,
  *   it was naming it honestly. Every import is now the real POSIX
  *   function it stands for -- read, write, open, close, access,
- *   chdir, getcwd, getlogin_r, pipe(int[2]) -- with real signatures
+ *   chdir, getcwd, getuid, pipe(int[2]) -- with real signatures
  *   (a path is a plain NUL-terminated C string, no invented _len
  *   parameter, because the callee can find the NUL itself in the same
  *   linear memory this module owns). cmd_cat/cmd_ls/cmd_whoami/
@@ -175,8 +196,8 @@ extern i32 chdir(i32 path_ptr)
     __attribute__((import_module("env"), import_name("chdir")));
 extern i32 getcwd(i32 buf_ptr, i32 size)  /* returns buf_ptr, or 0 on failure -- same convention as real getcwd() returning buf or NULL */
     __attribute__((import_module("env"), import_name("getcwd")));
-extern i32 getlogin_r(i32 buf_ptr, i32 bufsize) /* real POSIX: the actual call whoami's own real implementation is built on */
-    __attribute__((import_module("env"), import_name("getlogin_r")));
+extern i32 getuid(void) /* real POSIX: the raw fact whoami's own real implementation starts from */
+    __attribute__((import_module("env"), import_name("getuid")));
 extern i32 pipe(i32 pipefd_ptr) /* pipefd_ptr -> int[2], exactly like real pipe(2) */
     __attribute__((import_module("env"), import_name("pipe")));
 
@@ -509,12 +530,16 @@ static int cmd_grep(int argc, char **argv) {
 }
 
 /*
- * v0.0.6: an open directory IS a stream of bytes, read exactly like
- * any other fd via drain_fd_to_stdout() -- the same loop cat uses. No
- * packed-array contract invented to match one C function's
- * expectations; no directory-specific primitive at all. open() on a
- * directory path returns an fd streaming its content, same as it does
- * for a regular file.
+ * v0.0.10: open() on a directory streams raw entries, NUL-separated --
+ * the same shape a real getdents() gives a real ls.c: unformatted
+ * names, no separator a human would ever want to see. Turning that
+ * into a printed listing (one name per line) is ls's own job, same as
+ * on a real system; it used to be done for this file, by whatever
+ * produced the newline-joined string drain_fd_to_stdout() just copied
+ * through untouched. cat still uses drain_fd_to_stdout() for regular
+ * files -- their content isn't structured, so nothing should
+ * reinterpret it. A directory listing is structured, so this file
+ * does the interpreting.
  */
 static int cmd_ls(int argc, char **argv) {
     char resolved[MAX_PATH];
@@ -525,27 +550,90 @@ static int cmd_ls(int argc, char **argv) {
         fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
         return 1;
     }
-    int rc = drain_fd_to_stdout(fd);
+
+    char buf[16384];
+    usize total = 0;
+    for (;;) {
+        i32 n = read(fd, (i32)(usize)(buf + total), (i32)(sizeof(buf) - total));
+        if (n < 0) { close(fd); fd_puts(STDERR_FILENO, "ls: read error\n"); return 1; }
+        if (n == 0) break;
+        total += (usize)n;
+        if (total >= sizeof buf) break;
+    }
     close(fd);
-    return rc;
+
+    usize start = 0;
+    for (usize i = 0; i < total; i++) {
+        if (buf[i] == '\0') {
+            if (i > start) {
+                fd_write_all(STDOUT_FILENO, buf + start, i - start);
+                fd_puts(STDOUT_FILENO, "\n");
+            }
+            start = i + 1;
+        }
+    }
+    if (total > start) {
+        fd_write_all(STDOUT_FILENO, buf + start, total - start);
+        fd_puts(STDOUT_FILENO, "\n");
+    }
+    return 0;
 }
 
 /*
- * v0.0.8: whoami no longer reads $USER/$LOGNAME. Real whoami never
- * consults the environment -- `USER=hacker whoami` on a real system
- * still prints the real user, because it asks the kernel, not the
- * environment. getlogin_r() is the actual real POSIX call this is
- * built on -- not a stand-in for one.
+ * v0.0.10: whoami no longer asks for a pre-resolved name string --
+ * that was still just a relayed answer, this time from getlogin_r()
+ * instead of $USER. getuid() gives a raw integer with nothing left to
+ * interpret; the actual identity lookup -- reading /etc/passwd and
+ * matching the uid field, exactly what a minimal getpwuid() does --
+ * happens here, in C, through the SAME open()+read() every other
+ * command already uses. No environment variable and no pre-formatted
+ * string crosses the import boundary; only a number and raw file
+ * bytes do.
  */
 static int cmd_whoami(int argc, char **argv) {
     (void)argc; (void)argv;
-    char buf[256];
-    if (getlogin_r((i32)(usize)buf, sizeof buf) != 0) {
-        fd_puts(STDOUT_FILENO, "unknown\n");
-        return 0;
+    i32 uid = getuid();
+
+    i32 fd = open((i32)(usize)"/etc/passwd", O_RDONLY);
+    if (fd < 0) { fd_puts(STDOUT_FILENO, "unknown\n"); return 0; }
+    char buf[8192];
+    usize total = 0;
+    for (;;) {
+        i32 n = read(fd, (i32)(usize)(buf + total), (i32)(sizeof(buf) - total));
+        if (n <= 0) break;
+        total += (usize)n;
+        if (total >= sizeof buf) break;
     }
-    fd_puts(STDOUT_FILENO, buf);
-    fd_puts(STDOUT_FILENO, "\n");
+    close(fd);
+    if (total >= sizeof buf) total = sizeof buf - 1;
+    buf[total] = '\0';
+
+    /* passwd(5): name:passwd:uid:gid:gecos:home:shell, one entry per
+     * line. */
+    char *line = buf;
+    while (line && *line) {
+        char *nl = str_chr(line, '\n');
+        if (nl) *nl = '\0';
+
+        char *name = line;
+        char *c1 = str_chr(name, ':');
+        if (c1) {
+            *c1 = '\0';
+            char *c2 = str_chr(c1 + 1, ':');
+            if (c2) {
+                char *uidfield = c2 + 1;
+                char *c3 = str_chr(uidfield, ':');
+                if (c3) *c3 = '\0';
+                if (parse_int(uidfield) == uid) {
+                    fd_puts(STDOUT_FILENO, name);
+                    fd_puts(STDOUT_FILENO, "\n");
+                    return 0;
+                }
+            }
+        }
+        line = nl ? nl + 1 : NULL;
+    }
+    fd_puts(STDOUT_FILENO, "unknown\n");
     return 0;
 }
 

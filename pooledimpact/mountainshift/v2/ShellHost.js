@@ -12,18 +12,26 @@
  *   dance behind one line.
  *
  *   Every import here is the real POSIX function shell.c names it
- *   after (read, write, open, close, access, chdir, getcwd,
- *   getlogin_r, pipe) -- shell.c calls these directly, the same way a
- *   native cat.c/ls.c/whoami.c would, with real signatures: a path
- *   argument is a plain NUL-terminated C string, not a (ptr, len)
- *   pair, because this side can find the NUL itself in the module's
- *   own linear memory, exactly like a real implementation of these
- *   calls would. getenv() isn't imported at all -- real getenv() is a
- *   pure-C scan over `environ`, populated once at exec() time, so this
- *   file's only job for it is _init_environ(), a one-time mirror of
- *   `env` into shell.wasm's linear memory (see shell.c's own comment
- *   on _init_environ for why that one call is a bootstrap exception,
- *   not a disguised getenv).
+ *   after (read, write, open, close, access, chdir, getcwd, getuid,
+ *   pipe) -- shell.c calls these directly, the same way a native
+ *   cat.c/ls.c/whoami.c would, with real signatures: a path argument
+ *   is a plain NUL-terminated C string, not a (ptr, len) pair, because
+ *   this side can find the NUL itself in the module's own linear
+ *   memory, exactly like a real implementation of these calls would.
+ *   getenv() isn't imported at all -- real getenv() is a pure-C scan
+ *   over `environ`, populated once at exec() time, so this file's only
+ *   job for it is _init_environ(), a one-time mirror of `env` into
+ *   shell.wasm's linear memory (see shell.c's own comment on
+ *   _init_environ for why that one call is a bootstrap exception, not
+ *   a disguised getenv).
+ *
+ *   No formatting or lookup happens here that shell.c's own commands
+ *   are supposed to do themselves: open() on a directory hands back
+ *   raw NUL-separated names (cmd_ls turns that into a printed listing
+ *   in C, not this file with a string .join()), and getuid() hands
+ *   back a bare integer (cmd_whoami reads and parses /etc/passwd
+ *   itself, in C, through the same open()/read() as any other file --
+ *   this file never resolves an identity string).
  *
  *   Synchronous end to end -- `new WebAssembly.Module(bytes)` compiles
  *   synchronously in Node (unlike the browser-recommended async
@@ -39,10 +47,8 @@
  */
 'use strict';
 const fs = require('fs');
-const os = require('os');
-const path = require('path');
 
-const DEFAULT_WASM_PATH = path.join(__dirname, 'shell.wasm');
+const DEFAULT_WASM_PATH = __dirname + '/shell.wasm';
 
 /**
  * @param {Object} [options]
@@ -62,7 +68,7 @@ function createShell(options)
     const wasmBytes = fs.readFileSync(options.wasmPath || DEFAULT_WASM_PATH);
     const wasmModule = new WebAssembly.Module(wasmBytes);
 
-    const env = options.env || { USER: 'meshos', HOME: '/home/user', PATH: '/usr/bin:/bin' };
+    const env = options.env || { HOME: '/home/user', PATH: '/usr/bin:/bin' };
     // Real by default, resolved via Node's fs -- but this is an internal
     // detail of open()'s own implementation below, never part of C's
     // contract or shell.run()'s own signature. C only ever sees "a
@@ -79,7 +85,11 @@ function createShell(options)
         if (fixedFiles) { return fixedFiles[p] !== undefined ? fixedFiles[p] : null; }
         let stat;
         try { stat = fs.statSync(p); } catch (e) { return null; }
-        return stat.isDirectory() ? fs.readdirSync(p).join('\n') + '\n' : fs.readFileSync(p, 'utf8');
+        // Raw names, NUL-joined -- no formatting a human would want
+        // (that's cmd_ls's job in C, not this file's). Enumerating what
+        // exists is the one thing only the real filesystem can answer;
+        // fs.readdirSync() is that raw fact, nothing more.
+        return stat.isDirectory() ? fs.readdirSync(p).join('\0') + '\0' : fs.readFileSync(p, 'utf8');
     }
 
     function pathExists(p)
@@ -201,11 +211,10 @@ function createShell(options)
                 }
                 return total;
             },
-            // Real identity, not the environment -- os.userInfo().username
-            // is backed by the real uid the way getpwuid(geteuid()) is, so
-            // no amount of tampering with the env object above can spoof
-            // what whoami reports, matching real whoami's own behavior.
-            getlogin_r: (bufPtr, bufLen) => (writeCStr(bufPtr, bufLen, os.userInfo().username) < 0 ? -1 : 0),
+            // A bare integer, nothing resolved -- process.getuid() is
+            // Node's own real getuid(2) wrapper. cmd_whoami looks the
+            // name up itself, in C, by reading /etc/passwd.
+            getuid: () => process.getuid(),
             chdir: (pathPtr) =>
             {
                 const p = readCStr(pathPtr);
