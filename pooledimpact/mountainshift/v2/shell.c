@@ -13,6 +13,13 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.5 — cmd_ls no longer names host_readdir() directly. Added
+ *   sys_readdir(), a syscall-shaped boundary cmd_ls calls instead --
+ *   for now it just forwards to host_readdir(), but the point is the
+ *   caller no longer knows that. Real Unix userspace never calls
+ *   VOP_READDIR itself; it calls getdents(2), and the kernel decides
+ *   how to fulfill it. When the real fd table/VFS dispatch lands, only
+ *   sys_readdir()'s body changes -- cmd_ls never will.
  * v0.0.4 — host_readdir() changed from "give me entry N" (one host call
  *   per entry, each re-resolving the same path string from scratch, no
  *   persistent directory-stream state) to "fill this buffer with every
@@ -289,6 +296,26 @@ static int fd_read_byte(i32 fd, char *out) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Syscalls — the boundary a command is allowed to call                */
+/* ------------------------------------------------------------------ */
+
+/*
+ * A command (cmd_ls, etc.) must never name a host_* import directly --
+ * that's the exact flattening a real kernel avoids: userspace calls a
+ * syscall (getdents(2)), never VOP_READDIR itself. This file's fd/vnode
+ * layer doesn't exist yet (no per-process fd table, no dispatch through
+ * FileFsX.js's Mount abstraction -- see the v0.0.4 note), so sys_readdir()
+ * for now just forwards to host_readdir(). The point isn't that this
+ * function does more than the host call yet; it's that cmd_ls only ever
+ * knows about sys_readdir()'s signature. When the real fd table lands,
+ * ONLY this function's body changes -- no caller does.
+ */
+static i32 sys_readdir(const char *path, char *buf, usize buf_len) {
+    return host_readdir((i32)(usize)path, (i32)str_len(path),
+                        (i32)(usize)buf, (i32)buf_len);
+}
+
+/* ------------------------------------------------------------------ */
 /* Builtins — run in the module, never in a child                      */
 /* ------------------------------------------------------------------ */
 
@@ -377,8 +404,7 @@ static int cmd_ls(int argc, char **argv) {
     char *buf = (char *)arena_alloc(4096);
     if (!buf) { fd_puts(STDERR_FILENO, "ls: out of memory\n"); return 1; }
 
-    i32 n = host_readdir((i32)(usize)path, (i32)str_len(path),
-                         (i32)(usize)buf, 4096);
+    i32 n = sys_readdir(path, buf, 4096);
     if (n < 0) {
         fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
         return 1;
