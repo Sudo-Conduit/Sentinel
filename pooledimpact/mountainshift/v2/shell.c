@@ -13,6 +13,15 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.7 — Added resolve_path(): path resolution (joining a relative
+ *   argument against sh.cwd) is pure C string work and belongs in C,
+ *   not the host. cmd_cat, cmd_ls, and builtin_cd all resolve their
+ *   path argument before calling sys_open()/host_chdir() with it.
+ *   Before this, a relative path (`cat notes.txt`) went to the host
+ *   unresolved and only worked if the host's own notion of "current
+ *   directory" happened to match sh.cwd -- an accident, not a
+ *   contract. The host's job stays exactly "receive a string, return
+ *   a string": nothing about cwd or path-joining is its concern.
  * v0.0.6 — Replaced host_readdir()/sys_readdir() entirely. An open
  *   directory doesn't need its own packed-array host contract -- it is
  *   just a stream of bytes, read via the SAME host_fd_read every other
@@ -314,6 +323,32 @@ static int fd_read_byte(i32 fd, char *out) {
 /* ------------------------------------------------------------------ */
 
 /*
+ * v0.0.7: path resolution belongs here, in C, not the host. Relative
+ * paths get joined against sh.cwd -- pure string work, no host call --
+ * so the host's job stays exactly "receive a string, return a string,"
+ * nothing more. Before this, a relative argument (e.g. `cat notes.txt`)
+ * went to host_open() unresolved and only worked by accident, if the
+ * host's own idea of "current directory" happened to line up with
+ * sh.cwd. Absolute paths pass through untouched.
+ */
+static const char *resolve_path(const char *path, char *out, usize out_cap) {
+    if (path[0] == '/') return path;
+
+    usize cwd_len  = str_len(sh.cwd);
+    usize path_len = str_len(path);
+    int   need_sep = (cwd_len == 0 || sh.cwd[cwd_len - 1] != '/');
+    usize total    = cwd_len + (need_sep ? 1 : 0) + path_len;
+
+    if (total >= out_cap) return path; /* too long to join -- let sys_open fail on it */
+
+    mem_copy(out, sh.cwd, cwd_len);
+    usize pos = cwd_len;
+    if (need_sep) out[pos++] = '/';
+    mem_copy(out + pos, path, path_len + 1); /* + NUL */
+    return out;
+}
+
+/*
  * A command must never name a host_* import directly -- that's the
  * flattening a real kernel avoids: userspace calls a syscall (open(2)),
  * never a vnode operation itself. sys_open() is that syscall boundary:
@@ -331,9 +366,10 @@ static i32 sys_open(const char *path, i32 flags) {
 /* ------------------------------------------------------------------ */
 
 static int builtin_cd(int argc, char **argv) {
+    char resolved[MAX_PATH];
     const char *path;
     if (argc >= 2) {
-        path = argv[1];
+        path = resolve_path(argv[1], resolved, sizeof resolved);
     } else {
         char home[MAX_PATH];
         i32 n = host_getenv((i32)(usize)"HOME", 4,
@@ -379,7 +415,8 @@ static int cmd_cat(int argc, char **argv) {
         return drain_fd_to_stdout(STDIN_FILENO);
     }
     for (int i = 1; i < argc; i++) {
-        i32 fd = sys_open(argv[i], O_RDONLY);
+        char resolved[MAX_PATH];
+        i32 fd = sys_open(resolve_path(argv[i], resolved, sizeof resolved), O_RDONLY);
         if (fd < 0) {
             fd_puts(STDERR_FILENO, "cat: cannot open ");
             fd_puts(STDERR_FILENO, argv[i]);
@@ -428,7 +465,8 @@ static int cmd_grep(int argc, char **argv) {
  * the other side of that string is not this file's concern.
  */
 static int cmd_ls(int argc, char **argv) {
-    const char *path = (argc >= 2) ? argv[1] : sh.cwd;
+    char resolved[MAX_PATH];
+    const char *path = (argc >= 2) ? resolve_path(argv[1], resolved, sizeof resolved) : sh.cwd;
 
     i32 fd = sys_open(path, O_RDONLY);
     if (fd < 0) {

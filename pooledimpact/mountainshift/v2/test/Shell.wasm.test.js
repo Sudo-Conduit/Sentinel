@@ -258,10 +258,16 @@ async function run() {
     });
 
 
-    check('cat with a real file argument now works -- previously documented as unsupported ("cat: file args not supported in WASM seed"), closed for free by the same open()+fd_read() primitive ls now uses. No cwd-relative path resolution exists yet, so the path must be one open() actually recognizes.', () => {
+    check('cat with an absolute file argument works -- previously documented as unsupported ("cat: file args not supported in WASM seed"), closed for free by the same open()+fd_read() primitive ls now uses.', () => {
         const r = os.runTopLevel('cat /home/user/README.md', '');
         if (r.rc !== 0) throw new Error('unexpected rc: ' + r.rc);
         if (!r.stdout.includes('This is a real file')) throw new Error('cat did not read the real file content: ' + JSON.stringify(r.stdout));
+    });
+
+    check('cat with a RELATIVE file argument now resolves against cwd in C (resolve_path()), not by accident of whatever the host happens to treat as current -- the host still only ever sees the one fully-resolved string sys_open() hands it', () => {
+        const r = os.runTopLevel('cat README.md', '');
+        if (r.rc !== 0) throw new Error('unexpected rc: ' + r.rc);
+        if (!r.stdout.includes('This is a real file')) throw new Error('cat did not resolve the relative path against cwd: ' + JSON.stringify(r.stdout));
     });
 
     check('cat with a nonexistent file argument fails cleanly instead of silently succeeding', () => {
