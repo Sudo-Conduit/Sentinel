@@ -13,6 +13,15 @@
  *   - Commands are small, dumb, external.
  *   - Stage-list parser, N pipes, builtin flag.
  *
+ * v0.0.6 — Replaced host_readdir()/sys_readdir() entirely. An open
+ *   directory doesn't need its own packed-array host contract -- it is
+ *   just a stream of bytes, read via the SAME host_fd_read every other
+ *   command already uses. New generic host_open()/host_close() resolve
+ *   a path to a plain fd; cmd_ls is now sys_open() + drain_fd_to_stdout()
+ *   + host_close(), the identical shape cmd_cat uses for its own file
+ *   args (previously unsupported -- "cat: file args not supported in
+ *   WASM seed" -- fixed for free by the same primitive). C land needs
+ *   nothing from the host except the string.
  * v0.0.5 — cmd_ls no longer names host_readdir() directly. Added
  *   sys_readdir(), a syscall-shaped boundary cmd_ls calls instead --
  *   for now it just forwards to host_readdir(), but the point is the
@@ -101,6 +110,21 @@ extern i32 host_fd_read(i32 fd, i32 buf_ptr, i32 buf_len);
 __attribute__((import_module("host"), import_name("fd_write")))
 extern i32 host_fd_write(i32 fd, i32 buf_ptr, i32 buf_len);
 
+/*
+ * open()/close() -- resolves a path into a plain fd, readable via the
+ * SAME host_fd_read every command already uses. This is the one real
+ * generic primitive a directory listing needs: from C's side, an open
+ * directory is nothing but a stream of bytes (the same shape pre-
+ * readdir(3) Unix used, before directories got their own read-entry
+ * API) -- not a specialized packed-array contract invented to match
+ * what one C function expects. Returns an fd (>= 0) or -1.
+ */
+__attribute__((import_module("host"), import_name("open")))
+extern i32 host_open(i32 path_ptr, i32 path_len, i32 flags);
+
+__attribute__((import_module("host"), import_name("close")))
+extern i32 host_close(i32 fd);
+
 /* Process / job interface */
 __attribute__((import_module("host"), import_name("spawn")))
 extern i32 host_spawn(i32 cmd_ptr, i32 cmd_len,
@@ -119,18 +143,6 @@ extern i32 host_chdir(i32 path_ptr, i32 path_len);
 
 __attribute__((import_module("host"), import_name("getcwd")))
 extern i32 host_getcwd(i32 buf_ptr, i32 buf_len);
-
-/*
- * Directory listing — ONE call fills buf with every entry name,
- * NUL-separated, back-to-back (the same "loop once, pack into one
- * buffer" shape a real getdirentries()-family syscall uses, just
- * without the fd/vnode machinery yet -- see shell.c's own v0.0.4 note).
- * Returns the number of bytes written into buf, 0 if the directory is
- * empty, -1 on error (path not found, buf too small, etc.).
- */
-__attribute__((import_module("host"), import_name("readdir")))
-extern i32 host_readdir(i32 path_ptr, i32 path_len,
-                        i32 buf_ptr, i32 buf_len);
 
 /* Path lookup for `which` */
 __attribute__((import_module("host"), import_name("access")))
@@ -244,6 +256,8 @@ static void arena_reset(void) {
 #define STDOUT_FILENO  1
 #define STDERR_FILENO  2
 
+#define O_RDONLY       0
+
 #define MAX_STAGES 16
 #define MAX_ARGS   64
 #define MAX_LINE   8192
@@ -300,19 +314,17 @@ static int fd_read_byte(i32 fd, char *out) {
 /* ------------------------------------------------------------------ */
 
 /*
- * A command (cmd_ls, etc.) must never name a host_* import directly --
- * that's the exact flattening a real kernel avoids: userspace calls a
- * syscall (getdents(2)), never VOP_READDIR itself. This file's fd/vnode
- * layer doesn't exist yet (no per-process fd table, no dispatch through
- * FileFsX.js's Mount abstraction -- see the v0.0.4 note), so sys_readdir()
- * for now just forwards to host_readdir(). The point isn't that this
- * function does more than the host call yet; it's that cmd_ls only ever
- * knows about sys_readdir()'s signature. When the real fd table lands,
- * ONLY this function's body changes -- no caller does.
+ * A command must never name a host_* import directly -- that's the
+ * flattening a real kernel avoids: userspace calls a syscall (open(2)),
+ * never a vnode operation itself. This file's fd table doesn't exist
+ * yet (no per-process table, no dispatch through FileFsX.js's Mount
+ * abstraction), so sys_open() for now just forwards to host_open(). The
+ * point isn't that this function does more than the host call yet;
+ * it's that callers only ever know sys_open()'s signature. When the
+ * real fd table lands, ONLY this function's body changes.
  */
-static i32 sys_readdir(const char *path, char *buf, usize buf_len) {
-    return host_readdir((i32)(usize)path, (i32)str_len(path),
-                        (i32)(usize)buf, (i32)buf_len);
+static i32 sys_open(const char *path, i32 flags) {
+    return host_open((i32)(usize)path, (i32)str_len(path), flags);
 }
 
 /* ------------------------------------------------------------------ */
@@ -348,20 +360,36 @@ static int builtin_exit(int argc, char **argv) {
 /* External commands — read fd 0, write fd 1, errors to fd 2           */
 /* ------------------------------------------------------------------ */
 
-static int cmd_cat(int argc, char **argv) {
+/* Drains fd to STDOUT_FILENO until EOF. The one loop cat/ls both need --
+ * from C's side, an open file and an open directory are the same thing:
+ * a stream of bytes read via the ordinary host_fd_read every command
+ * already uses. */
+static int drain_fd_to_stdout(i32 fd) {
     char buf[4096];
-    if (argc >= 2) {
-        for (int i = 1; i < argc; i++) {
-            (void)i;
-            fd_puts(STDERR_FILENO, "cat: file args not supported in WASM seed\n");
-            return 1;
-        }
-    }
     for (;;) {
-        i32 n = host_fd_read(STDIN_FILENO, (i32)(usize)buf, sizeof buf);
+        i32 n = host_fd_read(fd, (i32)(usize)buf, sizeof buf);
         if (n < 0) return 1;
         if (n == 0) break;
         if (fd_write_all(STDOUT_FILENO, buf, (usize)n) < 0) return 1;
+    }
+    return 0;
+}
+
+static int cmd_cat(int argc, char **argv) {
+    if (argc < 2) {
+        return drain_fd_to_stdout(STDIN_FILENO);
+    }
+    for (int i = 1; i < argc; i++) {
+        i32 fd = sys_open(argv[i], O_RDONLY);
+        if (fd < 0) {
+            fd_puts(STDERR_FILENO, "cat: cannot open ");
+            fd_puts(STDERR_FILENO, argv[i]);
+            fd_puts(STDERR_FILENO, "\n");
+            return 1;
+        }
+        int rc = drain_fd_to_stdout(fd);
+        host_close(fd);
+        if (rc != 0) return rc;
     }
     return 0;
 }
@@ -392,33 +420,26 @@ static int cmd_grep(int argc, char **argv) {
 }
 
 /*
- * v0.0.4: reads the whole directory in ONE host call instead of one
- * host call per entry, each re-resolving the same path string. The
- * host loops through the real directory exactly once and packs every
- * name into buf, NUL-separated -- this function's only job is to walk
- * that one buffer and print each name, one per line.
+ * v0.0.6: an open directory IS a stream of bytes -- the string this
+ * file's own header talks about -- read exactly like any other fd, via
+ * drain_fd_to_stdout(), the same loop cat uses. No packed-array
+ * contract invented to match one C function's expectations; no
+ * directory-specific host primitive at all. The host resolves the
+ * open() to whatever it wants underneath (today: a plain listing
+ * string; eventually: real FileFsX.js Mount dispatch) -- C never knows
+ * or needs to know which.
  */
 static int cmd_ls(int argc, char **argv) {
     const char *path = (argc >= 2) ? argv[1] : sh.cwd;
 
-    char *buf = (char *)arena_alloc(4096);
-    if (!buf) { fd_puts(STDERR_FILENO, "ls: out of memory\n"); return 1; }
-
-    i32 n = sys_readdir(path, buf, 4096);
-    if (n < 0) {
+    i32 fd = sys_open(path, O_RDONLY);
+    if (fd < 0) {
         fd_puts(STDERR_FILENO, "ls: cannot access directory\n");
         return 1;
     }
-
-    usize pos = 0;
-    while ((usize)n > pos) {
-        const char *entry = buf + pos;
-        usize elen = str_len(entry);
-        fd_puts(STDOUT_FILENO, entry);
-        fd_puts(STDOUT_FILENO, "\n");
-        pos += elen + 1; /* skip the NUL separator */
-    }
-    return 0;
+    int rc = drain_fd_to_stdout(fd);
+    host_close(fd);
+    return rc;
 }
 
 static int cmd_whoami(int argc, char **argv) {

@@ -26,12 +26,23 @@ const V2 = path.join(__dirname, '..');
 
 function makeOS(wasmModule) {
     const env = { USER: 'meshos', HOME: '/home/user', PATH: '/usr/bin:/bin' };
-    const files = { '/home/user': ['README.md', 'projects', 'notes.txt', 'main.c', 'shell.c'] };
+    // v0.0.6: files are plain STRING content, not a directory-specific
+    // structure invented to match a C-side parser. An open directory and
+    // an open regular file are the same thing from here on -- bytes a
+    // real fd_read call returns, nothing packed or pre-structured for
+    // one particular caller's convenience.
+    const files = {
+        '/': 'bin\netc\nhome\nusr\nvar\n',
+        '/home/user': 'README.md\nprojects\nnotes.txt\nmain.c\nshell.c\n',
+        '/home/user/README.md': 'This is a real file, read through the same open()+fd_read() path as any directory listing.\n'
+    };
     let cwd = '/home/user';
 
-    // Shared across every spawned instance -- pipes connect stages that
-    // live in genuinely separate WebAssembly instances.
+    // Shared across every spawned instance -- pipes AND open files both
+    // connect stages/reads that live in genuinely separate WebAssembly
+    // instances, addressed by the same global fd counter.
     const pipes = new Map(); // fd -> { chunks: Buffer[], readPos: number, otherEnd: fd }
+    const openFiles = new Map(); // fd -> { data: Buffer, pos: number }
     let nextFd = 3;
     let nextPid = 1;
     const pidResults = new Map(); // pid -> exit code
@@ -63,6 +74,19 @@ function makeOS(wasmModule) {
         }
 
         function doRead(fd, bufPtr, bufLen) {
+            // An fd from open() is addressed directly by its real number
+            // (unlike stdin/pipes, which the C side always reaches via
+            // the literal STDIN_FILENO=0 and this instance's own
+            // resolvedInFd indirection below).
+            const openFile = openFiles.get(fd);
+            if (openFile) {
+                const remaining = openFile.data.length - openFile.pos;
+                if (remaining <= 0) return 0;
+                const n = Math.min(remaining, bufLen);
+                new Uint8Array(memory.buffer, bufPtr, n).set(openFile.data.subarray(openFile.pos, openFile.pos + n));
+                openFile.pos += n;
+                return n;
+            }
             if (fd !== 0) return -1;
             if (resolvedInFd === 'ROOT') {
                 const remaining = currentRootStdinBuf.length - currentRootStdinPos;
@@ -112,23 +136,28 @@ function makeOS(wasmModule) {
                 },
                 chdir: (pathPtr, pathLen) => {
                     const p = readMemStr(pathPtr, pathLen);
-                    if (!files[p]) return -1;
+                    if (files[p] === undefined) return -1;
                     cwd = p;
                     return 0;
                 },
                 getcwd: (bufPtr, bufLen) => writeStr(bufPtr, bufLen, cwd),
-                // v0.0.4 contract: one call, every entry NUL-separated
-                // into buf, returns total bytes written (0 = empty dir,
-                // -1 = path not found or buf too small).
-                readdir: (pathPtr, pathLen, bufPtr, bufLen) => {
-                    const path = readMemStr(pathPtr, pathLen);
-                    if (!files[path]) return -1;
-                    const entries = files[path];
-                    if (entries.length === 0) return 0;
-                    const packed = Buffer.concat(entries.map((name) => Buffer.concat([Buffer.from(name, 'utf8'), Buffer.from([0])])));
-                    if (packed.length > bufLen) return -1;
-                    new Uint8Array(memory.buffer, bufPtr, packed.length).set(packed);
-                    return packed.length;
+                // v0.0.6: resolves a path to a plain fd. What that fd's
+                // bytes actually mean (a directory listing, a real
+                // file's content) is entirely a host-side decision --
+                // the returned fd is read through the same generic
+                // fd_read every other command already uses, no special
+                // contract for cmd_ls to know about.
+                open: (pathPtr, pathLen, flags) => {
+                    const p = readMemStr(pathPtr, pathLen);
+                    const content = files[p];
+                    if (content === undefined) return -1;
+                    const fd = nextFd++;
+                    openFiles.set(fd, { data: Buffer.from(content, 'utf8'), pos: 0 });
+                    return fd;
+                },
+                close: (fd) => {
+                    openFiles.delete(fd);
+                    return 0;
                 },
                 access: (pathPtr, pathLen) => {
                     const p = readMemStr(pathPtr, pathLen);
@@ -209,7 +238,7 @@ async function run() {
             .filter((i) => i.module === 'host')
             .map((i) => i.name)
             .sort();
-        const expected = ['access', 'chdir', 'fd_read', 'fd_write', 'getcwd', 'getenv', 'pipe', 'readdir', 'spawn', 'wait'].sort();
+        const expected = ['access', 'chdir', 'close', 'fd_read', 'fd_write', 'getcwd', 'getenv', 'open', 'pipe', 'spawn', 'wait'].sort();
         if (JSON.stringify(importsList) !== JSON.stringify(expected)) {
             throw new Error('expected ' + JSON.stringify(expected) + ', got ' + JSON.stringify(importsList));
         }
@@ -228,6 +257,17 @@ async function run() {
         if (!r.stdout.includes('README.md')) throw new Error('ls did not list the real cwd: ' + JSON.stringify(r.stdout));
     });
 
+
+    check('cat with a real file argument now works -- previously documented as unsupported ("cat: file args not supported in WASM seed"), closed for free by the same open()+fd_read() primitive ls now uses. No cwd-relative path resolution exists yet, so the path must be one open() actually recognizes.', () => {
+        const r = os.runTopLevel('cat /home/user/README.md', '');
+        if (r.rc !== 0) throw new Error('unexpected rc: ' + r.rc);
+        if (!r.stdout.includes('This is a real file')) throw new Error('cat did not read the real file content: ' + JSON.stringify(r.stdout));
+    });
+
+    check('cat with a nonexistent file argument fails cleanly instead of silently succeeding', () => {
+        const r = os.runTopLevel('cat nonexistent.txt', '');
+        if (r.rc !== 1) throw new Error('expected rc 1, got ' + r.rc);
+    });
 
     check('a single-stage grep still works exactly as before (no regression from the pipeline rewrite)', () => {
         const r = os.runTopLevel('grep hello', 'goodbye world\nhello there\nhello again\n');
