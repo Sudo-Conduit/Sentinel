@@ -1,6 +1,6 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.4.0
+**Version:** 1.5.0
 **Last updated:** 2026-09-15
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
@@ -58,8 +58,9 @@ re-paste whenever a shipped item changes.
 | KnotVector | 19/19 |
 | BSpline | 9/9 |
 | Bezier | 12/12 |
+| NURBS | 12/12 |
 
-**Total: 323/323 checks passing, 22/22 suites green.**
+**Total: 335/335 checks passing, 23/23 suites green.**
 
 ## Status legend
 
@@ -170,7 +171,7 @@ discipline applied to process, not just code.
 | H.2 | Math Extension Host | `KnotVector` — validated (monotonic, length-contract) data layer under B-spline/NURBS | ✅ | — | — | — | — | — | — | shipped |
 | H.3 | Math Extension Host | `BSpline` — Cox-de Boor `basis`/`basisDerivative`, cross-validated against GeoJS's and Beacon's independent implementations | ✅ | — | — | — | — | — | — | shipped |
 | H.4 | Math Extension Host | `Bezier` — Bernstein basis, control-point blending via `Vector.linearCombination` | ✅ | — | — | — | — | — | — | shipped |
-| H.5 | Math Extension Host (next) | `NURBS` — rational weighting over `BSpline`'s basis | ⬜ | 2 | 1 | 3 | 3 | 4 | 2 | **15** |
+| H.5 | Math Extension Host | `NURBS` — rational weighting over `BSpline`'s basis | ✅ | — | — | — | — | — | — | shipped |
 
 ## Recommended execution order
 
@@ -200,9 +201,16 @@ discipline applied to process, not just code.
    `bernsteinViaPolynomial` (direct binomial formula vs H.1's
    `Polynomial.evaluate` on the expanded coefficients) as a second,
    basis-function-level cross-check.
-5. **H.5 — `NURBS`** (15) — next up, and last in this backlog. Strictly
-   after H.3 (shipped); it's additional rational weighting on top of
-   `BSpline`'s basis, not an independent construction.
+5. ~~**H.5 — `NURBS`** (15)~~ — **shipped. Backlog complete** (H.1–H.5,
+   all five items). Strictly on top of H.3 — every `R_{i,p}` and its
+   derivative go through `BSpline.basisAll`/`basisDerivative` directly,
+   no independent basis-function construction. Verified against the
+   classic exact-circular-arc construction (Piegl & Tiller §7.3): a true
+   circle is fundamentally a rational curve, not a polynomial one, so
+   tracing one exactly (radius=1 at every `t`, checked directly) is the
+   concrete reason NURBS exists over plain `BSpline` at all — plus the
+   structural check that uniform weights make `NURBS.evaluate` reduce
+   exactly to `BSpline.evaluate` on the same control points/knots.
 
 ## Using this table
 
@@ -353,15 +361,40 @@ without redesigning it each time.
   multiplying vanishingly small powers) is not — agreement between the
   two in `Bezier.unit.js` is a real correctness check on both, not two
   copies of the same computation.
+- **NURBS rational weighting.** `R_{i,p}(t) = wᵢ·Nᵢ,ₚ(t) / Σⱼ wⱼ·Nⱼ,ₚ(t)`
+  — a ratio of two weighted B-spline basis combinations, not a
+  polynomial itself (the numerator and denominator both are, but the
+  quotient generally isn't). **Code:** `NURBS.js:rationalBasisAll`,
+  built directly on `BSpline.basisAll`, no independent basis-function
+  construction. **Why NURBS at all, concretely:** a true circular arc is
+  fundamentally a rational curve — no plain (polynomial) B-spline can
+  trace one exactly at any degree. The classic three-control-point,
+  weights-`(1, 1/√2, 1)` quarter-circle construction (Piegl & Tiller
+  §7.3) does, checked directly (`‖C(t)‖=1` for every `t`) in
+  `NURBS.unit.js`, not left as a textbook claim.
 
-### Coming next (preview, code not yet written)
-
-- **NURBS rational weighting.** A ratio of two weighted B-spline basis
-  combinations, not a polynomial itself — the numerator and denominator
-  both are, but the quotient generally isn't.
+**The H backlog (H.1–H.5) is now complete** — `Polynomial` → `KnotVector`
+→ `BSpline` → `Bezier` → `NURBS`, each building on exactly what
+ROADMAP.md's own dependency notes said it would and nothing more.
 
 ## Changelog
 
+- **1.5.0** — 2026-09-15 — Shipped **H.5 `NURBS`**, completing the H
+  backlog (H.1–H.5, all five items). `rationalBasisAll` (`R_{i,p} =
+  wᵢNᵢ,ₚ / Σⱼ wⱼNⱼ,ₚ`), `evaluate`, and `derivative` (quotient rule on
+  the weighted numerator/denominator, both built from
+  `BSpline.basisAll`/`basisDerivative` directly — no independent
+  basis-function construction, matching the roadmap's own "additional
+  rational weighting... not an independent construction" framing).
+  Verified against the classic exact-circular-arc construction (Piegl &
+  Tiller §7.3, three control points, weights `(1, 1/√2, 1)`) tracing
+  `‖C(t)‖=1` at every `t` — the concrete, checked reason NURBS exists
+  over plain `BSpline` at all, since a true circle is a rational curve
+  no polynomial B-spline can represent exactly. A second, structural
+  check needing no external reference: uniform weights make
+  `NURBS.evaluate` reduce exactly to `BSpline.evaluate` on the same
+  control points/knots. Test suite grew from 323/323 (22 suites) to
+  335/335 (23 suites).
 - **1.4.0** — 2026-09-15 — Shipped **H.4 `Bezier`**: `bernstein`/`bernsteinAll`
   (direct binomial formula), `bernsteinCoefficients` (the basis
   function's own expanded Polynomial coefficient array),
