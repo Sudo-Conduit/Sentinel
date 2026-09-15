@@ -1,7 +1,7 @@
 # MountainShift OS — Cleanup Roadmap & Prioritization Rubric
 
-**Version:** 1.15.1
-**Last updated:** 2026-09-14
+**Version:** 1.16.0
+**Last updated:** 2026-09-15
 
 Source: the DevTools Local Overrides hardening pass that opened this
 thread — reflection-based override composition, `CPU.js` rewritten to a
@@ -44,8 +44,13 @@ Sentinel`) is frozen/deprecated per `CLAUDE.md` and receives no further
 pushes; it may still hold an old copy of this commit today, but do not
 expect it to stay current and do not push there.
 
-**Commit:** `f499535` (git.pooledimpact.com/Claude/Romans, branch
-`claude/devtools-overrides-robustness-8we96z`)
+**Commit:** `0ae90cd` (git.pooledimpact.com/Claude/Romans, branch
+`claude/wasm-shell-experimental` — a merge commit bringing `main`'s
+unrelated `research/lib/chain/` changes in clean, zero conflicts,
+on top of this branch's own Category G work below; the prior pin
+(`f499535`, branch `claude/devtools-overrides-robustness-8we96z`) is
+this same account's own prior session, not a different author's work
+— see this section's own note on that below.)
 
 | Suite | Result |
 |---|---|
@@ -68,8 +73,30 @@ expect it to stay current and do not push there.
 | WeightedGraphMixin.test.js | ALL 20 CHECKS PASSED |
 | Signature.test.js | ALL 17 CHECKS PASSED |
 | BuildTerminalPdf.test.js | ALL 8 CHECKS PASSED |
+| DocMeta.test.js | ALL 11 CHECKS PASSED |
+| PreflightMixin.test.js | ALL 12 CHECKS PASSED |
+| Shell.opaque.test.js | ALL 10 CHECKS PASSED |
+| KernelVisibilityMixin.test.js | ALL 4 CHECKS PASSED |
+| Shell.wasm.test.js | ALL PASS (demo-output suite by design — see its own header — no numeric check() count; exit 0, every command's real output matched) |
+| Curl.wasm.test.js | ALL PASS |
+| Spawn.wasm.test.js | ALL PASS |
+| Top.wasm.test.js | ALL PASS |
+| JobControl.test.js | ALL PASS |
 
-**Total: 274/274 checks passing, 19/19 suites green.**
+**Total: 311/311 numbered checks passing across 23 check()/report()
+suites, plus 5 assert()-style suites (Shell.wasm/Curl.wasm/Spawn.wasm/
+Top.wasm/JobControl — Category G's WASM command-engine tier, which
+uses Node's own `assert` + `ALL PASS`/thrown-`AssertionError` instead
+of this doc's usual `check()`/`report()` harness; both conventions
+exist in this repo today and `test/run-all.js` treats them identically
+via exit code) — 28/28 suites green.**
+
+**DocMeta.test.js note:** already present and passing on this branch
+before today's session touched anything (`git log` shows it landed in
+a prior commit); it simply was not yet reflected in this table's
+pinned snapshot. Folded in here rather than opened as a separate
+finding, since nothing about it needed fixing — this table itself was
+just stale.
 
 ## Status legend
 
@@ -248,6 +275,16 @@ as shipped above; nothing about that wiring changed.
 | E.2 | Outer Closure / Runtime | Black-box (`run()`-only) integrated test tier | ⬜ | 1 | 2 | 4 | 2 | 2 | 4 | **15** |
 | E.3 | Outer Closure / Runtime | DevTools Local Overrides loader (reflection/`CodeComposer`, `CPU.js` ES6 rewrite) | ✅ | — | — | — | — | — | — | shipped |
 | F.1 | Reference Artifact Verification | `Terminal.pdf` reference test: real end-to-end OS load, in a real browser, off the actual shipped artifact — not just `BuildTerminalPdf.test.js`'s build/read-back byte check | ⬜ | 3 | 4 | 5 | 3 | 4 | 4 | **23** |
+| G.1 | Shell/WASM Command Engine | Zero-import WASM command substrate (`shell.wasm`/`ls.wasm`/`curl.wasm`/`node.wasm`/`php.wasm`/`top.wasm`, fixed-offset request/response blob protocol modeled on `memorymap.wasm`'s own convention) | ✅ | — | — | — | — | — | — | shipped |
+| G.2 | Shell/WASM Command Engine | `ShellHost.js` pipeline splitter (Native vs. command-module routing decided in JS before any WASM call, stdin threaded across groups) | ✅ | — | — | — | — | — | — | shipped |
+| G.3 | Shell/WASM Command Engine | `curl.wasm` SOCKET delegation (real TCP/TLS opened by the host, HTTP request/response built and parsed entirely in C; `--cookie`/`-b` header support) | ✅ | — | — | — | — | — | — | shipped |
+| G.4 | Shell/WASM Command Engine | `node.wasm`/`php.wasm` SPAWN delegation (host-enforced program whitelist, real `child_process`) | ✅ | — | — | — | — | — | — | shipped |
+| G.5 | Shell/WASM Command Engine | `JobTable.js`/`ProcessTable.js` job control (`ps`/`jobs`/`fg`/`bg`/`kill`, unifying stateful WASM tick-jobs and real spawned processes under one pid space) | ✅ | — | — | — | — | — | — | shipped |
+| G.6 | Shell/WASM Command Engine | `Shell.js` — opaque, `ExtendX`-composable factory over the engine (`MountainShift.js`'s own factory shape, scoped down: no full-trap Proxy layer, no `BaseClassX`, matching `CPU.js`'s "runtime engine, not schema-tracked state" precedent) | ✅ | — | — | — | — | — | — | shipped |
+| G.7 | Shell/WASM Command Engine | `PreflightMixin.js` — generalized before/after wrapper mixin factory, formalizing the shape `SecurityMixin.js` already used once | ✅ | — | — | — | — | — | — | shipped |
+| G.8 | Shell/WASM Command Engine | `KernelVisibilityMixin.js` — mirrors a Shell background-job start into a real Kernel's `fork()` for unified `ps` listing (listing only, pid spaces deliberately not unified — see G.9) | ✅ | — | — | — | — | — | — | shipped |
+| G.9 | Shell/WASM Command Engine | Pid-space unification between Shell's `ProcessTable` and Kernel's process table (real bidirectional `kill()` forwarding, not just listing) | ⬜ | 3 | 3 | 3 | 3 | 4 | 2 | **18** |
+| G.10 | Shell/WASM Command Engine | Automatic cross-call cookie jar for `curl.wasm` (session state threaded like `cwd` already is, vs. today's explicit `--cookie` only) | ⬜ | 4 | 2 | 2 | 2 | 1 | 4 | **15** |
 
 ## Recommended execution order
 
@@ -400,6 +437,23 @@ with sequencing overrides noted where raw ranking would be wrong:**
     shipped artifact still boot" is a standing, automated regression
     check instead of a one-off manual proof that ages the moment the
     next dependency changes.
+11. **G.9 — Pid-space unification (Shell ↔ Kernel)** (18) — after F.1:
+    `KernelVisibilityMixin.js` already gives unified `ps` LISTING; this
+    closes the gap it deliberately left open (kill() only ever hits one
+    side today). Scored C=2 on purpose — reconciling a real async
+    process's lifecycle (a spawned `node`/`php`, or a WASM tick-job) with
+    Kernel's simulated round-robin CPU scheduler's own pid semantics is
+    exactly the kind of "sounds like one feature, is actually several
+    subsystems agreeing on a shape" risk this table's Confidence lesson
+    warns about — do not attempt as a quick patch to either
+    `ProcessTable.js` or `Kernel.js` alone.
+12. **G.10 — Automatic `curl.wasm` cookie jar** (15) — lower priority
+    than its Foundation-Ready score alone suggests (R=1: this is
+    commodity behavior, every HTTP client has one) and gated behind
+    real need — today's explicit `--cookie`/`-b` already covers the
+    Gitea-API-with-Basic-auth case this engine exists for; build this
+    only once a real caller actually needs session-cookie continuity
+    across separate `curl` invocations, not speculatively.
 
 **Compositional (🤝) queue, by composite descending, with a hard
 dependency override:**
@@ -435,6 +489,54 @@ dependency override:**
 
 ## Changelog
 
+- **1.16.0** — 2026-09-15 — Added **Category G (Shell/WASM Command
+  Engine)**: a separate branch's work (`claude/wasm-shell-experimental`,
+  PR #22), same account, first tracked in this roadmap here. G.1–G.8
+  shipped: the zero-import WASM command substrate (`shell.wasm`/
+  `ls.wasm`/`curl.wasm`/`node.wasm`/`php.wasm`/`top.wasm`, the same
+  fixed-offset request/response blob shape `memorymap.wasm` already
+  established), `ShellHost.js`'s JS-side pipeline splitter, `curl.wasm`'s
+  real-socket SOCKET delegation (HTTP built/parsed entirely in C, host
+  only ever moves raw bytes) plus `--cookie`/`-b`, `node.wasm`/`php.wasm`'s
+  real-`child_process` SPAWN delegation behind a host-enforced whitelist,
+  `JobTable.js`/`ProcessTable.js` job control (`ps`/`jobs`/`fg`/`bg`/
+  `kill`, both a WASM tick-job and a real spawned process under one pid
+  space), `Shell.js` (an opaque `ExtendX`-composable factory over that
+  engine, `MountainShift.js`'s own shape scoped down — no full-trap
+  Proxy, no `BaseClassX`, matching `CPU.js`'s "runtime engine, not
+  domain state" precedent), `PreflightMixin.js` (generalizing
+  `SecurityMixin.js`'s own before-calling-`this.super()` shape into a
+  reusable `{before, after}` factory), and `KernelVisibilityMixin.js`
+  (mirrors a Shell background-job start into a real Kernel's `fork()`
+  for unified `ps` listing, pid-space unification deliberately deferred
+  as G.9). G.9 (pid-space unification, real bidirectional `kill()`) and
+  G.10 (automatic cross-call cookie jar) scored and queued, not shipped.
+  **A real Confidence-dimension finding, caught by applying this
+  roadmap's own lesson rather than assuming new code was safe by
+  analogy:** `PreflightMixin.js`'s `ctx.args` was found to leak
+  ExtendX's dispatcher-injected `next()` callback as a trailing element
+  — the exact same hazard shape that once corrupted `Kernel.fork()`'s
+  `ppid`/`memBytes` and `StructureMixin.linkTo`'s `label` — confirmed
+  live (`ctx.args` was `['hello', [Function: next]]`, not `['hello']`)
+  before fixing it generically via the wrapped method's declared arity
+  (`Function.prototype.length`), with the same documented limit those
+  earlier fixes have: it can't rescue a caller OMITTING a real trailing
+  argument, only a next() genuinely appended beyond what was passed.
+  `test/PreflightMixin.test.js` grew from 11 to 12 checks proving the
+  fix. Also: this branch was found to be stale against `main` (an
+  unrelated `research/lib/chain/` change) and merged clean, zero
+  conflicts, confirmed directly (`git merge --no-commit --no-ff`, byte-
+  identical `ExtendX.js`/`SecurityMixin.js` on both sides) rather than
+  assumed from the branch names alone. `test/run-all.js` gained 8 new
+  entries (`PreflightMixin.test.js`, `Shell.opaque.test.js`,
+  `KernelVisibilityMixin.test.js`, `Shell.wasm.test.js`,
+  `Curl.wasm.test.js`, `Spawn.wasm.test.js`, `Top.wasm.test.js`,
+  `JobControl.test.js`) and `DocMeta.test.js` (already present,
+  previously just missing from this table's stale snapshot) was folded
+  into the published count too. Re-pinned the Last-test-run section to
+  `0ae90cd` on `claude/wasm-shell-experimental` (311/311 numbered checks
+  across 23 suites, plus 5 green assert()-style suites — 28/28 suites
+  total, up from 19/19).
 - **1.15.1** — 2026-09-14 — Added `Envelope-Format-Spec.md`: the
   manifest/trust/portable-IO contract underneath F.1, written up as its
   own doc rather than folded into this table, since it's prior art

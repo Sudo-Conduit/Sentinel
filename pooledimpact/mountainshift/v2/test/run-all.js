@@ -26,7 +26,15 @@ const files = [
     'WeightedGraphMixin.test.js',
     'Signature.test.js',
     'BuildTerminalPdf.test.js',
-    'DocMeta.test.js'
+    'DocMeta.test.js',
+    'PreflightMixin.test.js',
+    'Shell.opaque.test.js',
+    'KernelVisibilityMixin.test.js',
+    'Shell.wasm.test.js',
+    'Curl.wasm.test.js',
+    'Spawn.wasm.test.js',
+    'Top.wasm.test.js',
+    'JobControl.test.js'
 ];
 
 let anyFailed = false;
