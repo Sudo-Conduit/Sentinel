@@ -1,6 +1,6 @@
 # Data → Quantum → Geometry → Math.ext — Roadmap & Prioritization Rubric
 
-**Version:** 1.3.0
+**Version:** 1.4.0
 **Last updated:** 2026-09-15
 
 Source: the full `research/lib/chain/` buildout — `Data → Tensor → Hilbert →
@@ -57,8 +57,9 @@ re-paste whenever a shipped item changes.
 | Polynomial | 13/13 |
 | KnotVector | 19/19 |
 | BSpline | 9/9 |
+| Bezier | 12/12 |
 
-**Total: 311/311 checks passing, 21/21 suites green.**
+**Total: 323/323 checks passing, 22/22 suites green.**
 
 ## Status legend
 
@@ -168,7 +169,7 @@ discipline applied to process, not just code.
 | H.1 | Math Extension Host | `Polynomial` — shared coefficients+degree primitive under Bezier/B-spline | ✅ | — | — | — | — | — | — | shipped |
 | H.2 | Math Extension Host | `KnotVector` — validated (monotonic, length-contract) data layer under B-spline/NURBS | ✅ | — | — | — | — | — | — | shipped |
 | H.3 | Math Extension Host | `BSpline` — Cox-de Boor `basis`/`basisDerivative`, cross-validated against GeoJS's and Beacon's independent implementations | ✅ | — | — | — | — | — | — | shipped |
-| H.4 | Math Extension Host (next) | `Bezier` — Bernstein basis, control-point blending via `Vector.linearCombination` | ⬜ | 4 | 2 | 4 | 1 | 2 | 4 | **17** |
+| H.4 | Math Extension Host | `Bezier` — Bernstein basis, control-point blending via `Vector.linearCombination` | ✅ | — | — | — | — | — | — | shipped |
 | H.5 | Math Extension Host (next) | `NURBS` — rational weighting over `BSpline`'s basis | ⬜ | 2 | 1 | 3 | 3 | 4 | 2 | **15** |
 
 ## Recommended execution order
@@ -192,10 +193,16 @@ discipline applied to process, not just code.
    (matching Beacon's shape exactly), not the more efficient
    `findSpan`-localized algorithm — deliberately, per this chain's own
    "stay direct over prematurely optimized" convention.
-4. **H.4 — `Bezier`** (17) — next up. Depends on H.1 only; doesn't need
-   `KnotVector` at all (no knots in a plain Bezier curve).
-5. **H.5 — `NURBS`** (15) — strictly after H.3; it's additional rational
-   weighting on top of `BSpline`'s basis, not an independent construction.
+4. ~~**H.4 — `Bezier`** (17)~~ — **shipped.** Depended on H.1 only; no
+   `KnotVector` involved (no knots in a plain Bezier curve). Two
+   independent evaluators (De Casteljau, the direct Bernstein sum)
+   cross-validated against each other, plus `bernstein` vs
+   `bernsteinViaPolynomial` (direct binomial formula vs H.1's
+   `Polynomial.evaluate` on the expanded coefficients) as a second,
+   basis-function-level cross-check.
+5. **H.5 — `NURBS`** (15) — next up, and last in this backlog. Strictly
+   after H.3 (shipped); it's additional rational weighting on top of
+   `BSpline`'s basis, not an independent construction.
 
 ## Using this table
 
@@ -329,19 +336,50 @@ without redesigning it each time.
   **Code:** `BSpline.js:evaluate`, which validates the knot vector first
   (`KnotVector.validate`) and then calls straight into `Vector.linearCombination`
   — no reimplementation, exactly the reuse the G addendum entry above predicted.
+- **Bernstein basis (Bezier).** `Bᵢ,ₙ(t) = C(n,i)·tⁱ·(1−t)^(n−i)` — an
+  explicit polynomial of degree `n`. **Code:** `Bezier.js:bernstein` (the
+  direct formula) and `Bezier.js:bernsteinViaPolynomial` (the SAME
+  function via `Polynomial.evaluate` on the expanded coefficients,
+  cross-validated against the direct one in `Bezier.unit.js`). **Why
+  it's a polynomial, concretely, not just claimed:** expand the binomial
+  and every term is a plain power of `t` — `bernsteinCoefficients`
+  produces that expansion explicitly, checked against hand-expanded
+  degree-2 cases.
+- **De Casteljau's algorithm.** Repeated linear interpolation between
+  consecutive control points, one round per degree. **Code:**
+  `Bezier.js:deCasteljau`. **Why kept alongside the direct Bernstein
+  sum, not instead of it:** De Casteljau is numerically stable at high
+  degree in a way the direct formula (large binomial coefficients
+  multiplying vanishingly small powers) is not — agreement between the
+  two in `Bezier.unit.js` is a real correctness check on both, not two
+  copies of the same computation.
 
 ### Coming next (preview, code not yet written)
 
-- **Bernstein basis (Bezier).** `Bᵢ,ₙ(t) = C(n,i)·tⁱ·(1−t)^(n−i)` — an
-  explicit polynomial of degree `n`, evaluable via `Polynomial.evaluate`
-  once expanded. **Why it's a polynomial, concretely:** expand the
-  binomial and every term is a plain power of `t`.
 - **NURBS rational weighting.** A ratio of two weighted B-spline basis
   combinations, not a polynomial itself — the numerator and denominator
   both are, but the quotient generally isn't.
 
 ## Changelog
 
+- **1.4.0** — 2026-09-15 — Shipped **H.4 `Bezier`**: `bernstein`/`bernsteinAll`
+  (direct binomial formula), `bernsteinCoefficients` (the basis
+  function's own expanded Polynomial coefficient array),
+  `bernsteinViaPolynomial` (the SAME basis function via
+  `Polynomial.evaluate` on that expansion — real reuse of H.1, not
+  decorative), `deCasteljau`/`evaluate` (numerically stable), and
+  `evaluateBernstein` (the direct control-point-blend, via
+  `Vector.linearCombination`). Two independent cross-validations, in
+  the same spirit as H.3's: De Casteljau vs the direct Bernstein sum
+  for curve evaluation, and the direct binomial formula vs
+  Polynomial-based evaluation for the basis function itself — genuinely
+  different computations agreeing, not the same one run twice. Depends
+  on H.1 only; H.2 (`KnotVector`) never enters, since a plain Bezier
+  curve has no knot vector. `derivative` reuses `deCasteljau` on the
+  standard hodograph control points rather than a separate
+  Bernstein-derivative formula. H.5 (`NURBS`) is next — last item in
+  this backlog, strictly after H.3. Test suite grew from 311/311 (21
+  suites) to 323/323 (22 suites).
 - **1.3.0** — 2026-09-15 — Shipped **H.3 `BSpline`**: `basis`/`basisDerivative`
   (plain recursive Cox-de Boor, deliberately not the `findSpan`-localized
   algorithm — see the Category H addendum), `basisAll`, `evaluate`, and
