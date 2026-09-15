@@ -1,7 +1,7 @@
 /**
  * @file SecurityMixin.js
  * @author Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)
- * @version 3.0.0
+ * @version 3.1.0
  * @description Activation-token-gated dispatch, composed onto any class via
  *   ExtendX.extend(). Mirrors the first of Gen 2 kernel.js's three tokens
  *   (activation token: proof a call came through a sanctioned path),
@@ -48,6 +48,29 @@
  *   both directly on the instance -- as an ordinary configurable:true,
  *   writable:true function (no Proxy invariant either way, since the
  *   property is never made non-configurable).
+ *
+ *   v4 fixed a real, reported bug: mixinId was derived from
+ *   `BaseClass.name`, but every ExtendX-composed class is generated with
+ *   the literal name "Subclass" (ExtendX.js's own composition creates a
+ *   class expression named that, regardless of what mixins/base went into
+ *   it). Two independently secured composed classes therefore both
+ *   produced `mixinId === 'security:Subclass'`. That collision hit twice:
+ *   ExtendX.extend()'s registry guard refused the second class's
+ *   composition outright as a duplicate id (unless the caller passed
+ *   `overrides:true`, which is the wrong fix -- these are two genuinely
+ *   different mixins, not one being intentionally replaced); and even
+ *   where extend() wasn't in the way, `MIXIN_FINGERPRINTS.set(mixinId,
+ *   ...)` silently overwrote the first class's recorded fingerprint with
+ *   the second's, so a later `verify()` call on the FIRST class's mixin
+ *   was comparing its (correct, unchanged) methods against the SECOND
+ *   class's method set and reporting spurious "changed"/"missing"
+ *   failures. Fixed by keying mixinId off the actual BaseClass function
+ *   reference in a WeakMap, with a monotonic counter appended only to
+ *   keep ids human-readable when names collide -- distinct BaseClass
+ *   references now always get distinct ids, while repeat
+ *   createSecurityMixin() calls on the SAME BaseClass stay idempotent
+ *   (same id every time), which is what keeps MIXIN_FINGERPRINTS and
+ *   verify() self-consistent per class.
  * @tests test/CPU.security.test.js
  * @tests test/Physical.security.test.js
  * @tests test/Kernel.security.test.js
@@ -148,6 +171,18 @@
     // catch accidental silent overwrites (the actual hazard demonstrated),
     // not a malicious actor who bothers to match hashes.
     const MIXIN_FINGERPRINTS = new Map(); // mixinId -> { methodName: hash }
+
+    // ─── mixinId uniqueness (v4 fix) ────────────────────────────────────
+    // BaseClass.name is NOT a reliable discriminator -- every class
+    // ExtendX.extend() itself generates via composition is literally named
+    // "Subclass", so two different composed classes would otherwise
+    // collapse to the same mixinId. Keyed by the actual BaseClass function
+    // reference (not its name), so distinct classes always get distinct
+    // ids while repeat calls on the SAME BaseClass stay idempotent --
+    // exactly the guarantee ExtendX.extend()'s registry and this file's
+    // own MIXIN_FINGERPRINTS map both depend on holding per class.
+    const CLASS_MIXIN_IDS = new WeakMap(); // BaseClass -> mixinId
+    let mixinIdCounter = 0;
 
     /**
      * @param {string} str - source text to hash
@@ -266,6 +301,29 @@
      * different method sets would be exactly the "accidental collision"
      * case ExtendX's own registry guard rejects.
      *
+     * v4 fix: BaseClass.name is NOT reliably distinguishing. Every class
+     * ExtendX.extend() itself produces via composition is a generated
+     * subclass literally named "Subclass" (see ExtendX.js's own class
+     * expression) -- so two independently composed classes, e.g. two
+     * different secured CPU-shaped and Memory-shaped composites, both
+     * report BaseClass.name === 'Subclass'. Deriving mixinId from that
+     * name alone collapsed both to the identical string
+     * 'security:Subclass': the second createSecurityMixin() call's
+     * extend() was refused as a duplicate-id collision, and even where
+     * extend() wasn't in the way, the second call's
+     * MIXIN_FINGERPRINTS.set(mixinId, ...) silently overwrote the first
+     * class's recorded fingerprint, so verify() on the FIRST class's
+     * mixin was later comparing against the SECOND class's method set.
+     *
+     * Fixed with a WeakMap<BaseClass, mixinId> keyed by the actual
+     * BaseClass reference (not its name) plus a monotonic counter to
+     * disambiguate same-named classes: every distinct BaseClass function
+     * object gets its own unique id no matter what .name reports, and
+     * calling createSecurityMixin() again on the SAME BaseClass reference
+     * (idempotency) still yields the same id it got the first time, so
+     * MIXIN_FINGERPRINTS and verify() stay self-consistent across repeat
+     * calls for one class.
+     *
      * @param {Function} BaseClass - constructor/class whose prototype methods get wrapped
      * @returns {Object} the composable security mixin object
      * @throws {Error} if BaseClass is not a constructor function/class
@@ -276,7 +334,12 @@
         {
             throw new Error('SecurityMixin.createSecurityMixin(): BaseClass must be a constructor function/class');
         }
-        const mixinId = 'security:' + (BaseClass.name || 'anonymous');
+        let mixinId = CLASS_MIXIN_IDS.get(BaseClass);
+        if (!mixinId)
+        {
+            mixinId = 'security:' + (BaseClass.name || 'anonymous') + ':' + (++mixinIdCounter);
+            CLASS_MIXIN_IDS.set(BaseClass, mixinId);
+        }
 
         // True ES private methods (#foo) never appear in
         // getOwnPropertyNames at all -- invisible by spec, not by
@@ -429,7 +492,7 @@
         _isArmed: isArmed,
         name: 'SecurityMixin',
         author: 'Wilbert Fobbs III / Pooled Impact (ExtendX composition pattern)',
-        version: '3.0.0',
+        version: '3.1.0',
         description: 'Activation-token-gated dispatch, composed onto any class via ExtendX.extend() -- proof a call came through a sanctioned path.',
         tests: [
             'test/CPU.security.test.js',

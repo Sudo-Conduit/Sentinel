@@ -17,6 +17,7 @@ require('./Hamiltonian.unit.js')(runner);
 require('./FlatTensor.unit.js')(runner);
 require('./NestedTensor.unit.js')(runner);
 require('./ExtendXIntegration.unit.js')(runner);
+require('./SecurityMixin.unit.js')(runner);
 require('./WeightedGraphMixin.unit.js')(runner);
 require('./SystemAdapter.unit.js')(runner);
 require('./Geodesic.unit.js')(runner);
