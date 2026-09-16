@@ -34,7 +34,8 @@ const files = [
     'Curl.wasm.test.js',
     'Spawn.wasm.test.js',
     'Top.wasm.test.js',
-    'JobControl.test.js'
+    'JobControl.test.js',
+    'ShellServer.test.js'
 ];
 
 let anyFailed = false;
