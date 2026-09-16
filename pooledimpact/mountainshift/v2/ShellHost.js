@@ -108,7 +108,7 @@ const proto = require('./WasmBlobProtocol.js');
 const { createProcessTable } = require('./ProcessTable.js');
 const TOP_MODULE = require('./commands/top.js'); // stateful -- deliberately not in COMMAND_MODULES, see below
 
-const DEFAULT_WASM_URL = 'file://' + __dirname + '/wasm/shell.wasm';
+const SHELL_MODULE = require('./commands/shell.js');
 
 // One-shot command modules -- each a {name, base64} pair, the base64
 // being that command's own compiled .wasm bytes (also zero imports,
@@ -349,9 +349,13 @@ function buildExecResponseFile(exitCode, stdout, stderr)
 }
 
 /**
+ * shell.wasm arrives the same way every command module does: as a
+ * require()d {name, base64} pair whose bytes are a string constant.
+ * Decode, compile and instantiate are all synchronous -- a zero-import
+ * module needs nothing wired -- so there is no fetch here, no URL, no
+ * file path, and nothing for a host to serve.
+ *
  * @param {Object} [options]
- * @param {string} [options.wasmUrl] - fetched via fetch(); Node's
- *   fetch() only speaks http(s), not file:// -- pass a real URL.
  * @param {string} [options.cwd] - initial working directory
  * @param {number} [options.uid] - the real uid to report; defaults to
  *   process.getuid() where available
@@ -360,10 +364,7 @@ function buildExecResponseFile(exitCode, stdout, stderr)
 async function createShell(options)
 {
     options = options || {};
-    const wasmBytes = await fetch(options.wasmUrl || DEFAULT_WASM_URL).then((r) => r.arrayBuffer());
-    const wasmModule = await WebAssembly.compile(wasmBytes);
-    const instance = new WebAssembly.Instance(wasmModule, {});
-    const memory = instance.exports.memory;
+    const { instance, memory } = proto.instantiate(proto.compile(SHELL_MODULE.base64));
 
     const uid = options.uid !== undefined ? options.uid : (typeof process !== 'undefined' && process.getuid ? process.getuid() : 0);
     let cwd = options.cwd || '/';
