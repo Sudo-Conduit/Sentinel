@@ -214,9 +214,9 @@ async function performSocketExchange(host, port, useTls, requestBytes)
     const rawSocket = useProxy ? await connectViaProxyTunnel(PROXY_URL, host, port) : null;
 
     const socket = useTls
-        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host, ca: PROXY_CA || undefined }, () => socket.end(requestBytes))
+        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host, ca: PROXY_CA || undefined }, () => socket.write(requestBytes))
         : (rawSocket || net.connect({ host, port }));
-    if (!useTls) socket.end(requestBytes);
+    if (!useTls) socket.write(requestBytes);
 
     return new Promise((resolve, reject) =>
     {
