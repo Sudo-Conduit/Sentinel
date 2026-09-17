@@ -203,21 +203,37 @@ function connectViaProxyTunnel(proxyUrl, host, port)
     });
 }
 
-// The one real thing this file ever does outside the WASM boundary
-// besides gathering files: open a real socket and move exact bytes.
-// No HTTP interpretation happens here -- curl.wasm built the request
-// bytes and will parse the response bytes; this is a dumb transport,
-// same shape as read()/write() are for the virtual file table, just
-// backed by a live connection instead of pre-supplied bytes.
-async function performSocketExchange(host, port, useTls, requestBytes)
+// The one real thing this file ever does outside the WASM boundary:
+// open a real socket and move exact bytes. No HTTP interpretation
+// happens here -- curl.wasm built the request bytes and will parse the
+// response bytes; this is a dumb transport, backed by a live connection
+// instead of pre-supplied bytes.
+//
+// write(), never end(). end() combines write with a half-close, and a
+// CONNECT relay may propagate that FIN as a full teardown before the
+// origin has answered -- measured: 0 bytes back through a tunnel, 974
+// with write(), byte-identical on a direct socket either way. curl.c
+// already sends `Connection: close`, so the server's own close is what
+// ends the exchange. Dropping the half-close is what lets a participant
+// behind a proxy (another agent's sandbox, say) use the same door as a
+// participant with direct egress.
+//
+// proxyCa is a caller-supplied PEM string, never a path this file reads.
+// A CA is genuinely part of the spec -- TLS re-terminated at a proxy has
+// to be trusted somehow -- but WHERE it comes from is the caller's
+// business: an env var, a config record, a literal. Reading it with
+// fs.readFileSync would nail this file to Node, and the whole point is
+// that ShellHost.js is one door among several (a browser has no fs and
+// manages trust itself; a PHP/Wasmer host has its own answer).
+async function performSocketExchange(host, port, useTls, requestBytes, proxyCa)
 {
     const useProxy = PROXY_URL && !NO_PROXY_HOSTS.has(host);
     const rawSocket = useProxy ? await connectViaProxyTunnel(PROXY_URL, host, port) : null;
 
     const socket = useTls
-        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host }, () => socket.end(requestBytes))
+        ? tls.connect({ socket: rawSocket || undefined, host: rawSocket ? undefined : host, port: rawSocket ? undefined : port, servername: host, ca: proxyCa || undefined }, () => socket.write(requestBytes))
         : (rawSocket || net.connect({ host, port }));
-    if (!useTls) socket.end(requestBytes);
+    if (!useTls) socket.write(requestBytes);
 
     return new Promise((resolve, reject) =>
     {
@@ -359,6 +375,9 @@ function buildExecResponseFile(exitCode, stdout, stderr)
  * @param {string} [options.cwd] - initial working directory
  * @param {number} [options.uid] - the real uid to report; defaults to
  *   process.getuid() where available
+ * @param {string|Buffer} [options.proxyCa] - PEM for a TLS-terminating
+ *   proxy's CA, as a value. Where the caller got it is the caller's
+ *   business; this file never reads a path.
  * @returns {Promise<{run: (cmdline: string) => Promise<string>}>}
  */
 async function createShell(options)
@@ -425,7 +444,7 @@ async function createShell(options)
         const socketReq = parseSocketMarker(response);
         if (socketReq)
         {
-            const rawResponse = await performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes);
+            const rawResponse = await performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes, options.proxyCa);
             return runExternal(mod, subCmdline, stdin, { '/dev/socket_response': rawResponse });
         }
 
@@ -484,7 +503,7 @@ async function createShell(options)
         const socketReq = parseSocketMarker(response);
         if (socketReq)
         {
-            const finalized = performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes)
+            const finalized = performSocketExchange(socketReq.host, socketReq.port, socketReq.useTls, socketReq.requestBytes, options.proxyCa)
                 .then((rawResponse) => finishDelegatedPhase2(mod, subCmdline, stdin, { '/dev/socket_response': rawResponse }));
             return processTable.startProcess(mod.name, subCmdline, null, finalized);
         }
