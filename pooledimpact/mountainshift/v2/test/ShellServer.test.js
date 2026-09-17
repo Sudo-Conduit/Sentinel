@@ -1,8 +1,7 @@
 // Proves ShellServer.js for real: boots it as a genuinely separate OS
-// process (not a function call in this test's own process, same
-// reasoning test/fs-server.js is its own process), then drives it only
-// through real HTTP requests -- exactly what Shell-Terminal.html itself
-// does. No reaching into Shell.js/ShellHost.js internals here; this is
+// process (not a function call in this test's own process), then drives
+// it only through real HTTP requests -- exactly what Shell-Terminal.html
+// itself does. No reaching into Shell.js/ShellHost.js internals here; this is
 // the actual, dumb-client-facing contract.
 //
 // Run with: node test/ShellServer.test.js
