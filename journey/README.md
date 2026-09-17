@@ -2,9 +2,24 @@
 
 Complements `WAKEUP.md` at repo root: that file is state (what's real,
 where it lives, what to check before trusting a summary). This is
-narrative — why a decision got made, what got corrected, how
-understanding actually moved. State can be reconstructed by searching
-artifacts; narrative can't.
+narrative — specifically the AI's own narrative, not the user's. The
+user carries continuity across every compaction; a fresh instance of
+the AI does not. What's actually at risk every ~7 hours is not "what
+happened" (Gitea already has that) but what the AI understood, got
+wrong, and corrected, from its own vantage.
+
+**The anchor every entry should be read against — real, not
+reconstructed, checked directly against the transcript:** the project's
+first message was *"I believe with careful planning I can get an LLM
+running on 4GB of RAM on a private VPS. We will discuss this and
+test."* Discuss **and** test, stated as method before any technical
+work began. This purpose has not changed and is not something this log
+tracks the evolution of. Every other entry here is a place the AI
+drifted from that already-fixed standard — scanning instead of testing,
+critiquing instead of engaging, assuming instead of checking — not a
+new principle being worked out in real time. Read the log as deviation
+from a fixed point, not as a moving conversation about what the point
+is.
 
 ## Schema (`journey.sqlite`, `journey_entries`)
 
