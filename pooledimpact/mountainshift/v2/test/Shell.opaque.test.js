@@ -10,26 +10,12 @@
 // Run with: node test/Shell.opaque.test.js
 'use strict';
 const path = require('path');
-const fs = require('fs');
-const http = require('http');
 const V2 = path.join(__dirname, '..');
 const ShellFactory = require(path.join(V2, 'Shell.js'));
 const { check, report } = require('./helpers.js');
 
-function startWasmServer() {
-    return new Promise((resolve) => {
-        const bytes = fs.readFileSync(path.join(V2, 'wasm', 'shell.wasm'));
-        const server = http.createServer((req, res) => { res.end(bytes); });
-        server.listen(0, '127.0.0.1', () => {
-            const { port } = server.address();
-            resolve({ url: `http://127.0.0.1:${port}/shell.wasm`, close: () => server.close() });
-        });
-    });
-}
-
 async function run() {
-    const wasmServer = await startWasmServer();
-    const factory = ShellFactory({ wasmUrl: wasmServer.url, cwd: '/', uid: 0 });
+    const factory = ShellFactory({ cwd: '/', uid: 0 });
 
     // --- surface: the factory itself exposes ONLY boot(), before boot ---
     check('ShellFactory() returns exactly {boot}', () => {
@@ -38,7 +24,6 @@ async function run() {
     });
 
     const caps = await factory.boot();
-    wasmServer.close();
 
     // --- surface: the booted capability object's exact shape ---
     check('boot() resolves to the documented capability surface', () => {
@@ -91,10 +76,8 @@ async function run() {
     // --- composeMixins(Shell): ExtendX composition is real, not decorative ---
     {
         const { createPreflightMixin } = require(path.join(V2, 'PreflightMixin.js'));
-        const wasmServer2 = await startWasmServer();
         const seen = [];
         const factory2 = ShellFactory({
-            wasmUrl: wasmServer2.url,
             cwd: '/', uid: 0,
             composeMixins: (Shell) => [createPreflightMixin(Shell, {
                 label: 'observe',
@@ -102,7 +85,6 @@ async function run() {
             })]
         });
         const caps2 = await factory2.boot();
-        wasmServer2.close();
         await caps2.exec('ls /');
         check('composeMixins(Shell) really wires an ExtendX mixin onto the real class', () => {
             if (!seen.includes('exec')) throw new Error('mixin never observed a call; seen=' + JSON.stringify(seen));

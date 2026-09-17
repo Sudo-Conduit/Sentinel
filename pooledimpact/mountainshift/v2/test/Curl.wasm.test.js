@@ -10,24 +10,8 @@
 // Run with: node test/Curl.wasm.test.js
 'use strict';
 const assert = require('assert');
-const fs = require('fs');
-const path = require('path');
 const http = require('http');
 const { createShell } = require('../ShellHost.js');
-
-// createShell() fetches shell.wasm over http(s) (Node's fetch() can't
-// do file://), so this test needs a tiny real server for it too --
-// same reason test/fs-server.js exists for Shell.wasm.test.js.
-function startWasmServer() {
-    return new Promise((resolve) => {
-        const bytes = fs.readFileSync(path.join(__dirname, '..', 'wasm', 'shell.wasm'));
-        const server = http.createServer((req, res) => { res.end(bytes); });
-        server.listen(0, '127.0.0.1', () => {
-            const { port } = server.address();
-            resolve({ url: `http://127.0.0.1:${port}/shell.wasm`, close: () => server.close() });
-        });
-    });
-}
 
 function startServer() {
     return new Promise((resolve) => {
@@ -70,10 +54,8 @@ function startServer() {
 }
 
 async function main() {
-    const wasmServer = await startWasmServer();
     const server = await startServer();
-    const shell = await createShell({ wasmUrl: wasmServer.url, cwd: '/', uid: 0 });
-    wasmServer.close();
+    const shell = await createShell({ cwd: '/', uid: 0 });
 
     // Real GET, real header, real server. Proves curl.c actually built
     // the request line and header bytes -- the server received them

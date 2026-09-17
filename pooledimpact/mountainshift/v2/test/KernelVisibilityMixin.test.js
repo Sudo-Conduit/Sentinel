@@ -7,23 +7,10 @@
 // Run with: node test/KernelVisibilityMixin.test.js
 'use strict';
 const path = require('path');
-const fs = require('fs');
-const http = require('http');
 const V2 = path.join(__dirname, '..');
 const ShellFactory = require(path.join(V2, 'Shell.js'));
 const { createKernelVisibilityMixin } = require(path.join(V2, 'KernelVisibilityMixin.js'));
 const { check, expectThrows, report } = require('./helpers.js');
-
-function startWasmServer() {
-    return new Promise((resolve) => {
-        const bytes = fs.readFileSync(path.join(V2, 'wasm', 'shell.wasm'));
-        const server = http.createServer((req, res) => { res.end(bytes); });
-        server.listen(0, '127.0.0.1', () => {
-            const { port } = server.address();
-            resolve({ url: `http://127.0.0.1:${port}/shell.wasm`, close: () => server.close() });
-        });
-    });
-}
 
 function fakeKernel() {
     const forked = [];
@@ -34,13 +21,11 @@ async function run() {
     expectThrows('requires a real kernel.fork()', () => createKernelVisibilityMixin(function Shell(){}, {}));
 
     const kernel = fakeKernel();
-    const wasmServer = await startWasmServer();
     const factory = ShellFactory({
-        wasmUrl: wasmServer.url, cwd: '/', uid: 0,
+        cwd: '/', uid: 0,
         composeMixins: (Shell) => [createKernelVisibilityMixin(Shell, kernel)]
     });
     const caps = await factory.boot();
-    wasmServer.close();
 
     await caps.exec('ls /');
     check('a non-backgrounded command never touches the kernel', () => {

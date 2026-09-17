@@ -8,27 +8,12 @@
 // Run with: node test/JobControl.test.js
 'use strict';
 const assert = require('assert');
-const fs = require('fs');
-const http = require('http');
 const { createShell } = require('../ShellHost.js');
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
-function startWasmServer() {
-    return new Promise((resolve) => {
-        const bytes = fs.readFileSync(__dirname + '/../wasm/shell.wasm');
-        const server = http.createServer((req, res) => { res.end(bytes); });
-        server.listen(0, '127.0.0.1', () => {
-            const { port } = server.address();
-            resolve({ url: `http://127.0.0.1:${port}/shell.wasm`, close: () => server.close() });
-        });
-    });
-}
-
 async function main() {
-    const wasmServer = await startWasmServer();
-    const shell = await createShell({ wasmUrl: wasmServer.url, cwd: '/', uid: 0 });
-    wasmServer.close();
+    const shell = await createShell({ cwd: '/', uid: 0 });
 
     // Empty job table to start.
     const psEmpty = await shell.runDetailed('ps');

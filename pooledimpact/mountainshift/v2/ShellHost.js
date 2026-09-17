@@ -93,7 +93,7 @@
  *   written against different syscall ABIs.
  *
  *     const { createShell } = require('./ShellHost.js');
- *     const shell = await createShell({ wasmUrl: 'http://localhost:PORT/shell.wasm' });
+ *     const shell = await createShell();
  *     var a = await shell.run('ls /tmp');
  *     console.log(a);
  *

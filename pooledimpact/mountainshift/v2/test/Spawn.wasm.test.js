@@ -9,20 +9,7 @@
 // Run with: node test/Spawn.wasm.test.js
 'use strict';
 const assert = require('assert');
-const fs = require('fs');
-const http = require('http');
 const { createShell, isProgramAllowed } = require('../ShellHost.js');
-
-function startWasmServer() {
-    return new Promise((resolve) => {
-        const bytes = fs.readFileSync(__dirname + '/../wasm/shell.wasm');
-        const server = http.createServer((req, res) => { res.end(bytes); });
-        server.listen(0, '127.0.0.1', () => {
-            const { port } = server.address();
-            resolve({ url: `http://127.0.0.1:${port}/shell.wasm`, close: () => server.close() });
-        });
-    });
-}
 
 async function main() {
     // The whitelist itself, tested directly: only what's actually
@@ -34,9 +21,7 @@ async function main() {
     assert.strictEqual(isProgramAllowed('rm'), false);
     console.log('whitelist check -> OK (node/php allowed, bash/rm rejected)');
 
-    const wasmServer = await startWasmServer();
-    const shell = await createShell({ wasmUrl: wasmServer.url, cwd: '/', uid: 0 });
-    wasmServer.close();
+    const shell = await createShell({ cwd: '/', uid: 0 });
 
     // Real node, real output.
     const r1 = await shell.runDetailed(`node --eval 'console.log(1+1)'`);
