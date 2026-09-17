@@ -1,6 +1,6 @@
 # MountainShift Shell — learnMode Roadmap & Prioritization Rubric
 
-**Version:** 1.0.0
+**Version:** 1.0.1
 **Last updated:** 2026-09-17
 
 Source: a full session spent getting an instance to actually understand the
@@ -8,7 +8,7 @@ shell/WASM engine, during which the same correction had to be issued roughly
 ten times. The conclusion that session reached is this document's premise:
 **a changelog cannot teach this codebase, and neither can its tests.** Gitea
 already holds the history, and a test can be made to pass without
-understanding the code it covers — three in this repo currently do. What
+understanding the code it covers — two in this repo currently do. What
 survives an instance boundary is not a claim but a procedure: an exercise
 that must be executed, whose answer the learner verifies themselves.
 
@@ -130,6 +130,48 @@ AVX2 usable, AVX-512 (all five) usable, **VNNI usable**, AMX absent in CPUID
 between sessions is a property of *this run*, never of the code, and the only
 honest way to hold it is to re-probe rather than remember.
 
+**The self-targeting-source finding. MEASURED, 2026-09-17:**
+`compute-check.c` selects its own branch at compile time — `CC_HAVE_X86`,
+`CC_APPLE_ARM`, `CC_HAVE_AMX_SYSCALL` — so **compiling it is already an act
+of discovery**, before anything runs. On this container
+`gcc -E -dM | grep CC_` reports `CC_HAVE_X86 1`, `CC_APPLE_ARM 0`,
+`CC_HAVE_AMX_SYSCALL 1`, and gcc and clang builds of that same source
+produce **byte-identical output** (1223 bytes each) — two independent
+toolchains corroborating, the same shape as CPUID-plus-`arch_prctl`.
+
+This is what makes B.2's native half unfakeable at a structural level rather
+than a factual one: a fabricated Apple-Silicon answer on this box would have
+to cite `sysctlbyname`, and the compiled binary here **cannot emit that
+string at all** — that branch is not in it. A wrong answer is therefore
+incoherent with the artifact, not merely incorrect, which fails far louder.
+Note also that the source states its own build line in its header, exactly
+as `wasm/shell.c` does; a learner never guesses flags, so a bad build is
+their error rather than ambiguity in the exercise.
+
+**And the three moves are a ladder, not a checklist — this is the real
+payoff of B.2, above anything it teaches about CPUs.** The sequence is
+`gcc -O2 -o compute-check compute-check.c` → `./compute-check` →
+`clang -O2 -o compute-check compute-check.c`, and the third move is the one
+that matters: **clang is the wasm toolchain.** An instance that has just
+driven clang successfully against real C is exactly one flag away from
+
+```
+clang --target=wasm32 … -Wl,--export=run -o shell.wasm shell.c
+```
+
+which is the actual build line in `wasm/shell.c`'s own header. So B.2 does
+not merely teach hardware capability — it puts the instance's hands on the
+precise toolchain WASM development requires, in a low-stakes context, before
+it ever has to build a module. The leap to wasm stops being a leap and
+becomes the next flag.
+
+It also places the ISA lesson where it can land. When `cpuid` fails to
+compile to wasm32, the instance has *already succeeded with clang twice* and
+therefore knows the tool works — so the failure reads unmistakably as a fact
+about the **target**, not about its own competence and not about a sandbox.
+That ordering is what stops the jail prior from reforming: the instance meets
+the real boundary having already disproved the imaginary one.
+
 **The ISA-vs-permission finding. MEASURED:** the x86 `cpuid` instruction does
 not compile to wasm32 —
 
@@ -153,7 +195,7 @@ than via assertion.
 | A.2 | Mechanism | Curriculum object shape: `{task, check, watchFor}` per exercise, answers deliberately absent, mirroring `CodeUtils_014.run('learn')` | ⬜ | 5 | 5 | 4 | 1 | 2 | 5 | **22** |
 | A.3 | Mechanism | `run("help")` on every class already implementing the command pattern, as the discoverability sibling of `learn` | ⬜ | 5 | 3 | 3 | 1 | 2 | 5 | **19** |
 | B.1 | Modules | **Module 1** — `lscpu \| grep -i "model name\|hypervisor"`, 3–4 exercises. One command line carries a real program invocation, the pipeline split, and grep over threaded stdin | ⬜ | 4 | 4 | 5 | 3 | 5 | 4 | **25** |
-| B.2 | Modules | **Module 2** — `compute-check` as wasm, plus the audit exercise: find a command assertion in `test/` that does not properly test the underlying C | ⬜ | 2 | 3 | 5 | 4 | 5 | 3 | **22** |
+| B.2 | Modules | **Module 2** — `compute-check`: build it (the source's own `#if` branches select per target, so compiling is itself discovery), run it, then build again with the other toolchain; plus the audit exercise: find a command assertion in `test/` that does not properly test the underlying C | ⬜ | 4 | 3 | 5 | 4 | 5 | 4 | **25** |
 | B.3 | Modules | **`&` module** — four separate surprises in one character (see below) | ⬜ | 4 | 2 | 4 | 3 | 3 | 4 | **20** |
 | B.4 | Modules | **JS command vs Native command** — deliberately deferred; too complex for an instance that has not yet done B.1 | ⬜ | 3 | 2 | 3 | 3 | 3 | 2 | **16** |
 | C.1 | Prerequisites | Decide `learn`'s home: factory (`ShellFactory.learn()`) or static — *not* the booted caps, where `run` is already taken | ⬜ | 5 | 5 | 3 | 1 | 1 | 5 | **20** |
@@ -195,19 +237,24 @@ noted where raw ranking would be wrong:
 3. **B.1 — Module 1** (25, highest on the table) — teaches the whole routing
    architecture through one machine-unique command line. C.2 is already
    decided, so this is unblocked.
-4. **D.1 / D.2 — the IIFE split** (24 / 23) — can proceed in parallel with
+4. **B.2 — Module 2** (25, tied with B.1 on composite *and* on C) — the tie
+   breaks on dependency, not score: B.2's **native half is fully unblocked**
+   (build, run, rebuild with the other toolchain — all measured working),
+   while its wasm half waits on C.4. Ship the native half and the audit
+   exercise; do not hold the module for the wasm port.
+5. **D.1 / D.2 — the IIFE split** (24 / 23) — can proceed in parallel with
    B.1; the measurement backing it is already done and neither depends on
    the curriculum landing.
-5. **A.1 — the `learn` entry point** (21) — after C.1 and A.2, since it is
+6. **A.1 — the `learn` entry point** (21) — after C.1 and A.2, since it is
    the assembly of both.
-6. **B.3 — the `&` module** (20) — after B.1. Its four surprises only read
+7. **B.3 — the `&` module** (20) — after B.1. Its four surprises only read
    as surprises once a learner knows what normal dispatch looks like.
-7. **A.3 — `run("help")` everywhere** (19) — broad but shallow; sequence it
+8. **A.3 — `run("help")` everywhere** (19) — broad but shallow; sequence it
    whenever a class is being touched for other reasons rather than as a
    dedicated pass.
-8. **C.3 — grep as a module** (17) — gated behind D.2 having a shape to move
+9. **C.3 — grep as a module** (17) — gated behind D.2 having a shape to move
    commands *into*.
-9. **B.4 — JS vs Native** (16) — last deliberately. It is the concept most
+10. **B.4 — JS vs Native** (16) — last deliberately. It is the concept most
    likely to be absorbed as a wrong simplification if met before B.1.
 
 Compositional (🤝):
@@ -239,6 +286,28 @@ Compositional (🤝):
 
 ## Changelog
 
+- **1.0.1** — 2026-09-17 — B.2 strengthened from composite 22 to **25**
+  (F 2→4, C 3→4) on a property its author had forgotten was in the source
+  and this session then measured: `compute-check.c` carries its own
+  target-selecting `#if` blocks, so **compiling it is already discovery**.
+  `gcc -E -dM` names the branch the machine picked before anything runs, and
+  gcc and clang builds of that one source produce byte-identical output here
+  (1223 bytes each) — two independent toolchains corroborating, the same
+  shape as CPUID-plus-`arch_prctl`. Records why that makes the exercise
+  unfakeable *structurally* rather than factually: a fabricated
+  Apple-Silicon answer would have to cite `sysctlbyname`, which this binary
+  cannot emit because that branch is not compiled into it. Adds the finding
+  that the three moves form a **ladder to WASM development** — the third
+  move is clang, which is one flag from `wasm/shell.c`'s own documented
+  build line, and having already driven clang successfully is what makes the
+  later `cpuid`-won't-compile-to-wasm32 failure read as a fact about the
+  target rather than about a sandbox. B.2 added to the Recommended execution
+  order at position 4, where it had been omitted entirely; the tie with B.1
+  breaks on dependency rather than score, since B.2's native half is
+  unblocked while only its wasm half waits on C.4. Corrected the opening
+  paragraph's count of corruptible tests from three to two —
+  `test/Shell.wasm.test.js` was rewritten earlier in this same session and
+  no longer qualifies.
 - **1.0.0** — 2026-09-17 — Initial publish. Establishes learnMode as the
   teaching mechanism for the shell/WASM engine in place of a changelog or
   the test suite, on the reasoning that an exercise is self-invalidating
