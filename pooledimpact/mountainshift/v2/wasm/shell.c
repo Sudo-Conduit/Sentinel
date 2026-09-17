@@ -223,12 +223,22 @@ struct vfd { const char *data; usize len; usize pos; int used; };
 static struct vfd g_vfds[MAX_VFDS];
 
 /*
- * open()/close()/read()/write()/access()/chdir() below have the real
- * POSIX shapes, but they are ordinary static C functions now, not
- * imports -- there is no host on the other side of them any more.
- * "Opening a file" means finding it in the vfs table the request blob
- * already populated; "reading" it means copying out of memory this
- * module already owns. Nothing here reaches outside the module.
+ * open()/close()/read()/write()/access()/chdir() below are the vnode
+ * layer: real POSIX shapes, with struct vfile as the object and struct
+ * vfd as the open handle carrying its own seek position -- the same
+ * split a kernel makes between a vnode and an open-file entry, which is
+ * why vfd slots start at VFD_BASE rather than 0.
+ *
+ * What currently BACKS that layer is g_vfiles: a flat in-memory array,
+ * the simplest possible implementation. That is a property of these six
+ * function bodies and nothing else. Every caller above them -- cmd_cat,
+ * builtin_cd, the pipeline -- is already written against the POSIX
+ * shapes and does not know or care what answers them. Giving the layer
+ * a different backing is a change to these bodies; the commands do not
+ * move. That is the entire reason the boundary is drawn here.
+ *
+ * Do not read the current backing as a statement about what this module
+ * is able to do. It is a statement about what has been wired so far.
  */
 /* vfd slots start at 3 -- 0/1/2 are reserved for stdin/stdout/stderr,
  * exactly like a real fd table. Returning a raw array index starting
@@ -257,12 +267,25 @@ static i32 close(i32 fd) {
     g_vfds[i].used = 0;
     return 0;
 }
+/* access() is a question: `which` walks PATH asking "is this one
+ * executable" and acts on the answer itself. That is what real which(1)
+ * does, so it stays a query. (mode is ignored for now -- the backing
+ * carries no permission bits yet, so X_OK degrades to existence.) */
 static i32 access(const char *path, i32 mode) {
     (void)mode;
     return vfs_find(path) ? 0 : -1;
 }
+
+/* chdir() is NOT a question. It does not ask whether a path is valid and
+ * then decide; changing directory IS the operation, and whether it
+ * worked is the result of having done it. It used to delegate to
+ * access(), which read as "verify, then report" -- the shape a static
+ * table invites, because a table can only be searched, never acted on.
+ * Kept as its own operation against the vnode layer so that swapping
+ * what backs that layer gives chdir a real body without dragging
+ * which(1)'s query along with it. */
 static i32 chdir(const char *path) {
-    return access(path, F_OK);
+    return vfs_find(path) ? 0 : -1;
 }
 
 /* ------------------------------------------------------------------ */
