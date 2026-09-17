@@ -381,7 +381,23 @@
             electronegativityEv: electronegativityEv === null ? null : Math.round(electronegativityEv * 1000) / 1000,
             electrophilicityEv: electrophilicityEv === null ? null : Math.round(electrophilicityEv * 1000) / 1000,
             opticalGapNm: opticalGapNm,
-            conductivityClass: conductivityClass
+            conductivityClass: conductivityClass,
+            // Surfaces the comment above as an actual field a caller/UI can
+            // render, not just a code comment nobody looking at output ever
+            // sees. homoEnergyEv/lumoEnergyEv/electronegativityEv/
+            // electrophilicityEv all inherit PDT's alpha (bare hydrogenic
+            // Z_eff estimate), which PDT.js's own calibration record
+            // already documents as 3-5x too large for light (n=2)
+            // elements even after Slater's-rules correction - confirmed
+            // concretely: carbon's alpha is -35.91 eV vs. its real first
+            // ionization energy, 11.26 eV. gapEv/hardnessEv/opticalGapNm/
+            // conductivityClass do NOT have this problem (they're
+            // DIFFERENCES off the separately spectroscopically-calibrated
+            // beta above, so alpha's error cancels) - only the two fields
+            // that SUM rather than difference HOMO/LUMO do.
+            absoluteEnergyScaleCaveat: (homoEnergy !== null)
+                ? 'homoEnergyEv, lumoEnergyEv, electronegativityEv, and electrophilicityEv are on an unreliable absolute energy scale (PDT\'s alpha runs ~3-5x too large for light elements even after Slater\'s-rules correction, e.g. carbon alpha -35.91 eV vs. its real 11.26 eV ionization energy) - gapEv/hardnessEv/opticalGapNm/conductivityClass are NOT affected (differences off a separately spectroscopically-calibrated beta, so alpha\'s error cancels).'
+                : null
         };
     }
 
