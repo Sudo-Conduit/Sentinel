@@ -47,11 +47,26 @@ async function main() {
     assert.ok(html.includes('MSOS Shell Terminal'), 'expected the real Shell-Terminal.html to be served');
     console.log('GET / serves the real terminal page -> OK');
 
-    // A real command, through real HTTP, to a real booted Shell.
+    // A real command that currently FAILS, through real HTTP -- proving the
+    // exit code propagates across the contract, not just the text.
+    //
+    // This assertion used to read `rc === 0` and `stdout.trim().length > 0`
+    // under the message "expected a real username", and it passed on the
+    // string "unknown" -- which is exactly what whoami emitted when it could
+    // NOT resolve a uid. A check that accepts the failure value as proof of
+    // success is worse than no check: it reports green while the command
+    // lies. whoami now exits non-zero and names the reason (real whoami(1)
+    // does the same), so the honest assertion is this one.
+    //
+    // When G.13 lands and whoami can read a real /etc/passwd, THIS test
+    // should start failing -- that is the point. Update it then to assert a
+    // resolved name, deliberately, rather than discovering it was never
+    // testing anything.
     const whoami = await execViaHttp(server.baseUrl, 'whoami');
     console.log('POST /exec whoami ->', JSON.stringify(whoami));
-    assert.strictEqual(whoami.rc, 0);
-    assert.ok(whoami.stdout.trim().length > 0, 'expected a real username');
+    assert.strictEqual(whoami.rc, 1, 'whoami must report failure, not a placeholder');
+    assert.match(whoami.stdout, /^whoami: cannot /, 'must name why it failed');
+    assert.ok(!/unknown/.test(whoami.stdout), 'must not emit a placeholder name');
 
     // node/php delegation reachable through the same HTTP contract.
     const nodeResult = await execViaHttp(server.baseUrl, `node --eval 'console.log(21*2)'`);

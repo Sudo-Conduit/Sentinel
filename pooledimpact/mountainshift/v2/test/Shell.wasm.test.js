@@ -115,8 +115,14 @@ function main() {
     const cd = ask('cd /etc');
     assert.strictEqual(cd.rc, 1, 'cd: no directory to find yet (G.13 open)');
 
-    assert.strictEqual(who.stdout.trim(), 'unknown', 'whoami: no /etc/passwd to resolve a uid against yet (G.13 open)');
-    console.log('files    -> cat/cd/whoami all unresolved (KNOWN GAP: G.13 not started)');
+    // whoami fails the same way its siblings do. It used to return rc=0 with
+    // the placeholder "unknown" on stdout -- indistinguishable, to a pipeline,
+    // from a genuinely resolved name, and the reason a ShellServer assertion
+    // could pass while the command lied. Fixed to match real whoami(1).
+    assert.strictEqual(who.rc, 1, 'whoami: must report failure, not a placeholder (G.13 open)');
+    assert.match(who.stdout, /^whoami: cannot /, 'whoami: must name why it failed');
+    assert.ok(!/unknown/.test(who.stdout), 'whoami: must not emit a placeholder name');
+    console.log('files    -> cat/cd/whoami all fail honestly, rc=1 (KNOWN GAP: G.13 not started)');
 
     // --- the cwd round-trips, since the caller owns it ---
 

@@ -508,7 +508,10 @@ static i32 g_uid = -1;
 static int cmd_whoami(int argc, char **argv) {
     (void)argc; (void)argv;
     i32 fd = open("/etc/passwd", O_RDONLY);
-    if (fd < 0) { fd_puts(STDOUT_FILENO, "unknown\n"); return 0; }
+    if (fd < 0) {
+        fd_puts(STDERR_FILENO, "whoami: cannot open /etc/passwd\n");
+        return 1;
+    }
     char buf[8192];
     usize total = 0;
     for (;;) {
@@ -543,8 +546,16 @@ static int cmd_whoami(int argc, char **argv) {
         }
         line = nl ? nl + 1 : NULL;
     }
-    fd_puts(STDOUT_FILENO, "unknown\n");
-    return 0;
+    /* Read /etc/passwd but found no entry for this uid. real whoami(1)
+     * exits non-zero here with this exact message; reporting success with
+     * a placeholder on stdout would be indistinguishable, to a pipeline,
+     * from a genuinely resolved name. */
+    char uidbuf[24];
+    write_uint(uidbuf, (usize)(g_uid < 0 ? 0 : g_uid));
+    fd_puts(STDERR_FILENO, "whoami: cannot find name for user ID ");
+    fd_puts(STDERR_FILENO, uidbuf);
+    fd_puts(STDERR_FILENO, "\n");
+    return 1;
 }
 
 static int cmd_which(int argc, char **argv) {
