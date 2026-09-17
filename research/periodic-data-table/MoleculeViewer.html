@@ -120,7 +120,7 @@
   <p class="fieldnote"><b>Geometry source</b> is always labeled in the panel to the right &mdash; <code>idealized (VSEPR)</code> means every atom's own bond angles are mechanically exact for its steric number (109.47&deg; tetrahedral, 120&deg; trigonal planar, 180&deg; linear&hellip;), derived the same "textbook, not guessed" way as everything else in this project. A simple, unfused ring (benzene, pyridine, pyrrole&hellip;) closes exactly via a closed-form circumscribed-polygon placement. A fused/bridged ring system (e.g. a porphyrin macrocycle) that has no closed-form solution is instead solved via real distance geometry - classical multidimensional scaling for a globally consistent starting shape, then a real bond-length constraint relaxation (the same idea as SHAKE) to exact bond lengths; local angles there are a good-faith result of that relaxation, not independently VSEPR-guaranteed. Ring-closure bonds (pink) are the rare, honest remainder: if even that relaxation can't converge for a bond, its real resulting length is reported and flagged rather than silently assumed correct. Real imported coordinates (PDB/MOL/XYZ) are a deliberately separate, not-yet-built path so the two are never confused for each other.</p>
 
   <footer>
-    <span>MolecularViewer.js + MolecularReport.js + MolecularDescriptors.js + MolecularThermodynamics.js + MolecularSymmetry.js + MolecularVibrationalModes.js + MolecularVibrations.js + MolecularPolarizability.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
+    <span>MolecularViewer.js + MolecularReport.js + MolecularDescriptors.js + MolecularThermodynamics.js + MolecularSymmetry.js + MolecularVibrationalModes.js + MolecularVibrations.js + MolecularPolarizability.js + MolecularReactivity.js + MolecularVanDerWaals.js + MolecularTPSA.js + MolecularElectrostatics.js + MolecularGeometry.js + MolecularStructure.js &middot; built on PDT.js / Smiles.js / Aromaticity.js / CoordinationChemistry.js</span>
     <span>Author: Will Fobbs &middot; Pooled Impact</span>
   </footer>
 </div>
@@ -136,6 +136,7 @@
 <script src="./MolecularTPSA.js"></script>
 <script src="./MolecularVanDerWaals.js"></script>
 <script src="./MolecularPolarizability.js"></script>
+<script src="./MolecularReactivity.js"></script>
 <script src="./MolecularVibrations.js"></script>
 <script src="./MolecularVibrationalModes.js"></script>
 <script src="./MolecularSymmetry.js"></script>
@@ -403,6 +404,40 @@
       }
     }
 
+    var transHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.transitionEnergies) {
+      if (report.transitionEnergies.applicable) {
+        var te = report.transitionEnergies;
+        transHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(te.method) + '</p>' +
+          '<table><thead><tr><th>Occ MO</th><th>Unocc MO</th><th>&Delta;E (eV)</th><th>&lambda; (nm)</th></tr></thead><tbody>' +
+          te.transitions.map(function(tr) {
+            return '<tr><td>' + esc(tr.occMoIndex) + '</td><td>' + esc(tr.unoccMoIndex) + '</td><td>' + esc(tr.transitionEv) + '</td><td>' + esc(tr.wavelengthNm) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      } else {
+        transHtml = '<p class="empty-note">' + esc(report.transitionEnergies.reason) + '</p>';
+      }
+    }
+
+    var fukuiHtml = '<p class="empty-note">Not applicable.</p>';
+    if (report.fukuiFunctions) {
+      if (report.fukuiFunctions.applicable) {
+        var fk = report.fukuiFunctions;
+        fukuiHtml = '<p class="empty-note" style="margin-bottom:10px">' + esc(fk.method) + '</p>' +
+          '<div class="kv" style="margin-bottom:10px">' +
+          '<span class="k">HOMO degeneracy</span><span class="v">' + esc(fk.homoDegeneracy) + '</span>' +
+          '<span class="k">LUMO degeneracy</span><span class="v">' + esc(fk.lumoDegeneracy) + '</span>' +
+          '<span class="k">&Sigma;f&#43; across pi system</span><span class="v">' + esc(fk.sumFPlus) + '</span>' +
+          '<span class="k">&Sigma;f&#8315; across pi system</span><span class="v">' + esc(fk.sumFMinus) + '</span>' +
+          '</div>' +
+          '<table><thead><tr><th>Atom #</th><th>f&#43; (nucleophile-favored)</th><th>f&#8315; (electrophile-favored)</th><th>f&#8304;</th></tr></thead><tbody>' +
+          fk.perAtom.map(function(a) {
+            return '<tr><td>' + esc(a.atomIndex) + '</td><td>' + esc(a.fPlus) + '</td><td>' + esc(a.fMinus) + '</td><td>' + esc(a.fZero) + '</td></tr>';
+          }).join('') + '</tbody></table>';
+      } else {
+        fukuiHtml = '<p class="empty-note">' + esc(report.fukuiFunctions.reason) + '</p>';
+      }
+    }
+
     var stiffHtml = '<p class="empty-note">Not available.</p>';
     if (report.bondStiffness) {
       var sf = report.bondStiffness;
@@ -545,6 +580,8 @@
       '<section><h3>Volume &amp; Surface Area ' + badge('derived', 'derived') + badge('cited', 'VdW radii cited') + '</h3>' + vdwHtml + '</section>' +
       '<section><h3>Polarizability ' + badge('derived', 'derived') + badge('cited', 'coefficients cited, approximate') + '</h3>' + polHtml + '</section>' +
       '<section><h3>&pi;-Electron Polarizability (Sum-Over-States) ' + badge('derived', 'fully derived, no external table') + '</h3>' + piPolHtml + '</section>' +
+      '<section><h3>Transition Energies / Wavelengths ' + badge('derived', 'fully derived, no external table') + '</h3>' + transHtml + '</section>' +
+      '<section><h3>Fukui Functions (f&#43;/f&#8315;/f&#8304;) ' + badge('derived', 'fully derived, no external table') + '</h3>' + fukuiHtml + '</section>' +
       '<section><h3>Bond Stiffness (Born Model) ' + badge('derived', 'derived') + badge('cited', 'repulsion exponent cited') + '</h3>' + stiffHtml + '</section>' +
       '<section><h3>Raman Activity (d&alpha;/dd) ' + badge('derived', 'fully derived, no external table') + '</h3>' + ramanHtml + '</section>' +
       '<section><h3>Vibrational Normal Modes ' + badge('derived', 'derived') + badge('cited', 'UFF angle-bend term cited') + '</h3>' + vibHtml + '</section>' +
