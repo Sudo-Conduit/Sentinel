@@ -176,7 +176,7 @@
             dipole: {
                 vectorDebye: muDebye.map(function(v) { return Math.round(v * 1000) / 1000; }),
                 magnitudeDebye: Math.round(magnitudeDebye * 1000) / 1000,
-                note: 'Computed from PEOE partial charges over MolecularGeometry.js\'s idealized VSEPR coordinates - not a QM or measured dipole moment. Ring-closure atoms\' positions (see geometry.warnings) carry the same placement uncertainty into this vector. PEOE is a real but approximate method: validated to give the correct polarity direction and exact zero for symmetric nonpolar molecules, but a documented magnitude underestimate (roughly 35-50% of the real value) for small, compact polar hydrides like water and ammonia specifically - treat this as a polarity estimate, not a precise dipole moment.'
+                note: 'Computed from PEOE partial charges over this structure\'s computed coordinates - not a QM or measured dipole moment. Ring-closure atoms\' positions (see geometry.warnings) carry the same placement uncertainty into this vector. PEOE is a real but approximate method: validated to give the correct polarity direction and exact zero for symmetric nonpolar molecules, but a documented magnitude underestimate (roughly 35-50% of the real value) for small, compact polar hydrides like water and ammonia specifically - treat this as a polarity estimate, not a precise dipole moment.'
             },
             version: '0.1'
         };

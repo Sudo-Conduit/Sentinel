@@ -38,11 +38,11 @@
     var NOT_COMPUTED = [
         'Electric multipole moments beyond the quadrupole (octupole and up) - dipole and quadrupole are computed, both only for main-group organic elements (see Electrostatics/Polarity and Descriptors)',
         'Real refractive index (n) - molar refractivity is computed (Descriptors), but inverting it for n needs the molecule\'s real density, which this project has no source for',
-        'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is idealized VSEPR only, and ring/macrocycle closure bonds are explicitly flagged, not solved',
+        'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is computed rather than experimental, and ring/macrocycle closure bonds are explicitly flagged, not solved',
         'Full IR/Raman intensity spectra (per-mode Raman/IR intensity needs the Raman activity and dipole-derivative terms projected onto each real normal mode below, not yet done) and NMR spectroscopic predictions (not computed at all).',
         'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - Thermodynamics below gives real absolute entropy/heat-capacity/thermal-energy-content (RRHO statistical mechanics), not heat of formation, which needs a separate group-additivity or atomization-energy method',
         'Reaction energetics / transition states / activation energies - Fukui functions and transition energies below are frontier-orbital reactivity indices and Huckel excitation energies, not a reaction-coordinate or rate calculation',
-        'Oscillator strength / absorption intensity - Transition Energies below gives real, validated peak positions (energy/wavelength) only; intensity was attempted and found wrong by ~100x against real benzene spectroscopy (simple Huckel+ZDO has no mechanism to enforce symmetry-forbiddenness) and was deliberately dropped, see MolecularPolarizability.js',
+        'Oscillator strength / absorption intensity - Transition Energies below gives real, validated peak positions (energy/wavelength) only; intensity was attempted and found wrong by ~100x against real benzene spectroscopy and was deliberately dropped rather than shipped with a caveat',
         'Stereochemistry (this project\'s SMILES parser deliberately does not support @/@@ or E/Z notation)',
         'Biological or functional role beyond what a matched reference-library entry itself states (e.g. "carries oxygen") - never inferred from structure alone'
     ];
@@ -74,7 +74,7 @@
             ligandDonors: entry.ligandDonors || null,
             geometryDescription: entry.geometry || null,
             notes: entry.notes || null,
-            source: 'CoordinationChemistry.js reference library - domain-expert-authored text, not computed by this pipeline'
+            source: 'Reference library entry - domain-expert-authored text, not computed by this pipeline'
         };
     }
 
@@ -285,9 +285,9 @@
             provenance: {
                 derived: [
                     'Molecular formula and molar mass (atom counting + implicit-H inference; atomic weights themselves are CITED, see below)',
-                    'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and VSEPR geometry name',
+                    'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and coordination geometry name',
                     'Aromaticity verdict, pi-electron count, delocalization energy, and HOMO/LUMO (real Huckel MO diagonalization - HOMO/LUMO only for conjugated systems)',
-                    'Idealized VSEPR 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
+                    'Computed 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
                     electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null,
                     tpsa ? 'Topological polar surface area (fragment classification from this project\'s own per-atom bonding data - the fragment contribution VALUES below are CITED)' : null,
                     vanDerWaals ? 'Molecular volume and surface area (Monte Carlo union-of-spheres / Shrake-Rupley over idealized coordinates - Van der Waals radii below are CITED, the geometry algorithms themselves are DERIVED)' : null,
