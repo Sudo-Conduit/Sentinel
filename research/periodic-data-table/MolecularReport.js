@@ -24,13 +24,13 @@
 //                  context beyond a matched reference-library entry.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry', './MolecularElectrostatics', './MolecularTPSA', './MolecularVanDerWaals', './MolecularPolarizability', './MolecularVibrations', './MolecularVibrationalModes', './MolecularThermodynamics', './MolecularSymmetry', './MolecularDescriptors'], factory);
+        define(['./PDT', './MolecularStructure', './MolecularGeometry', './CoordinationChemistry', './MolecularElectrostatics', './MolecularTPSA', './MolecularVanDerWaals', './MolecularPolarizability', './MolecularReactivity', './MolecularVibrations', './MolecularVibrationalModes', './MolecularThermodynamics', './MolecularSymmetry', './MolecularDescriptors'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'), require('./MolecularTPSA.js'), require('./MolecularVanDerWaals.js'), require('./MolecularPolarizability.js'), require('./MolecularVibrations.js'), require('./MolecularVibrationalModes.js'), require('./MolecularThermodynamics.js'), require('./MolecularSymmetry.js'), require('./MolecularDescriptors.js'));
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./MolecularGeometry.js'), require('./CoordinationChemistry.js'), require('./MolecularElectrostatics.js'), require('./MolecularTPSA.js'), require('./MolecularVanDerWaals.js'), require('./MolecularPolarizability.js'), require('./MolecularReactivity.js'), require('./MolecularVibrations.js'), require('./MolecularVibrationalModes.js'), require('./MolecularThermodynamics.js'), require('./MolecularSymmetry.js'), require('./MolecularDescriptors.js'));
     } else {
-        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics, root.MolecularTPSA, root.MolecularVanDerWaals, root.MolecularPolarizability, root.MolecularVibrations, root.MolecularVibrationalModes, root.MolecularThermodynamics, root.MolecularSymmetry, root.MolecularDescriptors);
+        root.MolecularReport = factory(root.PDT, root.MolecularStructure, root.MolecularGeometry, root.CoordinationChemistry, root.MolecularElectrostatics, root.MolecularTPSA, root.MolecularVanDerWaals, root.MolecularPolarizability, root.MolecularReactivity, root.MolecularVibrations, root.MolecularVibrationalModes, root.MolecularThermodynamics, root.MolecularSymmetry, root.MolecularDescriptors);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics, MolecularTPSA, MolecularVanDerWaals, MolecularPolarizability, MolecularVibrations, MolecularVibrationalModes, MolecularThermodynamics, MolecularSymmetry, MolecularDescriptors) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, MolecularGeometry, CoordinationChemistry, MolecularElectrostatics, MolecularTPSA, MolecularVanDerWaals, MolecularPolarizability, MolecularReactivity, MolecularVibrations, MolecularVibrationalModes, MolecularThermodynamics, MolecularSymmetry, MolecularDescriptors) {
     'use strict';
     if (!MolecularStructure) throw new Error('MolecularReport requires MolecularStructure');
     if (!MolecularGeometry) throw new Error('MolecularReport requires MolecularGeometry');
@@ -38,11 +38,12 @@
     var NOT_COMPUTED = [
         'Electric multipole moments beyond the quadrupole (octupole and up) - dipole and quadrupole are computed, both only for main-group organic elements (see Electrostatics/Polarity and Descriptors)',
         'Real refractive index (n) - molar refractivity is computed (Descriptors), but inverting it for n needs the molecule\'s real density, which this project has no source for',
-        'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is idealized VSEPR only, and ring/macrocycle closure bonds are explicitly flagged, not solved',
-        'Full IR/Raman intensity spectra (per-mode Raman/IR intensity needs the Raman activity and dipole-derivative terms projected onto each real normal mode below, not yet done) and NMR spectroscopic predictions (not computed at all).',
-        'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - Thermodynamics below gives real absolute entropy/heat-capacity/thermal-energy-content (RRHO statistical mechanics), not heat of formation, which needs a separate group-additivity or atomization-energy method',
-        'Reaction energetics / transition states (that is the planned Reactivity module, not this one)',
-        'Stereochemistry (this project\'s SMILES parser deliberately does not support @/@@ or E/Z notation)',
+        'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is computed rather than experimental, and ring/macrocycle closure bonds are explicitly flagged, not solved',
+        'Full IR/Raman intensity spectra - mode frequencies and Raman activity are reported separately below, but per-mode intensities are not. NMR predictions are not computed at all.',
+        'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - the Thermodynamics section gives absolute entropy, heat capacity and thermal energy content, not heat of formation',
+        'Reaction energetics / transition states / activation energies - Fukui functions and transition energies below are reactivity and excitation indices, not a reaction-coordinate or rate calculation',
+        'Oscillator strength / absorption intensity - Transition Energies below gives validated peak positions (energy and wavelength) only, not band intensities',
+        'Stereochemistry - @/@@ and E/Z notation are not supported',
         'Biological or functional role beyond what a matched reference-library entry itself states (e.g. "carries oxygen") - never inferred from structure alone'
     ];
 
@@ -73,7 +74,7 @@
             ligandDonors: entry.ligandDonors || null,
             geometryDescription: entry.geometry || null,
             notes: entry.notes || null,
-            source: 'CoordinationChemistry.js reference library - domain-expert-authored text, not computed by this pipeline'
+            source: 'Reference library entry - domain-expert-authored text, not computed by this pipeline'
         };
     }
 
@@ -169,6 +170,22 @@
         return result;
     }
 
+    function buildTransitionEnergies(molecule, structure, options) {
+        if (options && options.transitionEnergiesResult) return options.transitionEnergiesResult;
+        if (!MolecularPolarizability || !MolecularPolarizability.analyzeTransitionEnergies) return null;
+        var result = MolecularPolarizability.analyzeTransitionEnergies(molecule, Object.assign({ structureResult: structure }, options));
+        if (result.error) return null;
+        return result;
+    }
+
+    function buildFukuiFunctions(molecule, structure, options) {
+        if (options && options.fukuiFunctionsResult) return options.fukuiFunctionsResult;
+        if (!MolecularReactivity || !MolecularReactivity.analyzeFukuiFunctions) return null;
+        var result = MolecularReactivity.analyzeFukuiFunctions(molecule, Object.assign({ structureResult: structure }, options));
+        if (result.error) return null;
+        return result;
+    }
+
     function buildBondStiffness(molecule, structure, options) {
         if (options && options.bondStiffnessResult) return options.bondStiffnessResult;
         if (!MolecularVibrations) return null;
@@ -238,6 +255,8 @@
         var vanDerWaals = buildVanDerWaals(molecule, structure, geometry, options);
         var polarizability = buildPolarizability(molecule, structure, options);
         var piPolarizability = buildPiPolarizability(molecule, structure, geometry, options);
+        var transitionEnergies = buildTransitionEnergies(molecule, structure, options);
+        var fukuiFunctions = buildFukuiFunctions(molecule, structure, options);
         var bondStiffness = buildBondStiffness(molecule, structure, options);
         var ramanActivity = buildRamanActivity(molecule, structure, geometry, options);
         var vibrationalModes = buildVibrationalModes(molecule, structure, geometry, options);
@@ -254,6 +273,8 @@
             vanDerWaals: vanDerWaals,
             polarizability: polarizability,
             piPolarizability: piPolarizability,
+            transitionEnergies: transitionEnergies,
+            fukuiFunctions: fukuiFunctions,
             bondStiffness: bondStiffness,
             ramanActivity: ramanActivity,
             vibrationalModes: vibrationalModes,
@@ -264,14 +285,16 @@
             provenance: {
                 derived: [
                     'Molecular formula and molar mass (atom counting + implicit-H inference; atomic weights themselves are CITED, see below)',
-                    'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and VSEPR geometry name',
+                    'Per-atom implicit hydrogen count, steric number, hybridization, lone pairs, and coordination geometry name',
                     'Aromaticity verdict, pi-electron count, delocalization energy, and HOMO/LUMO (real Huckel MO diagonalization - HOMO/LUMO only for conjugated systems)',
-                    'Idealized VSEPR 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
+                    'Computed 3D coordinates and bond lengths (reference bond-length table below is CITED, placement itself is DERIVED)',
                     electrostatics && electrostatics.applicable ? 'Partial atomic charges and dipole moment (Gasteiger-Marsili PEOE equalization + vector sum over idealized coordinates - electronegativity parameters below are CITED, the equalization itself is DERIVED)' : null,
                     tpsa ? 'Topological polar surface area (fragment classification from this project\'s own per-atom bonding data - the fragment contribution VALUES below are CITED)' : null,
                     vanDerWaals ? 'Molecular volume and surface area (Monte Carlo union-of-spheres / Shrake-Rupley over idealized coordinates - Van der Waals radii below are CITED, the geometry algorithms themselves are DERIVED)' : null,
                     polarizability ? 'Mean molecular polarizability (atomic hybrid component additivity - contribution VALUES below are CITED, with a documented accuracy caveat - see MolecularPolarizability.js)' : null,
                     piPolarizability && piPolarizability.applicable ? 'Pi-electron polarizability (sum-over-states 2nd-order perturbation theory over this project\'s own Huckel MOs and idealized coordinates - fully DERIVED, no external table, see MolecularPolarizability.js analyzePiElectronic)' : null,
+                    transitionEnergies && transitionEnergies.applicable ? 'Transition energies/wavelengths for every occ->unocc Huckel pi-system transition (same sum-over-states eigenbasis as pi-electron polarizability above - fully DERIVED, no external table; oscillator strength/intensity is deliberately NOT included, see notComputed, MolecularPolarizability.js analyzeTransitionEnergies)' : null,
+                    fukuiFunctions && fukuiFunctions.applicable ? 'Fukui functions f+/f-/f0 (frontier molecular orbital approximation to the Parr-Yang Fukui function, condensed to atoms per Yang & Mortier 1986 - fully DERIVED from this project\'s own Huckel MO coefficients, degenerate frontier levels averaged not summed so f+/f- each sum to exactly 1 across the pi system - see MolecularReactivity.js analyzeFukuiFunctions)' : null,
                     bondStiffness ? 'Per-bond mechanical stiffness (Born-model force constant: real repulsion exponent n is CITED per element pair, everything else - Z_eff, bond length, this project\'s own Coulson pi bond order - is DERIVED; see MolecularVibrations.js)' : null,
                     ramanActivity && ramanActivity.applicable ? 'Per-bond pi-electron Raman activity (d(alpha)/d(bond length), finite difference on this project\'s own sum-over-states polarizability - fully DERIVED, see MolecularVibrations.js analyzeRamanActivity)' : null,
                     vibrationalModes ? 'Real mass-weighted 3N-6 (3N-5 if linear) vibrational normal-mode frequencies (cm^-1) - a diagonal valence force field (this project\'s own Born-model bond stretch + a new UFF angle-bend term) projected through a real Wilson B-matrix onto the mass-weighted Cartesian Hessian and diagonalized (real Jacobi eigenvalue solver, self-checked); NO torsion/dihedral or out-of-plane-bending term exists yet, so a genuine torsional/out-of-plane degree of freedom this internal-coordinate set can\'t restrain reports as an honest extra zero rather than a fabricated number - see nonVibrationalModes/extraZeroModesBeyondRigidBody and MolecularVibrationalModes.js' : null,

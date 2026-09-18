@@ -78,6 +78,62 @@
     // number to validate it against.
     var ALPHA_C_REFERENCE = PDT.get('C').orbital_energy;
 
+    // CITED: valence-state ionization energies (VSIEs) for the valence p
+    // orbital - Harry Gray, "Electrons and Chemical Bonding," Benjamin,
+    // 1964, Appendix. These are the standard alpha values semi-empirical
+    // MO theory actually uses (Hückel's Coulomb integral alpha_i IS the
+    // energy of an electron in atom i's isolated p orbital, and Extended
+    // Hückel sets H_ii = -VSIE for exactly this reason - Hoffmann 1963).
+    //
+    // WHY THIS EXISTS: PDT's orbital_energy is a bare hydrogenic estimate
+    // (-13.6*Z_eff^2/n^2 with Slater screening), and PDT's own calibration
+    // record documents it as 3-5x too large for light elements - carbon
+    // comes out -35.91 eV against its real 11.26 eV ionization energy.
+    // That absolute error is invisible in any DIFFERENCE (gapEv,
+    // hardnessEv, delocalizationEnergyEv - alpha cancels) but lands
+    // directly in any SUM (electronegativity = -(HOMO+LUMO)/2) and is
+    // squared by electrophilicity. Those two dimensions of the same model
+    // are not a defect to warn about - they are a router: difference-type
+    // quantities were always physical, sum-type ones needed a real
+    // absolute anchor, and this table is that anchor.
+    //
+    // Cross-validated against an independent set before being wired in:
+    // Lowe, "Quantum Chemistry" ch.10 eqs.10-1/10-3 (citing Pople &
+    // Segal) gives C 2p = -10.67 eV and C 2s = -19.44 eV; Gray gives
+    // -10.66 and -19.47. Two unrelated primary sources agreeing to 0.03 eV.
+    //
+    // Valence p only - a pi system is built from p_z orbitals, so H (1s,
+    // no p orbital, never a pi-system ring atom) is deliberately absent.
+    var VSIE_P_EV = {
+        B: -8.31, C: -10.66, N: -13.14, O: -15.87, F: -18.72,
+        Al: -5.95, Si: -7.81, P: -10.17, S: -11.65, Cl: -13.76,
+        Ga: -5.95, Ge: -7.56, As: -9.05, Se: -10.79, Br: -12.52
+    };
+
+    // Resolves every atom's alpha on ONE scale, never a mix. If any atom
+    // in the system lacks a cited VSIE, the WHOLE system falls back to
+    // PDT's hydrogenic estimate rather than pairing a cited carbon with an
+    // estimated neighbour: alpha DIFFERENCES between adjacent atoms are
+    // what drive heteroatom pi chemistry, so a mixed scale would produce a
+    // difference that is meaningless in both scales - strictly worse than
+    // being uniformly on the coarser one. The scale actually used is
+    // reported (alphaSource) rather than assumed.
+    function resolveAlphas(atoms) {
+        var allCited = atoms.every(function(a) { return VSIE_P_EV[a.symbol] !== undefined; });
+        if (allCited) {
+            return {
+                alphas: atoms.map(function(a) { return VSIE_P_EV[a.symbol]; }),
+                source: 'cited-vsie',
+                carbonReference: VSIE_P_EV.C
+            };
+        }
+        return {
+            alphas: atoms.map(function(a) { return PDT.get(a.symbol).orbital_energy; }),
+            source: 'hydrogenic-estimate',
+            carbonReference: ALPHA_C_REFERENCE
+        };
+    }
+
     // 'physical' — the real fix for 'ratio''s limitation: beta(bond) =
     // beta0 * f(Z_eff) * g(d). Both factors are dimensionless and equal 1
     // for a C-C bond by construction, so every all-carbon result (e.g.
@@ -143,10 +199,16 @@
     var BENZENE_LOWEST_ABSORPTION_NM = 255;
     var BETA_SPECTROSCOPIC_EV = -Math.round((1239.84 / BENZENE_LOWEST_ABSORPTION_NM / 2) * 100) / 100;
 
-    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0, explicitDistanceAngstrom) {
+    // alphaCarbonReference MUST be carbon's alpha on the same scale the
+    // alphaI/alphaJ arguments came from - the 'ratio' model's whole design
+    // is that the ratio is 1 for a C-C bond, and that only holds if
+    // numerator and denominator share a scale. Defaults to the hydrogenic
+    // reference for callers predating the cited-VSIE scale.
+    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0, explicitDistanceAngstrom, alphaCarbonReference) {
         var base = beta0 !== undefined ? beta0 : BETA_EV;
         if (betaModel === 'ratio') {
-            return base * Math.sqrt((alphaI / ALPHA_C_REFERENCE) * (alphaJ / ALPHA_C_REFERENCE));
+            var cRef = (typeof alphaCarbonReference === 'number') ? alphaCarbonReference : ALPHA_C_REFERENCE;
+            return base * Math.sqrt((alphaI / cRef) * (alphaJ / cRef));
         }
         if (betaModel === 'physical') {
             return base * betaZeffFactor(symbolI, symbolJ) * betaDistanceFactor(symbolI, symbolJ, explicitDistanceAngstrom);
@@ -298,7 +360,7 @@
     // homoOpenShell mirrors fillElectrons' own openShell flag: true when
     // the HOMO level is a degenerate level left half-filled (the same
     // antiaromatic/diradical signal fillElectrons already reports).
-    function homoLumo(eigenvalues, piElectrons) {
+    function homoLumo(eigenvalues, piElectrons, alphaSource) {
         var levels = groupDegenerateLevels(eigenvalues);
         var remaining = piElectrons;
         var homoEnergy = null, lumoEnergy = null, homoOpenShell = false;
@@ -381,7 +443,37 @@
             electronegativityEv: electronegativityEv === null ? null : Math.round(electronegativityEv * 1000) / 1000,
             electrophilicityEv: electrophilicityEv === null ? null : Math.round(electrophilicityEv * 1000) / 1000,
             opticalGapNm: opticalGapNm,
-            conductivityClass: conductivityClass
+            conductivityClass: conductivityClass,
+            // Which absolute energy scale homoEnergyEv/lumoEnergyEv/
+            // electronegativityEv/electrophilicityEv are quoted on. The
+            // difference-type fields above (gapEv, hardnessEv,
+            // softnessPerEv, opticalGapNm, conductivityClass) are
+            // scale-independent and identical either way.
+            alphaSource: alphaSource || 'hydrogenic-estimate',
+            // Surfaces the comment above as an actual field a caller/UI can
+            // render, not just a code comment nobody looking at output ever
+            // sees. homoEnergyEv/lumoEnergyEv/electronegativityEv/
+            // electrophilicityEv all inherit PDT's alpha (bare hydrogenic
+            // Z_eff estimate), which PDT.js's own calibration record
+            // already documents as 3-5x too large for light (n=2)
+            // elements even after Slater's-rules correction - confirmed
+            // concretely: carbon's alpha is -35.91 eV vs. its real first
+            // ionization energy, 11.26 eV. gapEv/hardnessEv/opticalGapNm/
+            // conductivityClass do NOT have this problem (they're
+            // DIFFERENCES off the separately spectroscopically-calibrated
+            // beta above, so alpha's error cancels) - only the two fields
+            // that SUM rather than difference HOMO/LUMO do.
+            // States which scale is in play and what follows from it,
+            // rather than flagging the sum-type fields as a hazard. The
+            // split between scale-carrying and scale-invariant quantities
+            // is a property of the arithmetic (sums keep alpha, differences
+            // cancel it), not a defect - it tells a caller which of the two
+            // regimes a given number lives in.
+            absoluteEnergyScale: (homoEnergy === null) ? null : (
+                (alphaSource === 'cited-vsie')
+                    ? 'Frontier orbital energies, electronegativity and electrophilicity are anchored to published reference data, so their absolute scale is physical. Gap, hardness, softness and optical gap are independent of that anchor and identical either way.'
+                    : 'No published reference value is available for at least one atom in this system, so the whole system stays on one estimated scale rather than mixing two. Absolute frontier-orbital energies, electronegativity and electrophilicity run several times too large; their ORDERING and RELATIVE spacing remain meaningful. Gap, hardness, softness and optical gap are unaffected.'
+            )
         };
     }
 
@@ -444,7 +536,6 @@
 
         var needsDoubleBond = [];
         var lonePairDonors = [];
-        var alphas = [];
         var degree = new Array(n).fill(0);
         for (var idx = 0; idx < n; idx++) {
             var atom = atoms[idx];
@@ -453,10 +544,14 @@
             else if (role === 'lonePairDonor') lonePairDonors.push(idx);
             else return { error: 'Atom ' + idx + ' (' + atom.symbol + ') needs role "needsDoubleBond" or "lonePairDonor" — this module does not infer it automatically.' };
 
-            var el = PDT.get(atom.symbol);
-            if (!el) return { error: 'Unknown element: ' + atom.symbol };
-            alphas.push(el.orbital_energy); // real, Z_eff-derived — not guessed
+            if (!PDT.get(atom.symbol)) return { error: 'Unknown element: ' + atom.symbol };
         }
+        // One scale for the whole system - cited VSIEs where every atom has
+        // one, PDT's hydrogenic estimate otherwise. Never mixed; see
+        // resolveAlphas.
+        var alphaResolution = resolveAlphas(atoms);
+        var alphas = alphaResolution.alphas;
+        var alphaCarbonRef = alphaResolution.carbonReference;
         bonds.forEach(function(b) { degree[b[0]]++; degree[b[1]]++; });
 
         // A simple monocyclic ring (every atom degree 2, edge count ==
@@ -494,7 +589,7 @@
             H[i][i] = alphas[i];
         }
         bonds.forEach(function(e) {
-            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel, atoms[e[0]].symbol, atoms[e[1]].symbol);
+            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel, atoms[e[0]].symbol, atoms[e[1]].symbol, undefined, undefined, alphaCarbonRef);
             H[e[0]][e[1]] = b;
             H[e[1]][e[0]] = b;
         });
@@ -530,7 +625,7 @@
             return v !== undefined ? v : distanceOverrides[j + '|' + i];
         }
         bonds.forEach(function(e) {
-            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV, overrideDistanceFor(e[0], e[1]));
+            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV, overrideDistanceFor(e[0], e[1]), alphaCarbonRef);
             Hspec[e[0]][e[1]] = bs;
             Hspec[e[1]][e[0]] = bs;
         });
@@ -549,7 +644,7 @@
                 if (counted[v]) return;
                 var w = matching[v];
                 counted[v] = counted[w] = true;
-                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel, atoms[v].symbol, atoms[w].symbol));
+                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel, atoms[v].symbol, atoms[w].symbol, undefined, undefined, alphaCarbonRef));
             });
         }
         lonePairDonors.forEach(function(v) { referenceEnergy += 2 * alphas[v]; });
@@ -589,7 +684,8 @@
             fullyConjugated: fullyConjugated,
             huckelApplicable: huckelApplicable,
             eigenvaluesEv: eigenvalues.map(function(e) { return Math.round(e * 1000) / 1000; }),
-            homoLumo: homoLumo(eigenvaluesSpec, piElectrons),
+            homoLumo: homoLumo(eigenvaluesSpec, piElectrons, alphaResolution.source),
+            alphaSource: alphaResolution.source,
             openShellHOMO: fill.openShell,
             totalPiEnergyEv: Math.round(fill.totalEnergy * 1000) / 1000,
             localizedReferenceEv: Math.round(referenceEnergy * 1000) / 1000,
@@ -610,7 +706,7 @@
             },
             originalIndex: system.originalIndex || null,
             note: fill.openShell
-                ? 'Degenerate HOMO left half-filled — simple closed-shell Huckel filling cannot honestly report a single destabilization number here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is beyond this model.'
+                ? 'Degenerate HOMO left half-filled - no single destabilization number can be honestly reported here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is outside this model.'
                 : (!isSimpleMonocycle ? 'Not a simple monocyclic ring — piElectrons/conventional4nPlus2Style are informational only; the verdict above comes from delocalizationEnergyEv and openShellHOMO, not electron-count parity.' : undefined)
         };
     }

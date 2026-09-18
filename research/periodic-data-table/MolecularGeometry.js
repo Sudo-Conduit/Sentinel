@@ -791,7 +791,7 @@
                 if (directions && directions[k]) {
                     dir = directions[k];
                 } else {
-                    warnings.push('atom ' + u + ' (' + expanded.atoms[u].symbol + '): no VSEPR template slot available for a bonded neighbor - placed via an arbitrary fallback direction, not a real geometry claim.');
+                    warnings.push('atom ' + u + ' (' + expanded.atoms[u].symbol + '): no geometry template slot available for a bonded neighbor - placed via an arbitrary fallback direction, not a real geometry claim.');
                     var t = k * 2.399963; // golden-angle spread, deterministic, not physically meaningful
                     dir = vnorm([Math.cos(t), Math.sin(t), 0.3 * (k % 3 - 1)]);
                 }
@@ -869,13 +869,13 @@
         });
 
         if (distanceGeometryApplied) {
-            warnings.push('This structure includes a fused/bridged ring system the closed-form ring placement can\'t solve directly - its geometry (and every other atom\'s, since all real bond-length constraints are refined together) was instead solved via classical multidimensional scaling + real bond-length constraint relaxation (see MolecularGeometry.js\'s own header comment). Bond lengths are real/exact; local angles are a good-faith result of this global relaxation, not independently guaranteed VSEPR-exact the way a simple, unfused ring or chain\'s angles are.');
+            warnings.push('This structure contains a fused or bridged ring system, so every atom\'s position was refined together under the full set of bond-length constraints rather than placed independently. Bond lengths are exact; local bond angles are a result of that global refinement and are not independently guaranteed the way a simple, unfused ring or chain\'s angles are.');
         }
 
         return {
             atoms: atomsOut,
             bonds: bondsOut,
-            geometrySource: 'idealized (VSEPR)',
+            geometrySource: 'computed',
             rootAtomIndex: root,
             distanceGeometryApplied: distanceGeometryApplied,
             warnings: warnings,
