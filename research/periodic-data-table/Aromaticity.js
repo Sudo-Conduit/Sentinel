@@ -471,8 +471,8 @@
             // regimes a given number lives in.
             absoluteEnergyScale: (homoEnergy === null) ? null : (
                 (alphaSource === 'cited-vsie')
-                    ? 'homoEnergyEv/lumoEnergyEv/electronegativityEv/electrophilicityEv are anchored to cited valence-state ionization energies (Gray 1964; carbon 2p = -10.66 eV), so their absolute scale is physical. gapEv/hardnessEv/softnessPerEv/opticalGapNm are alpha-independent and identical on either scale.'
-                    : 'homoEnergyEv/lumoEnergyEv/electronegativityEv/electrophilicityEv are on PDT\'s hydrogenic alpha scale (no cited VSIE for at least one atom in this system, so the whole system stays on one uncalibrated scale rather than mixing). Their absolute magnitude runs several times too large; their ORDERING and RELATIVE spacing remain meaningful. gapEv/hardnessEv/softnessPerEv/opticalGapNm are alpha-independent and unaffected.'
+                    ? 'Frontier orbital energies, electronegativity and electrophilicity are anchored to published reference data, so their absolute scale is physical. Gap, hardness, softness and optical gap are independent of that anchor and identical either way.'
+                    : 'No published reference value is available for at least one atom in this system, so the whole system stays on one estimated scale rather than mixing two. Absolute frontier-orbital energies, electronegativity and electrophilicity run several times too large; their ORDERING and RELATIVE spacing remain meaningful. Gap, hardness, softness and optical gap are unaffected.'
             )
         };
     }
@@ -706,7 +706,7 @@
             },
             originalIndex: system.originalIndex || null,
             note: fill.openShell
-                ? 'Degenerate HOMO left half-filled — simple closed-shell Huckel filling cannot honestly report a single destabilization number here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is beyond this model.'
+                ? 'Degenerate HOMO left half-filled - no single destabilization number can be honestly reported here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is outside this model.'
                 : (!isSimpleMonocycle ? 'Not a simple monocyclic ring — piElectrons/conventional4nPlus2Style are informational only; the verdict above comes from delocalizationEnergyEv and openShellHOMO, not electron-count parity.' : undefined)
         };
     }

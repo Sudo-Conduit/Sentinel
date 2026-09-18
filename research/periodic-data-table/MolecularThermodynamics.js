@@ -230,7 +230,7 @@
             standardPressurePa: STANDARD_PRESSURE_PA,
             symmetryNumberUsed: sigma,
             symmetryNumberSource: symmetryNumberSource,
-            symmetryNumberCaveat: symmetryNumberSource.indexOf('fallback') !== -1 ? 'sigma=1 fallback used (see symmetryNumberSource) - this OVERSTATES rotational entropy by R*ln(sigma_real) for any molecule that actually has rotational symmetry.' : null,
+            symmetryNumberCaveat: symmetryNumberSource.indexOf('fallback') !== -1 ? 'Rotational symmetry number defaulted to 1 - this OVERSTATES rotational entropy for any molecule that actually has rotational symmetry.' : null,
             entropyJPerMolK: S,
             entropyComponentsJPerMolK: { translational: trans.S, rotational: rot.S, vibrational: vib.S },
             heatCapacityCvJPerMolK: Cv,
@@ -240,7 +240,7 @@
             rotor: rot.monatomic ? 'monatomic' : (rot.linear ? 'linear' : 'nonlinear'),
             linearBendCaveat: linearBendCaveat,
             skippedImaginaryModes: vib.skippedImaginary,
-            note: 'Formation enthalpy (delta-Hf) is NOT computed here - RRHO gives real absolute entropy/heat-capacity/thermal-energy-content, not heat of formation, which needs either group additivity (Benson) or an atomization-energy route (a separate task).',
+            note: 'Formation enthalpy (delta-Hf) is NOT computed here. The values above are absolute entropy, heat capacity, and thermal energy content - not heat of formation.',
             version: '0.1'
         };
     }

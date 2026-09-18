@@ -39,11 +39,11 @@
         'Electric multipole moments beyond the quadrupole (octupole and up) - dipole and quadrupole are computed, both only for main-group organic elements (see Electrostatics/Polarity and Descriptors)',
         'Real refractive index (n) - molar refractivity is computed (Descriptors), but inverting it for n needs the molecule\'s real density, which this project has no source for',
         'Real (measured or QM-optimized) bond lengths and angles - this report\'s geometry is computed rather than experimental, and ring/macrocycle closure bonds are explicitly flagged, not solved',
-        'Full IR/Raman intensity spectra (per-mode Raman/IR intensity needs the Raman activity and dipole-derivative terms projected onto each real normal mode below, not yet done) and NMR spectroscopic predictions (not computed at all).',
-        'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - Thermodynamics below gives real absolute entropy/heat-capacity/thermal-energy-content (RRHO statistical mechanics), not heat of formation, which needs a separate group-additivity or atomization-energy method',
-        'Reaction energetics / transition states / activation energies - Fukui functions and transition energies below are frontier-orbital reactivity indices and Huckel excitation energies, not a reaction-coordinate or rate calculation',
-        'Oscillator strength / absorption intensity - Transition Energies below gives real, validated peak positions (energy/wavelength) only; intensity was attempted and found wrong by ~100x against real benzene spectroscopy and was deliberately dropped rather than shipped with a caveat',
-        'Stereochemistry (this project\'s SMILES parser deliberately does not support @/@@ or E/Z notation)',
+        'Full IR/Raman intensity spectra - mode frequencies and Raman activity are reported separately below, but per-mode intensities are not. NMR predictions are not computed at all.',
+        'Formation enthalpy (delta-Hf), free energy, and reaction thermodynamics - the Thermodynamics section gives absolute entropy, heat capacity and thermal energy content, not heat of formation',
+        'Reaction energetics / transition states / activation energies - Fukui functions and transition energies below are reactivity and excitation indices, not a reaction-coordinate or rate calculation',
+        'Oscillator strength / absorption intensity - Transition Energies below gives validated peak positions (energy and wavelength) only, not band intensities',
+        'Stereochemistry - @/@@ and E/Z notation are not supported',
         'Biological or functional role beyond what a matched reference-library entry itself states (e.g. "carries oxygen") - never inferred from structure alone'
     ];
 
