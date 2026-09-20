@@ -12,11 +12,13 @@
  *   in a PDFVaultX PDF) require this instead of keeping their own copies,
  *   so the two build steps can never drift out of sync with each other.
  *
- *   three.min.js is a vendored, committed copy (r128, MIT), not a CDN
- *   reference -- this project vendors its dependencies and reviews them
- *   rather than pulling from a CDN at load time or a package registry at
- *   build time, and this directory otherwise has zero external runtime
- *   dependencies (no ESM, no CDN).
+ *   three.min.js and pdf-lib.min.js are vendored, committed copies (r128
+ *   MIT, and the same pdf-lib UMD build already vendored+reviewed at
+ *   pooledimpact/mountainshift/v2/lib/pdf-lib.min.js), not CDN references
+ *   -- this project vendors its dependencies and reviews them rather than
+ *   pulling from a CDN at load time or a package registry at build time,
+ *   and this directory otherwise has zero external runtime dependencies
+ *   (no ESM, no CDN).
  * @type {Object<string, {entry: string, deps: string[]}>}
  */
 'use strict';
@@ -53,7 +55,8 @@ const VIEWERS = {
         entry: 'ChemistryProblemGenerator.html',
         deps: [
             'PDT.js', 'Smiles.js', 'Aromaticity.js', 'MolecularStructure.js',
-            'RulesEngine.js', 'Stoichiometry.js', 'ChemistryProblemGenerator.js'
+            'RulesEngine.js', 'Stoichiometry.js', 'ChemistryProblemGenerator.js',
+            'pdf-lib.min.js', 'ChemistryPdfExport.js'
         ]
     }
 };

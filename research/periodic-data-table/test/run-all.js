@@ -40,8 +40,11 @@ var suites = [
 // rather than a plain suite object like every other require() above, so
 // it is awaited here and pushed in before reporting rather than changing
 // TestRunner's own synchronous aggregate() to know about promises.
-Promise.resolve(require('./BuildViewerPdf.test.js')).then(function(buildViewerPdfSuite) {
-  suites.push(buildViewerPdfSuite);
+Promise.all([
+  require('./BuildViewerPdf.test.js'),
+  require('./ChemistryPdfExport.test.js')
+]).then(function(asyncSuites) {
+  asyncSuites.forEach(function(suite) { suites.push(suite); });
 
   var report = TestRunner.run('report', suites);
   report.lines.forEach(function(line) { console.log(line); });

@@ -5,15 +5,15 @@
 <title>Chemistry Problem Generator</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
-  :root { color-scheme: light dark; }
+  :root { color-scheme: light; }
   body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f6f8; color: #1a1a1a; max-width: 860px; margin-left: auto; margin-right: auto; }
   h1 { font-size: 20px; margin: 0 0 4px; }
   h2 { font-size: 15px; margin: 0 0 10px; }
   .sub { color: #666; font-size: 13px; margin: 0 0 20px; }
   .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
   label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
-  select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; }
-  button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; cursor: pointer; }
+  select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; background: #fff; color: #1a1a1a; }
+  button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; color: #1a1a1a; cursor: pointer; }
   button.primary { background: #3b6ea5; color: #fff; border-color: #3b6ea5; }
   button:disabled { opacity: 0.5; cursor: default; }
   .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
@@ -38,6 +38,16 @@
   .feedback { font-size: 13px; font-weight: 600; margin-top: 6px; }
   .feedback.correct { color: #1e6b3a; }
   .feedback.incorrect { color: #b3261e; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid #ddd; }
+  .tab-btn { background: none; border: none; border-radius: 6px 6px 0 0; padding: 8px 16px; font-weight: 600; color: #666; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab-btn.active { color: #3b6ea5; border-bottom-color: #3b6ea5; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  .export-option { border-top: 1px solid #eee; padding-top: 14px; margin-top: 14px; }
+  .export-option:first-child { border-top: none; padding-top: 0; margin-top: 0; }
+  .export-desc { font-size: 13px; color: #666; margin: 0 0 8px; }
+  .export-status { font-size: 12px; color: #666; margin-top: 6px; }
+  .export-status.error { color: #b3261e; }
   @media print {
     body { background: #fff; padding: 0; }
     .no-print { display: none !important; }
@@ -51,52 +61,81 @@
 <h1>Chemistry Problem Generator &amp; Explainer</h1>
 <p class="sub">Deterministic gen-chem practice problems (molar mass, mass&harr;mole conversion, percent composition, equation balancing) with real, step-by-step derivations. Same seed always gives the same problem, so a worksheet and its answer key always stay in sync.</p>
 
-<div class="panel no-print">
-  <h2>Single problem</h2>
-  <div class="row">
-    <div class="field">
-      <label for="typeSelect">Problem type</label>
-      <select id="typeSelect"></select>
-    </div>
-    <div class="field">
-      <label for="seedInput">Seed</label>
-      <input type="number" id="seedInput" value="1">
-    </div>
-    <button id="randomizeSeed">Randomize seed</button>
-    <button class="primary" id="generateOne">Generate</button>
-  </div>
-  <div id="oneProblem"></div>
+<div class="tabs no-print">
+  <button class="tab-btn active" id="tabBtnSingle" data-tab="single">Single Problem</button>
+  <button class="tab-btn" id="tabBtnWorksheet" data-tab="worksheet">Worksheet</button>
+  <button class="tab-btn" id="tabBtnExport" data-tab="export">PDF Export</button>
 </div>
 
-<div class="panel no-print">
-  <h2>Worksheet</h2>
-  <div class="row">
-    <div class="field">
-      <label for="countInput"># of problems</label>
-      <input type="number" id="countInput" value="10" min="1" max="50">
+<div class="tab-content active" id="tabSingle">
+  <div class="panel no-print">
+    <h2>Single problem</h2>
+    <div class="row">
+      <div class="field">
+        <label for="typeSelect">Problem type</label>
+        <select id="typeSelect"></select>
+      </div>
+      <div class="field">
+        <label for="seedInput">Seed</label>
+        <input type="number" id="seedInput" value="1">
+      </div>
+      <button id="randomizeSeed">Randomize seed</button>
+      <button class="primary" id="generateOne">Generate</button>
     </div>
-    <div class="field">
-      <label for="startSeedInput">Starting seed</label>
-      <input type="number" id="startSeedInput" value="1">
-    </div>
-    <button class="primary" id="generateWorksheet">Generate worksheet</button>
-    <button id="printWorksheet">Print</button>
-  </div>
-  <div class="field" style="margin-top:8px;">
-    <label>Types to include</label>
-    <div class="checkboxes" id="typeCheckboxes"></div>
+    <div id="oneProblem"></div>
   </div>
 </div>
 
-<div class="panel" id="worksheetPanel" style="display:none;">
-  <h2>Worksheet</h2>
-  <div id="worksheetQuestions"></div>
-  <div class="row no-print" style="margin-top:14px;">
-    <button id="toggleAnswerKey">Show answer key</button>
+<div class="tab-content" id="tabWorksheet">
+  <div class="panel no-print">
+    <h2>Worksheet</h2>
+    <div class="row">
+      <div class="field">
+        <label for="countInput"># of problems</label>
+        <input type="number" id="countInput" value="10" min="1" max="50">
+      </div>
+      <div class="field">
+        <label for="startSeedInput">Starting seed</label>
+        <input type="number" id="startSeedInput" value="1">
+      </div>
+      <button class="primary" id="generateWorksheet">Generate worksheet</button>
+      <button id="printWorksheet">Print</button>
+    </div>
+    <div class="field" style="margin-top:8px;">
+      <label>Types to include</label>
+      <div class="checkboxes" id="typeCheckboxes"></div>
+    </div>
   </div>
-  <div class="answer-key page-break" id="answerKey">
-    <h2>Answer key</h2>
-    <div id="answerKeyContent"></div>
+
+  <div class="panel" id="worksheetPanel" style="display:none;">
+    <h2>Worksheet</h2>
+    <div id="worksheetQuestions"></div>
+    <div class="row no-print" style="margin-top:14px;">
+      <button id="toggleAnswerKey">Show answer key</button>
+    </div>
+    <div class="answer-key page-break" id="answerKey">
+      <h2>Answer key</h2>
+      <div id="answerKeyContent"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tab-content" id="tabExport">
+  <div class="panel no-print">
+    <h2>PDF Export</h2>
+    <p class="export-desc">Exports the worksheet currently generated on the Worksheet tab. Generate a worksheet first if the buttons below are disabled.</p>
+
+    <div class="export-option">
+      <p class="export-desc"><strong>Questions only</strong> &mdash; one PDF with just the numbered questions, no answers.</p>
+      <button class="primary" id="exportQuestionsOnly" disabled>Download Questions.pdf</button>
+    </div>
+
+    <div class="export-option">
+      <p class="export-desc"><strong>Questions + Answer Key</strong> &mdash; two PDFs: Questions.pdf (questions only) and AnswerKey.pdf (each answer with full steps).</p>
+      <button class="primary" id="exportQuestionsAndKey" disabled>Download Questions.pdf + AnswerKey.pdf</button>
+    </div>
+
+    <div class="export-status" id="exportStatus"></div>
   </div>
 </div>
 
@@ -107,6 +146,8 @@
 <script src="./RulesEngine.js"></script>
 <script src="./Stoichiometry.js"></script>
 <script src="./ChemistryProblemGenerator.js"></script>
+<script src="./pdf-lib.min.js"></script>
+<script src="./ChemistryPdfExport.js"></script>
 
 <script>
 'use strict';
@@ -124,6 +165,23 @@
     var answerKey = document.getElementById('answerKey');
     var answerKeyContent = document.getElementById('answerKeyContent');
     var toggleAnswerKeyBtn = document.getElementById('toggleAnswerKey');
+    var exportQuestionsOnlyBtn = document.getElementById('exportQuestionsOnly');
+    var exportQuestionsAndKeyBtn = document.getElementById('exportQuestionsAndKey');
+    var exportStatus = document.getElementById('exportStatus');
+
+    // The worksheet currently on screen (Worksheet tab) is the export
+    // source for the PDF Export tab, rather than duplicating the
+    // count/seed/type-checkbox controls a second time.
+    var lastWorksheetResults = null;
+
+    document.querySelectorAll('.tab-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+            document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+            btn.classList.add('active');
+            document.getElementById('tab' + btn.dataset.tab.charAt(0).toUpperCase() + btn.dataset.tab.slice(1)).classList.add('active');
+        });
+    });
 
     var types = ChemistryProblemGenerator.run('types').types;
 
@@ -264,10 +322,12 @@
         answerKey.classList.remove('shown');
         toggleAnswerKeyBtn.textContent = 'Show answer key';
 
+        var results = [];
         for (var i = 0; i < count; i++) {
             var typeId = selectedTypes[i % selectedTypes.length];
             var seed = startSeed + i;
             var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
+            results.push(result);
 
             var item = document.createElement('div');
             item.className = 'worksheet-item';
@@ -288,6 +348,12 @@
         }
         worksheetPanel.style.display = 'block';
         worksheetPanel.scrollIntoView({ behavior: 'smooth' });
+
+        lastWorksheetResults = results;
+        exportQuestionsOnlyBtn.disabled = false;
+        exportQuestionsAndKeyBtn.disabled = false;
+        exportStatus.textContent = '';
+        exportStatus.className = 'export-status';
     });
 
     toggleAnswerKeyBtn.addEventListener('click', function() {
@@ -297,6 +363,50 @@
 
     document.getElementById('printWorksheet').addEventListener('click', function() {
         window.print();
+    });
+
+    function triggerDownload(bytes, filename) {
+        var blob = new Blob([bytes], { type: 'application/pdf' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+    }
+
+    function withExportStatus(btn, workPromise) {
+        exportStatus.className = 'export-status';
+        exportStatus.textContent = 'Building PDF…';
+        btn.disabled = true;
+        workPromise.then(function() {
+            exportStatus.textContent = 'Done.';
+        }).catch(function(err) {
+            exportStatus.className = 'export-status error';
+            exportStatus.textContent = 'PDF export failed: ' + (err && err.message ? err.message : err);
+        }).then(function() {
+            btn.disabled = false;
+        });
+    }
+
+    exportQuestionsOnlyBtn.addEventListener('click', function() {
+        if (!lastWorksheetResults) return;
+        withExportStatus(exportQuestionsOnlyBtn, ChemistryPdfExport.buildQuestionsPdf(lastWorksheetResults, { title: 'Chemistry Worksheet' }).then(function(bytes) {
+            triggerDownload(bytes, 'Questions.pdf');
+        }));
+    });
+
+    exportQuestionsAndKeyBtn.addEventListener('click', function() {
+        if (!lastWorksheetResults) return;
+        withExportStatus(exportQuestionsAndKeyBtn, Promise.all([
+            ChemistryPdfExport.buildQuestionsPdf(lastWorksheetResults, { title: 'Chemistry Worksheet' }),
+            ChemistryPdfExport.buildAnswerKeyPdf(lastWorksheetResults, { title: 'Chemistry Worksheet — Answer Key' })
+        ]).then(function(pdfs) {
+            triggerDownload(pdfs[0], 'Questions.pdf');
+            triggerDownload(pdfs[1], 'AnswerKey.pdf');
+        }));
     });
 
     generateOneProblem();
