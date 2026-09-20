@@ -8,11 +8,12 @@
  *   standalone .html a human can move, share, or double-click on its own.
  *
  *   This is the same principle PDFVaultXReader.html already applies to
- *   pdf.js (vendored and inlined, no external file needed to run it):
- *   the HTML file itself becomes the archive. External CDN scripts
- *   (three.js) are left alone -- this only inlines the repo's OWN files;
- *   an unpacking/opening host still needs network for a real third-party
- *   library.
+ *   pdf.js (vendored and inlined, no external file needed to run it): the
+ *   HTML file itself becomes the archive. three.js is vendored too (see
+ *   three.min.js, r128, MIT) and listed as an ordinary local dependency
+ *   in ViewerManifest.js -- this project vendors and reviews its
+ *   dependencies rather than pulling from a CDN, so nothing here should
+ *   still need network access to run.
  *
  *   Primary surface is run(command), this project's standing convention:
  *   the actual substitution logic lives in inline(viewerKey), and run()

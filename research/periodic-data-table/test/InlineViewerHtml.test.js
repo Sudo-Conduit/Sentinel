@@ -29,11 +29,7 @@ Object.keys(VIEWERS).forEach(function(viewerKey) {
     return result.html.indexOf(depSource) !== -1;
   }));
 
-  check(viewerKey + ': an external CDN script (three.js), if the viewer has one, is left untouched, not inlined', function() {
-    var onDiskEntry = fs.readFileSync(path.join(__dirname, '..', viewer.entry), 'utf8');
-    var cdnTags = onDiskEntry.match(/<script src="https?:\/\/[^"]+"><\/script>/g) || [];
-    return cdnTags.every(function(tag) { return result.html.indexOf(tag) !== -1; });
-  }());
+  check(viewerKey + ': output has no remaining reference to a CDN or other external host (everything is vendored)', !/<script src="https?:\/\//.test(result.html));
 
   check(viewerKey + ': dependencies appear in the output in the same order ViewerManifest.js lists them', function() {
     var positions = viewer.deps.map(function(dep) {
