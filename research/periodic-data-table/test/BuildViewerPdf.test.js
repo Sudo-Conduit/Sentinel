@@ -84,9 +84,14 @@ function runAsync() {
           var fresh = BuildViewerPdf.buildManifest(viewerKey);
           check(viewerKey + ': ostore.json embedded parses and matches buildManifest()\'s shape (savedAt excluded, it is a fresh timestamp)', manifest.appId === fresh.appId && manifest.containerVersion === fresh.containerVersion && JSON.stringify(manifest.data.dependencies) === JSON.stringify(fresh.data.dependencies));
 
-          // Clean up the built PDF - it's a build artifact, not something
-          // this test suite wants left behind in the working tree.
-          fs.unlinkSync(result.outPath);
+          // No cleanup here, matching BuildTerminalPdf.test.js's own
+          // round-trip check: it rebuilds the real, committed <viewerKey>.pdf
+          // in place rather than deleting it afterward. The rebuilt file is
+          // structurally identical to what's committed (only ostore.json's
+          // savedAt and the cover page's date differ), so this is never a
+          // destructive test - a plain `node test/run-all.js` just refreshes
+          // each viewer PDF to prove it still builds cleanly from current
+          // source.
         });
       });
     });
