@@ -12,7 +12,8 @@ var suites = [
   require('./Aromaticity.test.js'),
   require('./PDT.test.js'),
   require('./MolecularReactivity.test.js'),
-  require('./MolecularPolarizability.test.js')
+  require('./MolecularPolarizability.test.js'),
+  require('./Stoichiometry.test.js')
 ];
 
 var totalChecks = 0, totalFailed = 0, greenSuites = 0;
