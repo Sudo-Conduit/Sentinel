@@ -13,6 +13,7 @@ var suites = [
   require('./PDT.test.js'),
   require('./MolecularReactivity.test.js'),
   require('./MolecularPolarizability.test.js'),
+  require('./RulesEngine.test.js'),
   require('./Stoichiometry.test.js')
 ];
 

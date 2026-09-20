@@ -28,6 +28,18 @@ check('CuSO4.5H2O (hydrate dot notation) parses to Cu1 S1 O9 H10',
 check('CuSO4.5H2O molar mass is the real textbook value 249.68 g/mol',
   near(S.molarMass(hydrate.counts).value, 249.68, 0.01));
 
+var alSulfate = S.parseFormula('Al2(SO4)3');
+check('Al2(SO4)3 parsing records a RulesEngine step trace with the CASX-style {ruleId, type, description, before, after} shape',
+  alSulfate.steps.length === 1 &&
+  alSulfate.steps[0].type === 'parse' &&
+  alSulfate.steps[0].before === 'Al2(SO4)3' &&
+  typeof alSulfate.steps[0].description === 'string' && alSulfate.steps[0].description.indexOf('(SO4)3') !== -1);
+
+var complexIon = S.parseFormula('[Cu(NH3)4]SO4');
+check('[Cu(NH3)4]SO4 (bracket nested around a paren group, exercising RulesEngine\'s fixed-point resolution twice) parses to Cu1 N4 H12 S1 O4',
+  complexIon.counts.Cu === 1 && complexIon.counts.N === 4 && complexIon.counts.H === 12 &&
+  complexIon.counts.S === 1 && complexIon.counts.O === 4);
+
 check('Malformed formula (unmatched paren) reports an error, not a silent wrong count',
   !!S.parseFormula('Ca(OH2').error);
 

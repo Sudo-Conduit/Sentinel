@@ -12,16 +12,17 @@
 // against a hand-computed expected value alone.
 (function(root, factory) {
     if (typeof define === 'function' && define.amd) {
-        define(['./PDT', './MolecularStructure'], factory);
+        define(['./PDT', './MolecularStructure', './RulesEngine'], factory);
     } else if (typeof module === 'object' && module.exports) {
-        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'));
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./RulesEngine.js'));
     } else {
-        root.Stoichiometry = factory(root.PDT, root.MolecularStructure);
+        root.Stoichiometry = factory(root.PDT, root.MolecularStructure, root.RulesEngine);
     }
-}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure) {
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, RulesEngine) {
     'use strict';
     if (!PDT) throw new Error('Stoichiometry requires PDT');
     if (!MolecularStructure) throw new Error('Stoichiometry requires MolecularStructure');
+    if (!RulesEngine) throw new Error('Stoichiometry requires RulesEngine');
 
     var STANDARD_ATOMIC_WEIGHT = MolecularStructure.STANDARD_ATOMIC_WEIGHT;
     var AVOGADRO = 6.02214076e23;
@@ -32,68 +33,117 @@
     // Handles what PDT.js's own parseFormula() explicitly doesn't: nested
     // parentheses/brackets with a trailing multiplier (Ca(OH)2,
     // Al2(SO4)3, [Cu(NH3)4]SO4) and hydrate notation (CuSO4.5H2O or
-    // CuSO4·5H2O), by summing each dot-separated fragment's own count
-    // map after scaling it by that fragment's leading coefficient.
-    function parseFormulaFragment(s) {
-        var i = 0;
-        function fail(msg) { throw new Error(msg); }
-        function parseCount() {
-            var start = i;
-            while (i < s.length && s[i] >= '0' && s[i] <= '9') i++;
-            if (i === start) return 1;
-            return parseInt(s.slice(start, i), 10);
-        }
-        function parseGroup() {
-            var counts = {};
-            while (i < s.length) {
-                var c = s[i];
-                if (c === '(' || c === '[') {
-                    var close = c === '(' ? ')' : ']';
-                    i++;
-                    var inner = parseGroup();
-                    if (s[i] !== close) fail('Mismatched "' + c + '" in "' + s + '"');
-                    i++;
-                    var mult = parseCount();
-                    Object.keys(inner).forEach(function(sym) {
-                        counts[sym] = (counts[sym] || 0) + inner[sym] * mult;
-                    });
-                } else if (c === ')' || c === ']') {
-                    return counts;
-                } else if (c >= 'A' && c <= 'Z') {
-                    var start = i;
-                    i++;
-                    if (i < s.length && s[i] >= 'a' && s[i] <= 'z') i++;
-                    var symbol = s.slice(start, i);
-                    if (!PDT.bySymbol[symbol]) fail('Unknown element: "' + symbol + '"');
-                    var count = parseCount();
-                    counts[symbol] = (counts[symbol] || 0) + count;
-                } else {
-                    fail('Unexpected character "' + c + '" in "' + s + '"');
-                }
+    // CuSO4·5H2O). Built on RulesEngine.js's general pattern-rule-
+    // reduce pipeline rather than a hand-rolled recursive-descent parser -
+    // the same mechanism RegX.js uses to resolve nested parens in
+    // arithmetic expressions (innermost group first, each already-
+    // resolved group hidden behind an opaque placeholder so later passes
+    // can't re-match into it). A formula's bracket nesting is exactly the
+    // same "flatten recursion into iterated flat passes" problem, so this
+    // reuses the mechanism instead of re-deriving it.
+    //
+    // Reads a flat (no remaining brackets) fragment of element symbols,
+    // counts, and already-resolved group placeholders into a count map.
+    function readFlatCounts(text, placeholders) {
+        var counts = {};
+        var re = /(✦\d+✦)(\d*)|([A-Z][a-z]?)(\d*)/g;
+        var consumed = 0, m;
+        while ((m = re.exec(text)) !== null) {
+            if (m.index !== consumed) throw new Error('Unexpected character in "' + text + '" at position ' + consumed);
+            if (m[1]) {
+                var mult = m[2] ? parseInt(m[2], 10) : 1;
+                var payload = placeholders.resolve(m[1]);
+                Object.keys(payload).forEach(function(sym) { counts[sym] = (counts[sym] || 0) + payload[sym] * mult; });
+            } else {
+                var symbol = m[3];
+                if (!PDT.bySymbol[symbol]) throw new Error('Unknown element: "' + symbol + '"');
+                var count = m[4] ? parseInt(m[4], 10) : 1;
+                counts[symbol] = (counts[symbol] || 0) + count;
             }
-            return counts;
+            consumed = re.lastIndex;
         }
-        var result = parseGroup();
-        if (i !== s.length) fail('Unexpected trailing content in "' + s + '"');
-        return result;
+        if (consumed !== text.length) throw new Error('Unexpected trailing content in "' + text + '"');
+        return counts;
+    }
+
+    function formatCounts(counts) {
+        return Object.keys(counts).sort().map(function(sym) {
+            return sym + (counts[sym] > 1 ? counts[sym] : '');
+        }).join('');
+    }
+
+    // Rules are DATA - {ruleId, type, description, match, reduce} - not
+    // logic buried in a hand-written recursive-descent parser, the same
+    // convention CASX.js (this project's RulesEngine-driven CAS) uses so
+    // that a rule's own `description` can drive a self-documenting
+    // derivation trace instead of a second, separately-maintained
+    // explanation. `steps`, when passed, collects one
+    // {ruleId, type, description, before, after} entry per firing - the
+    // Chemistry Problem Generator/Explainer's "show your work" trace for
+    // a formula breakdown is exactly this array, not a re-derived one.
+    function parseFormulaFragment(s, steps) {
+        var placeholders = RulesEngine.definePlaceholderTable();
+
+        // Matches one INNERMOST bracket group - no ( or [ between its own
+        // open/close - plus any trailing multiplier digits. Run to its
+        // fixed point, this resolves arbitrarily deep nesting from the
+        // inside out: each reduce() replaces one innermost group with an
+        // opaque placeholder, which can then itself sit inside the next
+        // group out, exactly like RegX's ParenRule.
+        var GroupRule = {
+            ruleId: 'resolve-group',
+            type: 'parse',
+            description: 'Group Rule: resolve an innermost (GROUP)n into its own scaled element counts',
+            match: function(text) {
+                var re = /([(\[])([^()\[\]]*)([)\]])(\d*)/;
+                var m = re.exec(text);
+                if (!m) return null;
+                return { index: m.index, length: m[0].length, open: m[1], inner: m[2], close: m[3], mult: m[4] };
+            },
+            reduce: function(text, m) {
+                var wantClose = m.open === '(' ? ')' : ']';
+                if (m.close !== wantClose) throw new Error('Mismatched "' + m.open + '" in "' + s + '"');
+                var innerCounts = readFlatCounts(m.inner, placeholders);
+                var mult = m.mult ? parseInt(m.mult, 10) : 1;
+                var scaled = {};
+                Object.keys(innerCounts).forEach(function(sym) { scaled[sym] = innerCounts[sym] * mult; });
+                var token = placeholders.intern(scaled);
+                var next = text.slice(0, m.index) + token + text.slice(m.index + m.length);
+                if (steps) {
+                    steps.push({
+                        ruleId: this.ruleId, type: this.type,
+                        description: this.description + ': ' + m.open + m.inner + m.close + (mult > 1 ? mult : '') + ' = ' + formatCounts(scaled),
+                        before: text, after: next
+                    });
+                }
+                return next;
+            }
+        };
+
+        var engine = new RulesEngine([GroupRule]);
+        var reduced = engine.run(s).text;
+        return readFlatCounts(reduced, placeholders);
     }
 
     // Splits on the hydrate separator ('.' or the middle dot U+00B7),
     // treating each fragment as coefficient-prefixed (e.g. the "5" in
     // "5H2O") and additive - a hydrate's water of crystallization is a
-    // literal sum of atoms, not a nested group.
+    // literal sum of atoms, not a nested group. Returns .steps (see
+    // parseFormulaFragment above) so callers that want a "show your work"
+    // trace of how the formula was broken down don't need their own copy.
     function parseFormula(formula) {
         formula = String(formula).trim().replace(/\s+/g, '');
         if (formula === '') return { error: 'Empty formula' };
         var fragments = formula.split(/[·.]/);
         var total = {};
+        var steps = [];
         try {
             fragments.forEach(function(frag) {
                 if (frag === '') throw new Error('Empty fragment in "' + formula + '"');
                 var m = frag.match(/^(\d+)([A-Z(\[].*)$/);
                 var coeff = 1, body = frag;
                 if (m) { coeff = parseInt(m[1], 10); body = m[2]; }
-                var counts = parseFormulaFragment(body);
+                var counts = parseFormulaFragment(body, steps);
                 Object.keys(counts).forEach(function(sym) {
                     total[sym] = (total[sym] || 0) + counts[sym] * coeff;
                 });
@@ -101,7 +151,7 @@
         } catch (e) {
             return { error: e.message };
         }
-        return { formula: formula, counts: total };
+        return { formula: formula, counts: total, steps: steps };
     }
 
     function molarMass(counts) {
