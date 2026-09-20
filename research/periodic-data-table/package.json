@@ -1,0 +1,12 @@
+{
+  "name": "periodic-data-table",
+  "version": "1.0.0",
+  "description": "Chemistry research modules -- build tooling for PDFVaultX viewer packaging.",
+  "private": true,
+  "scripts": {
+    "test": "node test/run-all.js"
+  },
+  "devDependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}

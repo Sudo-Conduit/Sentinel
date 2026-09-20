@@ -34,18 +34,27 @@ var suites = [
   require('./TestRunner.test.js')
 ];
 
-var report = TestRunner.run('report', suites);
-report.lines.forEach(function(line) { console.log(line); });
+// BuildViewerPdf.test.js is the one async suite in this directory (a real
+// pdf-lib build + read-back round trip) - it exports a Promise<suite>
+// rather than a plain suite object like every other require() above, so
+// it is awaited here and pushed in before reporting rather than changing
+// TestRunner's own synchronous aggregate() to know about promises.
+Promise.resolve(require('./BuildViewerPdf.test.js')).then(function(buildViewerPdfSuite) {
+  suites.push(buildViewerPdfSuite);
 
-var shouldSave = process.argv.indexOf('--save') !== -1 || process.env.SAVE_TEST_OUTPUT === '1';
-if (shouldSave) {
-  var commit = 'nogit';
-  try { commit = child_process.execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'nogit'; } catch (e) { /* not in a git checkout, or git unavailable - fall back to 'nogit' rather than failing the run */ }
-  var record = TestRunner.run('save-record', suites, { timestamp: new Date().toISOString(), commit: commit });
-  var outDir = path.join(__dirname, '..', 'test_output');
-  fs.mkdirSync(outDir, { recursive: true });
-  fs.writeFileSync(path.join(outDir, record.fileName), record.contents);
-  console.log('\nSaved to test_output/' + record.fileName);
-}
+  var report = TestRunner.run('report', suites);
+  report.lines.forEach(function(line) { console.log(line); });
 
-if (report.totalFailed > 0) process.exitCode = 1;
+  var shouldSave = process.argv.indexOf('--save') !== -1 || process.env.SAVE_TEST_OUTPUT === '1';
+  if (shouldSave) {
+    var commit = 'nogit';
+    try { commit = child_process.execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'nogit'; } catch (e) { /* not in a git checkout, or git unavailable - fall back to 'nogit' rather than failing the run */ }
+    var record = TestRunner.run('save-record', suites, { timestamp: new Date().toISOString(), commit: commit });
+    var outDir = path.join(__dirname, '..', 'test_output');
+    fs.mkdirSync(outDir, { recursive: true });
+    fs.writeFileSync(path.join(outDir, record.fileName), record.contents);
+    console.log('\nSaved to test_output/' + record.fileName);
+  }
+
+  if (report.totalFailed > 0) process.exitCode = 1;
+});
