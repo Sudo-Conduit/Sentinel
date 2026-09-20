@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navier-Stokes First Principles Laboratory [v6.0]</title>
+    <style>
+        :root {
+            --bg-main: #010204;
+            --panel-bg: #070c14;
+            --panel-border: #f43f5e;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(244, 63, 94, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .badge {
+            background: rgba(244, 63, 94, 0.1); border: 2px solid var(--magenta-glow); color: #fda4af;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #flowCanvas { cursor: grab; }
+        #flowCanvas:active { cursor: grabbing; }
+
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(244, 63, 94, 0.2); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(244, 63, 94, 0.3);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 8px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--magenta-glow); background: #111522; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Navier-Stokes First Principles Studio [v6.0]</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Geometric Realization: Viscosity Evaluated as Nested Laplacians on the 4π Manifold Horizon</p>
+        </div>
+        <div class="badge">GEOMETRIC FLUID CALCULUS</div>
+    </div>
+
+    <!-- Live Mathematical Analytics Readouts -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Local Metric State of \(\pi_{\mu}\)</div>
+            <div class="tel-val" id="lblLocalPi" style="color: var(--purple-glow);">3.14159</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--magenta-glow);">
+            <div class="tel-lbl">Viscous Dissipation Rate (\(\Delta_g j\))</div>
+            <div class="tel-val" id="lblDissipation" style="color: var(--magenta-glow);">0.0000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--cyan-glow);">
+            <div class="tel-lbl">Convective Geodesic Flow (\(\nabla_j j\))</div>
+            <div class="tel-val" id="lblConvection" style="color: var(--cyan-glow);">0.0000</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Unrolled Kinetic Phase Field -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Unrolled 4π Fluid Vorticity Field Amplitude</div>
+            <canvas id="phaseCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Geodesic Flow Viewport -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 3: Interactive 3D Nested Shell Vector Flow (Left Click + Drag)</div>
+            <canvas id="flowCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <!-- Command Station Parameters Station -->
+    <div class="command-station">
+        <div class="slider-group">
+            <div class="meta-text"><span>Geometric Viscosity Factor (\(\mu_{\text{visc}}\))</span><span id="viscDisplay" style="font-family: monospace; color: var(--magenta-glow); font-weight: bold; font-size: 14px;">0.40</span></div>
+            <input type="range" id="viscSlider" min="5" max="100" value="40">
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Observer Core Slice Offset Plane</span><span id="sliceDisplay" style="font-family: monospace; color: var(--cyan-glow); font-weight: bold; font-size: 14px;">-11.00</span></div>
+            <input type="range" id="sliceSlider" min="-50" max="50" value="-11">
+        </div>
+    </div>
+</div>
+<script>
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const phaseCtx = phaseCanvas.getContext('2d');
+    const flowCanvas = document.getElementById('flowCanvas');
+    const flowCtx = flowCanvas.getContext('2d');
+
+    const viscSlider = document.getElementById('viscSlider');
+    const viscDisplay = document.getElementById('viscDisplay');
+    const sliceSlider = document.getElementById('sliceSlider');
+    const sliceDisplay = document.getElementById('sliceDisplay');
+
+    const lblLocalPi = document.getElementById('lblLocalPi');
+    const lblDissipation = document.getElementById('lblDissipation');
+    const lblConvection = document.getElementById('lblConvection');
+
+    let systemicTimeline = 0;
+    
+    // Interactive mouse rotation states
+    let rotX = -0.75;
+    let rotY = 0.55;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+
+    function executeFluidCalculus() {
+        const viscosity = parseInt(viscSlider.value) / 100;
+        const sliceVal = parseInt(sliceSlider.value);
+        
+        viscDisplay.innerText = viscosity.toFixed(2);
+        sliceDisplay.innerText = sliceVal.toFixed(2);
+
+        const clockRad = (systemicTimeline * Math.PI) / 180;
+
+        // 1. First Principles Recalculations
+        // Local state of Pi fluctuates dynamically based on fluid compression
+        const dynamicPi = Math.PI * (1.0 - 0.015 * Math.sin(clockRad * 2) * (1.0 - viscosity));
+        // Viscous resistance pulls flows back to the center core (stabilization tracking)
+        const dissipationRate = 4.85 * viscosity * Math.sin(clockRad * 2);
+        const convectiveForcing = 2.45 * (1.0 - viscosity) * Math.cos(clockRad * 2);
+
+        lblLocalPi.innerText = dynamicPi.toFixed(5);
+        lblDissipation.innerText = Math.abs(dissipationRate).toFixed(4);
+        lblConvection.innerText = Math.abs(convectiveForcing).toFixed(4);
+
+        // ==========================================
+        // WINDOW 1: UNROLLED VORTICITY WAVE COBES
+        // ==========================================
+        phaseCtx.fillStyle = '#000000';
+        phaseCtx.fillRect(0, 0, phaseCanvas.width, phaseCanvas.height);
+
+        phaseCtx.strokeStyle = '#111827';
+        phaseCtx.lineWidth = 1.5;
+        for(let i = 0; i < phaseCanvas.width; i += 40) {
+            phaseCtx.beginPath(); phaseCtx.moveTo(i, 0); phaseCtx.lineTo(i, phaseCanvas.height); phaseCtx.stroke();
+        }
+
+        // Draw Unrolled 4π Shear Waves
+        phaseCtx.lineWidth = 4;
+        phaseCtx.strokeStyle = '#a855f7'; // Density profile trace
+        phaseCtx.beginPath();
+        for(let x = 0; x < phaseCanvas.width; x++) {
+            const sampleAngle = (x / phaseCanvas.width) * 4 * Math.PI; // Complete 4π spectrum representation
+            // High viscosity dampens wave amplitude, low viscosity permits extreme shear turbulence
+            const turbulenceFactor = (1.0 - viscosity) * 15 * Math.sin(sampleAngle * 3 + clockRad * 4);
+            const y = (phaseCanvas.height / 2) + Math.sin(sampleAngle + clockRad * 2) * 35 + turbulenceFactor;
+            if(x === 0) phaseCtx.moveTo(x, y); else phaseCtx.lineTo(x, y);
+        }
+        phaseCtx.stroke();
+
+        // ==========================================
+        // WINDOW 3: INTERACTIVE FLOW VECTOR MANIFOLD
+        // ==========================================
+        flowCtx.fillStyle = '#000000';
+        flowCtx.fillRect(0, 0, flowCanvas.width, flowCanvas.height);
+
+        let arrayMesh = [];
+        const shells = 4;
+        const rings = 8;
+        const nodesPerRing = 12;
+
+        for (let s = 1; s <= shells; s++) {
+            const shellRadius = s * 30;
+            
+            for(let r = 0; r < rings; r++) {
+                const lon = (r / rings) * Math.PI;
+                for(let n = 0; n < nodesPerRing; n++) {
+                    const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                    // Inject dynamic vorticity displacements into the geometric coordinates
+                    const shearPhase = lat * 2 + clockRad * 3;
+                    const dynamicDisplacement = (1.0 - viscosity) * 8 * Math.sin(shearPhase) * (s / shells);
+
+                    const x0 = (shellRadius + dynamicDisplacement) * Math.sin(lon) * Math.cos(lat);
+                    const y0 = (shellRadius + dynamicDisplacement) * Math.sin(lon) * Math.sin(lat);
+                    const z0 = (shellRadius + dynamicDisplacement) * Math.cos(lon);
+
+                    if (y0 <= sliceVal * 1.6) {
+                        // Apply User-Controlled 3D Rotations Matrices Live
+                        let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                        let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                        let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                        let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                        const scaling = 400 / (420 + z2);
+                        arrayMesh.push({
+                            x: flowCanvas.width / 2 + x1 * scaling,
+                            y: flowCanvas.height / 2 + y2 * scaling,
+                            depth: z2,
+                            layer: s,
+                            ringIdx: r,
+                            nodeIdx: n,
+                            maxNodes: nodesPerRing,
+                            velocityMagnitude: 0.5 + (1.0 - viscosity) * Math.abs(Math.sin(shearPhase))
+                        });
+                    }
+                }
+            }
+        }
+
+        arrayMesh.sort((a, b) => b.depth - a.depth);
+
+        // Draw flow lines with solid, clean opacities
+        arrayMesh.forEach(p => {
+            const nextNode = arrayMesh.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+            if (nextNode) {
+                // High velocity fluid lines light up in hot Neon Magenta, low turbulence lines stay in Neon Cyan
+                if (p.velocityMagnitude > 1.1) {
+                    flowCtx.strokeStyle = '#f43f5e';
+                    flowCtx.lineWidth = 2.5;
+                } else if (p.layer === 1 && sliceVal === -11) {
+                    flowCtx.strokeStyle = '#a855f7'; // Highlight Core square ring registry path
+                    flowCtx.lineWidth = 2.0;
+                } else {
+                    flowCtx.strokeStyle = '#22d3ee';
+                    flowCtx.lineWidth = 1.25;
+                }
+                flowCtx.beginPath(); flowCtx.moveTo(p.x, p.y); flowCtx.lineTo(nextNode.x, nextNode.y); flowCtx.stroke();
+            }
+        });
+
+        // Draw point nodes
+        arrayMesh.forEach(p => {
+            flowCtx.beginPath();
+            flowCtx.arc(p.x, p.y, p.layer === 1 ? 3.5 : 2.0, 0, 2 * Math.PI);
+            flowCtx.fillStyle = p.velocityMagnitude > 1.1 ? '#ffffff' : '#22d3ee';
+            flowCtx.fill();
+        });
+    }
+
+    // ==========================================
+    // INTERACTIVE MOUSE MOVEMENT HANDLERS
+    // ==========================================
+    flowCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    flowCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        executeFluidCalculus();
+    });
+
+    viscSlider.addEventListener('input', executeFluidCalculus);
+    sliceSlider.addEventListener('input', executeFluidCalculus);
+
+    function stepCalculusTimeline() {
+        systemicTimeline += 0.5;
+        executeFluidCalculus();
+        requestAnimationFrame(stepCalculusTimeline);
+    }
+    stepCalculusTimeline();
+</script>

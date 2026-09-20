@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNNT Financial Market Relational Matrix [Lab 29]</title>
+    <style>
+        :root {
+            --bg-dark: #02050a;
+            --panel-bg: #070c14;
+            --border-neon: #10b981;
+            --text-white: #f8fafc;
+            --text-slate: #94a3b8;
+            --cyan-neon: #22d3ee;
+            --magenta-neon: #f43f5e;
+            --purple-neon: #a855f7;
+            --amber-neon: #fbbf24;
+            --green-neon: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-dark); color: var(--text-white);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .matrix-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--border-neon);
+        }
+        .suite-header {
+            border-bottom: 2px solid rgba(16, 185, 129, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .suite-header h1 { margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .engine-badge {
+            background: rgba(16, 185, 129, 0.1); border: 2px solid var(--green-neon); color: #a7f3d0;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        .workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 11px; font-weight: 800; color: var(--text-white); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #latticeCanvas { cursor: grab; }
+        #latticeCanvas:active { cursor: grabbing; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(16, 185, 129, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-slate); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(16, 185, 129, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--border-neon); color: var(--text-white); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-slate); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--green-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="matrix-container">
+    <div class="suite-header">
+        <div>
+            <h1>Financial Market Relational Matrix Engine</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-slate); font-size: 14px;">Calculus Domain Layer: Mapping Invariant Conservation Vectors and Risk Liquidity Flux</p>
+        </div>
+        <div class="engine-badge">EXTENDED OCTUPLE MANIFOLD</div>
+    </div>
+
+    <!-- Real-Time Tensor Telemetry -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--green-neon);">
+            <div class="tel-lbl">Systemic Liquidity Density (\(\rho\))</div>
+            <div class="tel-val" id="lblLiquidity" style="color: var(--green-neon);">0.0000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--magenta-neon);">
+            <div class="tel-lbl">Risk Flux Covariant (\(\nabla_\mu \cdot j\))</div>
+            <div class="tel-val" id="lblRiskFlux" style="color: var(--magenta-neon);">0.0000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--amber-neon);">
+            <div class="tel-lbl">Metric Dissonance Distance (\(D(t)\))</div>
+            <div class="tel-val" id="lblDissonance" style="color: var(--amber-neon);">0.00000</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Volumetric Flow Waves -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Capital Allocation Wavefront Spectrum (\(\partial_t \rho + \nabla_\mu \cdot j = 0\))</div>
+            <canvas id="streamCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Asset Stack Lattice -->
+        <div class="viewport-box">
+            <div class="viewport-title" id="activeOffsetDisplay">Window 3: 3D Volumetric Capital Stack Tensor (Left Click + Drag)</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="marketSelect" onchange="window.changeMarketProfile()">
+                <option value="macroCorridor">Lobito Infrastructure Corridor Asset Stack [Layer 5 Focus]</option>
+                <option value="sovereignBonds">Sovereign Debt Liquidity Pool [Layer 2 Focus]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Volatility Excitation Stress Parameter Vector (\(\xi\))</span><span id="stressDisplay" style="font-family: monospace; color: var(--green-neon); font-weight: bold; font-size: 14px;">1.00x Load</span></div>
+            <input type="range" id="stressSlider" min="50" max="300" value="100">
+        </div>
+    </div>
+</div>
+<script>
+    const streamCanvas = document.getElementById('streamCanvas');
+    const streamCtx = streamCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const marketSelect = document.getElementById('marketSelect');
+    const stressSlider = document.getElementById('stressSlider');
+    const stressDisplay = document.getElementById('stressDisplay');
+
+    const lblLiquidity = document.getElementById('lblLiquidity');
+    const lblRiskFlux = document.getElementById('lblRiskFlux');
+    const lblDissonance = document.getElementById('lblDissonance');
+    const activeOffsetDisplay = document.getElementById('activeOffsetDisplay');
+
+    let dynamicTimelineClock = 0;
+    
+    // Interactive mouse rotation tracking variables for Window 3
+    let rotX = -0.75;
+    let rotY = 0.45;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const marketDatabase = {
+        macroCorridor: { name: "Lobito Corridor", baseLiq: 98.42, baseFlux: 0.0124, layerFocus: 5, color: "#10b981" },
+        sovereignBonds: { name: "Sovereign Debt Pool", baseLiq: 85.12, baseFlux: 0.0845, layerFocus: 2, color: "#22d3ee" }
+    };
+
+    function processMarketManifold() {
+        try {
+            const profileKey = marketSelect.value;
+            const profile = marketDatabase[profileKey];
+            const multiplier = parseInt(stressSlider.value) / 100;
+
+            stressDisplay.innerText = multiplier.toFixed(2) + 'x Stress';
+            activeOffsetDisplay.innerText = `Window 3: 3D Volumetric Capital Stack Tensor (Stress: ${multiplier.toFixed(2)}x)`;
+
+            const clockRad = (dynamicTimelineClock * Math.PI) / 180;
+            const shiftRad = (multiplier - 1.0) * Math.PI;
+
+            // Rigorous metric tracking calculation derived from your Continuity Addendum
+            const currentLiquidity = profile.baseLiq - (multiplier - 1.0) * 8.5 * Math.abs(Math.sin(clockRad));
+            const currentFlux = profile.baseFlux * multiplier * (1.0 + 0.15 * Math.cos(clockRad * 2));
+            const computedDissonance = Math.abs(Math.sin(shiftRad) * 0.45) * multiplier;
+
+            lblLiquidity.innerText = currentLiquidity.toFixed(4) + '%';
+            lblRiskFlux.innerText = currentFlux.toFixed(6);
+            lblDissonance.innerText = computedDissonance.toFixed(5);
+
+            if (currentLiquidity < 80) {
+                lblLiquidity.style.color = "var(--magenta-neon)";
+            } else {
+                lblLiquidity.style.color = "var(--green-neon)";
+            }
+
+            // ==========================================
+            // WINDOW 1: RISK FLOW FIELD CURVES
+            // ==========================================
+            streamCtx.fillStyle = '#000000';
+            streamCtx.fillRect(0, 0, streamCanvas.width, streamCanvas.height);
+
+            streamCtx.strokeStyle = '#111827';
+            streamCtx.lineWidth = 1.5;
+            for(let i=0; i<streamCanvas.width; i+=40) {
+                streamCtx.beginPath(); streamCtx.moveTo(i, 0); streamCtx.lineTo(i, streamCanvas.height); streamCtx.stroke();
+            }
+
+            // Draw solid high-contrast risk concentration field waves
+            streamCtx.lineWidth = 4;
+            streamCtx.strokeStyle = 'var(--green-neon)';
+            streamCtx.beginPath();
+            for(let x=0; x<streamCanvas.width; x++) {
+                const angle = (x / streamCanvas.width) * 4 * Math.PI; 
+                const frictionWarp = (multiplier - 1.0) * 25 * Math.sin(angle * 5 + clockRad * 3);
+                const y = (streamCanvas.height / 2) + Math.sin(angle + clockRad * 2) * 35 + frictionWarp;
+                if(x === 0) streamCtx.moveTo(x, y); else streamCtx.lineTo(x, y);
+            }
+            streamCtx.stroke();
+
+            // ==========================================
+            // WINDOW 3: INTERACTIVE 3D CAPITAL LATTICE
+            // ==========================================
+            latCtx.fillStyle = '#000000';
+            latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+            let meshPoints = [];
+            const layers = 5;
+            const totalParallelRings = 8;
+            const nodesPerRing = profile.points;
+
+            for (let s = 1; s <= layers; s++) {
+                const radius = s * 24;
+                for(let r=0; r<totalParallelRings; r++) {
+                    const lon = (r / totalParallelRings) * Math.PI;
+                    for(let n=0; n<nodesPerRing; n++) {
+                        const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                        const marketVolPulse = Math.sin(lat * 2 + clockRad * 2) * (multiplier * 5) * (s === profile.layerFocus ? 1.5 : 0.4);
+                        const x0 = (radius + marketVolPulse) * Math.sin(lon) * Math.cos(lat);
+                        const y0 = (radius + marketVolPulse) * Math.sin(lon) * Math.sin(lat);
+                        const z0 = (radius + marketVolPulse) * Math.cos(lon);
+
+                        if (y0 <= 25) {
+                            let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                            let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                            let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                            let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                            const scale = 380 / (380 + z2);
+                            meshPoints.push({
+                                x: latticeCanvas.width / 2 + x1 * scale,
+                                y: latticeCanvas.height / 2 + y2 * scale,
+                                depth: z2,
+                                layerIndex: s,
+                                nodeIndex: n,
+                                maxNodes: nodesPerRing,
+                                isStressedAsset: (s === profile.layerFocus && multiplier > 1.5)
+                            });
+                        }
+                    }
+                }
+            }
+
+            meshPoints.sort((a, b) => b.depth - a.depth);
+
+            meshPoints.forEach(p => {
+                const next = meshPoints.find(o => o.layerIndex === p.layerIndex && o.nodeIndex === (p.nodeIndex + 1) % p.maxNodes);
+                if (next) {
+                    if (p.isStressedAsset) {
+                        latCtx.strokeStyle = 'var(--magenta-neon)';
+                        latCtx.lineWidth = 3.0;
+                    } else if (p.layerIndex === profile.layerFocus) {
+                        latCtx.strokeStyle = 'var(--amber-neon)';
+                        latCtx.lineWidth = 2.5;
+                    } else {
+                        latCtx.strokeStyle = profile.color;
+                        latCtx.lineWidth = 1.5;
+                    }
+                    latCtx.beginPath(); latCtx.moveTo(p.x, p.y); latCtx.lineTo(next.x, next.y); latCtx.stroke();
+                }
+            });
+
+            meshPoints.forEach(p => {
+                latCtx.beginPath();
+                latCtx.arc(p.x, p.y, p.layerIndex === profile.layerFocus ? 3.5 : 1.8, 0, 2 * Math.PI);
+                latCtx.fillStyle = p.isStressedAsset ? '#ffffff' : 'var(--green-neon)';
+                latCtx.fill();
+            });
+
+        } catch (err) {
+            console.error("Market matrix loop protected:", err);
+        }
+    }
+
+    latticeCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    latticeCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        processMarketManifold();
+    });
+
+    window.changeMarketProfile = function() {
+        stressSlider.value = 100;
+        processMarketManifold();
+    };
+
+    stressSlider.addEventListener('input', processMarketManifold);
+
+    function stepClockTimeline() {
+        dynamicTimelineClock += 0.5;
+        processMarketManifold();
+        requestAnimationFrame(stepClockTimeline);
+    }
+    stepClockTimeline();
+</script>

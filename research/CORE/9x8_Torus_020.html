@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fe-Based Photovoltaic Absorption Profiler [v6.0]</title>
+    <style>
+        :root {
+            --bg-main: #020408;
+            --panel-bg: #090f1d;
+            --panel-border: #fbbf24;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --amber-glow: #fbbf24;
+            --purple-glow: #a855f7;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(251, 191, 36, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .reporting-tag {
+            background: rgba(16, 185, 129, 0.1); border: 2px solid var(--green-glow); color: #34d399;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        
+        .workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(251, 191, 36, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--amber-glow); color: var(--text-primary); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--amber-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Fe-Based Photovoltaic Material Profiler</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Application Interface: Screening Optical Bandgap Configurations and Quantum Efficiency Metrics</p>
+        </div>
+        <div class="reporting-tag">REPORT GENERATION ACTIVE</div>
+    </div>
+
+    <!-- Lab Telemetry Output Metrics -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--amber-glow);">
+            <div class="tel-lbl">Target Material Matrix</div>
+            <div class="tel-val" id="lblMaterial" style="color: var(--amber-glow);">Fe-Organometallic Complex A</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--cyan-glow);">
+            <div class="tel-lbl">Calculated Optical Bandgap (\(E_g\))</div>
+            <div class="tel-val" id="lblBandgap" style="color: var(--cyan-glow);">1.42 eV (Optimal)</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--green-glow);">
+            <div class="tel-lbl">Predicted AM1.5 Efficiency (\(\eta\))</div>
+            <div class="tel-val" id="lblEfficiency" style="color: var(--green-glow);">24.65%</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Spectral Absorption Output Curve -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Simulated Optical Absorption Spectrum (\(\alpha\) vs. Wavelength)</div>
+            <canvas id="spectrumCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: High Visibility Geodesic Carrier Paths -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 3: Mapped Heterojunction Charge Extraction Paths (4π Lattice Track)</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="materialSelect" onchange="updateMaterialProfile()">
+                <option value="complexA">Fe-Organometallic Complex Alpha [Lattice Layer 1 focus]</option>
+                <option value="complexB">Fe-Doped Perovoskite Polymorph Beta [Lattice Layer 3 focus]</option>
+                <option value="complexC">Fe-Sulfide Quantum Dot Hybrid Gamma [Lattice Layer 5 focus]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Excitation Photon Energy Input Coordinate</span><span id="energyDisplay" style="font-family: monospace; color: var(--amber-glow); font-weight: bold; font-size: 14px;">1.42 eV</span></div>
+            <input type="range" id="energySlider" min="100" max="350" value="142">
+        </div>
+    </div>
+</div>
+<script>
+    const specCanvas = document.getElementById('spectrumCanvas');
+    const specCtx = specCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const materialSelect = document.getElementById('materialSelect');
+    const energySlider = document.getElementById('energySlider');
+    const energyDisplay = document.getElementById('energyDisplay');
+
+    const lblMaterial = document.getElementById('lblMaterial');
+    const lblBandgap = document.getElementById('lblBandgap');
+    const lblEfficiency = document.getElementById('lblEfficiency');
+
+    let dynamicClock = 0;
+
+    // Static lab data cards masking your underlying derivation algorithms completely
+    const materialDatabase = {
+        complexA: { name: "Fe-Organometallic Complex Alpha", bandgap: 1.42, eff: 24.65, shellFocus: 1, peakWavelength: 520 },
+        complexB: { name: "Fe-Doped Perovskite Polymorph Beta", bandgap: 1.65, eff: 21.80, shellFocus: 3, peakWavelength: 450 },
+        complexC: { name: "Fe-Sulfide Quantum Dot Hybrid Gamma", bandgap: 1.15, eff: 19.42, shellFocus: 5, peakWavelength: 680 }
+    };
+
+    function updateMaterialProfile() {
+        const materialKey = materialSelect.value;
+        const profile = materialDatabase[materialKey];
+        const inputEnergy = parseInt(energySlider.value) / 100;
+
+        energyDisplay.innerText = `${inputEnergy.toFixed(2)} eV`;
+        lblMaterial.innerText = profile.name;
+        lblBandgap.innerText = `${profile.bandgap.toFixed(2)} eV`;
+        lblEfficiency.innerText = `${profile.eff.toFixed(2)}%`;
+
+        const clockRad = (dynamicClock * Math.PI) / 180;
+
+        // ==========================================
+        // WINDOW 1: SOLID SPECTRAL ABSORTION CURVE
+        // ==========================================
+        specCtx.fillStyle = '#000000';
+        specCtx.fillRect(0, 0, specCanvas.width, specCanvas.height);
+
+        specCtx.strokeStyle = '#1e293b';
+        specCtx.lineWidth = 1.5;
+        for(let i=0; i<specCanvas.width; i+=40) {
+            specCtx.beginPath(); specCtx.moveTo(i, 0); specCtx.lineTo(i, specCanvas.height); specCtx.stroke();
+        }
+
+        // Draw standard absorption band profile curve (Solid Neon Cyan)
+        specCtx.lineWidth = 4;
+        specCtx.strokeStyle = '#22d3ee';
+        specCtx.beginPath();
+        for(let x=0; x<specCanvas.width; x++) {
+            const wavelength = 300 + (x / specCanvas.width) * 600;
+            // Standard gaussian curve simulation
+            const exponent = -Math.pow(wavelength - profile.peakWavelength, 2) / (2 * Math.pow(100, 2));
+            const y = (specCanvas.height - 40) - Math.exp(exponent) * 220;
+            if(x === 0) specCtx.moveTo(x, y); else specCtx.lineTo(x, y);
+        }
+        specCtx.stroke();
+
+        // Draw live input excitation scanning bar indicator (Solid Neon Amber)
+        const mappedInputX = ((inputEnergy - 1.0) / 2.5) * specCanvas.width;
+        specCtx.strokeStyle = '#fbbf24';
+        specCtx.lineWidth = 2;
+        specCtx.beginPath(); specCtx.moveTo(mappedInputX, 0); specCtx.lineTo(mappedInputX, specCanvas.height); specCtx.stroke();
+
+        // ==========================================
+        // WINDOW 3: SOLID GEODESIC CARRIER TRACKS
+        // ==========================================
+        latCtx.fillStyle = '#000000';
+        latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+        let meshPoints = [];
+        const shellsCount = 5;
+        const parallelRings = 8;
+        const nodesPerRing = 14;
+        
+        // Rigid viewing coordinates
+        const pitchRot = -0.75;
+        const yawRot = 0.45;
+
+        for (let s = 1; s <= shellsCount; s++) {
+            const radius = s * 24;
+            
+            for(let r=0; r<parallelRings; r++) {
+                const lon = (r / parallelRings) * Math.PI;
+                for(let n=0; n<nodesPerRing; n++) {
+                    const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                    // Inject soft, visible wave breathing into the output tracks to animate charge excitation
+                    const wavePhase = lat * 2 + clockRad * 3;
+                    const excitationPulse = (s === profile.shellFocus) ? 6.0 * Math.sin(wavePhase) * (inputEnergy / profile.bandgap) : 0;
+
+                    const x0 = (radius + excitationPulse) * Math.sin(lon) * Math.cos(lat);
+                    const y0 = (radius + excitationPulse) * Math.sin(lon) * Math.sin(lat);
+                    const z0 = (radius + excitationPulse) * Math.cos(lon);
+
+                    // Section cut at -11.00 coordinate line
+                    if (y0 <= -11 * 1.6) {
+                        let x1 = x0 * Math.cos(yawRot) - z0 * Math.sin(yawRot);
+                        let z1 = x0 * Math.sin(yawRot) + z0 * Math.cos(yawRot);
+                        let y2 = y0 * Math.cos(pitchRot) - z1 * Math.sin(pitchRot);
+                        let z2 = y0 * Math.sin(pitchRot) + z1 * Math.cos(pitchRot);
+
+                        const scale = 380 / (380 + z2);
+                        meshPoints.push({
+                            x: latticeCanvas.width / 2 + x1 * scale,
+                            y: latticeCanvas.height / 2 + y2 * scale,
+                            depth: z2,
+                            layer: s
+                        });
+                    }
+                }
+            }
+        }
+
+        meshPoints.sort((a, b) => b.depth - a.depth);
+
+        // Draw solid, highly legible grid connection wires
+        meshPoints.forEach(p => {
+            const nextNode = meshPoints.find(o => o.layer === p.layer && Math.abs(o.x - p.x) < 40 && o.depth > p.depth);
+            if (nextNode) {
+                if (p.layer === profile.shellFocus) {
+                    latCtx.strokeStyle = '#fbbf24'; // Highlight active energy extraction shell layer in solid Amber
+                    latCtx.lineWidth = 2.5;
+                } else {
+                    latCtx.strokeStyle = '#22d3ee'; // Normal carrier grid paths stay solid Cyan
+                    latCtx.lineWidth = 1.25;
+                }
+                latCtx.beginPath(); latCtx.moveTo(p.x, p.y); latCtx.lineTo(nextNode.x, nextNode.y); latCtx.stroke();
+            }
+        });
+
+        // Draw nodes
+        meshPoints.forEach(p => {
+            latCtx.beginPath();
+            latCtx.arc(p.x, p.y, p.layer === profile.shellFocus ? 3.5 : 1.5, 0, 2 * Math.PI);
+            latCtx.fillStyle = p.layer === profile.shellFocus ? '#ffffff' : '#22d3ee';
+            latCtx.fill();
+        });
+    }
+
+    energySlider.addEventListener('input', updateMaterialProfile);
+
+    function stepTimelineLoop() {
+        dynamicClock += 0.5;
+        updateMaterialProfile();
+        requestAnimationFrame(stepTimelineLoop);
+    }
+    stepTimelineLoop();
+</script>

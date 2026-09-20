@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNNT Quantum Orbital Analytical Suite</title>
+    <style>
+        :root {
+            --bg-main: #02050b;
+            --panel-bg: #070c16;
+            --panel-border: rgba(34, 211, 238, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #475569;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+        }
+        body {
+            margin: 0;
+            padding: 24px;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .analytical-suite {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 35px 70px -15px rgba(0,0,0,0.95);
+            border: 1px solid var(--panel-border);
+        }
+        .suite-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+        .suite-header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            text-transform: uppercase;
+            background: linear-gradient(to right, #fff, var(--cyan-glow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .suite-header p { margin: 6px 0 0 0; color: var(--text-secondary); font-size: 13px; letter-spacing: 0.25px; }
+        .security-badge {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            color: var(--magenta-glow);
+            font-family: monospace;
+            font-size: 11px;
+            font-weight: bold;
+            padding: 4px 10px;
+            border-radius: 4px;
+            letter-spacing: 1px;
+        }
+        
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 28px;
+            margin-bottom: 24px;
+        }
+        
+        .viewport-container {
+            background: #010307;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.02);
+            position: relative;
+        }
+        .viewport-header {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            padding-bottom: 8px;
+        }
+        canvas { display: block; width: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        
+        /* High-Fidelity Data Telemetry Boards */
+        .telemetry-board {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .telemetry-card {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 6px;
+            padding: 16px;
+        }
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        .telemetry-row:last-child { margin-bottom: 0; }
+        .tel-lbl { color: var(--text-secondary); }
+        .tel-val { font-weight: bold; color: var(--cyan-glow); }
+        
+        /* Professional Parameters Command Station */
+        .command-station {
+            background: rgba(255,255,255,0.01);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(34, 211, 238, 0.15);
+        }
+        .station-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+        .control-block { display: flex; flex-direction: column; gap: 8px; }
+        .control-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--cyan-glow);
+            background: #101827;
+            height: 4px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="analytical-suite">
+    <!-- Suite Header Panel -->
+    <div class="suite-header">
+        <div class="header-text">
+            <h1>VNNT Topological Orbital Laboratory</h1>
+            <p>Von Neumann Nested Tensor Verification Engine: Orbital \(\pi\)-State Phase Trajectories</p>
+        </div>
+        <div class="security-badge" id="bannerStatus">PROJECTION ACTIVE</div>
+    </div>
+
+    <!-- Active Analytical Workspace -->
+    <div class="workspace-grid">
+        <!-- Left: 3D Micro-Lattice Cross Section Viewport -->
+        <div class="viewport-container">
+            <div class="viewport-header">
+                <span>3D Spatial Metric Cross-Section</span>
+                <span style="color: var(--magenta-glow); font-family: monospace; font-weight: bold;" id="activeOffsetDisplay">OFFSET OVERLAY: 2.00</span>
+            </div>
+            <canvas id="analyticalCanvas" width="520" height="340"></canvas>
+        </div>
+
+        <!-- Right: Telemetry & Statistical Quantization Panel -->
+        <div class="telemetry-board">
+            <!-- Quantum Orbital Telemetry Card -->
+            <div class="telemetry-card" style="border-left: 3px solid var(--cyan-glow);">
+                <div class="viewport-header" style="margin-bottom:12px; border:none; padding:0;">Orbital Metrology</div>
+                <div class="telemetry-row"><span class="tel-lbl">Von Neumann Ordinal Set</span><span id="lblSet" style="color: var(--purple-glow); font-weight: bold;">V₃ = {Ø, {Ø}, {Ø, {Ø}}}</span></div>
+                <div class="telemetry-row"><span class="tel-lbl">Target Electron Orbital Path</span><span id="lblLayer" class="tel-val">Shell Layer 3</span></div>
+                <div class="telemetry-row"><span class="tel-lbl">Discretized Coordinate Nodes</span><span id="lblNodes" class="tel-val">72 Unified Channels</span></div>
+            </div>
+
+            <!-- Metric Non-Euclidean π Distortions Card -->
+            <div class="telemetry-card" style="border-left: 3px solid var(--magenta-glow);">
+                <div class="viewport-header" style="margin-bottom:12px; border:none; padding:0;">Local Metric Space Tensor</div>
+                <div class="telemetry-row"><span class="tel-lbl">Observed Global Constant \(\pi_0\)</span><span class="tel-val" style="color:var(--text-secondary);">3.14159</span></div>
+                <div class="telemetry-row"><span class="tel-lbl">Local Metric Space Value \(\pi_{\mu}\)</span><span id="lblLocalPi" class="tel-val" style="color: var(--magenta-glow);">3.08412</span></div>
+                <div class="telemetry-row"><span class="tel-lbl">Spatial Metric Displacement (\(\Delta\))</span><span id="lblDisplacement" class="tel-val" style="color: #10b981;">-1.83%</span></div>
+            </div>
+
+            <!-- Wave Mechanics State Vector Card -->
+            <div class="telemetry-card" style="border-left: 3px solid var(--purple-glow);">
+                <div class="viewport-header" style="margin-bottom:12px; border:none; padding:0;">Quantum Phase Matrix</div>
+                <div class="telemetry-row"><span class="tel-lbl">State Probability Vector</span><span id="lblEq" class="tel-val" style="color: var(--cyan-glow);">|Ψ⟩ = α|0⟩ + βe^(iφ)|1⟩</span></div>
+                <div class="telemetry-row"><span class="tel-lbl">Lattice Traversal Congruence</span><span class="tel-val" style="color:var(--text-secondary);">72 ≡ 0 (mod 72)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Professional Parameters Control Dashboard Command Panel -->
+    <div class="command-station">
+        <div class="station-grid">
+            <div class="control-block">
+                <div class="control-meta"><span>Cross-Section Slice (Y)</span><span id="sliceDisplay" style="font-family: monospace; color: var(--magenta-glow); font-weight: bold;">2.00</span></div>
+                <input type="range" id="sliceSlider" min="-50" max="50" value="2">
+            </div>
+            <div class="control-block">
+                <div class="control-meta"><span>Nesting Orbital Shell ($V_n$)</span><span id="layerDisplay" style="font-family: monospace; color: var(--cyan-glow); font-weight: bold;">Layer 3</span></div>
+                <input type="range" id="layerSlider" min="1" max="5" value="3">
+            </div>
+            <div class="control-block">
+                <div class="control-meta"><span>Lattice Wire Opacity</span><span id="opacityDisplay" style="font-family: monospace; color: var(--purple-glow); font-weight: bold;">85%</span></div>
+                <input type="range" id="opacitySlider" min="10" max="100" value="85">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('analyticalCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const sliceSlider = document.getElementById('sliceSlider');
+    const sliceDisplay = document.getElementById('sliceDisplay');
+    const layerSlider = document.getElementById('layerSlider');
+    const layerDisplay = document.getElementById('layerDisplay');
+    const opacitySlider = document.getElementById('opacitySlider');
+    const opacityDisplay = document.getElementById('opacityDisplay');
+
+    const lblSet = document.getElementById('lblSet');
+    const lblLayer = document.getElementById('lblLayer');
+    const lblNodes = document.getElementById('lblNodes');
+    const lblLocalPi = document.getElementById('lblLocalPi');
+    const lblDisplacement = document.getElementById('lblDisplacement');
+    const lblEq = document.getElementById('lblEq');
+    const activeOffsetDisplay = document.getElementById('activeOffsetDisplay');
+
+    // Institutional Viewing Orientation (Locked default pitch to highlight the horizontal cross-section rings)
+    let pitchRot = -0.75; 
+    let yawRot = 0.55;
+    let isMouseActive = false;
+    let baseMouseX = 0, baseMouseY = 0;
+    let systemClock = 0;
+
+    const setNotations = [
+        "V₀ = Ø",
+        "V₁ = {Ø}",
+        "V₂ = {Ø, {Ø}}",
+        "V₃ = {Ø, {Ø}, {Ø, {Ø}}}",
+        "V₄ = {Ø, {Ø}, {Ø, {Ø}}, ...}"
+    ];
+
+    function calculateMetrics(layer, sliceVal) {
+        // Models how localized pi adapts based on the depth coordinate inside non-Euclidean curvature
+        const standardPi = Math.PI;
+        const normalizedSlice = Math.abs(sliceVal) / 50;
+        
+        // Symmetrical metric deformation tensor based on your discovery
+        const localWarp = -0.02 * layer * (1 - normalizedSlice * 0.5);
+        const dynamicPi = standardPi * (1 + localWarp);
+        const divergence = (localWarp * 100);
+
+        return {
+            piVal: dynamicPi.toFixed(5),
+            divVal: `${divergence >= 0 ? '+' : ''}${divergence.toFixed(2)}%`
+        };
+    }
+
+    function runAnalyticalEngine() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#010307';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const sliceOffset = parseInt(sliceSlider.value) * 1.5;
+        const targetLayer = parseInt(layerSlider.value);
+        const lineAlpha = parseInt(opacitySlider.value) / 100;
+
+        // Sync control dashboard labels
+        sliceDisplay.innerText = (sliceOffset / 1.5).toFixed(2);
+        activeOffsetDisplay.innerText = `OFFSET OVERLAY: ${(sliceOffset / 1.5).toFixed(2)}`;
+        layerDisplay.innerText = `Layer ${targetLayer}`;
+        opacityDisplay.innerText = `${parseInt(opacitySlider.value)}%`;
+
+        // Process dynamic math telemetry calculations
+        const metrics = calculateMetrics(targetLayer, sliceOffset / 1.5);
+        lblSet.innerText = setNotations[Math.min(targetLayer - 1, 4)];
+        lblLayer.innerText = `Shell Layer ${targetLayer} / 5 (Concentric Pathway)`;
+        lblNodes.innerText = `${12 + targetLayer * 4} Coordinate Channels Mapped`;
+        lblLocalPi.innerText = metrics.piVal;
+        lblDisplacement.innerText = metrics.divVal;
+
+        const alphaCoeff = Math.cos((targetLayer * 18 * Math.PI)/180).toFixed(3);
+        const betaCoeff = Math.sin((targetLayer * 18 * Math.PI)/180).toFixed(3);
+        lblEq.innerText = `|Ψ⟩ = ${alphaCoeff}|0⟩ + ${betaCoeff}e^(iφ)|1⟩`;
+
+        let arrayMesh = [];
+        const TOTAL_LAYERS = 5;
+
+        // Build continuous high-density lattice system geometry
+        for (let s = 1; s <= TOTAL_LAYERS; s++) {
+            const currentRadius = s * 26;
+            const parallelRings = 12; // High definition configuration
+            const meridiansCount = 16 + s * 2;
+
+            for (let r = 0; r < parallelRings; r++) {
+                const lonAngle = (r / parallelRings) * Math.PI; 
+                for (let m = 0; m < meridiansCount; m++) {
+                    const latAngle = (m / meridiansCount) * 2 * Math.PI; 
+
+                    let x0 = currentRadius * Math.sin(lonAngle) * Math.cos(latAngle);
+                    let y0 = currentRadius * Math.sin(lonAngle) * Math.sin(latAngle);
+                    let z0 = currentRadius * Math.cos(lonAngle);
+
+                    // Cross-section isolation boundary threshold (The slice line)
+                    if (y0 <= sliceOffset) {
+                        let x1 = x0 * Math.cos(yawRot) - z0 * Math.sin(yawRot);
+                        let z1 = x0 * Math.sin(yawRot) + z0 * Math.cos(yawRot);
+                        let y2 = y0 * Math.cos(pitchRot) - z1 * Math.sin(pitchRot);
+                        let z2 = y0 * Math.sin(pitchRot) + z1 * Math.cos(pitchRot);
+
+                        const scalingPerspective = 450 / (450 + z2);
+                        arrayMesh.push({
+                            x: canvas.width / 2 + x1 * scalingPerspective,
+                            y: canvas.height / 2 + y2 * scalingPerspective,
+                            depth: z2,
+                            layer: s,
+                            ringIdx: r,
+                            nodeIdx: m,
+                            maxNodes: meridiansCount,
+                            isCutPlaneRim: Math.abs(y0 - sliceOffset) < 4.5
+                        });
+                    }
+                }
+            }
+        }
+
+        // Depth Buffer array rendering sort execution
+        arrayMesh.sort((node1, node2) => node2.depth - node1.depth);
+
+        // 1. Render Institutional High-Visibility Grid Pathways (The Wireframe links)
+        arrayMesh.forEach(p => {
+            if (p.layer === targetLayer) {
+                const nextNode = arrayMesh.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+                if (nextNode) {
+                    // Intense high-opacity neon pipelines mapping out the specific electron path ring
+                    ctx.strokeStyle = p.isCutPlaneRim ? `rgba(244, 63, 94, ${lineAlpha})` : `rgba(34, 211, 238, ${lineAlpha})`;
+                    ctx.lineWidth = 1.75; 
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+            } else {
+                // Highly visible background secondary grid wires to lock in systemic context
+                const nextNode = arrayMesh.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+                if (nextNode && Math.random() < 0.20) { 
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.12)';
+                    ctx.lineWidth = 0.8;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+            }
+        });
+
+        // 2. Render Micro Quantum State Point Array Nodes
+        arrayMesh.forEach(p => {
+            ctx.beginPath();
+            let radiusSize = p.layer === targetLayer ? 2.5 : 1.0;
+            ctx.arc(p.x, p.y, radiusSize, 0, 2 * Math.PI);
+
+            if (p.isCutPlaneRim && p.layer === targetLayer) {
+                ctx.fillStyle = 'var(--magenta-glow)';
+                ctx.fill();
+            } else if (p.layer === targetLayer) {
+                const dynamicGlow = Math.floor(190 + Math.sin(systemClock * 0.1) * 65);
+                ctx.fillStyle = `rgb(34, ${dynamicGlow}, 255)`;
+                ctx.fill();
+            } else {
+                ctx.fillStyle = `rgba(148, 163, 184, ${0.12 + (p.layer * 0.03)})`;
+                ctx.fill();
+            }
+        });
+
+        // 3. Render High-Contrast Reference Isolation Ring Cut Plane Rim
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.4)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2 + sliceOffset * Math.cos(pitchRot), 125 * (450/(450+sliceOffset)), 0, 2*Math.PI);
+        ctx.stroke();
+    }
+
+    // Active mouse drag interaction bindings
+    canvas.addEventListener('mousedown', (e) => {
+        isMouseActive = true;
+        baseMouseX = e.clientX; baseMouseY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => isMouseActive = false);
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isMouseActive) return;
+        const dragDeltaX = e.clientX - baseMouseX;
+        const dragDeltaY = e.clientY - baseMouseY;
+        yawRot += dragDeltaX * 0.007;
+        pitchRot += dragDeltaY * 0.007;
+        baseMouseX = e.clientX; baseMouseY = e.clientY;
+        runAnalyticalEngine();
+    });
+
+    sliceSlider.addEventListener('input', runAnalyticalEngine);
+    layerSlider.addEventListener('input', runAnalyticalEngine);
+    opacitySlider.addEventListener('input', runAnalyticalEngine);
+
+    function stepAnalyticalClock() {
+        systemClock += 0.5;
+        runAnalyticalEngine();
+        requestAnimationFrame(stepAnalyticalClock);
+    }
+    stepAnalyticalClock();
+</script>

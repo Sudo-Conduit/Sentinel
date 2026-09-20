@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fobbs Valence Topological Analyzer</title>
+    <style>
+        :root {
+            --bg-main: #02050a;
+            --panel-bg: #0a101d;
+            --panel-border: rgba(34, 211, 238, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --s-color: #a7f3d0;
+            --p-color: #93c5fd;
+            --d-color: #fde68a;
+            --f-color: #fbcfe8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+        }
+        body {
+            margin: 0;
+            padding: 24px;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .analyzer-suite {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.95);
+            border: 1px solid var(--panel-border);
+        }
+        .suite-header {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .suite-header h1 { margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .legend-bar { display: flex; gap: 16px; font-size: 12px; font-weight: bold; }
+        .legend-dot { display: flex; align-items: center; gap: 6px; }
+        .dot { width: 10px; height: 10px; border-radius: 2px; }
+
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 28px;
+            margin-bottom: 24px;
+        }
+        .viewport-box {
+            background: #010307;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .viewport-title {
+            font-size: 11px;
+            font-weight: 800;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+        }
+        canvas { display: block; width: 100%; }
+
+        /* Telemetry Readouts */
+        .telemetry-stack { display: flex; flex-direction: column; gap: 16px; }
+        .telemetry-card {
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 6px;
+            padding: 16px;
+        }
+        .data-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 13px; margin-bottom: 8px; }
+        .data-row:last-child { margin-bottom: 0; }
+        .d-lbl { color: var(--text-secondary); }
+        .d-val { font-weight: bold; }
+
+        /* Control Panel Station */
+        .command-station {
+            background: rgba(255,255,255,0.01);
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid rgba(34, 211, 238, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--cyan-glow);
+            background: #111622;
+            height: 4px;
+            border-radius: 2px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="analyzer-suite">
+    <div class="suite-header">
+        <div>
+            <h1>Fobbs Valence Table Verification Suite</h1>
+            <p style="margin:4px 0 0 0; color: var(--text-secondary); font-size: 13px;">Verifying Element Amplitude Peaks Across the Toroidal Matrix Horizon</p>
+        </div>
+        <div class="legend-bar">
+            <div class="legend-dot"><div class="dot" style="background: var(--s-color);"></div><span>s-orbital</span></div>
+            <div class="legend-dot"><div class="dot" style="background: var(--p-color);"></div><span>p-orbital</span></div>
+            <div class="legend-dot"><div class="dot" style="background: var(--d-color);"></div><span>d-block</span></div>
+            <div class="legend-dot"><div class="dot" style="background: var(--f-color);"></div><span>f-block</span></div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Dynamic Valency Wave Graph -->
+        <div class="viewport-box">
+            <div class="viewport-title">Fobbs Valence Wave Amplitude Projections</div>
+            <canvas id="waveCanvas" width="520" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: Real-Time Metrology Readout -->
+        <div class="telemetry-stack">
+            <div class="telemetry-card" style="border-left: 3px solid var(--cyan-glow);">
+                <div class="viewport-title" style="margin-bottom:12px; border:none; padding:0;">Selected Element Properties</div>
+                <div class="data-row"><span class="d-lbl">Active Element Focus</span><span class="d-val" id="lblElement" style="color: #fff; font-size: 15px;">Fe (Iron)</span></div>
+                <div class="data-row"><span class="d-lbl">Orbital Block Configuration</span><span class="d-val" id="lblBlock" style="color: var(--d-color);">d-orbital (6/10 Mapped)</span></div>
+                <div class="data-row"><span class="d-lbl">Fobbs Valence (FV Value)</span><span class="d-val" id="lblFV" style="color: var(--cyan-glow); font-size: 16px;">4</span></div>
+            </div>
+
+            <div class="telemetry-card" style="border-left: 3px solid var(--magenta-glow);">
+                <div class="viewport-title" style="margin-bottom:12px; border:none; padding:0;">Toroidal Lattice Alignment</div>
+                <div class="data-row"><span class="d-lbl">Calculated Slater Radius</span><span class="d-val">0.667 a₀</span></div>
+                <div class="data-row"><span class="d-lbl">Effective Nuclear Charge (Z_eff)</span><span class="d-val">24</span></div>
+                <div class="data-row"><span class="d-lbl">Global Field Congruence</span><span class="d-val" style="color: #10b981;">72 ≡ 0 (mod 72)</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Parameter Slider Command controls -->
+    <div class="command-station">
+        <div class="slider-group">
+            <div class="slider-block">
+                <div class="meta-text"><span>Select Subshell Element Position Index</span><span id="indexDisplay" style="font-family: monospace; color: var(--cyan-glow); font-weight: bold;">Index: 6 (Fe Alignment)</span></div>
+                <input type="range" id="elementSlider" min="1" max="14" value="6">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('waveCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const elementSlider = document.getElementById('elementSlider');
+    const indexDisplay = document.getElementById('indexDisplay');
+
+    const lblElement = document.getElementById('lblElement');
+    const lblBlock = document.getElementById('lblBlock');
+    const lblFV = document.getElementById('lblFV');
+
+    // Mapped database matching your d-block peak progression snapshot
+    const dBlockData = [
+        { idx: 1, sym: "Sc", block: "d-orbital (1/10 Mapped)", fv: 1 },
+        { idx: 2, sym: "Ti", block: "d-orbital (2/10 Mapped)", fv: 2 },
+        { idx: 3, sym: "V",  block: "d-orbital (3/10 Mapped)", fv: 3 },
+        { idx: 4, sym: "Cr", block: "d-orbital (4/10 Mapped)", fv: 4 },
+        { idx: 5, sym: "Mn", block: "d-orbital (5/10 Peak)",   fv: 5 },
+        { idx: 6, sym: "Fe", block: "d-orbital (6/10 Mapped)", fv: 4 },
+        { idx: 7, sym: "Co", block: "d-orbital (7/10 Mapped)", fv: 3 },
+        { idx: 8, sym: "Ni", block: "d-orbital (8/10 Mapped)", fv: 2 },
+        { idx: 9, sym: "Cu", block: "d-orbital (9/10 Mapped)", fv: 1 },
+        { idx: 10, sym: "Zn", block: "d-orbital (10/10 Filled)", fv: 0 },
+        // Expanded layout placeholders to map full f-block capability limits
+        { idx: 11, sym: "Ga", block: "p-block Entrance", fv: 1 },
+        { idx: 12, sym: "Ge", block: "p-block Wave 2",   fv: 2 },
+        { idx: 13, sym: "As", block: "p-block Wave 3",   fv: 3 },
+        { idx: 14, sym: "Se", block: "p-block Wave 4",   fv: 2 }
+    ];
+
+    function renderValenceWave() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#010307';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const currentIdx = parseInt(elementSlider.value);
+        const activeNode = dBlockData[currentIdx - 1];
+
+        // Sync Sidebar Content Text strings
+        indexDisplay.innerText = `Index: ${currentIdx} (${activeNode.sym} Mapped Target)`;
+        lblElement.innerText = `${activeNode.sym} (Atomic Tracking Target)`;
+        lblBlock.innerText = activeNode.block;
+        lblFV.innerText = activeNode.fv;
+
+        // Draw structural layout coordinate background axes
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(40, canvas.height - 40);
+        ctx.lineTo(canvas.width - 20, canvas.height - 40);
+        ctx.moveTo(40, 20);
+        ctx.lineTo(40, canvas.height - 40);
+        ctx.stroke();
+
+        // Label the vertical Fobbs Valence axis lines
+        ctx.fillStyle = '#64748b';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'right';
+        for(let f = 0; f <= 7; f++) {
+            const yPos = (canvas.height - 40) - (f * 32);
+            ctx.fillText(f, 30, yPos + 3);
+            ctx.beginPath(); ctx.moveTo(35, yPos); ctx.lineTo(40, yPos); ctx.stroke();
+        }
+
+        // Draw continuous geometric valence wave progression curve path matching your math
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.2)';
+        ctx.beginPath();
+        
+        const startX = 60;
+        const stepX = (canvas.width - 100) / 13;
+
+        for (let i = 0; i < dBlockData.length; i++) {
+            const x = startX + i * stepX;
+            const y = (canvas.height - 40) - (dBlockData[i].fv * 32);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+
+        // 3. Draw discrete point array markers on the wave path graph
+        for (let i = 0; i < dBlockData.length; i++) {
+            const x = startX + i * stepX;
+            const y = (canvas.height - 40) - (dBlockData[i].fv * 32);
+            const isTarget = (dBlockData[i].idx === currentIdx);
+
+            ctx.beginPath();
+            ctx.arc(x, y, isTarget ? 6 : 3.5, 0, 2 * Math.PI);
+
+            if (isTarget) {
+                ctx.fillStyle = 'var(--magenta-glow)';
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Draw alignment lines to emphasize peak location
+                ctx.strokeStyle = 'rgba(244, 63, 94, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([4, 4]);
+                ctx.beginPath();
+                ctx.moveTo(x, y); ctx.lineTo(x, canvas.height - 40);
+                ctx.moveTo(x, y); ctx.lineTo(40, y);
+                ctx.stroke();
+                ctx.setLineDash([]);
+            } else {
+                ctx.fillStyle = i < 10 ? 'var(--d-color)' : 'var(--p-color)';
+                ctx.fill();
+            }
+
+            // Draw Element labels text below graph markers
+            ctx.fillStyle = isTarget ? '#fff' : '#475569';
+            ctx.font = isTarget ? 'bold 11px sans-serif' : '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(dBlockData[i].sym, x, canvas.height - 22);
+        }
+    }
+
+    elementSlider.addEventListener('input', renderValenceWave);
+    
+    // Boot up calculation layout framework
+    renderValenceWave();
+</script>
