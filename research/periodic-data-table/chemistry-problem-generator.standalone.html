@@ -12,7 +12,7 @@
   .sub { color: #666; font-size: 13px; margin: 0 0 20px; }
   .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
   label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
-  select, input[type=number] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; }
+  select, input[type=number], input[type=text] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; }
   button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; cursor: pointer; }
   button.primary { background: #3b6ea5; color: #fff; border-color: #3b6ea5; }
   button:disabled { opacity: 0.5; cursor: default; }
@@ -33,6 +33,11 @@
   .answer-key.shown { display: block; }
   .checkboxes { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; }
   .checkboxes label { font-weight: normal; display: flex; align-items: center; gap: 4px; margin-bottom: 0; }
+  .answer-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+  .answer-row input[type=text] { flex: 1; min-width: 160px; }
+  .feedback { font-size: 13px; font-weight: 600; margin-top: 6px; }
+  .feedback.correct { color: #1e6b3a; }
+  .feedback.incorrect { color: #b3261e; }
   @media print {
     body { background: #fff; padding: 0; }
     .no-print { display: none !important; }
@@ -3301,6 +3306,63 @@
     }
 
     // ================================================================
+    // 4a. ANSWER CHECKING
+    // ================================================================
+    // Grades a student's typed answer against generate()'s own answer for
+    // the same (typeId, seed) - never a separately maintained "key", so a
+    // check can never drift from what explain() shows as correct.
+    //
+    // Numeric problem types (everything except balance-equation) compare
+    // the leading number only, within a 1% relative tolerance: the
+    // reference answer is itself already rounded to N significant figures
+    // (see toSigFigs), so a student who rounds slightly differently, or
+    // who doesn't round at all, should not be marked wrong for that - the
+    // tolerance exists to accept legitimate rounding variance, not to
+    // paper over a wrong answer. Units are not required to match; the
+    // question already asked to "report your answer to N sig figs" but
+    // there's no chemistry reason to fail a numerically-correct answer
+    // for a missing/misspelled unit.
+    //
+    // balance-equation compares both sides as an unordered set of terms
+    // (case-sensitive - "Na" and "NA" are different elements), so
+    // "5 O2 + C3H8 -> 4 H2O + 3 CO2" and "C3H8 + 5O2 -> 3CO2 + 4H2O" both
+    // grade as correct even though term order and spacing differ from
+    // the canonical answer string.
+    function extractLeadingNumber(text) {
+        var m = /-?\d+(?:\.\d+)?/.exec(String(text).replace(/,/g, ''));
+        return m ? parseFloat(m[0]) : NaN;
+    }
+
+    function normalizeEquationForCompare(equation) {
+        var normalized = String(equation).trim().replace(/=|→|-->/g, '->');
+        var parts = normalized.split('->');
+        if (parts.length !== 2) return normalized.replace(/\s+/g, '');
+        return parts.map(function(side) {
+            return side.split('+').map(function(term) { return term.replace(/\s+/g, ''); }).sort().join('+');
+        }).join('->');
+    }
+
+    // @param {string} typeId
+    // @param {string|number} seed
+    // @param {string} userAnswer
+    // @returns {{correct: boolean, expected: string, question: string}|{error: string}}
+    function checkAnswer(typeId, seed, userAnswer) {
+        var result = generate(typeId, seed);
+        if (result.error) return { error: result.error };
+
+        var correct;
+        if (typeId === 'balance-equation') {
+            correct = normalizeEquationForCompare(userAnswer) === normalizeEquationForCompare(result.answer);
+        } else {
+            var userNum = extractLeadingNumber(userAnswer);
+            var correctNum = extractLeadingNumber(result.answer);
+            correct = isFinite(userNum) && isFinite(correctNum) &&
+                Math.abs(userNum - correctNum) <= Math.abs(correctNum) * 0.01 + 1e-9;
+        }
+        return { correct: correct, expected: result.answer, question: result.question };
+    }
+
+    // ================================================================
     // 5. COMMAND PARSER (house convention - see PDT.run/Stoichiometry.run)
     // ================================================================
     function run(command) {
@@ -3326,10 +3388,11 @@
         listTypes: listTypes,
         generate: generate,
         explain: explain,
+        checkAnswer: checkAnswer,
         run: run,
         toSigFigs: toSigFigs,
         mulberry32: mulberry32,
-        version: '1.0',
+        version: '1.1',
         date: '2026-09-20',
         author: 'Pooled Impact'
     };
@@ -3417,6 +3480,56 @@
         container.appendChild(steps);
     }
 
+    // A typed-answer input, checked against ChemistryProblemGenerator's
+    // own checkAnswer() for this exact (type, seed) - the same answer
+    // renderAnswer() would reveal, so a "Correct!" here can never disagree
+    // with what Show answer prints. A student who wants to see the
+    // derivation without guessing can still reveal it directly.
+    function renderAnswerCheck(container, result) {
+        var row = document.createElement('div');
+        row.className = 'answer-row no-print';
+
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = 'Your answer';
+
+        var checkBtn = document.createElement('button');
+        checkBtn.className = 'primary';
+        checkBtn.textContent = 'Check';
+
+        var revealBtn = document.createElement('button');
+        revealBtn.textContent = 'Show answer + steps';
+
+        row.appendChild(input);
+        row.appendChild(checkBtn);
+        row.appendChild(revealBtn);
+        container.appendChild(row);
+
+        var feedback = document.createElement('div');
+        feedback.className = 'feedback no-print';
+        container.appendChild(feedback);
+
+        function runCheck() {
+            if (!input.value.trim()) return;
+            var verdict = ChemistryProblemGenerator.checkAnswer(result.type, result.seed, input.value);
+            if (verdict.error) {
+                feedback.className = 'feedback incorrect';
+                feedback.textContent = verdict.error;
+                return;
+            }
+            feedback.className = 'feedback ' + (verdict.correct ? 'correct' : 'incorrect');
+            feedback.textContent = verdict.correct ? 'Correct!' : 'Not quite — try again, or show the answer.';
+        }
+        checkBtn.addEventListener('click', runCheck);
+        input.addEventListener('keydown', function(e) { if (e.key === 'Enter') runCheck(); });
+
+        revealBtn.addEventListener('click', function() {
+            row.remove();
+            feedback.remove();
+            renderAnswer(container, result);
+        });
+    }
+
     function generateOneProblem() {
         oneProblem.innerHTML = '';
         var typeId = typeSelect.value;
@@ -3424,16 +3537,7 @@
         var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
         renderProblem(oneProblem, result);
         if (result.error) return;
-
-        var revealBtn = document.createElement('button');
-        revealBtn.className = 'no-print';
-        revealBtn.textContent = 'Reveal answer + steps';
-        revealBtn.style.marginTop = '8px';
-        revealBtn.addEventListener('click', function() {
-            revealBtn.remove();
-            renderAnswer(oneProblem, result);
-        });
-        oneProblem.appendChild(revealBtn);
+        renderAnswerCheck(oneProblem, result);
     }
 
     document.getElementById('generateOne').addEventListener('click', generateOneProblem);
@@ -3460,6 +3564,7 @@
             var item = document.createElement('div');
             item.className = 'worksheet-item';
             renderProblem(item, result, i);
+            if (!result.error) renderAnswerCheck(item, result);
             worksheetQuestions.appendChild(item);
 
             if (!result.error) {

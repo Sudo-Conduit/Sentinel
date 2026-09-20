@@ -83,6 +83,26 @@ check('toSigFigs(0.000123456, 3) rounds a small number without switching to expo
 check('An unknown problem type reports an error rather than throwing or returning garbage',
   !!G.generate('not-a-real-type', 1).error);
 
+// --- checkAnswer: numeric problem types ---
+var mm = G.generate('molar-mass', 1);
+check('checkAnswer: the exact generated answer string is graded correct', G.checkAnswer('molar-mass', 1, mm.answer).correct === true);
+var mmNum = parseFloat(mm.answer);
+check('checkAnswer: the bare number with no unit is graded correct', G.checkAnswer('molar-mass', 1, String(mmNum)).correct === true);
+check('checkAnswer: a value within 1% tolerance (legitimate rounding variance) is graded correct', G.checkAnswer('molar-mass', 1, String(mmNum * 1.005)).correct === true);
+check('checkAnswer: a value clearly outside tolerance is graded incorrect', G.checkAnswer('molar-mass', 1, String(mmNum * 1.5)).correct === false);
+check('checkAnswer: non-numeric garbage is graded incorrect, not thrown', G.checkAnswer('molar-mass', 1, 'not a number').correct === false);
+check('checkAnswer: same seed always grades the same input the same way (deterministic, no drift from generate())', G.checkAnswer('molar-mass', 1, mm.answer).expected === G.generate('molar-mass', 1).answer);
+check('checkAnswer: reports the underlying error for an unknown problem type rather than throwing', !!G.checkAnswer('not-a-real-type', 1, '42').error);
+
+// --- checkAnswer: balance-equation (order/spacing-insensitive, case-sensitive) ---
+var be0 = G.generate('balance-equation', 0);
+check('checkAnswer: the exact canonical equation string is graded correct', G.checkAnswer('balance-equation', 0, be0.answer).correct === true);
+var reordered = be0.answer.split('->').map(function(side) {
+  return side.split('+').map(function(t) { return t.trim(); }).reverse().join(' + ');
+}).join(' -> ');
+check('checkAnswer: reordering terms on both sides of an equivalent equation is still graded correct', G.checkAnswer('balance-equation', 0, reordered).correct === true);
+check('checkAnswer: a wrong coefficient is graded incorrect', G.checkAnswer('balance-equation', 0, be0.answer.replace(/\d/, function(d) { return String((parseInt(d, 10) + 1) % 10); })).correct === false);
+
 module.exports = { name: 'ChemistryProblemGenerator.test.js', checks: checks, failures: failures };
 
 if (require.main === module) {

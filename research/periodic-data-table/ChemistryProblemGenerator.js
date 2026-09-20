@@ -296,6 +296,63 @@
     }
 
     // ================================================================
+    // 4a. ANSWER CHECKING
+    // ================================================================
+    // Grades a student's typed answer against generate()'s own answer for
+    // the same (typeId, seed) - never a separately maintained "key", so a
+    // check can never drift from what explain() shows as correct.
+    //
+    // Numeric problem types (everything except balance-equation) compare
+    // the leading number only, within a 1% relative tolerance: the
+    // reference answer is itself already rounded to N significant figures
+    // (see toSigFigs), so a student who rounds slightly differently, or
+    // who doesn't round at all, should not be marked wrong for that - the
+    // tolerance exists to accept legitimate rounding variance, not to
+    // paper over a wrong answer. Units are not required to match; the
+    // question already asked to "report your answer to N sig figs" but
+    // there's no chemistry reason to fail a numerically-correct answer
+    // for a missing/misspelled unit.
+    //
+    // balance-equation compares both sides as an unordered set of terms
+    // (case-sensitive - "Na" and "NA" are different elements), so
+    // "5 O2 + C3H8 -> 4 H2O + 3 CO2" and "C3H8 + 5O2 -> 3CO2 + 4H2O" both
+    // grade as correct even though term order and spacing differ from
+    // the canonical answer string.
+    function extractLeadingNumber(text) {
+        var m = /-?\d+(?:\.\d+)?/.exec(String(text).replace(/,/g, ''));
+        return m ? parseFloat(m[0]) : NaN;
+    }
+
+    function normalizeEquationForCompare(equation) {
+        var normalized = String(equation).trim().replace(/=|→|-->/g, '->');
+        var parts = normalized.split('->');
+        if (parts.length !== 2) return normalized.replace(/\s+/g, '');
+        return parts.map(function(side) {
+            return side.split('+').map(function(term) { return term.replace(/\s+/g, ''); }).sort().join('+');
+        }).join('->');
+    }
+
+    // @param {string} typeId
+    // @param {string|number} seed
+    // @param {string} userAnswer
+    // @returns {{correct: boolean, expected: string, question: string}|{error: string}}
+    function checkAnswer(typeId, seed, userAnswer) {
+        var result = generate(typeId, seed);
+        if (result.error) return { error: result.error };
+
+        var correct;
+        if (typeId === 'balance-equation') {
+            correct = normalizeEquationForCompare(userAnswer) === normalizeEquationForCompare(result.answer);
+        } else {
+            var userNum = extractLeadingNumber(userAnswer);
+            var correctNum = extractLeadingNumber(result.answer);
+            correct = isFinite(userNum) && isFinite(correctNum) &&
+                Math.abs(userNum - correctNum) <= Math.abs(correctNum) * 0.01 + 1e-9;
+        }
+        return { correct: correct, expected: result.answer, question: result.question };
+    }
+
+    // ================================================================
     // 5. COMMAND PARSER (house convention - see PDT.run/Stoichiometry.run)
     // ================================================================
     function run(command) {
@@ -321,10 +378,11 @@
         listTypes: listTypes,
         generate: generate,
         explain: explain,
+        checkAnswer: checkAnswer,
         run: run,
         toSigFigs: toSigFigs,
         mulberry32: mulberry32,
-        version: '1.0',
+        version: '1.1',
         date: '2026-09-20',
         author: 'Pooled Impact'
     };
