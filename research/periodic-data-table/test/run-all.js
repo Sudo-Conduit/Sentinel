@@ -14,7 +14,8 @@ var suites = [
   require('./MolecularReactivity.test.js'),
   require('./MolecularPolarizability.test.js'),
   require('./RulesEngine.test.js'),
-  require('./Stoichiometry.test.js')
+  require('./Stoichiometry.test.js'),
+  require('./ChemistryProblemGenerator.test.js')
 ];
 
 var totalChecks = 0, totalFailed = 0, greenSuites = 0;
