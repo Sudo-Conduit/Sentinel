@@ -48,6 +48,13 @@ const VIEWERS = {
     'fobbs-valence-table': {
         entry: 'FobbsValenceTable.html',
         deps: ['three.min.js']
+    },
+    'chemistry-problem-generator': {
+        entry: 'ChemistryProblemGenerator.html',
+        deps: [
+            'PDT.js', 'Smiles.js', 'Aromaticity.js', 'MolecularStructure.js',
+            'RulesEngine.js', 'Stoichiometry.js', 'ChemistryProblemGenerator.js'
+        ]
     }
 };
 

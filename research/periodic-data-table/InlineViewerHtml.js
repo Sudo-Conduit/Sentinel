@@ -70,7 +70,14 @@ class InlineViewerHtml
                 throw new Error('Could not find <script src="./' + dep + '"></script> in ' + viewer.entry + ' -- ViewerManifest.js and the real file have drifted apart.');
             }
             const depSource = fs.readFileSync(path.join(ROOT, dep), 'utf8');
-            html = html.replace(pattern, '<script>\n' + depSource + '\n</script>');
+            // Replacement MUST be a function, not a string: String.replace
+            // treats a string replacement's $&, $1, $`, $' etc. as special
+            // patterns, and RulesEngine.js's own source contains a literal
+            // "$'" (inside a regex string) that got silently interpreted as
+            // "everything after the match" instead of inserted verbatim,
+            // truncating the whole rest of the file. A function return
+            // value is always inserted literally.
+            html = html.replace(pattern, () => '<script>\n' + depSource + '\n</script>');
             inlinedCount++;
         }
 

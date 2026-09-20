@@ -1,0 +1,3493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chemistry Problem Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f6f8; color: #1a1a1a; max-width: 860px; margin-left: auto; margin-right: auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .sub { color: #666; font-size: 13px; margin: 0 0 20px; }
+  .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+  select, input[type=number] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; }
+  button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; cursor: pointer; }
+  button.primary { background: #3b6ea5; color: #fff; border-color: #3b6ea5; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
+  .field { display: flex; flex-direction: column; }
+  .question { font-size: 16px; margin: 8px 0 12px; }
+  .answer, .steps { display: none; }
+  .answer.shown, .steps.shown { display: block; }
+  .answer { font-weight: 600; color: #1e6b3a; margin-bottom: 10px; }
+  .steps ol { margin: 0; padding-left: 20px; font-size: 13px; color: #333; }
+  .steps li { margin-bottom: 4px; }
+  .seed-tag { font-size: 11px; color: #999; font-family: ui-monospace, monospace; }
+  .error { color: #b3261e; }
+  .warnings { font-size: 12px; color: #a15c00; margin-top: 6px; }
+  .worksheet-item { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+  .worksheet-item:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .answer-key { display: none; }
+  .answer-key.shown { display: block; }
+  .checkboxes { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+  .checkboxes label { font-weight: normal; display: flex; align-items: center; gap: 4px; margin-bottom: 0; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .no-print { display: none !important; }
+    .panel { border: none; padding: 0; margin-bottom: 24px; }
+    .answer, .steps, .answer-key { display: block !important; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+<h1>Chemistry Problem Generator &amp; Explainer</h1>
+<p class="sub">Deterministic gen-chem practice problems (molar mass, mass&harr;mole conversion, percent composition, equation balancing) with real, step-by-step derivations. Same seed always gives the same problem, so a worksheet and its answer key always stay in sync.</p>
+
+<div class="panel no-print">
+  <h2>Single problem</h2>
+  <div class="row">
+    <div class="field">
+      <label for="typeSelect">Problem type</label>
+      <select id="typeSelect"></select>
+    </div>
+    <div class="field">
+      <label for="seedInput">Seed</label>
+      <input type="number" id="seedInput" value="1">
+    </div>
+    <button id="randomizeSeed">Randomize seed</button>
+    <button class="primary" id="generateOne">Generate</button>
+  </div>
+  <div id="oneProblem"></div>
+</div>
+
+<div class="panel no-print">
+  <h2>Worksheet</h2>
+  <div class="row">
+    <div class="field">
+      <label for="countInput"># of problems</label>
+      <input type="number" id="countInput" value="10" min="1" max="50">
+    </div>
+    <div class="field">
+      <label for="startSeedInput">Starting seed</label>
+      <input type="number" id="startSeedInput" value="1">
+    </div>
+    <button class="primary" id="generateWorksheet">Generate worksheet</button>
+    <button id="printWorksheet">Print</button>
+  </div>
+  <div class="field" style="margin-top:8px;">
+    <label>Types to include</label>
+    <div class="checkboxes" id="typeCheckboxes"></div>
+  </div>
+</div>
+
+<div class="panel" id="worksheetPanel" style="display:none;">
+  <h2>Worksheet</h2>
+  <div id="worksheetQuestions"></div>
+  <div class="row no-print" style="margin-top:14px;">
+    <button id="toggleAnswerKey">Show answer key</button>
+  </div>
+  <div class="answer-key page-break" id="answerKey">
+    <h2>Answer key</h2>
+    <div id="answerKeyContent"></div>
+  </div>
+</div>
+
+<script>
+// UMD IIFE - Periodic Data Table (PDT)
+// FIXED PARSER - handles "H2O2" correctly
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define([], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory();
+    } else {
+        root.PDT = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function() {
+
+    // ================================================================
+    // 1. ELEMENT DATA (Full Periodic Table)
+    // ================================================================
+    const elementData = [
+        [1, "H", "Hydrogen", 1, "s", 1, 2],
+        [2, "He", "Helium", 1, "s", 2, 2],
+        [3, "Li", "Lithium", 2, "s", 1, 2],
+        [4, "Be", "Beryllium", 2, "s", 2, 2],
+        [5, "B", "Boron", 2, "p", 1, 6],
+        [6, "C", "Carbon", 2, "p", 2, 6],
+        [7, "N", "Nitrogen", 2, "p", 3, 6],
+        [8, "O", "Oxygen", 2, "p", 4, 6],
+        [9, "F", "Fluorine", 2, "p", 5, 6],
+        [10, "Ne", "Neon", 2, "p", 6, 6],
+        [11, "Na", "Sodium", 3, "s", 1, 2],
+        [12, "Mg", "Magnesium", 3, "s", 2, 2],
+        [13, "Al", "Aluminium", 3, "p", 1, 6],
+        [14, "Si", "Silicon", 3, "p", 2, 6],
+        [15, "P", "Phosphorus", 3, "p", 3, 6],
+        [16, "S", "Sulfur", 3, "p", 4, 6],
+        [17, "Cl", "Chlorine", 3, "p", 5, 6],
+        [18, "Ar", "Argon", 3, "p", 6, 6],
+        [19, "K", "Potassium", 4, "s", 1, 2],
+        [20, "Ca", "Calcium", 4, "s", 2, 2],
+        [21, "Sc", "Scandium", 4, "d", 1, 10],
+        [22, "Ti", "Titanium", 4, "d", 2, 10],
+        [23, "V", "Vanadium", 4, "d", 3, 10],
+        [24, "Cr", "Chromium", 4, "d", 5, 10],
+        [25, "Mn", "Manganese", 4, "d", 5, 10],
+        [26, "Fe", "Iron", 4, "d", 6, 10],
+        [27, "Co", "Cobalt", 4, "d", 7, 10],
+        [28, "Ni", "Nickel", 4, "d", 8, 10],
+        [29, "Cu", "Copper", 4, "d", 10, 10],
+        [30, "Zn", "Zinc", 4, "d", 10, 10],
+        [31, "Ga", "Gallium", 4, "p", 1, 6],
+        [32, "Ge", "Germanium", 4, "p", 2, 6],
+        [33, "As", "Arsenic", 4, "p", 3, 6],
+        [34, "Se", "Selenium", 4, "p", 4, 6],
+        [35, "Br", "Bromine", 4, "p", 5, 6],
+        [36, "Kr", "Krypton", 4, "p", 6, 6],
+        [37, "Rb", "Rubidium", 5, "s", 1, 2],
+        [38, "Sr", "Strontium", 5, "s", 2, 2],
+        [39, "Y", "Yttrium", 5, "d", 1, 10],
+        [40, "Zr", "Zirconium", 5, "d", 2, 10],
+        [41, "Nb", "Niobium", 5, "d", 4, 10],
+        [42, "Mo", "Molybdenum", 5, "d", 5, 10],
+        [43, "Tc", "Technetium", 5, "d", 5, 10],
+        [44, "Ru", "Ruthenium", 5, "d", 7, 10],
+        [45, "Rh", "Rhodium", 5, "d", 8, 10],
+        [46, "Pd", "Palladium", 5, "d", 10, 10],
+        [47, "Ag", "Silver", 5, "d", 10, 10],
+        [48, "Cd", "Cadmium", 5, "d", 10, 10],
+        [49, "In", "Indium", 5, "p", 1, 6],
+        [50, "Sn", "Tin", 5, "p", 2, 6],
+        [51, "Sb", "Antimony", 5, "p", 3, 6],
+        [52, "Te", "Tellurium", 5, "p", 4, 6],
+        [53, "I", "Iodine", 5, "p", 5, 6],
+        [54, "Xe", "Xenon", 5, "p", 6, 6],
+        [55, "Cs", "Caesium", 6, "s", 1, 2],
+        [56, "Ba", "Barium", 6, "s", 2, 2],
+        [57, "La", "Lanthanum", 6, "d", 1, 10],
+        [58, "Ce", "Cerium", 6, "f", 1, 14],
+        [59, "Pr", "Praseodymium", 6, "f", 3, 14],
+        [60, "Nd", "Neodymium", 6, "f", 4, 14],
+        [61, "Pm", "Promethium", 6, "f", 5, 14],
+        [62, "Sm", "Samarium", 6, "f", 6, 14],
+        [63, "Eu", "Europium", 6, "f", 7, 14],
+        [64, "Gd", "Gadolinium", 6, "f", 7, 14],
+        [65, "Tb", "Terbium", 6, "f", 9, 14],
+        [66, "Dy", "Dysprosium", 6, "f", 10, 14],
+        [67, "Ho", "Holmium", 6, "f", 11, 14],
+        [68, "Er", "Erbium", 6, "f", 12, 14],
+        [69, "Tm", "Thulium", 6, "f", 13, 14],
+        [70, "Yb", "Ytterbium", 6, "f", 14, 14],
+        [71, "Lu", "Lutetium", 6, "d", 1, 10],
+        [72, "Hf", "Hafnium", 6, "d", 2, 10],
+        [73, "Ta", "Tantalum", 6, "d", 3, 10],
+        [74, "W", "Tungsten", 6, "d", 4, 10],
+        [75, "Re", "Rhenium", 6, "d", 5, 10],
+        [76, "Os", "Osmium", 6, "d", 6, 10],
+        [77, "Ir", "Iridium", 6, "d", 7, 10],
+        [78, "Pt", "Platinum", 6, "d", 9, 10],
+        [79, "Au", "Gold", 6, "d", 10, 10],
+        [80, "Hg", "Mercury", 6, "d", 10, 10],
+        [81, "Tl", "Thallium", 6, "p", 1, 6],
+        [82, "Pb", "Lead", 6, "p", 2, 6],
+        [83, "Bi", "Bismuth", 6, "p", 3, 6],
+        [84, "Po", "Polonium", 6, "p", 4, 6],
+        [85, "At", "Astatine", 6, "p", 5, 6],
+        [86, "Rn", "Radon", 6, "p", 6, 6],
+        [87, "Fr", "Francium", 7, "s", 1, 2],
+        [88, "Ra", "Radium", 7, "s", 2, 2],
+        [89, "Ac", "Actinium", 7, "d", 1, 10],
+        [90, "Th", "Thorium", 7, "f", 2, 14],
+        [91, "Pa", "Protactinium", 7, "f", 2, 14],
+        [92, "U", "Uranium", 7, "f", 3, 14],
+        [93, "Np", "Neptunium", 7, "f", 4, 14],
+        [94, "Pu", "Plutonium", 7, "f", 6, 14],
+        [95, "Am", "Americium", 7, "f", 7, 14],
+        [96, "Cm", "Curium", 7, "f", 7, 14],
+        [97, "Bk", "Berkelium", 7, "f", 9, 14],
+        [98, "Cf", "Californium", 7, "f", 10, 14],
+        [99, "Es", "Einsteinium", 7, "f", 11, 14],
+        [100, "Fm", "Fermium", 7, "f", 12, 14],
+        [101, "Md", "Mendelevium", 7, "f", 13, 14],
+        [102, "No", "Nobelium", 7, "f", 14, 14],
+        [103, "Lr", "Lawrencium", 7, "d", 1, 10],
+        [104, "Rf", "Rutherfordium", 7, "d", 2, 10],
+        [105, "Db", "Dubnium", 7, "d", 3, 10],
+        [106, "Sg", "Seaborgium", 7, "d", 4, 10],
+        [107, "Bh", "Bohrium", 7, "d", 5, 10],
+        [108, "Hs", "Hassium", 7, "d", 6, 10],
+        [109, "Mt", "Meitnerium", 7, "d", 7, 10],
+        [110, "Ds", "Darmstadtium", 7, "d", 8, 10],
+        [111, "Rg", "Roentgenium", 7, "d", 9, 10],
+        [112, "Cn", "Copernicium", 7, "d", 10, 10],
+        [113, "Nh", "Nihonium", 7, "p", 1, 6],
+        [114, "Fl", "Flerovium", 7, "p", 2, 6],
+        [115, "Mc", "Moscovium", 7, "p", 3, 6],
+        [116, "Lv", "Livermorium", 7, "p", 4, 6],
+        [117, "Ts", "Tennessine", 7, "p", 5, 6],
+        [118, "Og", "Oganesson", 7, "p", 6, 6]
+    ];
+
+    // ================================================================
+    // 2. BONDING TYPE (AS NUMBERS)
+    // ================================================================
+    function getBondingType(V, block, occ, cap) {
+        if (V === 0) return { type: "inert", value: 0 };
+        // Half-filled p-subshell (max V is cap/2, not 4 — e.g. N/P/As/Sb/Bi
+        // at occ=3, cap=6 reach V=3; carbon-group occ=2 only reaches V=2).
+        if (V === cap / 2 && cap === 6) return { type: "amphoteric", value: [-1, 1] };
+        if (block === "s" || block === "p") {
+            if (occ <= cap / 2) {
+                return { type: "donor", value: 1 };
+            } else {
+                return { type: "acceptor", value: -1 };
+            }
+        }
+        if (block === "d" || block === "f") {
+            if (occ <= cap / 2) {
+                return { type: "donor", value: 1 };
+            } else {
+                return { type: "acceptor", value: -1 };
+            }
+        }
+        return { type: "unknown", value: null };
+    }
+
+    // ================================================================
+    // 2.5. SLATER'S RULES (real shielding from actual electron configuration)
+    // ================================================================
+    // This is the public, textbook approximation — NOT a proprietary
+    // "exact" quantum-derived model. It replaces the old S = occ - V
+    // shortcut, which only ever saw the outermost subshell's occupancy and
+    // was structurally blind to inner-shell (core) electrons entirely: on
+    // every element where occ <= cap/2, V reduces algebraically to V=occ,
+    // forcing S=occ-V=0 (zero shielding) regardless of Z — a real bug
+    // affecting 61 of 118 elements, not just an approximation error.
+    //
+    // Verified against known real ionization energies before being wired
+    // in: H exact (1.00x, the one case where the bare hydrogenic formula
+    // IS exact), Fe 62x error -> 1.5x, C/N/O ~10-11x error -> 3-5x. The
+    // residual error on light (n=2) elements is Slater's rules' own known
+    // limitation — it was built to estimate effective charge and radius
+    // trends well, not to feed the bare hydrogenic energy formula and get
+    // precise absolute ionization energies (electron correlation and real
+    // quantum defects aren't captured). Expect further calibration here —
+    // deliberately mechanical/parametric, not a redesign.
+    const SUBSHELL_ORDER = [
+        [1, 's'], [2, 's'], [2, 'p'], [3, 's'], [3, 'p'], [4, 's'], [3, 'd'], [4, 'p'], [5, 's'],
+        [4, 'd'], [5, 'p'], [6, 's'], [4, 'f'], [5, 'd'], [6, 'p'], [7, 's'], [5, 'f'], [6, 'd'], [7, 'p']
+    ];
+    const SUBSHELL_CAP = { s: 2, p: 6, d: 10, f: 14 };
+
+    // Standard aufbau/Madelung fill order. Known real-world exceptions
+    // (Cr, Cu, and similar half-filled/filled-shell anomalies) are NOT
+    // modeled — this is the textbook default order only, another
+    // deliberate, mechanical simplification to calibrate later rather than
+    // a claim of matching every element's real ground-state configuration.
+    function electronConfiguration(Z) {
+        const config = [];
+        let remaining = Z;
+        for (let i = 0; i < SUBSHELL_ORDER.length && remaining > 0; i++) {
+            const [n, l] = SUBSHELL_ORDER[i];
+            const cap = SUBSHELL_CAP[l];
+            const count = Math.min(cap, remaining);
+            config.push({ n, l, count });
+            remaining -= count;
+        }
+        return config;
+    }
+
+    // Classical main-group valence electron count: the ns+np electrons of
+    // the outermost shell that has an occupied s or p subshell — H=1,
+    // C=4, N=5, O=6, F=7, S=6, etc., matching what every textbook Lewis-
+    // structure/VSEPR treatment means by "valence electrons." For a
+    // transition metal this deliberately only counts the outer ns
+    // electrons (e.g. Fe -> 2, from 4s), NOT the (n-1)d electrons —
+    // classical VSEPR/Lewis lone-pair bookkeeping isn't the right model
+    // for d-block bonding to begin with (that's coordinate/ligand-field
+    // chemistry), so a small number here is the correct signal to a
+    // caller to route a d/f-block atom away from that model entirely,
+    // not an attempt at a real "d-block valence electron count."
+    function valenceElectronCount(Z) {
+        const config = electronConfiguration(Z);
+        let maxSpN = 0;
+        config.forEach(c => {
+            if ((c.l === 's' || c.l === 'p') && c.count > 0 && c.n > maxSpN) maxSpN = c.n;
+        });
+        let total = 0;
+        config.forEach(c => {
+            if ((c.l === 's' || c.l === 'p') && c.n === maxSpN) total += c.count;
+        });
+        return total;
+    }
+
+    // Real Slater group order: ns and np fill together as one group; nd
+    // and nf are each their own group.
+    function groupKey(n, l) { return (l === 's' || l === 'p') ? (n + 'sp') : (n + '' + l); }
+    const GROUP_ORDER = ['1sp', '2sp', '3sp', '3d', '4sp', '4d', '4f', '5sp', '5d', '5f', '6sp', '6d', '7sp'];
+    const GROUP_N = { '1sp': 1, '2sp': 2, '3sp': 3, '3d': 3, '4sp': 4, '4d': 4, '4f': 4, '5sp': 5, '5d': 5, '5f': 5, '6sp': 6, '6d': 6, '7sp': 7 };
+
+    // Real Slater's rules shielding constant for an electron in subshell
+    // (targetN, targetL), given an explicit electron configuration —
+    // not always the neutral atom's. Taking `config` as a parameter
+    // (rather than always deriving it from Z internally) is what lets
+    // this same function serve any ionization step, not just the first:
+    // the shielding a departing electron feels depends on which OTHER
+    // electrons are actually still present, and after step 1 that's no
+    // longer the full neutral-atom configuration.
+    function slaterShielding(config, targetN, targetL) {
+        const groups = {};
+        config.forEach(c => { const k = groupKey(c.n, c.l); groups[k] = (groups[k] || 0) + c.count; });
+        const targetGroup = groupKey(targetN, targetL);
+        const targetGroupIdx = GROUP_ORDER.indexOf(targetGroup);
+        const targetGroupN = GROUP_N[targetGroup];
+        const isDorF = (targetL === 'd' || targetL === 'f');
+
+        let S = 0;
+        GROUP_ORDER.forEach((g, idx) => {
+            const count = groups[g] || 0;
+            if (count === 0) return;
+            if (g === targetGroup) {
+                const others = count - 1; // an electron doesn't shield itself
+                S += others * (targetGroup === '1sp' ? 0.30 : 0.35);
+                return;
+            }
+            if (idx > targetGroupIdx) return; // not-yet-filled groups don't shield
+            if (isDorF) {
+                S += count * 1.00; // d/f: everything below it shields fully, no partial tier
+            } else {
+                const gN = GROUP_N[g];
+                if (gN === targetGroupN - 1) S += count * 0.85;
+                else if (gN <= targetGroupN - 2) S += count * 1.00;
+            }
+        });
+        return S;
+    }
+
+    // Textbook convention: an atom's first-ionized electron is its
+    // outermost occupied subshell — not looked up by block letter, but
+    // found directly from the real electron configuration already
+    // computed above: whichever occupied subshell has the highest n (ties
+    // broken by highest l). This reproduces the right answer for every
+    // block without ever special-casing one: for s/p-block it lands on
+    // that block's own ns/np subshell (both occupied at n=period, p wins
+    // the tie); for d/f-block it lands on ns automatically, because
+    // (n-1)d and (n-2)f sit at a strictly lower n than the outermost ns —
+    // no "if block is d or f" branch needed. This is also why real
+    // transition-metal/lanthanide chemistry ionizes ns before (n-1)d or
+    // (n-2)f (e.g. Fe: [Ar]3d6 4s2 loses 4s first, giving [Ar]3d6): it
+    // falls out of the same rule, not a separate fact about those blocks.
+    const L_RANK = { s: 0, p: 1, d: 2, f: 3 };
+    function outermostOccupiedSubshell(config) {
+        let best = null;
+        config.forEach(c => {
+            if (c.count <= 0) return;
+            if (!best || c.n > best.n || (c.n === best.n && L_RANK[c.l] > L_RANK[best.l])) best = c;
+        });
+        return best;
+    }
+
+    // Removes `count` electrons from a NEUTRAL atom's configuration, one
+    // at a time, always from whichever subshell is currently outermost —
+    // the same rule that finds the first-ionized electron, just applied
+    // repeatedly. This is what makes "second ionization," "third," etc.
+    // a real, general capability instead of a fact only known about
+    // ionization step 1: removing electron 2 has to first recognize that,
+    // for Fe, electron 1 already emptied 4s down to 4s1, so electron 2
+    // still comes from 4s (not 3d) — and only once 4s is fully empty does
+    // the outermost subshell shift to 3d for further removals. Nothing
+    // here is specific to "first" — it falls out of applying the general
+    // rule as many times as asked.
+    function electronConfigurationAfterRemoving(Z, count) {
+        const config = electronConfiguration(Z).map(c => ({ n: c.n, l: c.l, count: c.count }));
+        for (let i = 0; i < count; i++) {
+            const outer = outermostOccupiedSubshell(config);
+            if (!outer) break; // no electrons left to remove
+            outer.count -= 1;
+        }
+        return config.filter(c => c.count > 0);
+    }
+
+    // General ionization analysis: step=1 is the neutral atom's first
+    // ionization (today's default everywhere else in this file); step=2
+    // is the energy to remove the NEXT electron from the +1 ion produced
+    // by step 1; step=N works the same way for any N up to the atom's
+    // total electron count. Each step finds its own outermost subshell
+    // and computes Slater shielding against the electrons actually still
+    // present at that point — not a special "second ionization" formula,
+    // the same general machinery run on a smaller configuration.
+    function ionizationAnalysis(Z, step) {
+        step = step || 1;
+        const before = electronConfigurationAfterRemoving(Z, step - 1);
+        const target = outermostOccupiedSubshell(before);
+        if (!target) return { error: 'No electrons remain to ionize at step ' + step + ' for Z=' + Z };
+        const S = slaterShielding(before, target.n, target.l);
+        const Z_eff = Z - S;
+        const orbital_energy = -13.6 * Z_eff * Z_eff / (target.n * target.n);
+        return {
+            Z, step, n: target.n, l: target.l,
+            S: Math.round(S * 1000) / 1000,
+            Z_eff: Math.round(Z_eff * 1000) / 1000,
+            orbital_energy: Math.round(orbital_energy * 100) / 100,
+            ionization_energy: Math.round(-orbital_energy * 100) / 100
+        };
+    }
+
+    // ================================================================
+    // 3. FVT PHYSICS ENGINE
+    // ================================================================
+    function computeFVTPhysics(Z, occ, cap, period, block) {
+        const half = cap / 2;
+        const V = half - Math.abs(occ - half);
+        // The rest of this file's per-element data (orbital_energy,
+        // Z_eff, etc.) always means step 1 — the neutral atom's first
+        // ionization — which is exactly ionizationAnalysis(Z, 1). Any
+        // other step is available directly via PDT.ionizationAnalysis
+        // without touching this default.
+        const first = ionizationAnalysis(Z, 1);
+        const n = first.n;
+        const S = first.S;
+        const Z_eff = first.Z_eff;
+        const bonding = getBondingType(V, block, occ, cap);
+
+        const slater_radius = (n * n) / Z_eff;
+        const orbital_energy = -13.6 * (Z_eff * Z_eff) / (n * n);
+
+        let unpaired_spins = 0;
+        if (cap === 10) {
+            if (occ <= 5) unpaired_spins = occ;
+            else unpaired_spins = 10 - occ;
+        } else if (cap === 14) {
+            if (occ <= 7) unpaired_spins = occ;
+            else unpaired_spins = 14 - occ;
+        } else {
+            unpaired_spins = (occ % 2 === 0) ? 0 : 1;
+        }
+        const magnetic_moment = Math.sqrt(unpaired_spins * (unpaired_spins + 2));
+
+        let coordination = "Unknown";
+        if (cap === 2) coordination = "Linear";
+        else if (cap === 6) coordination = "Tetrahedral/Octahedral";
+        else if (cap === 10) {
+            if (occ <= 4) coordination = "Tetrahedral";
+            else if (occ <= 6) coordination = "Octahedral";
+            else if (occ <= 8) coordination = "Square Planar";
+            else coordination = "Linear/Complex";
+        } else if (cap === 14) coordination = "Complex (f-block)";
+
+        const IE = -orbital_energy;
+        const EA = IE * 0.2;
+        const electronegativity = (IE + EA) / 2;
+
+        let crystal_structure = "Unknown";
+        if (V === 0) crystal_structure = "Close-packed (noble gas)";
+        else if (V === cap / 2 && cap === 6) crystal_structure = "Tetrahedral (diamond-like)";
+        else if (cap === 10 && occ >= 6) crystal_structure = "BCC/FCC (metal)";
+        else if (cap === 6 && occ >= 4) crystal_structure = "Covalent network";
+        else crystal_structure = "Variable";
+
+        const lattice_constant = 2 * slater_radius * 1.2;
+        const heat_capacity = 3 * (n + 1);
+        const config_entropy = occ * Math.log(occ + 1) * 0.1;
+
+        return {
+            Z: Z,
+            occ: occ,
+            cap: cap,
+            period: period,
+            block: block,
+            V: Math.round(V * 100) / 100,
+            S: Math.round(S * 100) / 100,
+            Z_eff: Math.round(Z_eff * 100) / 100,
+            half_filled: half,
+            bonding: bonding,
+            slater_radius: Math.round(slater_radius * 1000) / 1000,
+            orbital_energy: Math.round(orbital_energy * 100) / 100,
+            principal_quantum: n,
+            unpaired_spins: unpaired_spins,
+            magnetic_moment: Math.round(magnetic_moment * 100) / 100,
+            electronegativity: Math.round(electronegativity * 100) / 100,
+            ionization_energy: Math.round(IE * 100) / 100,
+            electron_affinity: Math.round(EA * 100) / 100,
+            coordination: coordination,
+            crystal_structure: crystal_structure,
+            lattice_constant: Math.round(lattice_constant * 1000) / 1000,
+            heat_capacity: Math.round(heat_capacity * 100) / 100,
+            config_entropy: Math.round(config_entropy * 100) / 100
+        };
+    }
+
+    // ================================================================
+    // 4. BUILD THE DATASET
+    // ================================================================
+    const byZ = {};
+    const bySymbol = {};
+    const byBlock = { s: [], p: [], d: [], f: [] };
+    const byType = { donor: [], acceptor: [], inert: [], amphoteric: [] };
+    const allElements = [];
+
+    for (const [Z, symbol, name, period, block, occ, cap] of elementData) {
+        const phys = computeFVTPhysics(Z, occ, cap, period, block);
+        const element = {
+            Z: Z,
+            symbol: symbol,
+            name: name,
+            period: period,
+            block: block,
+            occupancy: occ,
+            capacity: cap,
+            ...phys
+        };
+        byZ[Z] = element;
+        bySymbol[symbol] = element;
+        byBlock[block].push(element);
+        byType[element.bonding.type].push(element);
+        allElements.push(element);
+    }
+
+    // ================================================================
+    // 5. FIXED PARSER
+    // ================================================================
+    function parseFormula(formula) {
+        // Remove spaces
+        formula = formula.replace(/\s/g, '');
+
+        // Split by '+'
+        const parts = formula.split('+');
+        const result = [];
+
+        for (const part of parts) {
+            if (part === '') continue;
+
+            // Match coefficient and formula
+            // e.g., "2H2O" → coeff=2, formula="H2O"
+            const coeffMatch = part.match(/^(\d+)?([A-Z][a-z]?.*)$/);
+            if (!coeffMatch) {
+                return { error: `Invalid token: "${part}"` };
+            }
+            const coeff = coeffMatch[1] ? parseInt(coeffMatch[1]) : 1;
+            const formulaPart = coeffMatch[2];
+
+            // Parse the formula part into elements and counts
+            // e.g., "H2O" → [{symbol:"H",count:2}, {symbol:"O",count:1}]
+            const elementMatches = formulaPart.match(/([A-Z][a-z]?)(\d*)/g);
+            if (!elementMatches) {
+                return { error: `Invalid formula: "${formulaPart}"` };
+            }
+
+            for (const match of elementMatches) {
+                const elemMatch = match.match(/([A-Z][a-z]?)(\d*)/);
+                if (!elemMatch) continue;
+                const symbol = elemMatch[1];
+                const count = elemMatch[2] ? parseInt(elemMatch[2]) : 1;
+                if (!bySymbol[symbol]) {
+                    return { error: `Unknown element: "${symbol}"` };
+                }
+                result.push({ symbol: symbol, count: coeff * count });
+            }
+        }
+
+        return result;
+    }
+
+    // ================================================================
+    // 6. STABILITY CHECKER
+    // ================================================================
+    // Sums count*V*sign across a flat [{symbol,count}] list, branching over
+    // every sign choice for amphoteric elements (V(p) with cap===6). This is
+    // the whole-formula global check; extracted out of checkStability so
+    // other modules (e.g. CoordinationChemistry, which runs the same check
+    // on a leftover atom pool after pulling coordination bonds out of it)
+    // can reuse the exact same math instead of re-deriving it.
+    function sumValenceBalance(parsedEntries) {
+        let sum = 0;
+        let hasAmphoteric = false;
+        const amphotericOptions = [];
+
+        for (const entry of parsedEntries) {
+            const el = bySymbol[entry.symbol];
+            if (!el) return { error: `Unknown element: ${entry.symbol}` };
+            const v = el.V;
+            const type = el.bonding.value;
+            if (Array.isArray(type)) {
+                hasAmphoteric = true;
+                amphotericOptions.push({ symbol: entry.symbol, count: entry.count, v: v, options: type });
+            } else {
+                sum += entry.count * v * type;
+            }
+        }
+
+        if (hasAmphoteric) {
+            const results = [];
+            function tryCombination(depth, currentSum) {
+                if (depth === amphotericOptions.length) {
+                    results.push(currentSum);
+                    return;
+                }
+                const opt = amphotericOptions[depth];
+                for (let i = 0; i < opt.options.length; i++) {
+                    tryCombination(depth + 1, currentSum + opt.count * opt.v * opt.options[i]);
+                }
+            }
+            tryCombination(0, sum);
+            return { sum: results, balanced: results.some(s => s === 0) };
+        }
+
+        return { sum: sum, balanced: (sum === 0) };
+    }
+
+    function checkStability(formula) {
+        const parsed = parseFormula(formula);
+        if (parsed.error) return { error: parsed.error };
+
+        const result = sumValenceBalance(parsed);
+        if (result.error) return result;
+
+        return {
+            formula: formula,
+            parsed: parsed,
+            sum: result.sum,
+            balanced: result.balanced,
+            message: result.balanced ? "✅ Stable molecule" : "❌ Unstable molecule"
+        };
+    }
+
+    // ================================================================
+    // 7. EQUATION BALANCER
+    // ================================================================
+    function balanceEquation(equation) {
+        const parts = equation.split('=');
+        if (parts.length !== 2) {
+            return { error: "Equation must contain '='" };
+        }
+
+        const left = parseFormula(parts[0].trim());
+        const right = parseFormula(parts[1].trim());
+        if (left.error) return { error: left.error };
+        if (right.error) return { error: right.error };
+
+        const elements = {};
+
+        for (const entry of left) {
+            if (!elements[entry.symbol]) elements[entry.symbol] = 0;
+            elements[entry.symbol] += entry.count;
+        }
+
+        for (const entry of right) {
+            if (!elements[entry.symbol]) elements[entry.symbol] = 0;
+            elements[entry.symbol] -= entry.count;
+        }
+
+        let balanced = true;
+        const imbalances = [];
+        for (const [symbol, count] of Object.entries(elements)) {
+            if (count !== 0) {
+                balanced = false;
+                imbalances.push({ symbol, difference: count });
+            }
+        }
+
+        // V(p) sum for the equation
+        let leftV = 0;
+        for (const entry of left) {
+            const el = bySymbol[entry.symbol];
+            if (Array.isArray(el.bonding.value)) continue;
+            leftV += entry.count * el.V * el.bonding.value;
+        }
+
+        let rightV = 0;
+        for (const entry of right) {
+            const el = bySymbol[entry.symbol];
+            if (Array.isArray(el.bonding.value)) continue;
+            rightV += entry.count * el.V * el.bonding.value;
+        }
+
+        return {
+            equation: equation,
+            left: left,
+            right: right,
+            leftV: leftV,
+            rightV: rightV,
+            balanced: balanced,
+            imbalances: imbalances,
+            message: balanced ? "✅ Equation is balanced" : "❌ Equation is not balanced"
+        };
+    }
+
+    // ================================================================
+    // 8. COMMAND PARSER
+    // ================================================================
+    function run(command) {
+        if (typeof command !== 'string') {
+            return { error: "Command must be a string." };
+        }
+
+        const cmd = command.trim();
+
+        // --- help ---
+        if (cmd.toLowerCase() === 'help') {
+            return {
+                help: `
+                PDT.run("all")                    - Show all elements
+                PDT.run("help")                   - Show this help
+                PDT.run("stable H2O")             - Check if molecule is stable
+                PDT.run("stable H2O2")            - Check stability
+                PDT.run("solve 2H + 2O = H2O2")   - Balance a chemical equation
+                PDT.run("get Fe")                 - Get element data
+                PDT.run("get 26")                 - Get element by atomic number
+                PDT.run("block d")                - Show all d-block elements
+                PDT.run("type donor")             - Show all donors
+                `
+            };
+        }
+
+        // --- all ---
+        if (cmd.toLowerCase() === 'all') {
+            return { elements: allElements };
+        }
+
+        // --- stable ---
+        if (cmd.toLowerCase().startsWith('stable ')) {
+            const formula = cmd.slice(7).trim();
+            const result = checkStability(formula);
+            if (result.error) return { error: result.error };
+            return result;
+        }
+
+        // --- solve ---
+        if (cmd.toLowerCase().startsWith('solve ')) {
+            const equation = cmd.slice(6).trim();
+            const result = balanceEquation(equation);
+            if (result.error) return { error: result.error };
+            return result;
+        }
+
+        // --- get ---
+        if (cmd.toLowerCase().startsWith('get ')) {
+            const key = cmd.slice(4).trim();
+            if (bySymbol[key]) return { element: bySymbol[key] };
+            const num = parseInt(key);
+            if (!isNaN(num) && byZ[num]) return { element: byZ[num] };
+            // Case-insensitive fallback
+            const lowerKey = key.toLowerCase();
+            for (const [sym, el] of Object.entries(bySymbol)) {
+                if (sym.toLowerCase() === lowerKey) {
+                    return { element: el };
+                }
+            }
+            return { error: `Element "${key}" not found.` };
+        }
+
+        // --- block ---
+        if (cmd.toLowerCase().startsWith('block ')) {
+            const block = cmd.slice(6).trim().toLowerCase();
+            if (byBlock[block]) return { elements: byBlock[block] };
+            return { error: `Block "${block}" not found. Use s, p, d, or f.` };
+        }
+
+        // --- type ---
+        if (cmd.toLowerCase().startsWith('type ')) {
+            const type = cmd.slice(5).trim().toLowerCase();
+            if (byType[type]) return { elements: byType[type] };
+            return { error: `Type "${type}" not found. Use donor, acceptor, inert, or amphoteric.` };
+        }
+
+        return { error: `Unknown command: "${command}". Try PDT.run("help")` };
+    }
+
+    // ================================================================
+    // 9. EXPORT
+    // ================================================================
+    return {
+        byZ: byZ,
+        bySymbol: bySymbol,
+        byBlock: byBlock,
+        byType: byType,
+        all: allElements,
+        run: run,
+        get: function(key) {
+            if (bySymbol[key]) return bySymbol[key];
+            const num = parseInt(key);
+            if (!isNaN(num) && byZ[num]) return byZ[num];
+            return null;
+        },
+        stable: checkStability,
+        solve: balanceEquation,
+        compute: computeFVTPhysics,
+        valenceBalance: sumValenceBalance,
+        // General successive-ionization capability — step=1 is what every
+        // element's own orbital_energy/Z_eff already uses by default;
+        // step=2, 3, ... compute the same real physics for removing the
+        // next electron, and the next, from whichever ion the previous
+        // step left behind. Not a lookup — accepts any Z, any step up to
+        // that element's electron count.
+        ionizationAnalysis: ionizationAnalysis,
+        valenceElectronCount: valenceElectronCount,
+        version: "1.0",
+        date: "2026-09-06",
+        author: "Pooled Impact"
+    };
+}));
+</script>
+<script>
+// UMD IIFE - Minimal SMILES parser (organics + metals subset)
+//
+// Scope: enough of SMILES to build real Aromaticity.js/CoordinationChemistry.js
+// input graphs from a standard notation instead of hand-typing atom/bond
+// arrays. Deliberately NOT a general cheminformatics engine: no
+// stereochemistry (@, /, \), no isotopes, no disconnected fragments (.),
+// no dative-bond notation (it isn't standardized across SMILES flavors
+// anyway — metal-ligand coordination stays CoordinationChemistry's own
+// valence-matching job, not something trusted from the string).
+//
+// This module does NOT assert aromaticity from lowercase SMILES atoms and
+// hand it downstream as a verdict. It uses lowercase (aromatic) + explicit
+// bracket hydrogen count to derive each atom's ROLE (needsDoubleBond /
+// lonePairDonor — the exact vocabulary Aromaticity.js already takes), and
+// lets Aromaticity's own matching + diagonalization independently verify
+// whether the ring is actually aromatic. The SMILES author's aromatic
+// lowercase is a hint about intended structure, not a trusted answer.
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define([], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory();
+    } else {
+        root.Smiles = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function() {
+    'use strict';
+
+    // Organic-subset symbols writable without brackets, and their default
+    // (un-ionized, no explicit H) valence — used to compute implicit H
+    // counts. Two-letter symbols must be tried before single-letter ones.
+    var ORGANIC_SUBSET = ['Cl', 'Br', 'B', 'C', 'N', 'O', 'P', 'S', 'F', 'I'];
+    var DEFAULT_VALENCE = { B: 3, C: 4, N: 3, O: 2, P: 3, S: 2, F: 1, Cl: 1, Br: 1, I: 1 };
+    // Aromatic lowercase forms SMILES actually allows in the organic subset.
+    var AROMATIC_LOWERCASE = { b: 'B', c: 'C', n: 'N', o: 'O', p: 'P', s: 'S' };
+
+    function isDigit(ch) { return ch >= '0' && ch <= '9'; }
+
+    // Tokenizes + parses a SMILES string into a generic graph:
+    // { atoms: [{symbol, aromatic, explicitH, charge}], bonds: [[i, j, order]] }
+    // order is 1, 2, 3, or 'aromatic' (bond symbol ':' or an unmarked bond
+    // between two aromatic atoms).
+    function parse(smiles) {
+        var atoms = [];
+        var bonds = [];
+        var pos = 0;
+        var len = smiles.length;
+        var prevAtom = null;       // index of the most recently placed atom (bond attaches here)
+        var pendingBond = null;    // bond order queued by a bond symbol, consumed by the next atom/ring-closure
+        var branchStack = [];      // stack of prevAtom values, pushed on '(' popped on ')'
+        var ringOpens = {};        // ring-closure digit -> { atomIndex, bondOrder }
+
+        function readBracketAtom() {
+            // pos is just past '['
+            var start = pos;
+            // isotope (ignored)
+            while (pos < len && isDigit(smiles[pos])) pos++;
+            // element symbol: try two-letter aromatic-incapable metals/halogens etc, then one-letter, then aromatic lowercase
+            var symbol = null;
+            var aromatic = false;
+            var twoLetter = smiles.slice(pos, pos + 2);
+            if (/^[A-Z][a-z]$/.test(twoLetter) && twoLetter !== 'H ') {
+                symbol = twoLetter;
+                pos += 2;
+            } else {
+                var ch = smiles[pos];
+                if (AROMATIC_LOWERCASE[ch]) {
+                    symbol = AROMATIC_LOWERCASE[ch];
+                    aromatic = true;
+                    pos++;
+                } else {
+                    symbol = ch.toUpperCase();
+                    pos++;
+                }
+            }
+            // chirality (ignored)
+            while (pos < len && smiles[pos] === '@') pos++;
+            // explicit H count
+            var explicitH = 0;
+            if (smiles[pos] === 'H') {
+                pos++;
+                var hDigits = '';
+                while (pos < len && isDigit(smiles[pos])) { hDigits += smiles[pos]; pos++; }
+                explicitH = hDigits ? parseInt(hDigits, 10) : 1;
+            }
+            // charge
+            var charge = 0;
+            if (smiles[pos] === '+' || smiles[pos] === '-') {
+                var sign = smiles[pos] === '+' ? 1 : -1;
+                pos++;
+                var run = 1;
+                while (smiles[pos] === (sign === 1 ? '+' : '-')) { run++; pos++; }
+                var chargeDigits = '';
+                while (pos < len && isDigit(smiles[pos])) { chargeDigits += smiles[pos]; pos++; }
+                charge = sign * (chargeDigits ? parseInt(chargeDigits, 10) : run);
+            }
+            // atom class (ignored)
+            if (smiles[pos] === ':') { pos++; while (pos < len && isDigit(smiles[pos])) pos++; }
+            if (smiles[pos] !== ']') throw new Error('Malformed bracket atom near position ' + start);
+            pos++; // consume ']'
+            return { symbol: symbol, aromatic: aromatic, explicitH: explicitH, charge: charge };
+        }
+
+        function readOrganicAtom() {
+            var two = smiles.slice(pos, pos + 2);
+            for (var i = 0; i < ORGANIC_SUBSET.length; i++) {
+                var sym = ORGANIC_SUBSET[i];
+                if (sym.length === 2 && smiles.slice(pos, pos + 2) === sym) {
+                    pos += 2;
+                    return { symbol: sym, aromatic: false, explicitH: null, charge: 0 };
+                }
+            }
+            var ch = smiles[pos];
+            if (AROMATIC_LOWERCASE[ch]) {
+                pos++;
+                return { symbol: AROMATIC_LOWERCASE[ch], aromatic: true, explicitH: null, charge: 0 };
+            }
+            if (ORGANIC_SUBSET.indexOf(ch) !== -1) {
+                pos++;
+                return { symbol: ch, aromatic: false, explicitH: null, charge: 0 };
+            }
+            throw new Error('Unrecognized atom at position ' + pos + ' ("' + smiles.slice(pos, pos + 3) + '...")');
+        }
+
+        function bondOrderFor(a, b, explicitOrder) {
+            if (explicitOrder) return explicitOrder;
+            if (a.aromatic && b.aromatic) return 'aromatic';
+            return 1;
+        }
+
+        function attach(atomIdx) {
+            if (prevAtom !== null) {
+                var order = bondOrderFor(atoms[prevAtom], atoms[atomIdx], pendingBond);
+                bonds.push([prevAtom, atomIdx, order]);
+            }
+            pendingBond = null;
+            prevAtom = atomIdx;
+        }
+
+        while (pos < len) {
+            var c = smiles[pos];
+            if (c === '[') {
+                pos++;
+                var atom = readBracketAtom();
+                var idx = atoms.push(atom) - 1;
+                attach(idx);
+            } else if (c === '(') {
+                branchStack.push(prevAtom);
+                pos++;
+            } else if (c === ')') {
+                prevAtom = branchStack.pop();
+                pos++;
+            } else if (c === '-' || c === '=' || c === '#' || c === ':') {
+                pendingBond = c === '-' ? 1 : c === '=' ? 2 : c === '#' ? 3 : 'aromatic';
+                pos++;
+            } else if (c === '/' || c === '\\') {
+                pos++; // stereo bond marker — treat as a plain single bond, not derived from
+            } else if (isDigit(c) || c === '%') {
+                var ringId;
+                if (c === '%') { ringId = smiles.slice(pos + 1, pos + 3); pos += 3; }
+                else { ringId = c; pos++; }
+                if (ringOpens[ringId] !== undefined) {
+                    var open = ringOpens[ringId];
+                    var order = bondOrderFor(atoms[open.atomIndex], atoms[prevAtom], pendingBond || open.bondOrder);
+                    bonds.push([open.atomIndex, prevAtom, order]);
+                    delete ringOpens[ringId];
+                    pendingBond = null;
+                } else {
+                    ringOpens[ringId] = { atomIndex: prevAtom, bondOrder: pendingBond };
+                    pendingBond = null;
+                }
+            } else if (c === '.') {
+                prevAtom = null; // disconnected fragment — not a supported use case, but don't crash
+                pos++;
+            } else {
+                var organicAtom = readOrganicAtom();
+                var oIdx = atoms.push(organicAtom) - 1;
+                attach(oIdx);
+            }
+        }
+
+        return { atoms: atoms, bonds: bonds };
+    }
+
+    // Standard bridge-finding (Tarjan): an edge is a bridge iff removing it
+    // disconnects the graph, equivalently iff it lies on NO cycle. Used
+    // below to separate ring atoms (candidate conjugated system) from
+    // branch/substituent atoms (everything only reachable via a bridge) —
+    // this is a general graph-theory answer to part of "which atoms
+    // belong to the conjugated system," not a heuristic specific to any
+    // one molecule's shape.
+    function findBridgeBondIndices(numAtoms, bonds) {
+        var adj = [];
+        for (var i = 0; i < numAtoms; i++) adj.push([]);
+        bonds.forEach(function(b, idx) {
+            adj[b[0]].push({ to: b[1], idx: idx });
+            adj[b[1]].push({ to: b[0], idx: idx });
+        });
+        var visited = new Array(numAtoms).fill(false);
+        var disc = new Array(numAtoms).fill(-1);
+        var low = new Array(numAtoms).fill(-1);
+        var timer = 0;
+        var bridges = {};
+        function dfs(u, parentEdgeIdx) {
+            visited[u] = true;
+            disc[u] = low[u] = timer++;
+            adj[u].forEach(function(e) {
+                if (e.idx === parentEdgeIdx) return;
+                if (visited[e.to]) {
+                    low[u] = Math.min(low[u], disc[e.to]);
+                } else {
+                    dfs(e.to, e.idx);
+                    low[u] = Math.min(low[u], low[e.to]);
+                    if (low[e.to] > disc[u]) bridges[e.idx] = true;
+                }
+            });
+        }
+        for (var s = 0; s < numAtoms; s++) if (!visited[s]) dfs(s, -1);
+        return bridges;
+    }
+
+    // Converts a parsed SMILES graph's ring subsystem into the
+    // {atoms, bonds} shape Aromaticity.analyze() consumes, deriving each
+    // atom's role instead of requiring it be hand-declared:
+    // - ring atoms are found via bridge-finding (works for any topology,
+    //   not just the lowercase-aromatic case);
+    // - a ring atom incident to an explicit double/triple bond, or marked
+    //   aromatic (lowercase), gets role 'needsDoubleBond';
+    // - a ring N/O/S/P atom with only single ring bonds and no explicit
+    //   multiple bond is treated as a lone-pair donor (the common
+    //   Kekulized-heteroaromatic pattern, e.g. pyrrole's N);
+    // - a ring carbon with only single bonds (e.g. cyclohexane) has no
+    //   plausible pi role and is excluded — being "in a ring" alone
+    //   doesn't make an atom conjugated.
+    // `planar` is NOT derived — it's a declared argument here, same
+    // limitation as everywhere else in this codebase; callers should only
+    // pass true for structures independently known to be planar.
+    function toAromaticSystem(parsed, planar) {
+        var n = parsed.atoms.length;
+        var bridges = findBridgeBondIndices(n, parsed.bonds);
+        var ringBonds = parsed.bonds.filter(function(b, idx) { return !bridges[idx]; });
+
+        // Two different questions, easy to conflate: "does this ring bond
+        // have any multiple/aromatic character at all" (used to decide
+        // which atoms are IN the conjugated system) vs. "is this atom
+        // incident to a strictly explicit = or # bond" (used to decide a
+        // Kekulized, non-lowercase atom's ROLE). Every bond in a
+        // lowercase-aromatic ring is order 'aromatic', including the ones
+        // touching a lone-pair-donor atom like pyrrole's [nH] — so the
+        // first, broader flag must NOT be used for role, or every aromatic
+        // atom looks "double-bonded" and [nH]'s signal gets masked.
+        var ringHasMultipleCharacter = new Array(n).fill(false);
+        var hasExplicitDoubleOrTriple = new Array(n).fill(false);
+        var inRing = new Array(n).fill(false);
+        ringBonds.forEach(function(b) {
+            inRing[b[0]] = inRing[b[1]] = true;
+            if (b[2] === 2 || b[2] === 3 || b[2] === 'aromatic') {
+                ringHasMultipleCharacter[b[0]] = ringHasMultipleCharacter[b[1]] = true;
+            }
+            if (b[2] === 2 || b[2] === 3) {
+                hasExplicitDoubleOrTriple[b[0]] = hasExplicitDoubleOrTriple[b[1]] = true;
+            }
+        });
+
+        // Total real sigma-bond count (ALL graph bonds touching the atom -
+        // ring and exocyclic alike, e.g. an N-substituted pyrrole's ring N
+        // has a branch bond this needs to count - PLUS explicit H, which
+        // for a bracket atom like [nH] is a real bond that never appears
+        // in parsed.bonds at all) - used below to tell pyridine-type
+        // aromatic N (2 sigma bonds total; its 3rd valence slot is a non-
+        // delocalized in-plane lone pair) from pyrrole-type (3 sigma bonds
+        // total; its remaining lone pair is what delocalizes instead), the
+        // real textbook distinction, rather than the H-count-only proxy
+        // this used to use (which happened to work for bracket [nH] but
+        // was wrong for furan/thiophene-type O/S - see ALWAYS_DONOR below).
+        var totalDegree = new Array(n).fill(0);
+        parsed.bonds.forEach(function(b) { totalDegree[b[0]]++; totalDegree[b[1]]++; });
+        for (i = 0; i < n; i++) totalDegree[i] += (parsed.atoms[i].explicitH || 0);
+
+        // O and S have no aromatic "pyridine-type" analog in ordinary
+        // neutral organic chemistry - furan/thiophene-type heteroatoms are
+        // always divalent (both bonds used by the ring) with a remaining
+        // lone pair that delocalizes, so they're always a donor when
+        // aromatic, regardless of H count (they never carry one) or degree.
+        var ALWAYS_DONOR = { O: true, S: true };
+
+        var HETEROATOM_DONORS = { N: true, O: true, S: true, P: true };
+        var included = new Array(n).fill(false);
+        for (var i = 0; i < n; i++) {
+            if (!inRing[i]) continue;
+            var a = parsed.atoms[i];
+            if (a.aromatic || ringHasMultipleCharacter[i]) included[i] = true;
+            else if (HETEROATOM_DONORS[a.symbol]) included[i] = true;
+        }
+
+        var indexMap = {};
+        var newIdx = 0;
+        for (i = 0; i < n; i++) if (included[i]) indexMap[i] = newIdx++;
+
+        var atoms = [];
+        for (i = 0; i < n; i++) {
+            if (!included[i]) continue;
+            var atom = parsed.atoms[i];
+            var role;
+            if (atom.aromatic) {
+                if (atom.symbol === 'C') {
+                    role = 'needsDoubleBond';
+                } else if (ALWAYS_DONOR[atom.symbol]) {
+                    role = 'lonePairDonor';
+                } else {
+                    // N (and P, treated the same way): a total of 3 real
+                    // sigma bonds (ring bonds + explicit H + any exocyclic
+                    // substituent) means the pyrrole-type case - the bond
+                    // order to ring neighbors is uniformly 'aromatic'
+                    // either way and carries no role information itself.
+                    role = (totalDegree[i] >= 3) ? 'lonePairDonor' : 'needsDoubleBond';
+                }
+            } else if (hasExplicitDoubleOrTriple[i]) {
+                role = 'needsDoubleBond';
+            } else {
+                // A heteroatom with only single ring bonds and no
+                // lowercase marking (a bare Kekulized N, e.g.) — the
+                // inclusion rule above already excludes a plain carbon
+                // that would otherwise reach this branch.
+                role = 'lonePairDonor';
+            }
+            atoms.push({ symbol: atom.symbol, role: role });
+        }
+
+        var bonds = [];
+        ringBonds.forEach(function(b) {
+            if (indexMap[b[0]] !== undefined && indexMap[b[1]] !== undefined) {
+                bonds.push([indexMap[b[0]], indexMap[b[1]]]);
+            }
+        });
+
+        // originalIndex[newIdx] maps back to the index in `parsed.atoms` -
+        // additive, existing callers that only read atoms/bonds/planar are
+        // unaffected. Lets a caller (e.g. MolecularStructure.js) merge role
+        // and Kekule-matching results computed here back onto its own,
+        // larger atom list that includes non-ring/substituent atoms too.
+        var originalIndex = [];
+        for (i = 0; i < n; i++) if (included[i]) originalIndex.push(i);
+
+        return { atoms: atoms, bonds: bonds, planar: !!planar, originalIndex: originalIndex };
+    }
+
+    // Serializes an Aromaticity.js-style {atoms:[{symbol,role}], bonds}
+    // graph BACK into a SMILES string (lowercase-aromatic form, [xH] for a
+    // lonePairDonor heteroatom) — a DFS spanning tree with non-tree edges
+    // becoming numbered ring closures, and all-but-the-last child at a
+    // branch point wrapped in parens. Exists specifically to round-trip
+    // graphs this codebase already built and verified through the parser,
+    // as a way to cross-check the parser against known-correct ground
+    // truth without having to recall a real-world SMILES string from
+    // memory (which would carry the same transcription-error risk hand-
+    // typing a large atom/bond array always has).
+    function serialize(system) {
+        var atoms = system.atoms;
+        var n = atoms.length;
+        var adj = [];
+        for (var i = 0; i < n; i++) adj.push([]);
+        system.bonds.forEach(function(b) { adj[b[0]].push(b[1]); adj[b[1]].push(b[0]); });
+
+        function edgeKey(a, b) { return a < b ? a + '|' + b : b + '|' + a; }
+
+        var visited = new Array(n).fill(false);
+        var parent = new Array(n).fill(-1);
+        var treeEdge = {};
+        function buildTree(u) {
+            visited[u] = true;
+            adj[u].forEach(function(v) {
+                if (!visited[v]) {
+                    parent[v] = u;
+                    treeEdge[edgeKey(u, v)] = true;
+                    buildTree(v);
+                }
+            });
+        }
+        for (i = 0; i < n; i++) if (!visited[i]) buildTree(i);
+
+        var closureDigit = {};
+        var nextDigit = 1;
+        system.bonds.forEach(function(b) {
+            var key = edgeKey(b[0], b[1]);
+            if (!treeEdge[key]) closureDigit[key] = nextDigit++;
+        });
+        var atomRingDigits = [];
+        for (i = 0; i < n; i++) atomRingDigits.push([]);
+        system.bonds.forEach(function(b) {
+            var key = edgeKey(b[0], b[1]);
+            if (closureDigit[key] !== undefined) {
+                atomRingDigits[b[0]].push(closureDigit[key]);
+                atomRingDigits[b[1]].push(closureDigit[key]);
+            }
+        });
+
+        var AROMATIC_CAPABLE = { b: true, c: true, n: true, o: true, p: true, s: true };
+        function atomToken(atom) {
+            var lower = atom.symbol.toLowerCase();
+            if (!AROMATIC_CAPABLE[lower]) return '[' + atom.symbol + ']';
+            if (atom.role === 'lonePairDonor') return '[' + lower + 'H]';
+            return lower;
+        }
+
+        function emit(u, parentNode) {
+            var s = atomToken(atoms[u]);
+            atomRingDigits[u].forEach(function(d) { s += d; });
+            var children = adj[u].filter(function(v) { return v !== parentNode && parent[v] === u; });
+            children.forEach(function(v, idx) {
+                var sub = emit(v, u);
+                s += (idx < children.length - 1) ? '(' + sub + ')' : sub;
+            });
+            return s;
+        }
+
+        var pieces = [];
+        for (i = 0; i < n; i++) if (parent[i] === -1) pieces.push(emit(i, -1));
+        return pieces.join('.');
+    }
+
+    // Full molecular formula (heavy atoms + implicit/explicit H), for
+    // cross-checking a parsed SMILES against a known real formula the same
+    // way the hand-built porphine graph was formula-checked. Implicit H on
+    // an aromatic atom depends on whether it ends up matched to a ring
+    // double bond, which this module can't determine on its own (that's
+    // Aromaticity's matching step) — callers building an aromatic system
+    // should cross-check formula using Aromaticity's own matching result
+    // for full rigor; this counts non-aromatic (organic-subset, valence-
+    // rule) atoms exactly and aromatic atoms as their explicit H only, so
+    // it undercounts aromatic ring H until that step is added by the caller.
+    function heavyAtomFormula(parsed) {
+        var counts = {};
+        parsed.atoms.forEach(function(a) { counts[a.symbol] = (counts[a.symbol] || 0) + 1; });
+        return counts;
+    }
+
+    return {
+        parse: parse,
+        toAromaticSystem: toAromaticSystem,
+        serialize: serialize,
+        heavyAtomFormula: heavyAtomFormula,
+        version: '0.2'
+    };
+}));
+
+</script>
+<script>
+// UMD IIFE - Aromaticity module (Kekule matching + real Huckel MO energies)
+//
+// Scope: any connected conjugated-atom graph — a simple ring, or a fused/
+// bridged system like porphyrin's macrocycle. Earlier versions assumed the
+// input was one simple ring (atoms in ring order, edges implied by
+// wraparound) and left fused systems unhandled, on the theory that "which
+// cycle is the real aromatic ring" (ring perception / SSSR) needed solving
+// first. It doesn't: real Huckel MO theory for a fused system is one
+// secular matrix over the whole conjugated framework, not one calculation
+// per ring — so this module takes an explicit bond list instead of
+// assuming a wraparound cycle, and the same matching + diagonalization
+// pipeline runs over any topology without needing to pick out "the" ring
+// first. What's still a declared input, not derived: which atoms belong
+// to the conjugated system at all, and each atom's role (see below) — see
+// the architecture note at the bottom for what that leaves open.
+//
+// Once a system's bonds and atom roles are known, we don't need a
+// per-molecule guessed stabilization constant: each atom's own
+// Z_eff-derived orbital_energy (already computed by PDT.js) IS the Huckel
+// "alpha" (Coulomb integral) for that atom, no different from how real
+// Huckel Molecular Orbital theory uses one alpha per atom. Building the
+// ring's Huckel secular matrix from those real alphas and diagonalizing it
+// gives real, molecule-specific pi-system energies — replacing a guessed
+// eV constant with the same physics already in this codebase. The one
+// remaining external parameter is beta (the resonance/coupling integral
+// between adjacent p-orbitals) — real Huckel theory treats this as a
+// single shared universal constant too, not a per-molecule fit; see
+// BETA_EV below for the value used and why.
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['./PDT'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./PDT.js'));
+    } else {
+        root.Aromaticity = factory(root.PDT);
+    }
+}(typeof self !== 'undefined' ? self : this, function(PDT) {
+    'use strict';
+    if (!PDT) throw new Error('Aromaticity requires PDT');
+
+    // The one universal resonance-integral constant this model still needs
+    // — real simple-Huckel treatments use a single shared beta too (they
+    // don't fit a new one per molecule). Commonly cited simple-Huckel
+    // parametrizations for a carbon-carbon pi interaction fall roughly in
+    // the -0.7 to -3 eV range depending on convention; -1.0 eV is used
+    // here as a representative, clearly-labeled value, not a per-molecule
+    // fit the way STABILIZATION_PER_ELECTRON constants were before.
+    var BETA_EV = -1.0;
+
+    // Two ways to turn (alpha_i, alpha_j) into a bond's beta — selectable
+    // per call via options.betaModel, not a single hardcoded choice, so
+    // both can be run side by side on the same system rather than
+    // committing to one before it's been tested against the other:
+    //
+    // 'constant' (default) — BETA_EV for every bond, unconditionally.
+    // Matches real simple-Huckel practice (one shared beta, not fit per
+    // molecule) and is what every result so far has used.
+    //
+    // 'ratio' — an attempt to derive beta from PDT's own alphas instead of
+    // importing it, tried first as the real Wolfsberg-Helmholz semi-
+    // empirical form (beta_ij = K*(alpha_i+alpha_j)/2, K=1.75). That
+    // breaks outright: using our own alpha_C=-122.4 eV it predicts
+    // beta_CC=-214 eV, 214x larger than the -1.0 eV BETA_EV needed to
+    // reproduce benzene's real resonance energy — because PDT's
+    // orbital_energy is a simplified hydrogenic approximation whose
+    // ABSOLUTE magnitude runs ~10-60x hotter than real ionization
+    // energies for every multi-electron element (H matches real IE
+    // exactly; C/N/O are off ~9-11x; Fe ~62x), even though the RELATIVE
+    // pattern across elements — N more tightly bound than C, Fe more than
+    // N — is directionally real. 'ratio' salvages only that relative
+    // pattern: it scales BETA_EV by the geometric mean of each atom's
+    // alpha relative to carbon's, so it reproduces today's calibrated
+    // C-C beta exactly (ratio=1 when both atoms are carbon — every
+    // all-carbon result is identical under both models by construction)
+    // and only diverges for heteroatom bonds. This is a labeled
+    // EXTRAPOLATION of the model's own internal logic, not a derivation —
+    // unlike the eigenvalue solver, there is no independent known-correct
+    // number to validate it against.
+    var ALPHA_C_REFERENCE = PDT.get('C').orbital_energy;
+
+    // CITED: valence-state ionization energies (VSIEs) for the valence p
+    // orbital - Harry Gray, "Electrons and Chemical Bonding," Benjamin,
+    // 1964, Appendix. These are the standard alpha values semi-empirical
+    // MO theory actually uses (Hückel's Coulomb integral alpha_i IS the
+    // energy of an electron in atom i's isolated p orbital, and Extended
+    // Hückel sets H_ii = -VSIE for exactly this reason - Hoffmann 1963).
+    //
+    // WHY THIS EXISTS: PDT's orbital_energy is a bare hydrogenic estimate
+    // (-13.6*Z_eff^2/n^2 with Slater screening), and PDT's own calibration
+    // record documents it as 3-5x too large for light elements - carbon
+    // comes out -35.91 eV against its real 11.26 eV ionization energy.
+    // That absolute error is invisible in any DIFFERENCE (gapEv,
+    // hardnessEv, delocalizationEnergyEv - alpha cancels) but lands
+    // directly in any SUM (electronegativity = -(HOMO+LUMO)/2) and is
+    // squared by electrophilicity. Those two dimensions of the same model
+    // are not a defect to warn about - they are a router: difference-type
+    // quantities were always physical, sum-type ones needed a real
+    // absolute anchor, and this table is that anchor.
+    //
+    // Cross-validated against an independent set before being wired in:
+    // Lowe, "Quantum Chemistry" ch.10 eqs.10-1/10-3 (citing Pople &
+    // Segal) gives C 2p = -10.67 eV and C 2s = -19.44 eV; Gray gives
+    // -10.66 and -19.47. Two unrelated primary sources agreeing to 0.03 eV.
+    //
+    // Valence p only - a pi system is built from p_z orbitals, so H (1s,
+    // no p orbital, never a pi-system ring atom) is deliberately absent.
+    var VSIE_P_EV = {
+        B: -8.31, C: -10.66, N: -13.14, O: -15.87, F: -18.72,
+        Al: -5.95, Si: -7.81, P: -10.17, S: -11.65, Cl: -13.76,
+        Ga: -5.95, Ge: -7.56, As: -9.05, Se: -10.79, Br: -12.52
+    };
+
+    // Resolves every atom's alpha on ONE scale, never a mix. If any atom
+    // in the system lacks a cited VSIE, the WHOLE system falls back to
+    // PDT's hydrogenic estimate rather than pairing a cited carbon with an
+    // estimated neighbour: alpha DIFFERENCES between adjacent atoms are
+    // what drive heteroatom pi chemistry, so a mixed scale would produce a
+    // difference that is meaningless in both scales - strictly worse than
+    // being uniformly on the coarser one. The scale actually used is
+    // reported (alphaSource) rather than assumed.
+    function resolveAlphas(atoms) {
+        var allCited = atoms.every(function(a) { return VSIE_P_EV[a.symbol] !== undefined; });
+        if (allCited) {
+            return {
+                alphas: atoms.map(function(a) { return VSIE_P_EV[a.symbol]; }),
+                source: 'cited-vsie',
+                carbonReference: VSIE_P_EV.C
+            };
+        }
+        return {
+            alphas: atoms.map(function(a) { return PDT.get(a.symbol).orbital_energy; }),
+            source: 'hydrogenic-estimate',
+            carbonReference: ALPHA_C_REFERENCE
+        };
+    }
+
+    // 'physical' — the real fix for 'ratio''s limitation: beta(bond) =
+    // beta0 * f(Z_eff) * g(d). Both factors are dimensionless and equal 1
+    // for a C-C bond by construction, so every all-carbon result (e.g.
+    // benzene) is unchanged from BETA_EV alone; only heteroatom bonds and
+    // bond-length differences move.
+    //
+    // f(Z_eff_i, Z_eff_j) = sqrt(Z_eff_i * Z_eff_j) / Z_eff_C — geometric
+    // mean of the two atoms' own PDT Z_eff, normalized to carbon. Unlike
+    // the failed Wolfsberg-Helmholz attempt (which multiplied the
+    // absolute, already-inflated orbital_energy and exploded to 214x
+    // BETA_EV), Z_eff itself is a modest, well-behaved number (C=3.25,
+    // N=3.9, O=4.55, S=5.45, Fe=3.75) and this ratio stays close to 1 for
+    // real conjugated-system atoms — no explosion, no new external
+    // citation, self-derived from data already in PDT.js.
+    //
+    // g(d) = exp(-(d_estimate - d_reference) / L) — exponential distance
+    // decay, the standard form for how orbital overlap (and hence
+    // resonance coupling) falls off with internuclear separation. d and L
+    // are self-derived from PDT's own slater_radius (Bohr, converted to
+    // Angstrom) rather than importing real bond-length tables:
+    // d_estimate = slater_radius_i + slater_radius_j (the same
+    // sum-of-radii bond-length estimate MolecularGeometry.js's own
+    // independent fallback already uses), d_reference = 2*slater_radius_C
+    // (the C-C case), L = slater_radius_C (a dimensionally-sensible decay
+    // length — an atomic radius is the natural length scale for how far a
+    // p-orbital extends). g(C-C) = 1 exactly by construction.
+    var BOHR_TO_ANGSTROM = 0.529177;
+    var CARBON_EL = PDT.get('C');
+    var Z_EFF_C_REFERENCE = CARBON_EL.Z_eff;
+    var SLATER_RADIUS_C_ANGSTROM = CARBON_EL.slater_radius * BOHR_TO_ANGSTROM;
+
+    function betaZeffFactor(symbolI, symbolJ) {
+        var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
+        return Math.sqrt(elI.Z_eff * elJ.Z_eff) / Z_EFF_C_REFERENCE;
+    }
+    // explicitDistanceAngstrom lets a caller override the Slater-radius-
+    // sum estimate with a real distance (e.g. a finite-difference-
+    // perturbed bond length) - used by MolecularVibrations.js to compute
+    // how the pi-electron polarizability changes with bond stretching.
+    // Omitted (the default, every existing caller), behavior is bit-for-
+    // bit unchanged.
+    function betaDistanceFactor(symbolI, symbolJ, explicitDistanceAngstrom) {
+        var elI = PDT.get(symbolI), elJ = PDT.get(symbolJ);
+        var d = explicitDistanceAngstrom !== undefined
+            ? explicitDistanceAngstrom
+            : (elI.slater_radius + elJ.slater_radius) * BOHR_TO_ANGSTROM;
+        var dReference = 2 * SLATER_RADIUS_C_ANGSTROM;
+        return Math.exp(-(d - dReference) / SLATER_RADIUS_C_ANGSTROM);
+    }
+
+    // Simple Huckel theory's one shared beta cannot simultaneously
+    // reproduce both real thermochemical resonance energy AND real
+    // spectroscopic (UV-Vis) transition energies for the same molecule —
+    // a well-known, real textbook limitation, not a bug. BETA_EV above is
+    // already calibrated to real benzene resonance energy (thermochemical)
+    // and continues to drive delocalizationEnergyEv/totalPiEnergyEv/
+    // verdict unchanged. BETA_SPECTROSCOPIC_EV is a second, separate
+    // calibration — derived from benzene's real lowest pi->pi* UV
+    // absorption band (~255 nm) via simple Huckel's own closed-form
+    // benzene HOMO-LUMO gap, gap = 2*|beta|: beta = -(1239.84/255)/2 eV.
+    // Used only for a second, parallel diagonalization (see analyze())
+    // feeding homoLumo()'s gap/hardness/opticalGapNm/conductivityClass.
+    var BENZENE_LOWEST_ABSORPTION_NM = 255;
+    var BETA_SPECTROSCOPIC_EV = -Math.round((1239.84 / BENZENE_LOWEST_ABSORPTION_NM / 2) * 100) / 100;
+
+    // alphaCarbonReference MUST be carbon's alpha on the same scale the
+    // alphaI/alphaJ arguments came from - the 'ratio' model's whole design
+    // is that the ratio is 1 for a C-C bond, and that only holds if
+    // numerator and denominator share a scale. Defaults to the hydrogenic
+    // reference for callers predating the cited-VSIE scale.
+    function computeBeta(alphaI, alphaJ, betaModel, symbolI, symbolJ, beta0, explicitDistanceAngstrom, alphaCarbonReference) {
+        var base = beta0 !== undefined ? beta0 : BETA_EV;
+        if (betaModel === 'ratio') {
+            var cRef = (typeof alphaCarbonReference === 'number') ? alphaCarbonReference : ALPHA_C_REFERENCE;
+            return base * Math.sqrt((alphaI / cRef) * (alphaJ / cRef));
+        }
+        if (betaModel === 'physical') {
+            return base * betaZeffFactor(symbolI, symbolJ) * betaDistanceFactor(symbolI, symbolJ, explicitDistanceAngstrom);
+        }
+        return base;
+    }
+
+    // Exact perfect-matching search via backtracking, not Edmonds' Blossom
+    // algorithm: ring sizes here (a handful to a couple dozen atoms) make
+    // brute-force search fully adequate and far easier to verify correct
+    // than hand-rolling Blossom, whose extra machinery (blossom
+    // contraction) only earns its keep at graph sizes this module doesn't
+    // have. This also only needs to find ANY perfect matching (every
+    // needs-double-bond atom covered), not a maximum matching in the
+    // general sense.
+    function findPerfectMatching(vertices, edgeSet) {
+        var matched = {};
+        function backtrack(remaining) {
+            if (remaining.length === 0) return true;
+            var v = remaining[0];
+            var rest = remaining.slice(1);
+            for (var i = 0; i < rest.length; i++) {
+                var w = rest[i];
+                if (edgeSet[v + '|' + w] || edgeSet[w + '|' + v]) {
+                    matched[v] = w;
+                    matched[w] = v;
+                    var next = rest.slice(0, i).concat(rest.slice(i + 1));
+                    if (backtrack(next)) return true;
+                    delete matched[v];
+                    delete matched[w];
+                }
+            }
+            return false;
+        }
+        if (vertices.length % 2 !== 0) return null;
+        var ok = backtrack(vertices.slice());
+        return ok ? matched : null;
+    }
+
+    // Classic cyclic Jacobi eigenvalue algorithm for real symmetric
+    // matrices, now also accumulating eigenVECTORS (V starts as identity;
+    // every Givens rotation applied to `a` is applied to V's columns too,
+    // the standard textbook way to get eigenvectors out of cyclic Jacobi
+    // "for free" alongside the eigenvalues). Needed for the sum-over-states
+    // polarizability formula below, which needs actual MO coefficients
+    // (phi_i = sum_mu c_mu,i * chi_mu), not just MO energies. Validated
+    // below in this module's own self-test against the closed-form
+    // uniform-ring Huckel eigenvalues (E_j = alpha + 2*beta*cos(2*pi*j/N))
+    // before it's trusted for the heteroatom (non-uniform alpha) case,
+    // where no such closed form exists.
+    function jacobiEigenDecomposition(matrix, maxSweeps) {
+        var n = matrix.length;
+        var a = matrix.map(function(row) { return row.slice(); });
+        var v = [];
+        for (var vi = 0; vi < n; vi++) {
+            v.push(new Array(n).fill(0));
+            v[vi][vi] = 1;
+        }
+        maxSweeps = maxSweeps || 200;
+        for (var sweep = 0; sweep < maxSweeps; sweep++) {
+            var off = 0;
+            for (var p = 0; p < n; p++) {
+                for (var q = p + 1; q < n; q++) off += a[p][q] * a[p][q];
+            }
+            if (off < 1e-14) break;
+            for (p = 0; p < n; p++) {
+                for (q = p + 1; q < n; q++) {
+                    if (Math.abs(a[p][q]) < 1e-15) continue;
+                    var theta = (a[q][q] - a[p][p]) / (2 * a[p][q]);
+                    var sign = theta >= 0 ? 1 : -1;
+                    var t = sign / (Math.abs(theta) + Math.sqrt(theta * theta + 1));
+                    var c = 1 / Math.sqrt(t * t + 1);
+                    var s = t * c;
+                    var app = a[p][p], aqq = a[q][q], apq = a[p][q];
+                    a[p][p] = c * c * app - 2 * s * c * apq + s * s * aqq;
+                    a[q][q] = s * s * app + 2 * s * c * apq + c * c * aqq;
+                    a[p][q] = a[q][p] = 0;
+                    for (var i = 0; i < n; i++) {
+                        if (i !== p && i !== q) {
+                            var aip = a[i][p], aiq = a[i][q];
+                            a[i][p] = a[p][i] = c * aip - s * aiq;
+                            a[i][q] = a[q][i] = s * aip + c * aiq;
+                        }
+                        var vip = v[i][p], viq = v[i][q];
+                        v[i][p] = c * vip - s * viq;
+                        v[i][q] = s * vip + c * viq;
+                    }
+                }
+            }
+        }
+        var order = [];
+        for (var k = 0; k < n; k++) order.push(k);
+        order.sort(function(x, y) { return a[x][x] - a[y][y]; });
+        var values = order.map(function(k) { return a[k][k]; });
+        var vectors = order.map(function(k) { return v.map(function(row) { return row[k]; }); });
+        return { values: values, vectors: vectors };
+    }
+
+    // Thin wrapper kept for backward compatibility (existing callers/tests
+    // that only need eigenvalues, not the vectors alongside them).
+    function jacobiEigenvalues(matrix, maxSweeps) {
+        return jacobiEigenDecomposition(matrix, maxSweeps).values;
+    }
+
+    // Fills piElectrons into ascending MO energies (2 per level, respecting
+    // degeneracy — nearly-equal eigenvalues are grouped as one level).
+    // Returns total energy and whether the fill leaves a degenerate HOMO
+    // half-filled (open-shell / diradical character — cyclobutadiene's
+    // real problem, and exactly why simple closed-shell HMO filling can't
+    // honestly report a clean destabilization number for it).
+    // Shared by fillElectrons, homoLumo, and homoLumoMoIndices below - all
+    // three need the same degenerate-energy-level grouping (consecutive
+    // eigenvalues within EPS treated as one level, e.g. benzene's
+    // degenerate HOMO/LUMO e-pairs), so it's computed once rather than
+    // reimplemented per caller. startIndex lets a caller map a level back
+    // to the actual MO index range it spans.
+    function groupDegenerateLevels(eigenvalues) {
+        var EPS = 1e-6;
+        var levels = [];
+        eigenvalues.forEach(function(e, idx) {
+            var last = levels[levels.length - 1];
+            if (last && Math.abs(last.energy - e) < EPS) last.count++;
+            else levels.push({ energy: e, count: 1, startIndex: idx });
+        });
+        return levels;
+    }
+
+    function fillElectrons(eigenvalues, piElectrons) {
+        var levels = groupDegenerateLevels(eigenvalues);
+        var remaining = piElectrons;
+        var total = 0;
+        var openShell = false;
+        for (var i = 0; i < levels.length && remaining > 0; i++) {
+            var capacity = levels[i].count * 2;
+            var occupy = Math.min(capacity, remaining);
+            total += occupy * levels[i].energy;
+            if (occupy < capacity && occupy > 0) openShell = true; // degenerate level half-filled
+            remaining -= occupy;
+        }
+        return { totalEnergy: total, openShell: openShell };
+    }
+
+    // HOMO/LUMO for the pi system: reads the fill boundary off the exact
+    // same MO eigenvalues + degenerate-level grouping fillElectrons()
+    // already computes above - no new diagonalization, just interpreting
+    // data this module already derives. Only meaningful for a conjugated
+    // system (see analyze() below - non-conjugated molecules have no pi
+    // MOs in this model at all, correctly absent rather than guessed).
+    // homoOpenShell mirrors fillElectrons' own openShell flag: true when
+    // the HOMO level is a degenerate level left half-filled (the same
+    // antiaromatic/diradical signal fillElectrons already reports).
+    function homoLumo(eigenvalues, piElectrons, alphaSource) {
+        var levels = groupDegenerateLevels(eigenvalues);
+        var remaining = piElectrons;
+        var homoEnergy = null, lumoEnergy = null, homoOpenShell = false;
+        for (var i = 0; i < levels.length; i++) {
+            if (remaining <= 0) break;
+            var capacity = levels[i].count * 2;
+            homoEnergy = levels[i].energy;
+            if (remaining < capacity) homoOpenShell = true;
+            remaining -= capacity;
+            if (remaining <= 0) {
+                lumoEnergy = (i + 1 < levels.length) ? levels[i + 1].energy : null;
+                break;
+            }
+        }
+        var gapEv = (homoEnergy !== null && lumoEnergy !== null) ? (lumoEnergy - homoEnergy) : null;
+
+        // Real, textbook operational definitions built directly on the
+        // frontier orbital energies already computed above - no new
+        // physics, just the standard Parr-Pearson conceptual DFT reading
+        // of HOMO/LUMO (Koopmans'-theorem-style: -E_HOMO approximates
+        // ionization energy, -E_LUMO approximates electron affinity).
+        //   - hardness (Parr, R.G.; Pearson, R.G. J. Am. Chem. Soc. 1983,
+        //     105, 7512): eta = (LUMO - HOMO) / 2. Large = hard/stable/
+        //     unreactive; small = soft/reactive.
+        //   - softness: S = 1 / (2*eta).
+        //   - electronegativity (same Parr-Pearson operational form):
+        //     chi = -(HOMO + LUMO) / 2.
+        //   - electrophilicity index (Parr, R.G.; Szentpaly, L.v.; Liu, S.
+        //     J. Am. Chem. Soc. 1999, 121, 1922): omega = chi^2 / (2*eta) -
+        //     how much energy a species gains by accepting electron
+        //     density from an infinite electron reservoir.
+        // All null together whenever gapEv itself is null (no HOMO/LUMO -
+        // non-conjugated systems never reach this function at all, see
+        // analyze()'s own n<2/error guards above).
+        var hardnessEv = gapEv !== null ? gapEv / 2 : null;
+        var softnessPerEv = (hardnessEv !== null && hardnessEv !== 0) ? 1 / (2 * hardnessEv) : null;
+        var electronegativityEv = (homoEnergy !== null && lumoEnergy !== null) ? -(homoEnergy + lumoEnergy) / 2 : null;
+        var electrophilicityEv = (electronegativityEv !== null && hardnessEv) ? (electronegativityEv * electronegativityEv) / (2 * hardnessEv) : null;
+
+        // Optical gap: the wavelength of a photon whose energy exactly
+        // equals the HOMO-LUMO gap (hc = 1239.84 eV*nm, commonly rounded
+        // 1240) - a standard first approximation for the absorption onset,
+        // not a real UV-Vis spectrum (ignores oscillator strength,
+        // vibronic structure, symmetry-forbidden transitions, solvent
+        // shifts). conductivityClass borrows the same qualitative energy-
+        // scale language organic-electronics literature uses for
+        // molecular HOMO-LUMO gaps (by analogy with real bulk band gaps -
+        // Si ~1.1 eV semiconductor, diamond ~5.5 eV insulator) - this
+        // project models a discrete molecule, not a periodic solid with
+        // real Bloch bands, so treat this as a qualitative reading of the
+        // gap's energy scale, not a band-structure calculation.
+        var opticalGapNm = gapEv ? Math.round((1239.84 / gapEv) * 10) / 10 : null;
+        var conductivityClass = gapEv === null ? null : gapEv < 0.5 ? 'conductor-like (very small gap)' : gapEv <= 3 ? 'semiconductor-like' : 'insulator-like';
+
+        // gapEv/hardnessEv/opticalGapNm/conductivityClass are computed
+        // from eigenvalues built with BETA_SPECTROSCOPIC_EV (see
+        // analyze() - a second, parallel diagonalization from the one
+        // that drives delocalizationEnergyEv), calibrated to benzene's
+        // real lowest UV absorption band rather than to thermochemical
+        // resonance energy - see BETA_SPECTROSCOPIC_EV's own comment for
+        // why simple Huckel theory needs two separate beta calibrations
+        // for these two different purposes.
+        //
+        // electronegativityEv/electrophilicityEv sum HOMO+LUMO rather
+        // than difference them, so they track the atoms' own alpha
+        // (PDT's Z_eff-derived orbital_energy) far more than beta - which
+        // beta calibration is used barely moves them. Their absolute
+        // magnitude inherits whatever absolute-energy-scale character
+        // alpha itself has; a real fix for THEIR absolute scale (as
+        // opposed to gapEv's, fixed above) is a separate, not-yet-done
+        // project: calibrating PDT's alpha against real experimental
+        // ionization energies rather than the pure hydrogenic estimate.
+        return {
+            homoEnergyEv: homoEnergy === null ? null : Math.round(homoEnergy * 1000) / 1000,
+            lumoEnergyEv: lumoEnergy === null ? null : Math.round(lumoEnergy * 1000) / 1000,
+            gapEv: gapEv === null ? null : Math.round(gapEv * 1000) / 1000,
+            homoOpenShell: homoOpenShell,
+            hardnessEv: hardnessEv === null ? null : Math.round(hardnessEv * 1000) / 1000,
+            softnessPerEv: softnessPerEv === null ? null : Math.round(softnessPerEv * 1000) / 1000,
+            electronegativityEv: electronegativityEv === null ? null : Math.round(electronegativityEv * 1000) / 1000,
+            electrophilicityEv: electrophilicityEv === null ? null : Math.round(electrophilicityEv * 1000) / 1000,
+            opticalGapNm: opticalGapNm,
+            conductivityClass: conductivityClass,
+            // Which absolute energy scale homoEnergyEv/lumoEnergyEv/
+            // electronegativityEv/electrophilicityEv are quoted on. The
+            // difference-type fields above (gapEv, hardnessEv,
+            // softnessPerEv, opticalGapNm, conductivityClass) are
+            // scale-independent and identical either way.
+            alphaSource: alphaSource || 'hydrogenic-estimate',
+            // Surfaces the comment above as an actual field a caller/UI can
+            // render, not just a code comment nobody looking at output ever
+            // sees. homoEnergyEv/lumoEnergyEv/electronegativityEv/
+            // electrophilicityEv all inherit PDT's alpha (bare hydrogenic
+            // Z_eff estimate), which PDT.js's own calibration record
+            // already documents as 3-5x too large for light (n=2)
+            // elements even after Slater's-rules correction - confirmed
+            // concretely: carbon's alpha is -35.91 eV vs. its real first
+            // ionization energy, 11.26 eV. gapEv/hardnessEv/opticalGapNm/
+            // conductivityClass do NOT have this problem (they're
+            // DIFFERENCES off the separately spectroscopically-calibrated
+            // beta above, so alpha's error cancels) - only the two fields
+            // that SUM rather than difference HOMO/LUMO do.
+            // States which scale is in play and what follows from it,
+            // rather than flagging the sum-type fields as a hazard. The
+            // split between scale-carrying and scale-invariant quantities
+            // is a property of the arithmetic (sums keep alpha, differences
+            // cancel it), not a defect - it tells a caller which of the two
+            // regimes a given number lives in.
+            absoluteEnergyScale: (homoEnergy === null) ? null : (
+                (alphaSource === 'cited-vsie')
+                    ? 'Frontier orbital energies, electronegativity and electrophilicity are anchored to published reference data, so their absolute scale is physical. Gap, hardness, softness and optical gap are independent of that anchor and identical either way.'
+                    : 'No published reference value is available for at least one atom in this system, so the whole system stays on one estimated scale rather than mixing two. Absolute frontier-orbital energies, electronegativity and electrophilicity run several times too large; their ORDERING and RELATIVE spacing remain meaningful. Gap, hardness, softness and optical gap are unaffected.'
+            )
+        };
+    }
+
+    // Which MO indices make up the HOMO level and which make up the LUMO
+    // level - same fill-then-stop walk as homoLumo() above (and same
+    // groupDegenerateLevels grouping), but returning index arrays instead
+    // of derived scalars. A degenerate level (e.g. benzene's e-symmetry
+    // HOMO pair) contributes every MO in that level, not just one - that's
+    // the exact wrinkle Fukui functions need to get right: f+/f- sum
+    // |c|^2 over ALL MOs in the frontier level, per Yang & Mortier's 1986
+    // atom-condensed form of Parr & Yang's 1984 Fukui function (electron-
+    // density response to a change in electron count).
+    function homoLumoMoIndices(eigenvalues, piElectrons) {
+        var levels = groupDegenerateLevels(eigenvalues);
+        var remaining = piElectrons;
+        var homoMoIndices = null, lumoMoIndices = null;
+        for (var i = 0; i < levels.length; i++) {
+            if (remaining <= 0) break;
+            var level = levels[i];
+            var indices = [];
+            for (var k = 0; k < level.count; k++) indices.push(level.startIndex + k);
+            homoMoIndices = indices;
+            remaining -= level.count * 2;
+            if (remaining <= 0) {
+                if (i + 1 < levels.length) {
+                    var next = levels[i + 1];
+                    lumoMoIndices = [];
+                    for (var m = 0; m < next.count; m++) lumoMoIndices.push(next.startIndex + m);
+                } else {
+                    lumoMoIndices = null; // no virtual orbitals left in this basis (e.g. full valence pi space)
+                }
+                break;
+            }
+        }
+        return { homoMoIndices: homoMoIndices, lumoMoIndices: lumoMoIndices };
+    }
+
+    // system = {
+    //   atoms: [{ symbol, role }, ...],
+    //   bonds: [[i, j], ...],  // arbitrary conjugated-system connectivity —
+    //     a simple ring (wraparound edges), a fused/branching system
+    //     (porphyrin), or even a non-cyclic conjugated chain all work the
+    //     same way here.
+    //   planar: boolean   // declared, not derived — see architecture note
+    // }
+    // role is required per atom and is one of:
+    //   'needsDoubleBond' — must be matched to exactly one double bond
+    //     among its own bonds (contributes 1 pi electron): ordinary
+    //     conjugated carbons, pyridine-type N.
+    //   'lonePairDonor'   — contributes its lone pair to the pi system and
+    //     takes zero double bonds (contributes 2 pi electrons):
+    //     pyrrole-type N, furan-type O, thiophene-type S.
+    function analyze(system, options) {
+        options = options || {};
+        var betaModel = (options.betaModel === 'ratio' || options.betaModel === 'physical') ? options.betaModel : 'constant';
+        var atoms = system.atoms || [];
+        var bonds = system.bonds || [];
+        var n = atoms.length;
+        if (n < 2) return { error: 'A conjugated system needs at least 2 atoms.' };
+
+        var needsDoubleBond = [];
+        var lonePairDonors = [];
+        var degree = new Array(n).fill(0);
+        for (var idx = 0; idx < n; idx++) {
+            var atom = atoms[idx];
+            var role = atom.role;
+            if (role === 'needsDoubleBond') needsDoubleBond.push(idx);
+            else if (role === 'lonePairDonor') lonePairDonors.push(idx);
+            else return { error: 'Atom ' + idx + ' (' + atom.symbol + ') needs role "needsDoubleBond" or "lonePairDonor" — this module does not infer it automatically.' };
+
+            if (!PDT.get(atom.symbol)) return { error: 'Unknown element: ' + atom.symbol };
+        }
+        // One scale for the whole system - cited VSIEs where every atom has
+        // one, PDT's hydrogenic estimate otherwise. Never mixed; see
+        // resolveAlphas.
+        var alphaResolution = resolveAlphas(atoms);
+        var alphas = alphaResolution.alphas;
+        var alphaCarbonRef = alphaResolution.carbonReference;
+        bonds.forEach(function(b) { degree[b[0]]++; degree[b[1]]++; });
+
+        // A simple monocyclic ring (every atom degree 2, edge count ==
+        // atom count) is the one topology Huckel's original 4n+2 theorem
+        // was actually proven for. Anything else (fused, branched, or a
+        // non-cyclic chain) still gets a pi-electron count and a
+        // 6/4-remainder classification reported below, but it's an
+        // informational, commonly-used-in-practice convention there, not
+        // the rigorous textbook result — the real, generalizable signal
+        // for any topology is delocalizationEnergyEv and openShellHOMO,
+        // computed the same way (diagonalization) regardless of shape.
+        var isSimpleMonocycle = bonds.length === n && degree.every(function(d) { return d === 2; });
+
+        var candidateSet = {};
+        bonds.forEach(function(e) {
+            if (needsDoubleBond.indexOf(e[0]) !== -1 && needsDoubleBond.indexOf(e[1]) !== -1) {
+                candidateSet[e[0] + '|' + e[1]] = true;
+            }
+        });
+
+        var matching = needsDoubleBond.length ? findPerfectMatching(needsDoubleBond, candidateSet) : {};
+        var kekuleExists = matching !== null;
+
+        var piElectrons = needsDoubleBond.length * 1 + lonePairDonors.length * 2;
+        var planar = !!system.planar;
+        var fullyConjugated = kekuleExists;
+        var huckelApplicable = planar && fullyConjugated;
+
+        // Build the real Huckel secular matrix: diagonal = each atom's own
+        // orbital_energy, off-diagonal = beta for bonded neighbors —
+        // whatever shape those bonds form.
+        var H = [];
+        for (var i = 0; i < n; i++) {
+            H.push(new Array(n).fill(0));
+            H[i][i] = alphas[i];
+        }
+        bonds.forEach(function(e) {
+            var b = computeBeta(alphas[e[0]], alphas[e[1]], betaModel, atoms[e[0]].symbol, atoms[e[1]].symbol, undefined, undefined, alphaCarbonRef);
+            H[e[0]][e[1]] = b;
+            H[e[1]][e[0]] = b;
+        });
+
+        var eigenvalues = jacobiEigenvalues(H);
+        var fill = fillElectrons(eigenvalues, piElectrons);
+
+        // Second, parallel diagonalization used only for the frontier-
+        // orbital descriptors (HOMO/LUMO/gap/hardness/opticalGap/
+        // conductivityClass, via homoLumo() below) - built with the
+        // 'physical' beta(bond)=beta0*f(Z_eff)*g(d) model and the
+        // spectroscopically-calibrated BETA_SPECTROSCOPIC_EV, so
+        // heteroatom/bond-length differentiation actually reaches these
+        // descriptors regardless of which betaModel the caller chose for
+        // the thermochemical path above. Does not affect eigenvalues/
+        // fill/referenceEnergy/delocalizationEnergy/totalPiEnergyEv/
+        // verdict, which keep using betaModel + BETA_EV exactly as before.
+        var Hspec = [];
+        for (var si = 0; si < n; si++) {
+            Hspec.push(new Array(n).fill(0));
+            Hspec[si][si] = alphas[si];
+        }
+        // bondDistanceOverrides: optional { 'i|j': distanceAngstrom } map
+        // (either atom order) letting a caller perturb ONE bond's real
+        // distance away from the Slater-radius-sum estimate - used by
+        // MolecularVibrations.js's finite-difference d(alpha)/d(bond
+        // length) calculation. Omitted (every existing caller), behavior
+        // is bit-for-bit unchanged.
+        var distanceOverrides = options.bondDistanceOverrides || null;
+        function overrideDistanceFor(i, j) {
+            if (!distanceOverrides) return undefined;
+            var v = distanceOverrides[i + '|' + j];
+            return v !== undefined ? v : distanceOverrides[j + '|' + i];
+        }
+        bonds.forEach(function(e) {
+            var bs = computeBeta(alphas[e[0]], alphas[e[1]], 'physical', atoms[e[0]].symbol, atoms[e[1]].symbol, BETA_SPECTROSCOPIC_EV, overrideDistanceFor(e[0], e[1]), alphaCarbonRef);
+            Hspec[e[0]][e[1]] = bs;
+            Hspec[e[1]][e[0]] = bs;
+        });
+        var specDecomp = jacobiEigenDecomposition(Hspec);
+        var eigenvaluesSpec = specDecomp.values;
+
+        // Localized reference: needsDoubleBond atoms pair up into isolated
+        // 2-atom pi bonds (bonding MO = average-alpha + beta, 2 electrons
+        // each); lonePairDonors keep their lone pair at their own alpha,
+        // contributing 2 electrons at their own atomic energy — i.e. "no
+        // ring" reference energy, same electron count, zero delocalization.
+        var referenceEnergy = 0;
+        if (matching) {
+            var counted = {};
+            needsDoubleBond.forEach(function(v) {
+                if (counted[v]) return;
+                var w = matching[v];
+                counted[v] = counted[w] = true;
+                referenceEnergy += 2 * ((alphas[v] + alphas[w]) / 2 + computeBeta(alphas[v], alphas[w], betaModel, atoms[v].symbol, atoms[w].symbol, undefined, undefined, alphaCarbonRef));
+            });
+        }
+        lonePairDonors.forEach(function(v) { referenceEnergy += 2 * alphas[v]; });
+
+        var delocalizationEnergy = huckelApplicable ? (fill.totalEnergy - referenceEnergy) : 0;
+
+        // The 4n+2/4n electron-count check is Huckel's original theorem,
+        // proven for simple monocyclic rings — reported here as an
+        // informational, commonly-used-in-practice label (piElectrons and
+        // conventional4nPlus2Style are always computed), but it does NOT
+        // drive the verdict below. The verdict is instead driven by what
+        // actually generalizes to any topology: does diagonalizing the
+        // real system come out lower in energy than the localized
+        // reference (delocalizationEnergy < 0, genuinely stabilizing), and
+        // is the ground state closed-shell (no degenerate half-filled
+        // HOMO — an open shell is a real instability regardless of
+        // electron count or ring shape).
+        var remainder4 = piElectrons % 4;
+        var conventional4nPlus2Style = remainder4 === 2;
+        var STABILIZATION_EPS_EV = 1e-3;
+
+        var verdict;
+        if (!huckelApplicable) verdict = 'nonaromatic';
+        else if (fill.openShell) verdict = 'antiaromatic';
+        else if (delocalizationEnergy < -STABILIZATION_EPS_EV) verdict = 'aromatic';
+        else verdict = 'nonaromatic';
+
+        return {
+            betaModel: betaModel,
+            atomCount: n,
+            isSimpleMonocycle: isSimpleMonocycle,
+            kekuleExists: kekuleExists,
+            matching: matching,
+            piElectrons: piElectrons,
+            conventional4nPlus2Style: conventional4nPlus2Style,
+            planar: planar,
+            fullyConjugated: fullyConjugated,
+            huckelApplicable: huckelApplicable,
+            eigenvaluesEv: eigenvalues.map(function(e) { return Math.round(e * 1000) / 1000; }),
+            homoLumo: homoLumo(eigenvaluesSpec, piElectrons, alphaResolution.source),
+            alphaSource: alphaResolution.source,
+            openShellHOMO: fill.openShell,
+            totalPiEnergyEv: Math.round(fill.totalEnergy * 1000) / 1000,
+            localizedReferenceEv: Math.round(referenceEnergy * 1000) / 1000,
+            delocalizationEnergyEv: Math.round(delocalizationEnergy * 1000) / 1000,
+            verdict: verdict,
+            // Real MO data (spectroscopic-beta eigenbasis, same one
+            // homoLumo() above reads) for callers that need actual
+            // coefficients, not just derived scalars - e.g. a sum-over-
+            // states polarizability calculation, which needs both MO
+            // energies AND phi_i = sum_mu c_mu,i * chi_mu coefficients.
+            // coefficients[moIndex][atomLocalIndex]; atomLocalIndex maps
+            // to a caller's own larger atom list via originalIndex below
+            // (echoed straight from the input system - see
+            // Smiles.toAromaticSystem's own doc comment for what it means).
+            spectroscopicMO: {
+                eigenvaluesEv: eigenvaluesSpec.map(function(e) { return Math.round(e * 1000) / 1000; }),
+                coefficients: specDecomp.vectors
+            },
+            originalIndex: system.originalIndex || null,
+            note: fill.openShell
+                ? 'Degenerate HOMO left half-filled - no single destabilization number can be honestly reported here; the real chemistry (Jahn-Teller distortion to a lower-symmetry, closed-shell structure) is outside this model.'
+                : (!isSimpleMonocycle ? 'Not a simple monocyclic ring — piElectrons/conventional4nPlus2Style are informational only; the verdict above comes from delocalizationEnergyEv and openShellHOMO, not electron-count parity.' : undefined)
+        };
+    }
+
+    // ARCHITECTURE NOTE: role (needsDoubleBond vs lonePairDonor) and
+    // planarity are still declared inputs, not derived facts — auto-
+    // classifying role needs substituent/H-count/charge rules this module
+    // doesn't have, and deriving true planarity needs real 3D geometry
+    // this codebase has never had. What generalizing to arbitrary `bonds`
+    // solves is different: no ring-perception/SSSR step is needed to pick
+    // out "the" aromatic ring in a fused system, because there's no longer
+    // a per-ring calculation to aim it at — the whole conjugated framework
+    // gets one secular matrix and one diagonalization, same as a simple
+    // ring. What's still open for a fused macrocycle specifically: which
+    // atoms belong to the conjugated system is a declared input (e.g. a
+    // porphyrin's saturated side chains have to be excluded by hand), and
+    // the traditional "18 pi electron aromatic pathway" language for
+    // porphyrins refers to a specific historically-debated subset of the
+    // full ring system, not literally every atom in it — so a full-system
+    // piElectrons count here will legitimately disagree with that folk
+    // number; delocalizationEnergyEv is the real, computed answer, and
+    // conventional4nPlus2Style is only ever an informational label.
+
+    // Runs both beta models on the same system and returns them side by
+    // side, plus a diff — the intended way to actually use 'ratio' for
+    // now: as a comparison against 'constant', not a silent replacement.
+    // For any all-carbon system the two are mathematically identical
+    // (computeBeta('ratio') reduces to BETA_EV when alpha_i=alpha_j), so
+    // deltaEv should come out exactly 0 there — a good self-check that
+    // the two models are wired correctly whenever a heteroatom is added.
+    function compareBetaModels(system) {
+        var constant = analyze(system, { betaModel: 'constant' });
+        var ratio = analyze(system, { betaModel: 'ratio' });
+        var physical = analyze(system, { betaModel: 'physical' });
+        var deltaEv = (!constant.error && !ratio.error)
+            ? Math.round((ratio.delocalizationEnergyEv - constant.delocalizationEnergyEv) * 1000) / 1000
+            : null;
+        var physicalDeltaEv = (!constant.error && !physical.error)
+            ? Math.round((physical.delocalizationEnergyEv - constant.delocalizationEnergyEv) * 1000) / 1000
+            : null;
+        return { constant: constant, ratio: ratio, physical: physical, deltaEv: deltaEv, physicalDeltaEv: physicalDeltaEv };
+    }
+
+    return {
+        analyze: analyze,
+        compareBetaModels: compareBetaModels,
+        _findPerfectMatching: findPerfectMatching,
+        _jacobiEigenvalues: jacobiEigenvalues,
+        _jacobiEigenDecomposition: jacobiEigenDecomposition,
+        _homoLumo: homoLumo,
+        _homoLumoMoIndices: homoLumoMoIndices,
+        _computeBeta: computeBeta,
+        _betaZeffFactor: betaZeffFactor,
+        _betaDistanceFactor: betaDistanceFactor,
+        BETA_EV: BETA_EV,
+        BETA_SPECTROSCOPIC_EV: BETA_SPECTROSCOPIC_EV,
+        version: '0.5'
+    };
+}));
+
+</script>
+<script>
+// UMD IIFE - MolecularStructure: the canonical molecule data model and its
+// derived properties (formula, molar mass, per-atom hybridization, formal
+// charge, lone pairs, coordination geometry). Sits on top of the already-
+// validated PDT/Smiles/Aromaticity modules; adds no new element data or
+// aromaticity math of its own.
+//
+// A molecule here is always { atoms: [{symbol, aromatic, explicitH, charge}],
+// bonds: [[i, j, order]] } - order is 1, 2, 3, or the string 'aromatic'.
+// This is exactly Smiles.parse()'s own output shape, so fromSmiles() and
+// fromGraph() both just normalize into it; nothing downstream needs to know
+// which path a molecule came from.
+//
+// Every field below is either DERIVED (computed here from the graph plus
+// PDT's already-verified per-element data), PARSED (taken directly from
+// SMILES/bracket-atom notation - explicitH, charge), or REFERENCE (a cited
+// published constant, namely standard atomic weights - not "derived" any
+// more than an element's name/symbol already isn't in PDT.js's own data).
+// Nothing here is asserted/guessed; where a real limitation exists
+// (unclear coordination geometry for a d-block center, no valid Kekule
+// structure) it is reported as a warning, not silently papered over.
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['./PDT', './Smiles', './Aromaticity'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./PDT.js'), require('./Smiles.js'), require('./Aromaticity.js'));
+    } else {
+        root.MolecularStructure = factory(root.PDT, root.Smiles, root.Aromaticity);
+    }
+}(typeof self !== 'undefined' ? self : this, function(PDT, Smiles, Aromaticity) {
+    'use strict';
+    if (!PDT) throw new Error('MolecularStructure requires PDT');
+    if (!Smiles) throw new Error('MolecularStructure requires Smiles');
+    if (!Aromaticity) throw new Error('MolecularStructure requires Aromaticity');
+
+    // ================================================================
+    // Reference data: CIAAW/IUPAC standard atomic weights (2021 table,
+    // conventional single value where a range is published). Elements
+    // with no stable isotope (flag=true) use the mass number of their
+    // longest-lived known isotope in brackets, the same convention every
+    // printed periodic table uses for those entries - explicitly NOT a
+    // "standard atomic weight" in the strict sense, and flagged as such
+    // in molarMass()'s warnings whenever one is used.
+    // ================================================================
+    var STANDARD_ATOMIC_WEIGHT = {
+        H: [1.008, false], He: [4.002602, false], Li: [6.94, false], Be: [9.0121831, false],
+        B: [10.81, false], C: [12.011, false], N: [14.007, false], O: [15.999, false],
+        F: [18.998403163, false], Ne: [20.1797, false], Na: [22.98976928, false], Mg: [24.305, false],
+        Al: [26.9815384, false], Si: [28.085, false], P: [30.973761998, false], S: [32.06, false],
+        Cl: [35.45, false], Ar: [39.95, false], K: [39.0983, false], Ca: [40.078, false],
+        Sc: [44.955908, false], Ti: [47.867, false], V: [50.9415, false], Cr: [51.9961, false],
+        Mn: [54.938043, false], Fe: [55.845, false], Co: [58.933194, false], Ni: [58.6934, false],
+        Cu: [63.546, false], Zn: [65.38, false], Ga: [69.723, false], Ge: [72.630, false],
+        As: [74.921595, false], Se: [78.971, false], Br: [79.904, false], Kr: [83.798, false],
+        Rb: [85.4678, false], Sr: [87.62, false], Y: [88.90584, false], Zr: [91.224, false],
+        Nb: [92.90637, false], Mo: [95.95, false], Tc: [98, true], Ru: [101.07, false],
+        Rh: [102.90549, false], Pd: [106.42, false], Ag: [107.8682, false], Cd: [112.414, false],
+        In: [114.818, false], Sn: [118.710, false], Sb: [121.760, false], Te: [127.60, false],
+        I: [126.90447, false], Xe: [131.293, false], Cs: [132.90545196, false], Ba: [137.327, false],
+        La: [138.90547, false], Ce: [140.116, false], Pr: [140.90766, false], Nd: [144.242, false],
+        Pm: [145, true], Sm: [150.36, false], Eu: [151.964, false], Gd: [157.25, false],
+        Tb: [158.925354, false], Dy: [162.500, false], Ho: [164.930328, false], Er: [167.259, false],
+        Tm: [168.934218, false], Yb: [173.045, false], Lu: [174.9668, false], Hf: [178.486, false],
+        Ta: [180.94788, false], W: [183.84, false], Re: [186.207, false], Os: [190.23, false],
+        Ir: [192.217, false], Pt: [195.084, false], Au: [196.966570, false], Hg: [200.592, false],
+        Tl: [204.38, false], Pb: [207.2, false], Bi: [208.98040, false], Po: [209, true],
+        At: [210, true], Rn: [222, true], Fr: [223, true], Ra: [226, true],
+        Ac: [227, true], Th: [232.0377, false], Pa: [231.03588, false], U: [238.02891, false],
+        Np: [237, true], Pu: [244, true], Am: [243, true], Cm: [247, true],
+        Bk: [247, true], Cf: [251, true], Es: [252, true], Fm: [257, true],
+        Md: [258, true], No: [259, true], Lr: [266, true], Rf: [267, true],
+        Db: [268, true], Sg: [269, true], Bh: [270, true], Hs: [270, true],
+        Mt: [278, true], Ds: [281, true], Rg: [282, true], Cn: [285, true],
+        Nh: [286, true], Fl: [289, true], Mc: [290, true], Lv: [293, true],
+        Ts: [294, true], Og: [294, true]
+    };
+
+    // Real Daylight/OpenSMILES normal valences for the organic subset -
+    // used ONLY to infer implicit H on non-bracket atoms (bracket atoms
+    // always carry their own explicit, literal H count and never touch
+    // this table). Listed lowest-first; the smallest entry that is not
+    // less than the atom's actual bond-order sum is the one used.
+    var DEFAULT_VALENCE = {
+        B: [3], C: [4], N: [3, 5], O: [2], P: [3, 5], S: [2, 4, 6],
+        F: [1], Cl: [1], Br: [1], I: [1]
+    };
+
+    var NOBLE_GASES = { He: true, Ne: true, Ar: true, Kr: true, Xe: true, Rn: true, Og: true };
+
+    var HYBRIDIZATION_BY_STERIC = { 2: 'sp', 3: 'sp2', 4: 'sp3', 5: 'sp3d', 6: 'sp3d2' };
+
+    // Main-group VSEPR electron-domain -> molecular geometry, keyed
+    // 'stericNumber/lonePairs'. Only defined where the arrangement names a
+    // real central-atom shape (2+ bonded neighbors); a terminal atom (1
+    // neighbor) has a hybridization but no conventionally-named "shape",
+    // so it's left undefined on purpose rather than guessed.
+    var MAIN_GROUP_GEOMETRY = {
+        '2/0': 'linear',
+        '3/0': 'trigonal planar', '3/1': 'bent',
+        '4/0': 'tetrahedral', '4/1': 'trigonal pyramidal', '4/2': 'bent',
+        '5/0': 'trigonal bipyramidal', '5/1': 'seesaw', '5/2': 'T-shaped', '5/3': 'linear',
+        '6/0': 'octahedral', '6/1': 'square pyramidal', '6/2': 'square planar'
+    };
+
+    // Coordination-number -> geometry name(s) for d/f-block centers, where
+    // classical VSEPR lone-pair bookkeeping doesn't apply (d-block bonding
+    // is ligand/crystal-field chemistry, not shared-electron-pair Lewis
+    // structures). Ambiguous coordination numbers list every geometry
+    // consistent with that count; picking one needs ligand-field data this
+    // module doesn't have, so all candidates are reported, not one guess.
+    var COORDINATION_GEOMETRY_BY_NUMBER = {
+        2: ['linear'],
+        3: ['trigonal planar', 'trigonal pyramidal'],
+        4: ['tetrahedral', 'square planar'],
+        5: ['trigonal bipyramidal', 'square pyramidal'],
+        6: ['octahedral'],
+        7: ['pentagonal bipyramidal', 'capped octahedral'],
+        8: ['square antiprismatic', 'dodecahedral']
+    };
+
+    function normalizeAtom(a) {
+        return {
+            symbol: a.symbol,
+            aromatic: !!a.aromatic,
+            explicitH: (a.explicitH === undefined) ? null : a.explicitH,
+            charge: a.charge || 0
+        };
+    }
+
+    function fromSmiles(smilesString) {
+        var parsed;
+        try {
+            parsed = Smiles.parse(smilesString);
+        } catch (e) {
+            return { error: 'SMILES parse error: ' + e.message };
+        }
+        return {
+            atoms: parsed.atoms.map(normalizeAtom),
+            bonds: parsed.bonds.map(function(b) { return [b[0], b[1], b[2]]; })
+        };
+    }
+
+    // Accepts a hand-built graph (the Build/Add path) in the same shape;
+    // bond order defaults to 1 (a plain single bond) when omitted.
+    function fromGraph(graph) {
+        if (!graph || !graph.atoms || !graph.bonds) return { error: 'fromGraph requires { atoms, bonds }' };
+        return {
+            atoms: graph.atoms.map(normalizeAtom),
+            bonds: graph.bonds.map(function(b) { return [b[0], b[1], b[2] === undefined ? 1 : b[2]]; })
+        };
+    }
+
+    // Runs the molecule's ring/conjugated-system bonds through
+    // Aromaticity.analyze ONCE (role assignment + real Kekule perfect
+    // matching + the Huckel MO verdict) so both the implicit-H/lone-pair
+    // bookkeeping below and the whole-molecule aromaticity field in
+    // analyze()'s return value come from the exact same computation -
+    // never two separate calls that could disagree.
+    function buildAromaticContext(molecule, planar, betaModel) {
+        var relevant = molecule.bonds.some(function(b) { return b[2] === 'aromatic' || b[2] === 2 || b[2] === 3; });
+        if (!relevant) return null;
+        var aromSystem = Smiles.toAromaticSystem(molecule, !!planar);
+        if (aromSystem.atoms.length < 2) return null;
+        var aromResult = Aromaticity.analyze(aromSystem, { betaModel: betaModel });
+        var ctx = { aromSystem: aromSystem, aromResult: aromResult, roleByAtom: null, toLocal: null };
+        if (aromResult.error) return ctx;
+        var roleByAtom = {};
+        var toLocal = {};
+        aromSystem.originalIndex.forEach(function(orig, local) {
+            roleByAtom[orig] = aromSystem.atoms[local].role;
+            toLocal[orig] = local;
+        });
+        ctx.roleByAtom = roleByAtom;
+        ctx.toLocal = toLocal;
+        return ctx;
+    }
+
+    // Concretizes every 'aromatic'-order bond to a real integer 1 or 2
+    // using the Kekule matching above - NOT "aromatic counts as 1 for
+    // everyone," which undercounts alternating-double-bond ring atoms
+    // (e.g. would give benzene carbons 2 implicit H instead of the real
+    // 1). Falls back to 1 (documented, warned) only when no valid Kekule
+    // structure exists at all.
+    function concretizeBondOrders(molecule, ctx) {
+        var concreteOrder = molecule.bonds.map(function(b) { return b[2]; });
+        var warnings = [];
+        var hasAromaticBond = molecule.bonds.some(function(b) { return b[2] === 'aromatic'; });
+        if (!hasAromaticBond) return { concreteOrder: concreteOrder, warnings: warnings };
+        var matchingOk = !!(ctx && ctx.aromResult && ctx.aromResult.kekuleExists && ctx.toLocal);
+        if (!matchingOk) {
+            warnings.push('No valid Kekule structure found for the aromatic/conjugated system - aromatic bonds approximated as order 1 for implicit-H and lone-pair bookkeeping.');
+        }
+        var matching = matchingOk ? (ctx.aromResult.matching || {}) : {};
+        molecule.bonds.forEach(function(b, bi) {
+            if (b[2] !== 'aromatic') return;
+            if (!matchingOk) { concreteOrder[bi] = 1; return; }
+            var l0 = ctx.toLocal[b[0]], l1 = ctx.toLocal[b[1]];
+            if (l0 === undefined || l1 === undefined) { concreteOrder[bi] = 1; return; }
+            var isDouble = matching[l0] === l1 || matching[l1] === l0;
+            concreteOrder[bi] = isDouble ? 2 : 1;
+        });
+        return { concreteOrder: concreteOrder, warnings: warnings };
+    }
+
+    function perAtomAnalysis(molecule, ctx, concrete) {
+        var n = molecule.atoms.length;
+        var concreteOrder = concrete.concreteOrder;
+        var bondsOf = [];
+        for (var i = 0; i < n; i++) bondsOf.push([]);
+        molecule.bonds.forEach(function(b, bi) {
+            bondsOf[b[0]].push(bi);
+            bondsOf[b[1]].push(bi);
+        });
+
+        var results = [];
+        var warnings = [];
+        for (i = 0; i < n; i++) {
+            var atom = molecule.atoms[i];
+            var el = PDT.get(atom.symbol);
+            if (!el) {
+                results.push({ index: i, symbol: atom.symbol, error: 'Unknown element' });
+                continue;
+            }
+
+            var neighborCount = bondsOf[i].length; // sigma-bond count, order-independent
+            var bondOrderSum = 0;
+            bondsOf[i].forEach(function(bi) {
+                var ord = concreteOrder[bi];
+                bondOrderSum += (ord === 'aromatic') ? 1 : ord; // defensive fallback, see concretizeBondOrders
+            });
+
+            var isBracket = (atom.explicitH !== null);
+            var atomWarnings = [];
+            var implicitH;
+            if (isBracket) {
+                implicitH = atom.explicitH;
+            } else if (atom.symbol === 'H') {
+                implicitH = 0;
+            } else {
+                var table = DEFAULT_VALENCE[atom.symbol];
+                if (!table) {
+                    implicitH = 0;
+                    atomWarnings.push('No default valence table for ' + atom.symbol + ' - implicit H assumed 0.');
+                } else {
+                    var chosen = null;
+                    for (var t = 0; t < table.length; t++) {
+                        if (table[t] >= bondOrderSum) { chosen = table[t]; break; }
+                    }
+                    if (chosen === null) {
+                        atomWarnings.push('Bond order sum (' + bondOrderSum + ') exceeds every normal valence for ' + atom.symbol + ' - overvalent, implicit H forced to 0.');
+                        implicitH = 0;
+                    } else {
+                        implicitH = chosen - bondOrderSum;
+                    }
+                }
+            }
+
+            var totalNeighbors = neighborCount + implicitH;
+            var totalBondOrder = bondOrderSum + implicitH; // each implicit H is a single bond
+
+            // H/He never hybridize (a bare 1s orbital, no lone-pair
+            // bookkeeping applies); noble gases are excluded as a scope
+            // simplification (real Xe/Kr compounds exist but are outside
+            // this module's organic/coordination-chemistry focus for now).
+            var isMainGroup = (el.block === 's' || el.block === 'p') && atom.symbol !== 'H' && !NOBLE_GASES[atom.symbol];
+
+            var lonePairs = null, stericNumber = null, hybridization = null, geometry = null;
+            var role = (ctx && ctx.roleByAtom) ? ctx.roleByAtom[i] : undefined;
+            if (isMainGroup) {
+                var valenceElectrons = PDT.valenceElectronCount(el.Z);
+                var nonbonding = valenceElectrons - atom.charge - totalBondOrder;
+                if (nonbonding < 0) {
+                    atomWarnings.push('Computed nonbonding electron count is negative (' + nonbonding + ') - bonding pattern exceeds this atom\'s valence electrons; lone pairs reported as 0.');
+                    nonbonding = 0;
+                }
+                if (nonbonding % 2 !== 0) {
+                    atomWarnings.push('Nonbonding electron count is odd (' + nonbonding + ') - radical character, not a closed-shell Lewis structure.');
+                }
+                lonePairs = Math.floor(nonbonding / 2);
+
+                // A donated pi lone pair (pyrrole-type N, furan-type O...)
+                // occupies a p-orbital, not a hybrid orbital - it must not
+                // inflate steric number the way a classical lone pair does
+                // (real pyrrole N is planar/sp2, steric number 3, not
+                // tetrahedral/sp3). Only applied when Aromaticity.js itself
+                // assigned this atom role 'lonePairDonor' - never guessed.
+                var stericLonePairs = lonePairs;
+                if (role === 'lonePairDonor' && stericLonePairs > 0) stericLonePairs -= 1;
+
+                stericNumber = totalNeighbors + stericLonePairs;
+                hybridization = HYBRIDIZATION_BY_STERIC[stericNumber] || null;
+                if (!hybridization) atomWarnings.push('Steric number ' + stericNumber + ' has no standard hybridization name on file.');
+                geometry = MAIN_GROUP_GEOMETRY[stericNumber + '/' + stericLonePairs] || null;
+            } else if (atom.symbol !== 'H') {
+                // d/f-block (or a noble gas center, e.g. a noble-gas
+                // compound built via fromGraph): report coordination
+                // number + every geometry consistent with it.
+                geometry = COORDINATION_GEOMETRY_BY_NUMBER[totalNeighbors] || null;
+            }
+
+            results.push({
+                index: i,
+                symbol: atom.symbol,
+                charge: atom.charge,
+                implicitH: implicitH,
+                neighborCount: neighborCount,
+                totalNeighbors: totalNeighbors,
+                bondOrderSum: totalBondOrder,
+                isMainGroupCovalent: isMainGroup,
+                lonePairs: lonePairs,
+                stericNumber: stericNumber,
+                hybridization: hybridization,
+                geometry: geometry,
+                piSystemRole: role || null,
+                warnings: atomWarnings
+            });
+            warnings = warnings.concat(atomWarnings.map(function(w) { return 'atom ' + i + ' (' + atom.symbol + '): ' + w; }));
+        }
+        return { perAtom: results, warnings: warnings };
+    }
+
+    // Hill system: C first, H second (only if C present), everything else
+    // alphabetical; if there's no carbon, everything (H included) is
+    // alphabetical. The standard convention every published formula uses.
+    function formula(molecule, perAtomResults) {
+        var counts = {};
+        function add(sym, count) { counts[sym] = (counts[sym] || 0) + count; }
+        molecule.atoms.forEach(function(a, i) {
+            add(a.symbol, 1);
+            var h = perAtomResults[i] && perAtomResults[i].implicitH;
+            if (h) add('H', h);
+        });
+        var symbols = Object.keys(counts);
+        var ordered;
+        if (counts.C) {
+            var rest = symbols.filter(function(s) { return s !== 'C' && s !== 'H'; }).sort();
+            ordered = ['C'].concat(counts.H ? ['H'] : []).concat(rest);
+        } else {
+            ordered = symbols.sort();
+        }
+        var str = ordered.map(function(s) { return s + (counts[s] > 1 ? counts[s] : ''); }).join('');
+        return { counts: counts, string: str };
+    }
+
+    function molarMass(counts) {
+        var total = 0;
+        var warnings = [];
+        Object.keys(counts).forEach(function(sym) {
+            var entry = STANDARD_ATOMIC_WEIGHT[sym];
+            if (!entry) { warnings.push('No standard atomic weight on file for ' + sym + '.'); return; }
+            total += entry[0] * counts[sym];
+            if (entry[1]) warnings.push(sym + ' has no stable isotope - using the mass number of its most stable known isotope, not a true standard atomic weight.');
+        });
+        return { value: Math.round(total * 1000) / 1000, warnings: warnings };
+    }
+
+    // The one entry point: molecule -> the full derived-property report.
+    // options: { planar, betaModel } - both pass straight through to
+    // Aromaticity.analyze (planar is a declared input there, same
+    // documented limitation as everywhere else this module is used).
+    function analyze(molecule, options) {
+        options = options || {};
+        if (molecule.error) return molecule;
+        var ctx = buildAromaticContext(molecule, options.planar, options.betaModel);
+        var concrete = concretizeBondOrders(molecule, ctx);
+        var atomResult = perAtomAnalysis(molecule, ctx, concrete);
+        var f = formula(molecule, atomResult.perAtom);
+        var mass = molarMass(f.counts);
+        return {
+            formula: f,
+            molarMass: mass,
+            perAtom: atomResult.perAtom,
+            aromaticity: ctx ? ctx.aromResult : null,
+            warnings: concrete.warnings.concat(atomResult.warnings).concat(mass.warnings),
+            version: '0.1'
+        };
+    }
+
+    return {
+        fromSmiles: fromSmiles,
+        fromGraph: fromGraph,
+        analyze: analyze,
+        perAtomAnalysis: perAtomAnalysis,
+        formula: formula,
+        molarMass: molarMass,
+        STANDARD_ATOMIC_WEIGHT: STANDARD_ATOMIC_WEIGHT,
+        DEFAULT_VALENCE: DEFAULT_VALENCE,
+        HYBRIDIZATION_BY_STERIC: HYBRIDIZATION_BY_STERIC,
+        MAIN_GROUP_GEOMETRY: MAIN_GROUP_GEOMETRY,
+        COORDINATION_GEOMETRY_BY_NUMBER: COORDINATION_GEOMETRY_BY_NUMBER,
+        version: '0.1'
+    };
+}));
+
+</script>
+<script>
+// ─── RulesEngine.js — generic pattern -> rule -> action pipeline ──────
+//
+// Domain-agnostic. Does not know about code, WASM, or RegX at all. A Rule
+// is any object exposing:
+//   ruleId  : stable string id
+//   match(text, state)   -> match-info, or null if this rule doesn't apply
+//                            anywhere in `text` right now
+//   reduce(text, match, state) -> new text, with ONE occurrence reduced
+//
+// The engine runs an ORDERED list of rules. For each rule in order, it
+// repeatedly match+reduce until match() returns null (a fixed point for
+// that rule), then moves to the next rule. `state` is shared, mutable
+// scratch space threaded through every rule in the pipeline — the
+// intended use is a placeholder/side-table (see definePlaceholderTable
+// below), letting a rule replace an already-resolved chunk of text with
+// an opaque token so later rules can't see into it.
+//
+// This is the general mechanism: regular expressions can't express
+// recursive/nested structure directly (that's a real regular-vs-context-
+// free language distinction), so recursion is achieved by ITERATING flat
+// (regular) reduction passes instead — each pass only ever solves a
+// non-recursive sub-problem, and the previously-resolved structure is
+// hidden behind an atomic placeholder so the next pass can't corrupt it.
+// The same shape applies whether the "text" is a math expression, a
+// template with embedded foreign languages (HTML with JS/CSS/XML), or any
+// other staged reduction problem — RegX's expression-precedence pipeline
+// is one instance of this engine, not the engine itself.
+
+(function(root, factory) {
+  'use strict';
+
+  if (typeof define === 'function' && define.amd) {
+    define(['ExtendX'], factory);
+  } else if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./ExtendX'));
+  } else {
+    root.RulesEngine = factory(root.ExtendX || (typeof window !== 'undefined' && window.ExtendX));
+  }
+}(typeof self !== 'undefined' ? self : this, function(ExtendX) {
+  'use strict';
+
+  var MAX_ITERATIONS = 100000;
+
+  function RulesEngine(rules) {
+    this.rules = rules || [];
+  }
+
+  // Runs every rule, in order, each to its own fixed point, threading one
+  // shared `state` object through the whole pipeline. Returns the final
+  // text and the (possibly mutated) state.
+  RulesEngine.prototype.run = function(input, state) {
+    state = state || {};
+    var text = input;
+
+    for (var i = 0; i < this.rules.length; i++) {
+      var rule = this.rules[i];
+      var guard = 0;
+
+      while (true) {
+        var m = rule.match(text, state);
+        if (!m) break;
+
+        var next = rule.reduce(text, m, state);
+        if (next === text) {
+          throw new Error('RulesEngine: rule "' + rule.ruleId + '" matched but did not change the text — would loop forever');
+        }
+        text = next;
+
+        guard++;
+        if (guard > MAX_ITERATIONS) {
+          throw new Error('RulesEngine: rule "' + rule.ruleId + '" did not reach a fixed point within ' + MAX_ITERATIONS + ' iterations (possible non-terminating rule)');
+        }
+      }
+    }
+
+    return { text: text, state: state };
+  };
+
+  // A placeholder table: intern(payload) replaces a chunk of already-
+  // resolved structure with an opaque token so later rules see it as one
+  // atom, not text they might re-match into. resolve(token) looks a
+  // payload back up. U+2726 is deliberately outside any expression
+  // grammar this engine's known consumers use, to avoid collisions.
+  RulesEngine.definePlaceholderTable = function() {
+    var table = [];
+    var MARK = '✦';
+    return {
+      table: table,
+      intern: function(payload) {
+        var id = table.length;
+        table.push(payload);
+        return MARK + id + MARK;
+      },
+      isPlaceholder: function(text) {
+        return new RegExp('^' + MARK + '\\d+' + MARK + '$').test(text);
+      },
+      resolve: function(placeholderText) {
+        var m = new RegExp(MARK + '(\\d+)' + MARK).exec(placeholderText);
+        if (!m) return undefined;
+        return table[parseInt(m[1], 10)];
+      }
+    };
+  };
+
+  return RulesEngine;
+}));
+
+</script>
+<script>
+// UMD IIFE - Stoichiometry: chemical-equation balancing and reaction
+// arithmetic (limiting reagent, theoretical/percent yield) on top of PDT's
+// element data and MolecularStructure's standard atomic weights.
+//
+// Nothing here is a new physical model - it's exact bookkeeping (integer
+// linear algebra for balancing, unit conversion for the rest), the same
+// "reference, not derived" status MolecularStructure.js claims for its own
+// atomic-weight table. There is no empirical constant to check against
+// real data; the only correctness bar is arithmetic, so every function's
+// own test suite re-derives its answer a second, independent way
+// (element-count conservation, mass conservation) rather than pinning
+// against a hand-computed expected value alone.
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['./PDT', './MolecularStructure', './RulesEngine'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./PDT.js'), require('./MolecularStructure.js'), require('./RulesEngine.js'));
+    } else {
+        root.Stoichiometry = factory(root.PDT, root.MolecularStructure, root.RulesEngine);
+    }
+}(typeof self !== 'undefined' ? self : this, function(PDT, MolecularStructure, RulesEngine) {
+    'use strict';
+    if (!PDT) throw new Error('Stoichiometry requires PDT');
+    if (!MolecularStructure) throw new Error('Stoichiometry requires MolecularStructure');
+    if (!RulesEngine) throw new Error('Stoichiometry requires RulesEngine');
+
+    var STANDARD_ATOMIC_WEIGHT = MolecularStructure.STANDARD_ATOMIC_WEIGHT;
+    var AVOGADRO = 6.02214076e23;
+
+    // ================================================================
+    // 1. FORMULA PARSER
+    // ================================================================
+    // Handles what PDT.js's own parseFormula() explicitly doesn't: nested
+    // parentheses/brackets with a trailing multiplier (Ca(OH)2,
+    // Al2(SO4)3, [Cu(NH3)4]SO4) and hydrate notation (CuSO4.5H2O or
+    // CuSO4·5H2O). Built on RulesEngine.js's general pattern-rule-
+    // reduce pipeline rather than a hand-rolled recursive-descent parser -
+    // the same mechanism RegX.js uses to resolve nested parens in
+    // arithmetic expressions (innermost group first, each already-
+    // resolved group hidden behind an opaque placeholder so later passes
+    // can't re-match into it). A formula's bracket nesting is exactly the
+    // same "flatten recursion into iterated flat passes" problem, so this
+    // reuses the mechanism instead of re-deriving it.
+    //
+    // Reads a flat (no remaining brackets) fragment of element symbols,
+    // counts, and already-resolved group placeholders into a count map.
+    function readFlatCounts(text, placeholders) {
+        var counts = {};
+        var re = /(✦\d+✦)(\d*)|([A-Z][a-z]?)(\d*)/g;
+        var consumed = 0, m;
+        while ((m = re.exec(text)) !== null) {
+            if (m.index !== consumed) throw new Error('Unexpected character in "' + text + '" at position ' + consumed);
+            if (m[1]) {
+                var mult = m[2] ? parseInt(m[2], 10) : 1;
+                var payload = placeholders.resolve(m[1]);
+                Object.keys(payload).forEach(function(sym) { counts[sym] = (counts[sym] || 0) + payload[sym] * mult; });
+            } else {
+                var symbol = m[3];
+                if (!PDT.bySymbol[symbol]) throw new Error('Unknown element: "' + symbol + '"');
+                var count = m[4] ? parseInt(m[4], 10) : 1;
+                counts[symbol] = (counts[symbol] || 0) + count;
+            }
+            consumed = re.lastIndex;
+        }
+        if (consumed !== text.length) throw new Error('Unexpected trailing content in "' + text + '"');
+        return counts;
+    }
+
+    function formatCounts(counts) {
+        return Object.keys(counts).sort().map(function(sym) {
+            return sym + (counts[sym] > 1 ? counts[sym] : '');
+        }).join('');
+    }
+
+    // Rules are DATA - {ruleId, type, description, match, reduce} - not
+    // logic buried in a hand-written recursive-descent parser, the same
+    // convention CASX.js (this project's RulesEngine-driven CAS) uses so
+    // that a rule's own `description` can drive a self-documenting
+    // derivation trace instead of a second, separately-maintained
+    // explanation. `steps`, when passed, collects one
+    // {ruleId, type, description, before, after} entry per firing - the
+    // Chemistry Problem Generator/Explainer's "show your work" trace for
+    // a formula breakdown is exactly this array, not a re-derived one.
+    function parseFormulaFragment(s, steps) {
+        var placeholders = RulesEngine.definePlaceholderTable();
+
+        // Matches one INNERMOST bracket group - no ( or [ between its own
+        // open/close - plus any trailing multiplier digits. Run to its
+        // fixed point, this resolves arbitrarily deep nesting from the
+        // inside out: each reduce() replaces one innermost group with an
+        // opaque placeholder, which can then itself sit inside the next
+        // group out, exactly like RegX's ParenRule.
+        var GroupRule = {
+            ruleId: 'resolve-group',
+            type: 'parse',
+            description: 'Group Rule: resolve an innermost (GROUP)n into its own scaled element counts',
+            match: function(text) {
+                var re = /([(\[])([^()\[\]]*)([)\]])(\d*)/;
+                var m = re.exec(text);
+                if (!m) return null;
+                return { index: m.index, length: m[0].length, open: m[1], inner: m[2], close: m[3], mult: m[4] };
+            },
+            reduce: function(text, m) {
+                var wantClose = m.open === '(' ? ')' : ']';
+                if (m.close !== wantClose) throw new Error('Mismatched "' + m.open + '" in "' + s + '"');
+                var innerCounts = readFlatCounts(m.inner, placeholders);
+                var mult = m.mult ? parseInt(m.mult, 10) : 1;
+                var scaled = {};
+                Object.keys(innerCounts).forEach(function(sym) { scaled[sym] = innerCounts[sym] * mult; });
+                var token = placeholders.intern(scaled);
+                var next = text.slice(0, m.index) + token + text.slice(m.index + m.length);
+                if (steps) {
+                    steps.push({
+                        ruleId: this.ruleId, type: this.type,
+                        description: this.description + ': ' + m.open + m.inner + m.close + (mult > 1 ? mult : '') + ' = ' + formatCounts(scaled),
+                        before: text, after: next
+                    });
+                }
+                return next;
+            }
+        };
+
+        var engine = new RulesEngine([GroupRule]);
+        var reduced = engine.run(s).text;
+        return readFlatCounts(reduced, placeholders);
+    }
+
+    // Splits on the hydrate separator ('.' or the middle dot U+00B7),
+    // treating each fragment as coefficient-prefixed (e.g. the "5" in
+    // "5H2O") and additive - a hydrate's water of crystallization is a
+    // literal sum of atoms, not a nested group. Returns .steps (see
+    // parseFormulaFragment above) so callers that want a "show your work"
+    // trace of how the formula was broken down don't need their own copy.
+    function parseFormula(formula) {
+        formula = String(formula).trim().replace(/\s+/g, '');
+        if (formula === '') return { error: 'Empty formula' };
+        var fragments = formula.split(/[·.]/);
+        var total = {};
+        var steps = [];
+        try {
+            fragments.forEach(function(frag) {
+                if (frag === '') throw new Error('Empty fragment in "' + formula + '"');
+                var m = frag.match(/^(\d+)([A-Z(\[].*)$/);
+                var coeff = 1, body = frag;
+                if (m) { coeff = parseInt(m[1], 10); body = m[2]; }
+                var counts = parseFormulaFragment(body, steps);
+                Object.keys(counts).forEach(function(sym) {
+                    total[sym] = (total[sym] || 0) + counts[sym] * coeff;
+                });
+            });
+        } catch (e) {
+            return { error: e.message };
+        }
+        return { formula: formula, counts: total, steps: steps };
+    }
+
+    function molarMass(counts) {
+        var total = 0;
+        var warnings = [];
+        Object.keys(counts).forEach(function(sym) {
+            var entry = STANDARD_ATOMIC_WEIGHT[sym];
+            if (!entry) { warnings.push('No standard atomic weight on file for ' + sym + '.'); return; }
+            total += entry[0] * counts[sym];
+            if (entry[1]) warnings.push(sym + ' has no stable isotope - using the mass number of its most stable known isotope, not a true standard atomic weight.');
+        });
+        return { value: Math.round(total * 1000) / 1000, warnings: warnings };
+    }
+
+    // ================================================================
+    // 2. EXACT RATIONAL ARITHMETIC (for equation balancing)
+    // ================================================================
+    // Balancing needs an exact null-space vector, not a floating-point
+    // approximation - Gaussian elimination on floats can leave a
+    // coefficient at 2.9999999999996 with no principled way to tell
+    // "round to 3" from "the equation actually doesn't balance". BigInt
+    // fractions sidestep that entirely: every intermediate value is exact
+    // until the final integer scaling step.
+    function gcdBig(a, b) {
+        if (a < 0n) a = -a;
+        if (b < 0n) b = -b;
+        while (b) { var t = a % b; a = b; b = t; }
+        return a;
+    }
+    function Frac(n, d) {
+        if (d === undefined) d = 1n;
+        if (d < 0n) { n = -n; d = -d; }
+        if (n === 0n) d = 1n;
+        else { var g = gcdBig(n, d); if (g > 1n) { n /= g; d /= g; } }
+        return { n: n, d: d };
+    }
+    function fAdd(a, b) { return Frac(a.n * b.d + b.n * a.d, a.d * b.d); }
+    function fSub(a, b) { return Frac(a.n * b.d - b.n * a.d, a.d * b.d); }
+    function fMul(a, b) { return Frac(a.n * b.n, a.d * b.d); }
+    function fDiv(a, b) { return Frac(a.n * b.d, a.d * b.n); }
+    function fIsZero(a) { return a.n === 0n; }
+
+    // ================================================================
+    // 3. EQUATION PARSER + BALANCER
+    // ================================================================
+    // Accepts "->", "→", or "=" between sides, "+" between terms on
+    // each side. A term may carry a leading coefficient (ignored on input
+    // - balance() derives its own - but accepted so a partially-balanced
+    // or already-balanced equation can be re-checked/re-balanced without
+    // hand-editing it first).
+    function parseEquation(equation) {
+        var sides = String(equation).split(/->|→|=/);
+        if (sides.length !== 2) return { error: 'Equation must contain "->", "→", or "=" separating reactants from products' };
+        function parseSide(text) {
+            var terms = text.split('+').map(function(t) { return t.trim(); }).filter(function(t) { return t !== ''; });
+            var out = [];
+            for (var i = 0; i < terms.length; i++) {
+                var m = terms[i].match(/^(\d+)?\s*(.+)$/);
+                var formula = m[2].trim();
+                var parsed = parseFormula(formula);
+                if (parsed.error) return { error: 'In term "' + terms[i] + '": ' + parsed.error };
+                out.push({ formula: parsed.formula, counts: parsed.counts });
+            }
+            return out;
+        }
+        var reactants = parseSide(sides[0]);
+        if (reactants.error) return reactants;
+        var products = parseSide(sides[1]);
+        if (products.error) return products;
+        if (reactants.length === 0 || products.length === 0) return { error: 'Equation needs at least one reactant and one product' };
+        return { reactants: reactants, products: products };
+    }
+
+    // Reduced-row-echelon-form null space over exact fractions, returning
+    // ONE particular solution (the first free variable set to 1, every
+    // other free variable set to 0) - sufficient for the overwhelming
+    // majority of real chemical equations, which have a 1-dimensional
+    // solution space. If the system is inconsistent (no formula-level
+    // atom-conservation error, but e.g. genuinely un-balanceable as
+    // written) or has more than one nontrivial free variable, that's
+    // reported rather than silently guessed at.
+    function nullSpaceOneVector(matrix, cols) {
+        var rows = matrix.length;
+        var m = matrix.map(function(row) { return row.slice(); });
+        var pivotCols = [];
+        var r = 0;
+        for (var c = 0; c < cols && r < rows; c++) {
+            var pivot = -1;
+            for (var i = r; i < rows; i++) { if (!fIsZero(m[i][c])) { pivot = i; break; } }
+            if (pivot === -1) continue;
+            var tmp = m[r]; m[r] = m[pivot]; m[pivot] = tmp;
+            var pv = m[r][c];
+            for (var j = c; j < cols; j++) m[r][j] = fDiv(m[r][j], pv);
+            for (i = 0; i < rows; i++) {
+                if (i === r) continue;
+                var factor = m[i][c];
+                if (fIsZero(factor)) continue;
+                for (j = c; j < cols; j++) m[i][j] = fSub(m[i][j], fMul(factor, m[r][j]));
+            }
+            pivotCols.push(c);
+            r++;
+        }
+        var isPivot = {};
+        pivotCols.forEach(function(c) { isPivot[c] = true; });
+        var freeCols = [];
+        for (c = 0; c < cols; c++) if (!isPivot[c]) freeCols.push(c);
+        if (freeCols.length === 0) return { error: 'System has only the trivial (all-zero) solution - equation cannot be balanced with positive coefficients' };
+        if (freeCols.length > 1) return { error: 'Underdetermined: ' + freeCols.length + ' independent free coefficients - this equation needs additional constraints (e.g. a stated coefficient) to balance uniquely' };
+        var free = freeCols[0];
+        var x = new Array(cols).fill(null).map(function() { return Frac(0n); });
+        x[free] = Frac(1n);
+        for (var pr = 0; pr < pivotCols.length; pr++) {
+            var pc = pivotCols[pr];
+            x[pc] = fSub(Frac(0n), m[pr][free]);
+        }
+        return { solution: x };
+    }
+
+    function balance(equationStr) {
+        var eq = parseEquation(equationStr);
+        if (eq.error) return { error: eq.error };
+        var compounds = eq.reactants.concat(eq.products);
+        var signs = eq.reactants.map(function() { return 1n; }).concat(eq.products.map(function() { return -1n; }));
+        var elements = {};
+        compounds.forEach(function(c) { Object.keys(c.counts).forEach(function(sym) { elements[sym] = true; }); });
+        var elementList = Object.keys(elements);
+        var matrix = elementList.map(function(sym) {
+            return compounds.map(function(c, idx) { return Frac((BigInt(c.counts[sym] || 0)) * signs[idx]); });
+        });
+        var ns = nullSpaceOneVector(matrix, compounds.length);
+        if (ns.error) return { error: ns.error };
+        var x = ns.solution;
+        // Scale to smallest positive integers: LCM of denominators, then
+        // GCD-reduce the resulting integer vector.
+        var lcm = 1n;
+        x.forEach(function(f) { lcm = lcm / gcdBig(lcm, f.d) * f.d; });
+        var ints = x.map(function(f) { return f.n * (lcm / f.d); });
+        var allNonNeg = ints.every(function(v) { return v >= 0n; });
+        var allNonPos = ints.every(function(v) { return v <= 0n; });
+        if (!allNonNeg && !allNonPos) return { error: 'Balanced solution has mixed-sign coefficients - the equation as written cannot be balanced (check the formulas / which side each compound is on)' };
+        if (allNonPos) ints = ints.map(function(v) { return -v; });
+        var g = 0n;
+        ints.forEach(function(v) { g = gcdBig(g, v); });
+        if (g > 1n) ints = ints.map(function(v) { return v / g; });
+        var coeffs = ints.map(function(v) { return Number(v); });
+        if (coeffs.some(function(v) { return v === 0; })) return { error: 'Balanced solution assigns a zero coefficient to a compound that is actually present - equation is malformed' };
+
+        var nReact = eq.reactants.length;
+        var reactantTerms = eq.reactants.map(function(c, idx) { return { coeff: coeffs[idx], formula: c.formula, counts: c.counts }; });
+        var productTerms = eq.products.map(function(c, idx) { return { coeff: coeffs[nReact + idx], formula: c.formula, counts: c.counts }; });
+
+        function fmtSide(terms) {
+            return terms.map(function(t) { return (t.coeff === 1 ? '' : t.coeff + ' ') + t.formula; }).join(' + ');
+        }
+        // Independent self-check: re-sum element counts with the derived
+        // coefficients and confirm both sides genuinely match, rather than
+        // trusting the linear-algebra result on its own say-so.
+        var checkElements = {};
+        reactantTerms.forEach(function(t) { Object.keys(t.counts).forEach(function(s) { checkElements[s] = (checkElements[s] || 0) + t.coeff * t.counts[s]; }); });
+        productTerms.forEach(function(t) { Object.keys(t.counts).forEach(function(s) { checkElements[s] = (checkElements[s] || 0) - t.coeff * t.counts[s]; }); });
+        var mismatches = Object.keys(checkElements).filter(function(s) { return checkElements[s] !== 0; });
+        if (mismatches.length > 0) return { error: 'Internal check failed: element(s) ' + mismatches.join(', ') + ' do not balance with the derived coefficients' };
+
+        return {
+            equation: equationStr,
+            reactants: reactantTerms,
+            products: productTerms,
+            balanced: fmtSide(reactantTerms) + ' -> ' + fmtSide(productTerms)
+        };
+    }
+
+    // ================================================================
+    // 4. REACTION STOICHIOMETRY (limiting reagent, yield)
+    // ================================================================
+    // given: { "<formula, exactly as it appears in the equation>": { grams } | { moles } }
+    // options.actualYield: { "<product formula>": grams } - optional, for percent yield.
+    function solve(equationStr, given, options) {
+        options = options || {};
+        var bal = balance(equationStr);
+        if (bal.error) return { error: bal.error };
+        given = given || {};
+
+        var species = {};
+        bal.reactants.forEach(function(t) { species[t.formula] = { role: 'reactant', coeff: t.coeff, counts: t.counts }; });
+        bal.products.forEach(function(t) { species[t.formula] = { role: 'product', coeff: t.coeff, counts: t.counts }; });
+
+        var unknownGiven = Object.keys(given).filter(function(f) { return !species[f]; });
+        if (unknownGiven.length > 0) return { error: 'Given formula(s) not present in the balanced equation: ' + unknownGiven.join(', ') };
+
+        var extents = []; // moles of reaction extent implied by each given reactant
+        var perSpecies = {};
+        Object.keys(species).forEach(function(f) {
+            var s = species[f];
+            var mm = molarMass(s.counts);
+            perSpecies[f] = { role: s.role, coeff: s.coeff, molarMass: mm.value, warnings: mm.warnings };
+        });
+
+        var givenMoles = {};
+        Object.keys(given).forEach(function(f) {
+            var g = given[f];
+            var mm = perSpecies[f].molarMass;
+            var moles;
+            if (typeof g.moles === 'number') moles = g.moles;
+            else if (typeof g.grams === 'number') moles = g.grams / mm;
+            else return;
+            givenMoles[f] = moles;
+            if (species[f].role === 'reactant') extents.push({ formula: f, extent: moles / species[f].coeff });
+        });
+
+        if (extents.length === 0) return { error: 'No reactant quantities given - provide at least one reactant\'s grams or moles' };
+
+        var limiting = extents.reduce(function(min, e) { return e.extent < min.extent ? e : min; }, extents[0]);
+        var rxnExtent = limiting.extent;
+
+        var result = {
+            equation: bal.balanced,
+            limitingReagent: limiting.formula,
+            reactionExtentMol: rxnExtent,
+            species: {}
+        };
+
+        Object.keys(species).forEach(function(f) {
+            var s = species[f];
+            var theoreticalMoles = rxnExtent * s.coeff;
+            var entry = {
+                role: s.role,
+                coefficient: s.coeff,
+                molarMass: perSpecies[f].molarMass,
+                theoreticalMoles: Math.round(theoreticalMoles * 1e9) / 1e9,
+                theoreticalGrams: Math.round(theoreticalMoles * perSpecies[f].molarMass * 1e6) / 1e6
+            };
+            if (s.role === 'reactant' && givenMoles[f] !== undefined) {
+                var consumed = theoreticalMoles;
+                var leftoverMol = givenMoles[f] - consumed;
+                entry.givenMoles = givenMoles[f];
+                entry.excessMoles = Math.round(leftoverMol * 1e9) / 1e9;
+                entry.excessGrams = Math.round(leftoverMol * perSpecies[f].molarMass * 1e6) / 1e6;
+                entry.isLimiting = f === limiting.formula;
+            }
+            if (s.role === 'product' && options.actualYield && typeof options.actualYield[f] === 'number') {
+                entry.actualGrams = options.actualYield[f];
+                entry.percentYield = Math.round((options.actualYield[f] / entry.theoreticalGrams) * 10000) / 100;
+            }
+            result.species[f] = entry;
+        });
+
+        return result;
+    }
+
+    // ================================================================
+    // 5. COMMAND PARSER (house convention - see PDT.run/QM.run)
+    // ================================================================
+    function run(command) {
+        if (typeof command !== 'string') return { error: 'Command must be a string.' };
+        var cmd = command.trim();
+        if (cmd.toLowerCase() === 'help') {
+            return {
+                help: '\n' +
+                'Stoichiometry.run("mass CuSO4.5H2O")            - Molar mass of a formula (parens/hydrates OK)\n' +
+                'Stoichiometry.run("balance H2 + O2 = H2O")      - Balance a chemical equation\n' +
+                'Stoichiometry.run("help")                       - Show this help\n' +
+                'Stoichiometry.solve(equation, given, options)    - Full limiting-reagent/yield calculation, see source\n'
+            };
+        }
+        if (cmd.toLowerCase().startsWith('mass ')) {
+            var parsed = parseFormula(cmd.slice(5).trim());
+            if (parsed.error) return { error: parsed.error };
+            var mm = molarMass(parsed.counts);
+            return { formula: parsed.formula, counts: parsed.counts, molarMass: mm.value, warnings: mm.warnings };
+        }
+        if (cmd.toLowerCase().startsWith('balance ')) {
+            return balance(cmd.slice(8).trim());
+        }
+        return { error: 'Unknown command: "' + command + '". Try Stoichiometry.run("help")' };
+    }
+
+    return {
+        parseFormula: parseFormula,
+        molarMass: molarMass,
+        parseEquation: parseEquation,
+        balance: balance,
+        solve: solve,
+        run: run,
+        AVOGADRO: AVOGADRO,
+        version: '1.0',
+        date: '2026-09-20',
+        author: 'Pooled Impact'
+    };
+}));
+
+</script>
+<script>
+// UMD IIFE - ChemistryProblemGenerator: deterministic gen-chem problem
+// generation and step-by-step explanation, built on Stoichiometry.js
+// (formula parsing/molar mass/equation balancing) and RulesEngine.js
+// (the same match/reduce pipeline Stoichiometry.js's own parser uses).
+//
+// SCOPE, STATED UP FRONT (same "narrower correct beats wider wrong"
+// discipline as CASX.js): five problem types, all grounded in real
+// stoichiometry this codebase already computes exactly - molar mass,
+// mass<->mole conversion, percent composition by mass, and equation
+// balancing. Broader first-semester topics seen on a real exam (electron
+// configuration, quantum numbers, photon energy, isotopes/mass spec,
+// periodic trends) are NOT covered here; they need their own real models,
+// not a text template pretending to have one. Adding a problem type means
+// adding one entry to PROBLEM_TYPES with a real generate/solve pair, not
+// bending an existing one to fit.
+//
+// DETERMINISTIC means what it says: every problem is generate(typeId,
+// seed) -> the exact same question and answer for that seed, forever, via
+// a seeded PRNG (mulberry32) - never Math.random(). This is a real
+// requirement, not a style preference: it's what makes a generated
+// problem set reproducible for an answer key, or re-derivable from just
+// the seed a student was given.
+//
+// EXPLAIN means the returned .steps is the real derivation, not prose
+// generated after the fact - molar-mass/mass<->mole/percent-composition
+// problems reuse Stoichiometry.parseFormula's own RulesEngine step trace
+// directly, and balance-equation problems show the actual per-element
+// conservation check balance() already verifies internally.
+(function(root, factory) {
+    if (typeof define === 'function' && define.amd) {
+        define(['./PDT', './Stoichiometry', './MolecularStructure'], factory);
+    } else if (typeof module === 'object' && module.exports) {
+        module.exports = factory(require('./PDT.js'), require('./Stoichiometry.js'), require('./MolecularStructure.js'));
+    } else {
+        root.ChemistryProblemGenerator = factory(root.PDT, root.Stoichiometry, root.MolecularStructure);
+    }
+}(typeof self !== 'undefined' ? self : this, function(PDT, Stoichiometry, MolecularStructure) {
+    'use strict';
+    if (!PDT) throw new Error('ChemistryProblemGenerator requires PDT');
+    if (!Stoichiometry) throw new Error('ChemistryProblemGenerator requires Stoichiometry');
+    if (!MolecularStructure) throw new Error('ChemistryProblemGenerator requires MolecularStructure');
+
+    var STANDARD_ATOMIC_WEIGHT = MolecularStructure.STANDARD_ATOMIC_WEIGHT;
+
+    // ================================================================
+    // 1. DETERMINISTIC PRNG (mulberry32) - never Math.random()
+    // ================================================================
+    // Same 32-bit seed always produces the same output stream, forever,
+    // independent of engine/platform - unlike Math.random(), which is
+    // explicitly NOT required to be reproducible across runs.
+    function mulberry32(seed) {
+        var a = seed >>> 0;
+        return function() {
+            a |= 0; a = (a + 0x6D2B79F5) | 0;
+            var t = Math.imul(a ^ (a >>> 15), 1 | a);
+            t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+    }
+    function pick(rng, arr) { return arr[Math.floor(rng() * arr.length)]; }
+    function randInt(rng, min, max) { return min + Math.floor(rng() * (max - min + 1)); }
+    function seedFromString(s) {
+        var h = 0;
+        for (var i = 0; i < s.length; i++) { h = (Math.imul(31, h) + s.charCodeAt(i)) | 0; }
+        return h >>> 0;
+    }
+    function normalizeSeed(seed) {
+        if (typeof seed === 'number') return seed >>> 0;
+        return seedFromString(String(seed));
+    }
+
+    // ================================================================
+    // 2. SIGNIFICANT FIGURES
+    // ================================================================
+    // Rounds to exactly n significant figures and formats WITHOUT losing
+    // trailing zeros that are themselves significant (e.g. 74.09 to 4 sig
+    // figs must print "74.09", not "74.1" and not a bare Number that
+    // drops the trailing 0) - toPrecision() gets the digit count right
+    // but sometimes emits exponential notation for values a student would
+    // never write that way; this reformats those cases back to plain
+    // decimal while preserving toPrecision()'s own significant-digit count.
+    function toSigFigs(value, n) {
+        if (value === 0) return (0).toFixed(Math.max(0, n - 1));
+        var p = value.toPrecision(n);
+        if (p.indexOf('e') === -1) return p;
+        return Number(p).toLocaleString('en-US', { useGrouping: false, minimumFractionDigits: 0, maximumFractionDigits: 20 });
+    }
+
+    // ================================================================
+    // 3. REFERENCE DATA - real compounds and real unbalanced equations
+    // ================================================================
+    var COMPOUNDS = [
+        { formula: 'H2O', name: 'water' },
+        { formula: 'CO2', name: 'carbon dioxide' },
+        { formula: 'NaCl', name: 'sodium chloride (table salt)' },
+        { formula: 'NH3', name: 'ammonia' },
+        { formula: 'CH4', name: 'methane' },
+        { formula: 'Ca(OH)2', name: 'calcium hydroxide (slaked lime)' },
+        { formula: 'Al2(SO4)3', name: 'aluminum sulfate' },
+        { formula: 'CuSO4.5H2O', name: 'copper(II) sulfate pentahydrate' },
+        { formula: 'C6H12O6', name: 'glucose' },
+        { formula: 'NaHCO3', name: 'sodium bicarbonate (baking soda)' },
+        { formula: 'KMnO4', name: 'potassium permanganate' },
+        { formula: 'Fe2O3', name: 'iron(III) oxide (rust)' },
+        { formula: 'MgSO4', name: 'magnesium sulfate' },
+        { formula: 'H2SO4', name: 'sulfuric acid' },
+        { formula: 'HCl', name: 'hydrochloric acid' },
+        { formula: 'As2O3', name: 'arsenic trioxide (white arsenic)' },
+        { formula: 'Y2O3', name: 'yttrium oxide' }
+    ];
+
+    // Real, standard textbook unbalanced equations, one canonical balanced
+    // form each - the same equations this codebase's own Stoichiometry
+    // tests already verify against, plus a few more of the same character.
+    var EQUATIONS = [
+        'H2 + O2 = H2O',
+        'C3H8 + O2 = CO2 + H2O',
+        'Fe + O2 = Fe2O3',
+        'Al + Cl2 = AlCl3',
+        'Ca(OH)2 + HCl = CaCl2 + H2O',
+        'N2 + H2 = NH3',
+        'CH4 + O2 = CO2 + H2O',
+        'Na + H2O = NaOH + H2'
+    ];
+
+    // ================================================================
+    // 4. PROBLEM TYPES
+    // ================================================================
+    var PROBLEM_TYPES = {
+        'molar-mass': {
+            title: 'Molar Mass',
+            generate: function(rng) {
+                var c = pick(rng, COMPOUNDS);
+                return { formula: c.formula, name: c.name };
+            },
+            question: function(p) {
+                return 'What is the molar mass of ' + p.formula + ' (' + p.name + ')? Report your answer to 4 significant figures.';
+            },
+            solve: function(p) {
+                var parsed = Stoichiometry.parseFormula(p.formula);
+                if (parsed.error) throw new Error(parsed.error);
+                var mm = Stoichiometry.molarMass(parsed.counts);
+                var steps = parsed.steps.map(function(s) { return s.description; });
+                var terms = Object.keys(parsed.counts).sort().map(function(sym) {
+                    var weight = STANDARD_ATOMIC_WEIGHT[sym] ? STANDARD_ATOMIC_WEIGHT[sym][0] : null;
+                    return parsed.counts[sym] + ' x ' + sym + ' (' + weight + ' g/mol)';
+                });
+                steps.push('Sum each element\'s count x standard atomic weight: ' + terms.join(' + '));
+                steps.push('Total molar mass = ' + mm.value + ' g/mol');
+                return { answer: toSigFigs(mm.value, 4) + ' g/mol', steps: steps, warnings: mm.warnings };
+            }
+        },
+
+        'mass-to-moles': {
+            title: 'Mass to Moles',
+            generate: function(rng) {
+                var c = pick(rng, COMPOUNDS);
+                var mass = randInt(rng, 5, 500) / 10; // 0.5 .. 50.0 g, one decimal
+                return { formula: c.formula, name: c.name, massGrams: mass };
+            },
+            question: function(p) {
+                return 'How many moles are in ' + p.massGrams + ' g of ' + p.formula + ' (' + p.name + ')? Report your answer to 3 significant figures.';
+            },
+            solve: function(p) {
+                var parsed = Stoichiometry.parseFormula(p.formula);
+                if (parsed.error) throw new Error(parsed.error);
+                var mm = Stoichiometry.molarMass(parsed.counts);
+                var moles = p.massGrams / mm.value;
+                var steps = [
+                    'Molar mass of ' + p.formula + ' = ' + mm.value + ' g/mol',
+                    'moles = mass / molar mass = ' + p.massGrams + ' g / ' + mm.value + ' g/mol = ' + moles + ' mol'
+                ];
+                return { answer: toSigFigs(moles, 3) + ' mol', steps: steps, warnings: mm.warnings };
+            }
+        },
+
+        'moles-to-mass': {
+            title: 'Moles to Mass',
+            generate: function(rng) {
+                var c = pick(rng, COMPOUNDS);
+                var moles = randInt(rng, 1, 500) / 100; // 0.01 .. 5.00 mol
+                return { formula: c.formula, name: c.name, moles: moles };
+            },
+            question: function(p) {
+                return 'What is the mass, in grams, of ' + p.moles + ' mol of ' + p.formula + ' (' + p.name + ')? Report your answer to 3 significant figures.';
+            },
+            solve: function(p) {
+                var parsed = Stoichiometry.parseFormula(p.formula);
+                if (parsed.error) throw new Error(parsed.error);
+                var mm = Stoichiometry.molarMass(parsed.counts);
+                var mass = p.moles * mm.value;
+                var steps = [
+                    'Molar mass of ' + p.formula + ' = ' + mm.value + ' g/mol',
+                    'mass = moles x molar mass = ' + p.moles + ' mol x ' + mm.value + ' g/mol = ' + mass + ' g'
+                ];
+                return { answer: toSigFigs(mass, 3) + ' g', steps: steps, warnings: mm.warnings };
+            }
+        },
+
+        'percent-composition': {
+            title: 'Percent Composition',
+            generate: function(rng) {
+                var c = pick(rng, COMPOUNDS);
+                var parsed = Stoichiometry.parseFormula(c.formula);
+                var elements = Object.keys(parsed.counts);
+                var element = pick(rng, elements);
+                return { formula: c.formula, name: c.name, element: element };
+            },
+            question: function(p) {
+                return 'What is the percent by mass of ' + p.element + ' in ' + p.formula + ' (' + p.name + ')? Report your answer to 3 significant figures.';
+            },
+            solve: function(p) {
+                var parsed = Stoichiometry.parseFormula(p.formula);
+                if (parsed.error) throw new Error(parsed.error);
+                var mm = Stoichiometry.molarMass(parsed.counts);
+                var elementCounts = {};
+                elementCounts[p.element] = parsed.counts[p.element];
+                var elementMass = Stoichiometry.molarMass(elementCounts);
+                var pct = (elementMass.value / mm.value) * 100;
+                var steps = [
+                    'Molar mass of ' + p.formula + ' = ' + mm.value + ' g/mol',
+                    'Mass contributed by ' + p.element + ' (' + parsed.counts[p.element] + ' atom(s) per formula unit) = ' + elementMass.value + ' g/mol',
+                    '% ' + p.element + ' = (' + elementMass.value + ' / ' + mm.value + ') x 100 = ' + pct + '%'
+                ];
+                return { answer: toSigFigs(pct, 3) + '%', steps: steps, warnings: mm.warnings.concat(elementMass.warnings) };
+            }
+        },
+
+        'balance-equation': {
+            title: 'Balance the Equation',
+            generate: function(rng) {
+                return { equation: pick(rng, EQUATIONS) };
+            },
+            question: function(p) {
+                return 'Balance the following chemical equation: ' + p.equation;
+            },
+            solve: function(p) {
+                var bal = Stoichiometry.balance(p.equation);
+                if (bal.error) throw new Error(bal.error);
+                var steps = ['Parse each side\'s element counts from the formulas as written.'];
+                var allElements = {};
+                bal.reactants.concat(bal.products).forEach(function(t) { Object.keys(t.counts).forEach(function(s) { allElements[s] = true; }); });
+                Object.keys(allElements).sort().forEach(function(sym) {
+                    var left = bal.reactants.reduce(function(sum, t) { return sum + t.coeff * (t.counts[sym] || 0); }, 0);
+                    var right = bal.products.reduce(function(sum, t) { return sum + t.coeff * (t.counts[sym] || 0); }, 0);
+                    steps.push('Check ' + sym + ': ' + left + ' on the left = ' + right + ' on the right.');
+                });
+                steps.push('Balanced equation: ' + bal.balanced);
+                return { answer: bal.balanced, steps: steps, warnings: [] };
+            }
+        }
+    };
+
+    function listTypes() {
+        return Object.keys(PROBLEM_TYPES).map(function(id) { return { id: id, title: PROBLEM_TYPES[id].title }; });
+    }
+
+    // The one entry point: same (typeId, seed) always produces the same
+    // {question, answer, steps} - never regenerated differently on a
+    // second call, by construction (mulberry32 is a pure function of its
+    // seed, and every problem type's generate() calls the rng the same
+    // fixed number of times regardless of what it picks).
+    function generate(typeId, seed) {
+        var type = PROBLEM_TYPES[typeId];
+        if (!type) return { error: 'Unknown problem type: "' + typeId + '". Try ChemistryProblemGenerator.run("types")' };
+        var rng = mulberry32(normalizeSeed(seed));
+        var params = type.generate(rng);
+        var solved;
+        try {
+            solved = type.solve(params);
+        } catch (e) {
+            return { error: e.message };
+        }
+        return {
+            type: typeId,
+            title: type.title,
+            seed: seed,
+            question: type.question(params),
+            answer: solved.answer,
+            steps: solved.steps,
+            warnings: solved.warnings || []
+        };
+    }
+
+    // Formats a generated problem as plain, readable "show your work"
+    // text - one line per step, the answer last. This is presentation
+    // only; every fact in it comes straight from generate()'s own steps.
+    function explain(typeId, seed) {
+        var p = generate(typeId, seed);
+        if (p.error) return p.error;
+        var lines = [];
+        lines.push('Q: ' + p.question);
+        p.steps.forEach(function(s, i) { lines.push('Step ' + (i + 1) + ': ' + s); });
+        lines.push('Answer: ' + p.answer);
+        return lines.join('\n');
+    }
+
+    // ================================================================
+    // 5. COMMAND PARSER (house convention - see PDT.run/Stoichiometry.run)
+    // ================================================================
+    function run(command) {
+        if (typeof command !== 'string') return { error: 'Command must be a string.' };
+        var cmd = command.trim();
+        if (cmd.toLowerCase() === 'help') {
+            return {
+                help: '\n' +
+                'ChemistryProblemGenerator.run("types")                          - List available problem types\n' +
+                'ChemistryProblemGenerator.run("generate molar-mass seed=42")    - Generate one problem\n' +
+                'ChemistryProblemGenerator.run("explain molar-mass seed=42")     - Generate + print full step-by-step explanation\n'
+            };
+        }
+        if (cmd.toLowerCase() === 'types') return { types: listTypes() };
+        var genMatch = cmd.match(/^generate\s+(\S+)\s+seed=(\S+)$/i);
+        if (genMatch) return generate(genMatch[1], genMatch[2]);
+        var explMatch = cmd.match(/^explain\s+(\S+)\s+seed=(\S+)$/i);
+        if (explMatch) return { explanation: explain(explMatch[1], explMatch[2]) };
+        return { error: 'Unknown command: "' + command + '". Try ChemistryProblemGenerator.run("help")' };
+    }
+
+    return {
+        listTypes: listTypes,
+        generate: generate,
+        explain: explain,
+        run: run,
+        toSigFigs: toSigFigs,
+        mulberry32: mulberry32,
+        version: '1.0',
+        date: '2026-09-20',
+        author: 'Pooled Impact'
+    };
+}));
+
+</script>
+
+<script>
+'use strict';
+
+// Thin UI host layer, this project's standing convention: only ever
+// calls ChemistryProblemGenerator.run(...), never reimplements its logic
+// (problem generation, solving, or the seeded PRNG) here.
+(function() {
+    var typeSelect = document.getElementById('typeSelect');
+    var seedInput = document.getElementById('seedInput');
+    var oneProblem = document.getElementById('oneProblem');
+    var typeCheckboxes = document.getElementById('typeCheckboxes');
+    var worksheetPanel = document.getElementById('worksheetPanel');
+    var worksheetQuestions = document.getElementById('worksheetQuestions');
+    var answerKey = document.getElementById('answerKey');
+    var answerKeyContent = document.getElementById('answerKeyContent');
+    var toggleAnswerKeyBtn = document.getElementById('toggleAnswerKey');
+
+    var types = ChemistryProblemGenerator.run('types').types;
+
+    types.forEach(function(t) {
+        var opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.title;
+        typeSelect.appendChild(opt);
+
+        var label = document.createElement('label');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = t.id;
+        cb.checked = true;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(t.title));
+        typeCheckboxes.appendChild(label);
+    });
+
+    function renderProblem(container, result, index) {
+        if (result.error) {
+            var err = document.createElement('p');
+            err.className = 'error';
+            err.textContent = 'Error: ' + result.error;
+            container.appendChild(err);
+            return;
+        }
+        var q = document.createElement('p');
+        q.className = 'question';
+        q.textContent = (index !== undefined ? (index + 1) + '. ' : '') + result.question;
+        container.appendChild(q);
+
+        var seedTag = document.createElement('span');
+        seedTag.className = 'seed-tag';
+        seedTag.textContent = result.title + ' · seed=' + result.seed;
+        container.appendChild(seedTag);
+
+        if (result.warnings && result.warnings.length) {
+            var warn = document.createElement('div');
+            warn.className = 'warnings';
+            warn.textContent = result.warnings.join(' ');
+            container.appendChild(warn);
+        }
+        return result;
+    }
+
+    function renderAnswer(container, result) {
+        var ans = document.createElement('div');
+        ans.className = 'answer shown';
+        ans.textContent = 'Answer: ' + result.answer;
+        container.appendChild(ans);
+
+        var steps = document.createElement('div');
+        steps.className = 'steps shown';
+        var ol = document.createElement('ol');
+        result.steps.forEach(function(s) {
+            var li = document.createElement('li');
+            li.textContent = s;
+            ol.appendChild(li);
+        });
+        steps.appendChild(ol);
+        container.appendChild(steps);
+    }
+
+    function generateOneProblem() {
+        oneProblem.innerHTML = '';
+        var typeId = typeSelect.value;
+        var seed = seedInput.value;
+        var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
+        renderProblem(oneProblem, result);
+        if (result.error) return;
+
+        var revealBtn = document.createElement('button');
+        revealBtn.className = 'no-print';
+        revealBtn.textContent = 'Reveal answer + steps';
+        revealBtn.style.marginTop = '8px';
+        revealBtn.addEventListener('click', function() {
+            revealBtn.remove();
+            renderAnswer(oneProblem, result);
+        });
+        oneProblem.appendChild(revealBtn);
+    }
+
+    document.getElementById('generateOne').addEventListener('click', generateOneProblem);
+    document.getElementById('randomizeSeed').addEventListener('click', function() {
+        seedInput.value = Math.floor(Math.random() * 1e9);
+    });
+
+    document.getElementById('generateWorksheet').addEventListener('click', function() {
+        var count = Math.max(1, Math.min(50, parseInt(document.getElementById('countInput').value, 10) || 1));
+        var startSeed = parseInt(document.getElementById('startSeedInput').value, 10) || 1;
+        var selectedTypes = Array.prototype.slice.call(typeCheckboxes.querySelectorAll('input:checked')).map(function(cb) { return cb.value; });
+        if (selectedTypes.length === 0) selectedTypes = types.map(function(t) { return t.id; });
+
+        worksheetQuestions.innerHTML = '';
+        answerKeyContent.innerHTML = '';
+        answerKey.classList.remove('shown');
+        toggleAnswerKeyBtn.textContent = 'Show answer key';
+
+        for (var i = 0; i < count; i++) {
+            var typeId = selectedTypes[i % selectedTypes.length];
+            var seed = startSeed + i;
+            var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
+
+            var item = document.createElement('div');
+            item.className = 'worksheet-item';
+            renderProblem(item, result, i);
+            worksheetQuestions.appendChild(item);
+
+            if (!result.error) {
+                var keyItem = document.createElement('div');
+                keyItem.className = 'worksheet-item';
+                var keyQ = document.createElement('p');
+                keyQ.className = 'question';
+                keyQ.textContent = (i + 1) + '. ' + result.question;
+                keyItem.appendChild(keyQ);
+                renderAnswer(keyItem, result);
+                answerKeyContent.appendChild(keyItem);
+            }
+        }
+        worksheetPanel.style.display = 'block';
+        worksheetPanel.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    toggleAnswerKeyBtn.addEventListener('click', function() {
+        var shown = answerKey.classList.toggle('shown');
+        toggleAnswerKeyBtn.textContent = shown ? 'Hide answer key' : 'Show answer key';
+    });
+
+    document.getElementById('printWorksheet').addEventListener('click', function() {
+        window.print();
+    });
+
+    generateOneProblem();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chemistry Problem Generator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f6f8; color: #1a1a1a; max-width: 860px; margin-left: auto; margin-right: auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 0 0 10px; }
+  .sub { color: #666; font-size: 13px; margin: 0 0 20px; }
+  .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+  select, input[type=number] { font: inherit; padding: 6px 8px; border-radius: 6px; border: 1px solid #999; }
+  button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; cursor: pointer; }
+  button.primary { background: #3b6ea5; color: #fff; border-color: #3b6ea5; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .row { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 8px; }
+  .field { display: flex; flex-direction: column; }
+  .question { font-size: 16px; margin: 8px 0 12px; }
+  .answer, .steps { display: none; }
+  .answer.shown, .steps.shown { display: block; }
+  .answer { font-weight: 600; color: #1e6b3a; margin-bottom: 10px; }
+  .steps ol { margin: 0; padding-left: 20px; font-size: 13px; color: #333; }
+  .steps li { margin-bottom: 4px; }
+  .seed-tag { font-size: 11px; color: #999; font-family: ui-monospace, monospace; }
+  .error { color: #b3261e; }
+  .warnings { font-size: 12px; color: #a15c00; margin-top: 6px; }
+  .worksheet-item { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+  .worksheet-item:first-child { border-top: none; margin-top: 0; padding-top: 0; }
+  .answer-key { display: none; }
+  .answer-key.shown { display: block; }
+  .checkboxes { display: flex; flex-wrap: wrap; gap: 10px; font-size: 13px; }
+  .checkboxes label { font-weight: normal; display: flex; align-items: center; gap: 4px; margin-bottom: 0; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .no-print { display: none !important; }
+    .panel { border: none; padding: 0; margin-bottom: 24px; }
+    .answer, .steps, .answer-key { display: block !important; }
+    .page-break { page-break-before: always; }
+  }
+</style>
+</head>
+<body>
+<h1>Chemistry Problem Generator &amp; Explainer</h1>
+<p class="sub">Deterministic gen-chem practice problems (molar mass, mass&harr;mole conversion, percent composition, equation balancing) with real, step-by-step derivations. Same seed always gives the same problem, so a worksheet and its answer key always stay in sync.</p>
+
+<div class="panel no-print">
+  <h2>Single problem</h2>
+  <div class="row">
+    <div class="field">
+      <label for="typeSelect">Problem type</label>
+      <select id="typeSelect"></select>
+    </div>
+    <div class="field">
+      <label for="seedInput">Seed</label>
+      <input type="number" id="seedInput" value="1">
+    </div>
+    <button id="randomizeSeed">Randomize seed</button>
+    <button class="primary" id="generateOne">Generate</button>
+  </div>
+  <div id="oneProblem"></div>
+</div>
+
+<div class="panel no-print">
+  <h2>Worksheet</h2>
+  <div class="row">
+    <div class="field">
+      <label for="countInput"># of problems</label>
+      <input type="number" id="countInput" value="10" min="1" max="50">
+    </div>
+    <div class="field">
+      <label for="startSeedInput">Starting seed</label>
+      <input type="number" id="startSeedInput" value="1">
+    </div>
+    <button class="primary" id="generateWorksheet">Generate worksheet</button>
+    <button id="printWorksheet">Print</button>
+  </div>
+  <div class="field" style="margin-top:8px;">
+    <label>Types to include</label>
+    <div class="checkboxes" id="typeCheckboxes"></div>
+  </div>
+</div>
+
+<div class="panel" id="worksheetPanel" style="display:none;">
+  <h2>Worksheet</h2>
+  <div id="worksheetQuestions"></div>
+  <div class="row no-print" style="margin-top:14px;">
+    <button id="toggleAnswerKey">Show answer key</button>
+  </div>
+  <div class="answer-key page-break" id="answerKey">
+    <h2>Answer key</h2>
+    <div id="answerKeyContent"></div>
+  </div>
+</div>
+
+<script src="./PDT.js"></script>
+<script src="./Smiles.js"></script>
+<script src="./Aromaticity.js"></script>
+<script src="./MolecularStructure.js"></script>
+<script src="./RulesEngine.js"></script>
+<script src="./Stoichiometry.js"></script>
+<script src="./ChemistryProblemGenerator.js"></script>
+
+<script>
+'use strict';
+
+// Thin UI host layer, this project's standing convention: only ever
+// calls ChemistryProblemGenerator.run(...), never reimplements its logic
+// (problem generation, solving, or the seeded PRNG) here.
+(function() {
+    var typeSelect = document.getElementById('typeSelect');
+    var seedInput = document.getElementById('seedInput');
+    var oneProblem = document.getElementById('oneProblem');
+    var typeCheckboxes = document.getElementById('typeCheckboxes');
+    var worksheetPanel = document.getElementById('worksheetPanel');
+    var worksheetQuestions = document.getElementById('worksheetQuestions');
+    var answerKey = document.getElementById('answerKey');
+    var answerKeyContent = document.getElementById('answerKeyContent');
+    var toggleAnswerKeyBtn = document.getElementById('toggleAnswerKey');
+
+    var types = ChemistryProblemGenerator.run('types').types;
+
+    types.forEach(function(t) {
+        var opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.title;
+        typeSelect.appendChild(opt);
+
+        var label = document.createElement('label');
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = t.id;
+        cb.checked = true;
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(t.title));
+        typeCheckboxes.appendChild(label);
+    });
+
+    function renderProblem(container, result, index) {
+        if (result.error) {
+            var err = document.createElement('p');
+            err.className = 'error';
+            err.textContent = 'Error: ' + result.error;
+            container.appendChild(err);
+            return;
+        }
+        var q = document.createElement('p');
+        q.className = 'question';
+        q.textContent = (index !== undefined ? (index + 1) + '. ' : '') + result.question;
+        container.appendChild(q);
+
+        var seedTag = document.createElement('span');
+        seedTag.className = 'seed-tag';
+        seedTag.textContent = result.title + ' · seed=' + result.seed;
+        container.appendChild(seedTag);
+
+        if (result.warnings && result.warnings.length) {
+            var warn = document.createElement('div');
+            warn.className = 'warnings';
+            warn.textContent = result.warnings.join(' ');
+            container.appendChild(warn);
+        }
+        return result;
+    }
+
+    function renderAnswer(container, result) {
+        var ans = document.createElement('div');
+        ans.className = 'answer shown';
+        ans.textContent = 'Answer: ' + result.answer;
+        container.appendChild(ans);
+
+        var steps = document.createElement('div');
+        steps.className = 'steps shown';
+        var ol = document.createElement('ol');
+        result.steps.forEach(function(s) {
+            var li = document.createElement('li');
+            li.textContent = s;
+            ol.appendChild(li);
+        });
+        steps.appendChild(ol);
+        container.appendChild(steps);
+    }
+
+    function generateOneProblem() {
+        oneProblem.innerHTML = '';
+        var typeId = typeSelect.value;
+        var seed = seedInput.value;
+        var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
+        renderProblem(oneProblem, result);
+        if (result.error) return;
+
+        var revealBtn = document.createElement('button');
+        revealBtn.className = 'no-print';
+        revealBtn.textContent = 'Reveal answer + steps';
+        revealBtn.style.marginTop = '8px';
+        revealBtn.addEventListener('click', function() {
+            revealBtn.remove();
+            renderAnswer(oneProblem, result);
+        });
+        oneProblem.appendChild(revealBtn);
+    }
+
+    document.getElementById('generateOne').addEventListener('click', generateOneProblem);
+    document.getElementById('randomizeSeed').addEventListener('click', function() {
+        seedInput.value = Math.floor(Math.random() * 1e9);
+    });
+
+    document.getElementById('generateWorksheet').addEventListener('click', function() {
+        var count = Math.max(1, Math.min(50, parseInt(document.getElementById('countInput').value, 10) || 1));
+        var startSeed = parseInt(document.getElementById('startSeedInput').value, 10) || 1;
+        var selectedTypes = Array.prototype.slice.call(typeCheckboxes.querySelectorAll('input:checked')).map(function(cb) { return cb.value; });
+        if (selectedTypes.length === 0) selectedTypes = types.map(function(t) { return t.id; });
+
+        worksheetQuestions.innerHTML = '';
+        answerKeyContent.innerHTML = '';
+        answerKey.classList.remove('shown');
+        toggleAnswerKeyBtn.textContent = 'Show answer key';
+
+        for (var i = 0; i < count; i++) {
+            var typeId = selectedTypes[i % selectedTypes.length];
+            var seed = startSeed + i;
+            var result = ChemistryProblemGenerator.run('generate ' + typeId + ' seed=' + seed);
+
+            var item = document.createElement('div');
+            item.className = 'worksheet-item';
+            renderProblem(item, result, i);
+            worksheetQuestions.appendChild(item);
+
+            if (!result.error) {
+                var keyItem = document.createElement('div');
+                keyItem.className = 'worksheet-item';
+                var keyQ = document.createElement('p');
+                keyQ.className = 'question';
+                keyQ.textContent = (i + 1) + '. ' + result.question;
+                keyItem.appendChild(keyQ);
+                renderAnswer(keyItem, result);
+                answerKeyContent.appendChild(keyItem);
+            }
+        }
+        worksheetPanel.style.display = 'block';
+        worksheetPanel.scrollIntoView({ behavior: 'smooth' });
+    });
+
+    toggleAnswerKeyBtn.addEventListener('click', function() {
+        var shown = answerKey.classList.toggle('shown');
+        toggleAnswerKeyBtn.textContent = shown ? 'Hide answer key' : 'Show answer key';
+    });
+
+    document.getElementById('printWorksheet').addEventListener('click', function() {
+        window.print();
+    });
+
+    generateOneProblem();
+})();
+</script>
+</body>
+</html>

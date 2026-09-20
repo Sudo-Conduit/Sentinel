@@ -51,7 +51,7 @@ check('every viewer dependency file exists on disk', Object.keys(BuildViewerPdf.
   });
 }));
 
-check('run("list") returns exactly the VIEWERS keys', JSON.stringify(Object.keys(BuildViewerPdf.VIEWERS).sort()) === JSON.stringify(['fobbs-valence-table', 'inverse-design', 'molecule-viewer']));
+check('run("list") returns exactly the VIEWERS keys', JSON.stringify(Object.keys(BuildViewerPdf.VIEWERS).sort()) === JSON.stringify(['chemistry-problem-generator', 'fobbs-valence-table', 'inverse-design', 'molecule-viewer']));
 
 function runAsync() {
   return BuildViewerPdf.run('build-all').then(function(buildAllResult) {
