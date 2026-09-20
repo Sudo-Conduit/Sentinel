@@ -46,6 +46,18 @@ const ROOT = __dirname;
 class BuildViewerPdf
 {
     /**
+     * @param {Date} date
+     * @returns {string} e.g. "September 20, 2026" -- hardcoded month names
+     *   rather than toLocaleDateString(), so cover-page text is the same
+     *   regardless of the Node process's locale.
+     */
+    static formatLongDate(date)
+    {
+        const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        return MONTHS[date.getUTCMonth()] + ' ' + date.getUTCDate() + ', ' + date.getUTCFullYear();
+    }
+
+    /**
      * @param {string} name
      * @returns {string}
      */
@@ -99,10 +111,21 @@ class BuildViewerPdf
 
         const pdfDoc = await PDFDocument.create();
         const page = pdfDoc.addPage([300, 150]);
-        page.drawText(viewer.entry + ' -- PDFVaultX container', { x: 20, y: 100, size: 11 });
-        page.drawText('Open with PDFVaultXReader.html or a MountainShift-aware host.', { x: 20, y: 82, size: 7 });
-        page.drawText('Built ' + new Date().toISOString().slice(0, 10) + ' from research/periodic-data-table.', { x: 20, y: 67, size: 7 });
-        page.drawText('entry.html is standalone: all local dependencies inlined.', { x: 20, y: 52, size: 7 });
+        if (viewer.titlePage) {
+            const tp = viewer.titlePage;
+            let y = 125;
+            page.drawText(tp.title, { x: 20, y: y, size: 13 }); y -= 18;
+            if (tp.subtitle) { page.drawText(tp.subtitle, { x: 20, y: y, size: 9 }); y -= 20; }
+            page.drawText('Version ' + tp.version, { x: 20, y: y, size: 8 }); y -= 12;
+            page.drawText(BuildViewerPdf.formatLongDate(new Date()), { x: 20, y: y, size: 8 }); y -= 12;
+            page.drawText('Company: ' + tp.company, { x: 20, y: y, size: 8 }); y -= 20;
+            page.drawText(tp.confidential || 'Confidential and Proprietary.', { x: 20, y: y, size: 8 });
+        } else {
+            page.drawText(viewer.entry + ' -- PDFVaultX container', { x: 20, y: 100, size: 11 });
+            page.drawText('Open with PDFVaultXReader.html or a MountainShift-aware host.', { x: 20, y: 82, size: 7 });
+            page.drawText('Built ' + new Date().toISOString().slice(0, 10) + ' from research/periodic-data-table.', { x: 20, y: 67, size: 7 });
+            page.drawText('entry.html is standalone: all local dependencies inlined.', { x: 20, y: 52, size: 7 });
+        }
 
         const manifestBytes = Buffer.from(JSON.stringify(BuildViewerPdf.buildManifest(viewerKey), null, 2), 'utf8');
         await pdfDoc.attach(manifestBytes, 'ostore.json', {

@@ -19,6 +19,23 @@ function check(name, cond) {
   if (!cond) failures.push(name);
 }
 
+// Extracts the cover page's real rendered text via pdfjs-dist (a second,
+// independent PDF parser from pdf-lib) - proves the title-page text is
+// actually visible to any normal PDF reader/viewer, not just present as
+// drawText() call arguments in the build script.
+function extractCoverText(pdfPath) {
+  return import('pdfjs-dist/legacy/build/pdf.mjs').then(function(pdfjsLib) {
+    var data = new Uint8Array(fs.readFileSync(pdfPath));
+    return pdfjsLib.getDocument({ data: data, isEvalSupported: false }).promise.then(function(doc) {
+      return doc.getPage(1).then(function(page) {
+        return page.getTextContent().then(function(content) {
+          return content.items.map(function(item) { return item.str; }).join(' | ');
+        });
+      });
+    });
+  });
+}
+
 // Reads back every /Type /EmbeddedFile entry from a built PDF's catalog
 // /Names /EmbeddedFiles tree, inflating its /FlateDecode stream.
 function readAttachments(pdfBytes) {
@@ -85,6 +102,20 @@ function runAsync() {
           var manifest = JSON.parse(attachments.get('ostore.json').toString('utf8'));
           var fresh = BuildViewerPdf.buildManifest(viewerKey);
           check(viewerKey + ': ostore.json embedded parses and matches buildManifest()\'s shape (savedAt excluded, it is a fresh timestamp)', manifest.appId === fresh.appId && manifest.containerVersion === fresh.containerVersion && JSON.stringify(manifest.data.dependencies) === JSON.stringify(fresh.data.dependencies));
+
+          return extractCoverText(result.outPath).then(function(coverText) {
+            if (viewer.titlePage) {
+              var tp = viewer.titlePage;
+              check(viewerKey + ': cover page actually renders the title-page title text (verified via pdfjs, a second independent PDF parser)', coverText.indexOf(tp.title) !== -1);
+              check(viewerKey + ': cover page renders the subtitle', !tp.subtitle || coverText.indexOf(tp.subtitle) !== -1);
+              check(viewerKey + ': cover page renders the version', coverText.indexOf('Version ' + tp.version) !== -1);
+              check(viewerKey + ': cover page renders the company line', coverText.indexOf('Company: ' + tp.company) !== -1);
+              check(viewerKey + ': cover page renders the confidentiality notice', coverText.indexOf(tp.confidential || 'Confidential and Proprietary.') !== -1);
+              check(viewerKey + ': title-page cover does NOT fall back to the generic PDFVaultX-container boilerplate text', coverText.indexOf('PDFVaultX container') === -1);
+            } else {
+              check(viewerKey + ': cover page (no titlePage configured) still renders the generic PDFVaultX-container boilerplate', coverText.indexOf('PDFVaultX container') !== -1);
+            }
+          });
 
           // No cleanup here, matching BuildTerminalPdf.test.js's own
           // round-trip check: it rebuilds the real, committed <viewerKey>.pdf
