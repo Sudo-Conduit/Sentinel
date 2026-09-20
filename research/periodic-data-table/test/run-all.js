@@ -1,20 +1,23 @@
-// Runs every *.test.js in this directory and prints one aggregate report.
+// Node host driver for TestRunner.js's run(cmd) command pattern: loads
+// every *.test.js in this directory (require() - inherently Node/
+// CommonJS, so that part stays here rather than in TestRunner), calls
+// TestRunner.run('report', suites) to get the formatted lines, prints
+// them, and - only with --save / SAVE_TEST_OUTPUT=1 - calls
+// TestRunner.run('save-record', suites, meta) and writes the result with
+// fs.writeFileSync. TestRunner itself does no I/O; this file is the only
+// place that does, so a future browser/devtools driver can call the same
+// TestRunner.run() and do its own (non-filesystem) I/O without any of
+// TestRunner's logic changing.
+//
 // Paste this script's own output verbatim into the roadmap's "Last test
 // run" section, alongside the commit hash it was run at - never hand-type
 // the numbers. See CHEMISTRY_PROPERTY_ROADMAP.md for why: a pasted, dated,
 // commit-hashed run can go stale in an obvious, checkable way (the hash
 // stops matching HEAD); a hand-typed "shipped" claim can go stale silently.
-//
-// --save (or SAVE_TEST_OUTPUT=1) additionally writes this exact run to
-// ../test_output/<timestamp>_<commit-or-nogit>.txt, dated and commit-
-// hashed the same way - a durable, checkable static record of what a
-// given commit's test suite actually printed, not just what someone
-// remembers pasting into a doc. Same convention as this project's other
-// test_output artifacts (e.g. NTX-test-output.txt): the raw output,
-// verbatim, not summarized or reformatted after the fact.
 var fs = require('fs');
 var path = require('path');
 var child_process = require('child_process');
+var TestRunner = require('./TestRunner.js');
 
 var suites = [
   require('./MolecularSymmetry.test.js'),
@@ -27,38 +30,22 @@ var suites = [
   require('./MolecularPolarizability.test.js'),
   require('./RulesEngine.test.js'),
   require('./Stoichiometry.test.js'),
-  require('./ChemistryProblemGenerator.test.js')
+  require('./ChemistryProblemGenerator.test.js'),
+  require('./TestRunner.test.js')
 ];
 
-var outputLines = [];
-function emit(line) { outputLines.push(line); console.log(line); }
-
-var totalChecks = 0, totalFailed = 0, greenSuites = 0;
-emit('Suite\tResult');
-suites.forEach(function(s) {
-  totalChecks += s.checks;
-  var ok = s.failures.length === 0;
-  if (ok) greenSuites++; else totalFailed += s.failures.length;
-  emit(s.name + '\t' + (ok ? 'ALL ' + s.checks + ' CHECKS PASSED' : (s.checks - s.failures.length) + '/' + s.checks + ' passed. FAILED: ' + s.failures.join(', ')));
-});
-emit('Total: ' + (totalChecks - totalFailed) + '/' + totalChecks + ' checks passing, ' + greenSuites + '/' + suites.length + ' suites green.');
+var report = TestRunner.run('report', suites);
+report.lines.forEach(function(line) { console.log(line); });
 
 var shouldSave = process.argv.indexOf('--save') !== -1 || process.env.SAVE_TEST_OUTPUT === '1';
 if (shouldSave) {
   var commit = 'nogit';
   try { commit = child_process.execSync('git rev-parse --short HEAD', { cwd: __dirname, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || 'nogit'; } catch (e) { /* not in a git checkout, or git unavailable - fall back to 'nogit' rather than failing the run */ }
-  var timestamp = new Date().toISOString();
+  var record = TestRunner.run('save-record', suites, { timestamp: new Date().toISOString(), commit: commit });
   var outDir = path.join(__dirname, '..', 'test_output');
   fs.mkdirSync(outDir, { recursive: true });
-  var fileName = timestamp.replace(/[:.]/g, '-') + '_' + commit + '.txt';
-  var header = [
-    'research/periodic-data-table test suite',
-    'Run at: ' + timestamp,
-    'Commit: ' + commit,
-    ''
-  ];
-  fs.writeFileSync(path.join(outDir, fileName), header.concat(outputLines).join('\n') + '\n');
-  console.log('\nSaved to test_output/' + fileName);
+  fs.writeFileSync(path.join(outDir, record.fileName), record.contents);
+  console.log('\nSaved to test_output/' + record.fileName);
 }
 
-if (totalFailed > 0) process.exitCode = 1;
+if (report.totalFailed > 0) process.exitCode = 1;
