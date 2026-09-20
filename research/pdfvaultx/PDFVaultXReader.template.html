@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PDFVaultX Reader</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: -apple-system, Segoe UI, Roboto, sans-serif; margin: 0; padding: 24px; background: #f6f6f8; color: #1a1a1a; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  .sub { color: #666; font-size: 13px; margin: 0 0 20px; }
+  .panel { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .dropzone { border: 2px dashed #aaa; border-radius: 8px; padding: 32px; text-align: center; color: #555; cursor: pointer; }
+  .dropzone.drag { border-color: #3b6ea5; background: #eef4fb; }
+  button { font: inherit; padding: 6px 14px; border-radius: 6px; border: 1px solid #999; background: #fff; cursor: pointer; }
+  button.primary { background: #3b6ea5; color: #fff; border-color: #3b6ea5; }
+  button:disabled { opacity: 0.5; cursor: default; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  td, th { text-align: left; padding: 4px 8px; border-bottom: 1px solid #eee; }
+  .error { color: #b3261e; }
+  .manifest { font-family: ui-monospace, monospace; font-size: 12px; white-space: pre-wrap; background: #fafafa; padding: 8px; border-radius: 6px; border: 1px solid #eee; }
+  #runFrame { width: 100%; height: 70vh; border: 1px solid #ddd; border-radius: 8px; background: #fff; display: none; }
+  #passwordPrompt { display: none; }
+  #passwordPrompt input { font: inherit; padding: 4px 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<h1>PDFVaultX Reader</h1>
+<p class="sub">Open a PDFVaultX-format PDF (a normal, valid PDF that bundles an app inside it as file attachments) and run or download what's inside. Nothing here uploads the file anywhere -- everything happens in this browser tab.</p>
+
+<div class="panel">
+  <div class="dropzone" id="dropzone">
+    Drop a .pdf here, or click to choose one
+    <input type="file" id="fileInput" accept="application/pdf" class="hidden">
+  </div>
+  <div id="passwordPrompt" style="margin-top:12px;">
+    <span>This PDF is password protected: </span>
+    <input type="password" id="passwordInput" placeholder="Password">
+    <button id="passwordSubmit">Unlock</button>
+    <span id="passwordError" class="error"></span>
+  </div>
+  <p id="status" class="sub" style="margin-top:12px;"></p>
+</div>
+
+<div class="panel hidden" id="manifestPanel">
+  <strong>Container manifest (ostore.json)</strong>
+  <div class="manifest" id="manifestText"></div>
+</div>
+
+<div class="panel hidden" id="filesPanel">
+  <strong>Embedded files</strong>
+  <table id="filesTable"><thead><tr><th>File</th><th>Bytes</th><th></th></tr></thead><tbody></tbody></table>
+  <p style="margin-top:12px;">
+    <button class="primary" id="runButton" disabled>Run entry.html</button>
+    <button id="downloadAllButton" disabled>Download all files</button>
+  </p>
+</div>
+
+<!-- allow-same-origin is required here: blob: URLs are only dereferenceable
+     from the origin that created them (this page's), and a sandboxed
+     srcdoc iframe without it gets an opaque "null" origin that can't load
+     the blob: URLs built for its own dependency scripts. The content
+     running here is whatever the person using this page chose to open --
+     the same trust boundary as double-clicking a downloaded script. -->
+<iframe id="runFrame" sandbox="allow-scripts allow-same-origin allow-modals allow-popups allow-downloads"></iframe>
+
+<script>
+__PDFJS_LIB_SOURCE_PLACEHOLDER__
+</script>
+<script type="text/plain" id="pdfjs-worker-source">__PDFJS_WORKER_SOURCE_PLACEHOLDER__</script>
+
+<script>
+'use strict';
+
+// PDFVaultXReader: a plain, self-contained HTML page (this file has no
+// external dependencies -- pdf.js and its worker are inlined above) that
+// unpacks a PDFVaultX-format PDF (see BuildTerminalPdf.js / BuildViewerPdf.js
+// in this repo for how one is built) and runs or downloads what's inside.
+//
+// PDFVaultX itself is just a real PDF using the standard /Names/EmbeddedFiles
+// file-attachment mechanism, so decryption for a password-protected one is
+// handled entirely by pdf.js's own standard PDF security-handler support
+// (RC4 / AES) -- nothing custom here, per pdf's built-in functionality.
+//
+// Logic lives behind run(command), this project's standing convention
+// (see run-command-pattern-convention memory): the UI below is a thin host
+// layer that only calls PDFVaultXReader.run(...).
+var PDFVaultXReader = (function() {
+    function setWorkerFromInlineSource() {
+        var src = document.getElementById('pdfjs-worker-source').textContent;
+        var blob = new Blob([src], { type: 'text/javascript' });
+        pdfjsLib.GlobalWorkerOptions.workerSrc = URL.createObjectURL(blob);
+    }
+
+    /**
+     * Reads every /Type /EmbeddedFile attachment out of a loaded pdf.js
+     * document.
+     * @param {Object} pdfDocument a pdf.js PDFDocumentProxy
+     * @returns {Promise<Map<string, Uint8Array>>}
+     */
+    function readAttachments(pdfDocument) {
+        return pdfDocument.getAttachments().then(function(attachments) {
+            var out = new Map();
+            if (!attachments) return out;
+            Object.keys(attachments).forEach(function(key) {
+                var a = attachments[key];
+                out.set(a.filename, a.content);
+            });
+            return out;
+        });
+    }
+
+    /**
+     * Loads a PDFVaultX container from raw PDF bytes. If the PDF is
+     * password-protected, onNeedPassword(retry) is called; retry(password)
+     * re-attempts the load with that password. Resolves to
+     * {manifest, attachments} once decrypted and every attachment is read.
+     * @param {Uint8Array} pdfBytes
+     * @param {(retry: (password: string) => void) => void} onNeedPassword
+     * @returns {Promise<{manifest: Object, attachments: Map<string, Uint8Array>}>}
+     */
+    function open(pdfBytes, onNeedPassword) {
+        return new Promise(function(resolve, reject) {
+            function attempt(password) {
+                var params = { data: pdfBytes };
+                if (password !== undefined) params.password = password;
+                var task = pdfjsLib.getDocument(params);
+                task.promise.then(function(pdfDocument) {
+                    return readAttachments(pdfDocument).then(function(attachments) {
+                        if (!attachments.has('ostore.json')) {
+                            throw new Error('Not a PDFVaultX container: no ostore.json attachment found.');
+                        }
+                        var manifestText = new TextDecoder('utf-8').decode(attachments.get('ostore.json'));
+                        var manifest = JSON.parse(manifestText);
+                        resolve({ manifest: manifest, attachments: attachments });
+                    });
+                }).catch(function(err) {
+                    if (err && err.name === 'PasswordException') {
+                        onNeedPassword(function(password) { attempt(password); });
+                        return;
+                    }
+                    reject(err);
+                });
+            }
+            attempt(undefined);
+        });
+    }
+
+    /**
+     * Builds a blob: URL for one attachment, with the right MIME type for
+     * how it will be used (script vs. markup vs. whatever mimeFor() said
+     * at build time -- attachments carry their own contentType too, this
+     * just falls back to extension when that's missing).
+     * @param {string} name
+     * @param {Uint8Array} bytes
+     * @param {string} [contentType]
+     * @returns {string}
+     */
+    function blobUrlFor(name, bytes, contentType) {
+        var mime = contentType;
+        if (!mime) {
+            if (name.endsWith('.js')) mime = 'text/javascript';
+            else if (name.endsWith('.html')) mime = 'text/html';
+            else if (name.endsWith('.json')) mime = 'application/json';
+            else mime = 'application/octet-stream';
+        }
+        return URL.createObjectURL(new Blob([bytes], { type: mime }));
+    }
+
+    /**
+     * Rewrites entry.html's own relative <script src="./X.js"> references
+     * to the blob: URLs this reader created for each dependency, so the
+     * entry point runs standalone inside a sandboxed iframe with no
+     * relative-path resolution needed (blob: URLs have no directory
+     * structure a relative path could resolve against).
+     * @param {string} entryHtmlText
+     * @param {Object<string, string>} depBlobUrls filename -> blob: URL
+     * @returns {string}
+     */
+    function rewriteEntryHtml(entryHtmlText, depBlobUrls) {
+        var rewritten = entryHtmlText;
+        Object.keys(depBlobUrls).forEach(function(dep) {
+            var pattern = new RegExp('src=(["\'])\\.?/?' + dep.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\1', 'g');
+            rewritten = rewritten.replace(pattern, 'src="' + depBlobUrls[dep] + '"');
+        });
+        return rewritten;
+    }
+
+    /**
+     * run(command): command-pattern entry point.
+     *   run('load', pdfBytes, onNeedPassword) -> Promise<{manifest, attachments}>
+     *   run('build-run-html', manifest, attachments) -> string (rewritten entry.html)
+     * @param {string} command
+     */
+    function run(command) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        if (command === 'load') return open.apply(null, args);
+        if (command === 'build-run-html') {
+            var manifest = args[0], attachments = args[1];
+            var entryName = manifest.data.entry;
+            var entryBytes = attachments.get(entryName) || attachments.get('entry.html');
+            var entryText = new TextDecoder('utf-8').decode(entryBytes);
+            var depBlobUrls = {};
+            (manifest.data.dependencies || []).forEach(function(dep) {
+                if (attachments.has(dep)) depBlobUrls[dep] = blobUrlFor(dep, attachments.get(dep));
+            });
+            return rewriteEntryHtml(entryText, depBlobUrls);
+        }
+        if (command === 'blob-url-for') return blobUrlFor.apply(null, args);
+        return { error: 'Unknown command: ' + command };
+    }
+
+    setWorkerFromInlineSource();
+
+    return { run: run, VERSION: (typeof pdfjsLib !== 'undefined' ? pdfjsLib.version : 'unknown') };
+})();
+
+// --- Thin UI host layer: only ever calls PDFVaultXReader.run(...) ---
+(function() {
+    var dropzone = document.getElementById('dropzone');
+    var fileInput = document.getElementById('fileInput');
+    var statusEl = document.getElementById('status');
+    var passwordPrompt = document.getElementById('passwordPrompt');
+    var passwordInput = document.getElementById('passwordInput');
+    var passwordSubmit = document.getElementById('passwordSubmit');
+    var passwordError = document.getElementById('passwordError');
+    var manifestPanel = document.getElementById('manifestPanel');
+    var manifestText = document.getElementById('manifestText');
+    var filesPanel = document.getElementById('filesPanel');
+    var filesTableBody = document.querySelector('#filesTable tbody');
+    var runButton = document.getElementById('runButton');
+    var downloadAllButton = document.getElementById('downloadAllButton');
+    var runFrame = document.getElementById('runFrame');
+
+    var currentManifest = null;
+    var currentAttachments = null;
+
+    function setStatus(text, isError) {
+        statusEl.textContent = text || '';
+        statusEl.className = isError ? 'sub error' : 'sub';
+    }
+
+    function humanBytes(n) {
+        if (n < 1024) return n + ' B';
+        if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB';
+        return (n / (1024 * 1024)).toFixed(2) + ' MB';
+    }
+
+    function renderResult(manifest, attachments) {
+        currentManifest = manifest;
+        currentAttachments = attachments;
+
+        manifestPanel.classList.remove('hidden');
+        manifestText.textContent = JSON.stringify(manifest, null, 2);
+
+        filesPanel.classList.remove('hidden');
+        filesTableBody.innerHTML = '';
+        Array.from(attachments.keys()).sort().forEach(function(name) {
+            var bytes = attachments.get(name);
+            var tr = document.createElement('tr');
+            var tdName = document.createElement('td');
+            tdName.textContent = name;
+            var tdSize = document.createElement('td');
+            tdSize.textContent = humanBytes(bytes.length);
+            var tdDl = document.createElement('td');
+            var dlBtn = document.createElement('button');
+            dlBtn.textContent = 'Download';
+            dlBtn.addEventListener('click', function() { downloadOne(name, bytes); });
+            tdDl.appendChild(dlBtn);
+            tr.appendChild(tdName);
+            tr.appendChild(tdSize);
+            tr.appendChild(tdDl);
+            filesTableBody.appendChild(tr);
+        });
+
+        runButton.disabled = !(manifest.data && manifest.data.entry && attachments.has(manifest.data.entry) || attachments.has('entry.html'));
+        downloadAllButton.disabled = false;
+        setStatus('Loaded ' + attachments.size + ' embedded file(s) from "' + manifest.appId + '".');
+    }
+
+    function downloadOne(name, bytes) {
+        var a = document.createElement('a');
+        a.href = PDFVaultXReader.run('blob-url-for', name, bytes);
+        a.download = name;
+        a.click();
+    }
+
+    function downloadAll() {
+        if (!currentAttachments) return;
+        currentAttachments.forEach(function(bytes, name) { downloadOne(name, bytes); });
+    }
+
+    function runEntry() {
+        if (!currentManifest || !currentAttachments) return;
+        var html = PDFVaultXReader.run('build-run-html', currentManifest, currentAttachments);
+        runFrame.style.display = 'block';
+        runFrame.srcdoc = html;
+        runFrame.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function handlePasswordFlow(retry) {
+        passwordPrompt.style.display = 'block';
+        passwordError.textContent = '';
+        setStatus('Password required.');
+        passwordSubmit.onclick = function() {
+            passwordError.textContent = '';
+            retry(passwordInput.value);
+        };
+    }
+
+    function handleFile(file) {
+        setStatus('Reading ' + file.name + '...');
+        passwordPrompt.style.display = 'none';
+        manifestPanel.classList.add('hidden');
+        filesPanel.classList.add('hidden');
+        runFrame.style.display = 'none';
+        runFrame.srcdoc = '';
+
+        var reader = new FileReader();
+        reader.onload = function() {
+            var bytes = new Uint8Array(reader.result);
+            PDFVaultXReader.run('load', bytes, handlePasswordFlow).then(function(result) {
+                passwordPrompt.style.display = 'none';
+                renderResult(result.manifest, result.attachments);
+            }).catch(function(err) {
+                if (passwordPrompt.style.display === 'block') {
+                    passwordError.textContent = err && err.message ? err.message : 'Wrong password.';
+                } else {
+                    setStatus((err && err.message) || String(err), true);
+                }
+            });
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    dropzone.addEventListener('click', function() { fileInput.click(); });
+    fileInput.addEventListener('change', function() {
+        if (fileInput.files[0]) handleFile(fileInput.files[0]);
+    });
+    dropzone.addEventListener('dragover', function(e) { e.preventDefault(); dropzone.classList.add('drag'); });
+    dropzone.addEventListener('dragleave', function() { dropzone.classList.remove('drag'); });
+    dropzone.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dropzone.classList.remove('drag');
+        if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+    });
+    runButton.addEventListener('click', runEntry);
+    downloadAllButton.addEventListener('click', downloadAll);
+})();
+</script>
+</body>
+</html>
