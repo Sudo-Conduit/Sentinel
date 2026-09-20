@@ -31,7 +31,8 @@ var suites = [
   require('./RulesEngine.test.js'),
   require('./Stoichiometry.test.js'),
   require('./ChemistryProblemGenerator.test.js'),
-  require('./TestRunner.test.js')
+  require('./TestRunner.test.js'),
+  require('./InlineViewerHtml.test.js')
 ];
 
 // BuildViewerPdf.test.js is the one async suite in this directory (a real

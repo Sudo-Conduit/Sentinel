@@ -63,21 +63,23 @@ function runAsync() {
         var viewer = BuildViewerPdf.VIEWERS[viewerKey];
         var result = buildAllResult.results[viewerKey];
 
-        check(viewerKey + ': build() reports the correct file count and a real, sizeable output', result.fileCount === viewer.deps.length + 2 && result.byteLength > 5000 && fs.existsSync(result.outPath));
+        check(viewerKey + ': build() reports exactly 2 embedded files (ostore.json + a standalone entry.html) and a real, sizeable output', result.fileCount === 2 && result.byteLength > 5000 && fs.existsSync(result.outPath));
 
         return readAttachments(fs.readFileSync(result.outPath)).then(function(attachments) {
-          var expected = ['ostore.json', 'entry.html'].concat(viewer.deps).sort();
           var actual = Array.from(attachments.keys()).sort();
-          check(viewerKey + ': embeds exactly ostore.json + entry.html + its dependency list, nothing else', JSON.stringify(actual) === JSON.stringify(expected));
+          check(viewerKey + ': embeds exactly ostore.json + entry.html, nothing else (dependencies are inlined, not separately attached)', JSON.stringify(actual) === JSON.stringify(['entry.html', 'ostore.json']));
 
-          var onDiskEntry = fs.readFileSync(path.join(__dirname, '..', viewer.entry));
-          var embeddedEntry = attachments.get('entry.html');
-          check(viewerKey + ': entry.html embedded is byte-for-byte identical to ' + viewer.entry + ' on disk', Buffer.compare(onDiskEntry, embeddedEntry) === 0);
+          var embeddedEntryText = attachments.get('entry.html').toString('utf8');
+          var expectedStandaloneHtml = require('../InlineViewerHtml.js').inline(viewerKey).html;
+          check(viewerKey + ': entry.html embedded is byte-for-byte identical to InlineViewerHtml\'s standalone output for this viewer', embeddedEntryText === expectedStandaloneHtml);
 
-          check(viewerKey + ': every dependency embedded is byte-for-byte identical to its source file on disk', viewer.deps.every(function(dep) {
-            var onDisk = fs.readFileSync(path.join(__dirname, '..', dep));
-            var embedded = attachments.get(dep);
-            return embedded && Buffer.compare(onDisk, embedded) === 0;
+          check(viewerKey + ': the standalone entry.html has no remaining local <script src> references (every dependency was inlined)', viewer.deps.every(function(dep) {
+            return embeddedEntryText.indexOf('<script src="./' + dep + '"></script>') === -1;
+          }));
+
+          check(viewerKey + ': the standalone entry.html actually contains every dependency\'s real source, not just a reference to it', viewer.deps.every(function(dep) {
+            var depSource = fs.readFileSync(path.join(__dirname, '..', dep), 'utf8');
+            return embeddedEntryText.indexOf(depSource) !== -1;
           }));
 
           var manifest = JSON.parse(attachments.get('ostore.json').toString('utf8'));

@@ -1,0 +1,1425 @@
+<title>Fobbs Valence Table</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#F2F5F1; --surface:#FFFFFF; --surface-2:#E8EDE7;
+    --ink:#16241F; --ink-muted:#4B5B54; --line:#CBD8CD;
+    --accent:#C9622D; --accent-ink:#FFFFFF;
+    --peak:#B8860E; --peak-glow:rgba(184,134,14,.30);
+    --hue-s:174; --hue-p:226; --hue-d:27; --hue-f:317;
+    --sat-s:40%; --sat-p:44%; --sat-d:50%; --sat-f:38%;
+    --l-max:91; --l-min:63;
+    --panel-shadow:0 1px 2px rgba(22,36,31,.07), 0 12px 30px rgba(22,36,31,.10);
+    --font-display:'Fraunces', Georgia, serif;
+    --font-ui:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0C1310; --surface:#141F1A; --surface-2:#1A2620;
+      --ink:#E7EDE9; --ink-muted:#93A69C; --line:#233029;
+      --accent:#E38B57; --accent-ink:#13201A;
+      --peak:#EFC24C; --peak-glow:rgba(239,194,76,.30);
+      --sat-s:44%; --sat-p:48%; --sat-d:54%; --sat-f:42%;
+      --l-max:33; --l-min:14;
+      --panel-shadow:0 1px 2px rgba(0,0,0,.5), 0 14px 34px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0C1310; --surface:#141F1A; --surface-2:#1A2620;
+    --ink:#E7EDE9; --ink-muted:#93A69C; --line:#233029;
+    --accent:#E38B57; --accent-ink:#13201A;
+    --peak:#EFC24C; --peak-glow:rgba(239,194,76,.30);
+    --sat-s:44%; --sat-p:48%; --sat-d:54%; --sat-f:42%;
+    --l-max:33; --l-min:14;
+    --panel-shadow:0 1px 2px rgba(0,0,0,.5), 0 14px 34px rgba(0,0,0,.55);
+  }
+
+  *{box-sizing:border-box;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-ui); margin:0;}
+  /* 1500px matches the table's own natural width (18 cols + sidebar + gap +
+     padding, ~1458px) so wide screens show the full table unscrolled
+     instead of a narrow column adrift in empty background. */
+  .page{max-width:1500px; margin:0 auto; padding:40px 28px 56px;}
+
+  .eyebrow{font-family:var(--font-mono); font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 10px;}
+  h1{font-family:var(--font-display); font-weight:600; font-size:clamp(34px,5vw,54px); line-height:1.02; margin:0 0 14px; text-wrap:balance;}
+  .thesis{font-size:16px; line-height:1.6; color:var(--ink-muted); max-width:62ch; margin:0 0 22px;}
+  .thesis .formula{display:inline-block; font-family:var(--font-mono); font-size:14px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:2px 8px; margin-left:2px;}
+  .thesis .fv-note{display:inline-block; margin-top:10px; font-size:13px; font-style:italic; color:var(--ink-muted);}
+
+  .legend{display:flex; flex-wrap:wrap; gap:10px 22px; padding:16px 0 26px; border-bottom:1px solid var(--line); margin-bottom:26px;}
+  .legend-item{display:flex; align-items:center; gap:9px;}
+  .legend-ramp{width:54px; height:14px; border-radius:4px; border:1px solid var(--line); flex:none;}
+  .legend-text{font-size:12.5px; color:var(--ink-muted); line-height:1.35;}
+  .legend-text b{color:var(--ink); font-weight:600;}
+  .legend-peak{display:flex; align-items:center; gap:9px;}
+  .peak-swatch{width:14px; height:14px; border-radius:4px; flex:none; background:var(--surface-2); box-shadow:inset 0 0 0 2px var(--peak), 0 0 8px var(--peak-glow);}
+
+  .layout{display:grid; grid-template-columns:1fr; gap:22px;}
+  @media (min-width:960px){ .layout{grid-template-columns:minmax(0,1fr) 340px;} }
+
+  .table-scroll{overflow-x:auto; padding-bottom:6px;}
+  .ptable{display:grid; grid-template-columns:repeat(18, minmax(52px,1fr)); grid-auto-rows:58px; gap:3px; min-width:1040px;}
+  .axis-col{display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:10px; color:var(--ink-muted);}
+  .gap-row{height:14px;}
+
+  .tile{
+    --l: calc(var(--l-max) - (var(--l-max) - var(--l-min)) * var(--v));
+    background: hsl(var(--hue) var(--sat) calc(var(--l) * 1%));
+    color:var(--ink); border:1px solid rgba(0,0,0,.06); border-radius:5px;
+    font-family:var(--font-mono); font-weight:500; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:3px 2px 4px; line-height:1.05; position:relative; -webkit-appearance:none; appearance:none;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .tile.block-s{--hue:var(--hue-s); --sat:var(--sat-s);}
+  .tile.block-p{--hue:var(--hue-p); --sat:var(--sat-p);}
+  .tile.block-d{--hue:var(--hue-d); --sat:var(--sat-d);}
+  .tile.block-f{--hue:var(--hue-f); --sat:var(--sat-f);}
+  .tile .sym{font-size:15px; font-weight:600; margin-top:1px;}
+  .tile .z{font-size:7.5px; position:absolute; top:3px; left:5px; opacity:.65;}
+  .tile .fv-badge{font-size:7px; position:absolute; top:4px; right:5px; opacity:.85; color:var(--accent); font-weight:600;}
+  .tile .mass{font-size:7.5px; opacity:.68; margin-top:2px; font-variant-numeric:tabular-nums;}
+  .tile:hover{transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,.14);}
+  .tile:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .tile.peak{box-shadow:inset 0 0 0 2px var(--peak), 0 0 10px var(--peak-glow);}
+  .tile.selected{box-shadow:inset 0 0 0 2px var(--ink); z-index:2;}
+  .tile.placeholder{background:var(--surface-2); color:var(--ink-muted); font-family:var(--font-mono); font-size:10px; border-style:dashed;}
+  .tile.placeholder:hover{transform:translateY(-2px); box-shadow:0 4px 10px rgba(0,0,0,.10);}
+  .tile.placeholder .arrow{font-size:12px; opacity:.6; margin-top:2px;}
+  .frow{margin-top:10px;}
+
+  .panel{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:22px; box-shadow:var(--panel-shadow); align-self:start; position:sticky; top:20px; position:relative;}
+  .panel-close{position:absolute; top:16px; right:16px; width:26px; height:26px; border-radius:50%; border:1px solid var(--line); background:var(--surface-2); color:var(--ink-muted); font-size:15px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; font-family:var(--font-ui); padding:0;}
+  .panel-close:hover{color:var(--ink); border-color:var(--ink-muted);}
+  .panel-head{display:flex; align-items:baseline; gap:12px; margin-bottom:4px; padding-right:26px;}
+  .panel-sym{font-family:var(--font-display); font-weight:600; font-size:40px; line-height:1;}
+  .panel-name{font-size:15px; color:var(--ink-muted);}
+  .panel-z{font-family:var(--font-mono); font-size:12px; color:var(--ink-muted); margin-bottom:16px;}
+  .panel-empty{color:var(--ink-muted); font-size:13.5px; line-height:1.65; padding:4px 2px 2px;}
+  .panel-empty .formula-mini{font-family:var(--font-mono); font-size:12px; margin-top:12px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:4px 8px; display:inline-block;}
+  .narrative p{font-size:13.5px; line-height:1.65; color:var(--ink-muted); margin:0 0 12px;}
+  .narrative p:last-child{margin-bottom:0;}
+  .narrative b{color:var(--ink);}
+
+  .btn-ghost{font-family:var(--font-mono); font-size:11px; letter-spacing:.03em; text-transform:uppercase; background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:7px 11px; cursor:pointer; line-height:1;}
+  .btn-ghost:hover{border-color:var(--accent); color:var(--accent);}
+  .btn-ghost:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .orbit3d-toggle{width:100%; margin:2px 0 16px; padding:9px 11px;}
+  .orbit3d-controls{display:flex; gap:6px; align-items:center; margin-bottom:10px; flex-wrap:wrap;}
+  .orbit3d-select{font-family:var(--font-mono); font-size:11px; background:var(--surface-2); border:1px solid var(--line); color:var(--ink); border-radius:7px; padding:7px 8px; cursor:pointer; flex:1 1 auto; min-width:0;}
+  .orbit3d-zoom{display:flex; gap:4px; flex:none;}
+  .orbit3d-checkbox{display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); cursor:pointer; flex:1 1 auto;}
+  .orbit3d-opacity{display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); flex:1 1 auto;}
+  .orbit3d-opacity input{flex:1 1 auto; accent-color:var(--accent);}
+  .orbit3d-checkbox input{accent-color:var(--accent); cursor:pointer;}
+  .orbit3d-zoom .btn-ghost{padding:7px 11px;}
+  .orbit3d-canvas{position:relative; width:100%; aspect-ratio:1/1; border-radius:10px; overflow:hidden; background:#05080c; border:1px solid var(--line);}
+  .orbit3d-hint{font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); margin:8px 0; line-height:1.8;}
+  .orbit3d-hint:last-of-type{margin-bottom:16px;}
+  .orbit3d-hint .dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin:0 3px 0 8px; vertical-align:middle;}
+  .orbit3d-hint .dot-inert{background:#ffe066;}
+  .orbit3d-hint .dot-donor{background:#4caf50;}
+  .orbit3d-hint .dot-acceptor{background:#ef4444;}
+  .orbit3d-hint .dot-amphoteric{background:#9c55e0;}
+  .orbit3d-hint .dot-vacant{background:transparent; border:1.5px solid #00aaff;}
+
+  .mountain{width:100%; height:auto; margin:6px 0 18px;}
+  .mountain .grid-line{stroke:var(--line); stroke-width:1;}
+  .mountain .area{fill:var(--mtn-hue,var(--accent)); opacity:.16;}
+  .mountain .line{fill:none; stroke:var(--mtn-hue,var(--accent)); stroke-width:1.6;}
+  .mountain .dot{fill:var(--mtn-hue,var(--accent));}
+  .mountain .tick{font-family:var(--font-mono); font-size:8px; fill:var(--ink-muted);}
+  .mountain .lbl{font-family:var(--font-mono); font-size:9px; fill:var(--ink);}
+
+  .group-title{font-family:var(--font-mono); font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-muted); margin:16px 0 8px;}
+  .group-title:first-of-type{margin-top:0;}
+  .rows{display:flex; flex-direction:column; gap:0;}
+  .row{display:flex; justify-content:space-between; gap:14px; padding:6px 0; border-bottom:1px solid var(--line); font-size:13px;}
+  .row:last-child{border-bottom:none;}
+  .row .k{color:var(--ink-muted); white-space:nowrap; flex:0 0 auto;}
+  .row .v{font-family:var(--font-mono); font-variant-numeric:tabular-nums; text-align:right; flex:1 1 auto; min-width:0;}
+
+  .fieldnote{margin-top:30px; padding:16px 18px; background:var(--surface); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 10px 10px 0; font-size:13.5px; line-height:1.6; color:var(--ink-muted); max-width:78ch;}
+  .fieldnote b{color:var(--ink);}
+
+  footer{margin-top:34px; padding-top:18px; border-top:1px solid var(--line); font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); display:flex; flex-wrap:wrap; gap:6px 18px; justify-content:space-between;}
+
+  @media (prefers-reduced-motion: reduce){ .tile{transition:none;} }
+</style>
+
+<div class="page">
+  <header>
+    <p class="eyebrow">Field Valence Theory &middot; Orbital-Bound Design</p>
+    <h1>Fobbs Valence Table</h1>
+    <p class="thesis">Group and period fall away. Every orbital block is its own valence mountain — <b>FV</b> climbs from the empty shell up to the half-filled peak, then back down to full, regardless of which column an element sits in. <span class="formula">FV = half &minus; |occ &minus; half|</span><br><span class="fv-note">FV — "Fobbs Valence" — is this model's own derived number. It isn't the textbook valence-electron count, even where the two agree.</span></p>
+    <div class="legend" id="legend"></div>
+  </header>
+
+  <div class="layout">
+    <div class="table-scroll">
+      <div class="ptable" id="ptable"></div>
+    </div>
+    <aside class="panel" id="panel"></aside>
+  </div>
+
+  <p class="fieldnote"><b>Field note —</b> the half-filled peak isn't a clean column. <b>Cr</b> and <b>Mo</b> give up their "expected" FV=4 seat early, pulling one electron out of the s-orbital to reach the more stable half-filled d&#8309; configuration — landing them at FV=5 alongside <b>Mn &middot; Tc &middot; Re &middot; Bh</b>. Click either group to compare.</p>
+
+  <footer>
+    <span>118 elements &middot; s, p, d, f orbitals</span>
+    <span>FV = Fobbs Valence, not standard "valence electrons"</span>
+    <span>Author: Will Fobbs &middot; Pooled Impact</span>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  // ---- Element data (Z, symbol, name, period, block, occ, cap, atomic mass) ----
+  // Masses without a stable-isotope-weighted standard atomic weight (see NO_STANDARD
+  // below) show the mass number of the longest-lived known isotope instead.
+  const elementData = [
+    [1,"H","Hydrogen",1,"s",1,2,1.008],[2,"He","Helium",1,"s",2,2,4.0026],
+    [3,"Li","Lithium",2,"s",1,2,6.94],[4,"Be","Beryllium",2,"s",2,2,9.0122],
+    [5,"B","Boron",2,"p",1,6,10.81],[6,"C","Carbon",2,"p",2,6,12.011],[7,"N","Nitrogen",2,"p",3,6,14.007],
+    [8,"O","Oxygen",2,"p",4,6,15.999],[9,"F","Fluorine",2,"p",5,6,18.998],[10,"Ne","Neon",2,"p",6,6,20.180],
+    [11,"Na","Sodium",3,"s",1,2,22.990],[12,"Mg","Magnesium",3,"s",2,2,24.305],
+    [13,"Al","Aluminium",3,"p",1,6,26.982],[14,"Si","Silicon",3,"p",2,6,28.085],[15,"P","Phosphorus",3,"p",3,6,30.974],
+    [16,"S","Sulfur",3,"p",4,6,32.06],[17,"Cl","Chlorine",3,"p",5,6,35.45],[18,"Ar","Argon",3,"p",6,6,39.948],
+    [19,"K","Potassium",4,"s",1,2,39.098],[20,"Ca","Calcium",4,"s",2,2,40.078],
+    [21,"Sc","Scandium",4,"d",1,10,44.956],[22,"Ti","Titanium",4,"d",2,10,47.867],[23,"V","Vanadium",4,"d",3,10,50.942],
+    [24,"Cr","Chromium",4,"d",5,10,51.996],[25,"Mn","Manganese",4,"d",5,10,54.938],[26,"Fe","Iron",4,"d",6,10,55.845],
+    [27,"Co","Cobalt",4,"d",7,10,58.933],[28,"Ni","Nickel",4,"d",8,10,58.693],[29,"Cu","Copper",4,"d",10,10,63.546],
+    [30,"Zn","Zinc",4,"d",10,10,65.38],
+    [31,"Ga","Gallium",4,"p",1,6,69.723],[32,"Ge","Germanium",4,"p",2,6,72.630],[33,"As","Arsenic",4,"p",3,6,74.922],
+    [34,"Se","Selenium",4,"p",4,6,78.971],[35,"Br","Bromine",4,"p",5,6,79.904],[36,"Kr","Krypton",4,"p",6,6,83.798],
+    [37,"Rb","Rubidium",5,"s",1,2,85.468],[38,"Sr","Strontium",5,"s",2,2,87.62],
+    [39,"Y","Yttrium",5,"d",1,10,88.906],[40,"Zr","Zirconium",5,"d",2,10,91.224],[41,"Nb","Niobium",5,"d",4,10,92.906],
+    [42,"Mo","Molybdenum",5,"d",5,10,95.95],[43,"Tc","Technetium",5,"d",5,10,98],[44,"Ru","Ruthenium",5,"d",7,10,101.07],
+    [45,"Rh","Rhodium",5,"d",8,10,102.91],[46,"Pd","Palladium",5,"d",10,10,106.42],[47,"Ag","Silver",5,"d",10,10,107.87],
+    [48,"Cd","Cadmium",5,"d",10,10,112.41],
+    [49,"In","Indium",5,"p",1,6,114.82],[50,"Sn","Tin",5,"p",2,6,118.71],[51,"Sb","Antimony",5,"p",3,6,121.76],
+    [52,"Te","Tellurium",5,"p",4,6,127.60],[53,"I","Iodine",5,"p",5,6,126.90],[54,"Xe","Xenon",5,"p",6,6,131.29],
+    [55,"Cs","Caesium",6,"s",1,2,132.91],[56,"Ba","Barium",6,"s",2,2,137.33],
+    [57,"La","Lanthanum",6,"d",1,10,138.91],
+    [58,"Ce","Cerium",6,"f",1,14,140.12],[59,"Pr","Praseodymium",6,"f",3,14,140.91],[60,"Nd","Neodymium",6,"f",4,14,144.24],
+    [61,"Pm","Promethium",6,"f",5,14,145],[62,"Sm","Samarium",6,"f",6,14,150.36],[63,"Eu","Europium",6,"f",7,14,151.96],
+    [64,"Gd","Gadolinium",6,"f",7,14,157.25],[65,"Tb","Terbium",6,"f",9,14,158.93],[66,"Dy","Dysprosium",6,"f",10,14,162.50],
+    [67,"Ho","Holmium",6,"f",11,14,164.93],[68,"Er","Erbium",6,"f",12,14,167.26],[69,"Tm","Thulium",6,"f",13,14,168.93],
+    [70,"Yb","Ytterbium",6,"f",14,14,173.05],
+    [71,"Lu","Lutetium",6,"d",1,10,174.97],[72,"Hf","Hafnium",6,"d",2,10,178.49],[73,"Ta","Tantalum",6,"d",3,10,180.95],
+    [74,"W","Tungsten",6,"d",4,10,183.84],[75,"Re","Rhenium",6,"d",5,10,186.21],[76,"Os","Osmium",6,"d",6,10,190.23],
+    [77,"Ir","Iridium",6,"d",7,10,192.22],[78,"Pt","Platinum",6,"d",9,10,195.08],[79,"Au","Gold",6,"d",10,10,196.97],
+    [80,"Hg","Mercury",6,"d",10,10,200.59],
+    [81,"Tl","Thallium",6,"p",1,6,204.38],[82,"Pb","Lead",6,"p",2,6,207.2],[83,"Bi","Bismuth",6,"p",3,6,208.98],
+    [84,"Po","Polonium",6,"p",4,6,209],[85,"At","Astatine",6,"p",5,6,210],[86,"Rn","Radon",6,"p",6,6,222],
+    [87,"Fr","Francium",7,"s",1,2,223],[88,"Ra","Radium",7,"s",2,2,226],
+    [89,"Ac","Actinium",7,"d",1,10,227],
+    [90,"Th","Thorium",7,"f",2,14,232.04],[91,"Pa","Protactinium",7,"f",2,14,231.04],[92,"U","Uranium",7,"f",3,14,238.03],
+    [93,"Np","Neptunium",7,"f",4,14,237],[94,"Pu","Plutonium",7,"f",6,14,244],[95,"Am","Americium",7,"f",7,14,243],
+    [96,"Cm","Curium",7,"f",7,14,247],[97,"Bk","Berkelium",7,"f",9,14,247],[98,"Cf","Californium",7,"f",10,14,251],
+    [99,"Es","Einsteinium",7,"f",11,14,252],[100,"Fm","Fermium",7,"f",12,14,257],[101,"Md","Mendelevium",7,"f",13,14,258],
+    [102,"No","Nobelium",7,"f",14,14,259],
+    [103,"Lr","Lawrencium",7,"d",1,10,266],[104,"Rf","Rutherfordium",7,"d",2,10,267],[105,"Db","Dubnium",7,"d",3,10,268],
+    [106,"Sg","Seaborgium",7,"d",4,10,269],[107,"Bh","Bohrium",7,"d",5,10,270],[108,"Hs","Hassium",7,"d",6,10,269],
+    [109,"Mt","Meitnerium",7,"d",7,10,278],[110,"Ds","Darmstadtium",7,"d",8,10,281],[111,"Rg","Roentgenium",7,"d",9,10,282],
+    [112,"Cn","Copernicium",7,"d",10,10,285],
+    [113,"Nh","Nihonium",7,"p",1,6,286],[114,"Fl","Flerovium",7,"p",2,6,289],[115,"Mc","Moscovium",7,"p",3,6,290],
+    [116,"Lv","Livermorium",7,"p",4,6,293],[117,"Ts","Tennessine",7,"p",5,6,294],[118,"Og","Oganesson",7,"p",6,6,294]
+  ];
+
+  const NO_STANDARD = new Set(["Tc","Pm","Po","At","Rn","Fr","Ra","Ac","Np","Pu","Am","Cm","Bk","Cf",
+    "Es","Fm","Md","No","Lr","Rf","Db","Sg","Bh","Hs","Mt","Ds","Rg","Cn","Nh","Fl","Mc","Lv","Ts","Og"]);
+  function formatMass(e){
+    return NO_STANDARD.has(e.symbol) ? '[' + Math.round(e.mass) + ']' : e.mass.toFixed(2);
+  }
+
+  // ---- FVT physics engine (matches research/periodic-data-table/PDT.js) ----
+  function getBondingType(V, block, occ, cap){
+    if (V === 0) return { type:"inert", value:0 };
+    if (V === cap/2 && cap === 6) return { type:"amphoteric", value:[-1,1] };
+    if (occ <= cap/2) return { type:"donor", value:1 };
+    return { type:"acceptor", value:-1 };
+  }
+
+  function computeFVT(Z, occ, cap, period, block){
+    const half = cap/2;
+    const V = half - Math.abs(occ - half);
+    const S = occ - V;
+    const Zeff = Z - S;
+    const bonding = getBondingType(V, block, occ, cap);
+    const n = period;
+    const slaterRadius = (n*n) / Zeff;
+    const orbitalEnergy = -13.6 * (Zeff*Zeff) / (n*n);
+
+    let unpaired = 0;
+    if (cap === 10) unpaired = occ <= 5 ? occ : 10 - occ;
+    else if (cap === 14) unpaired = occ <= 7 ? occ : 14 - occ;
+    else unpaired = (occ % 2 === 0) ? 0 : 1;
+    const magneticMoment = Math.sqrt(unpaired * (unpaired + 2));
+
+    let coordination = "Unknown";
+    if (cap === 2) coordination = "Linear";
+    else if (cap === 6) coordination = "Tetrahedral / Octahedral";
+    else if (cap === 10){
+      if (occ <= 4) coordination = "Tetrahedral";
+      else if (occ <= 6) coordination = "Octahedral";
+      else if (occ <= 8) coordination = "Square planar";
+      else coordination = "Linear / complex";
+    } else if (cap === 14) coordination = "Complex (f-block)";
+
+    const IE = -orbitalEnergy;
+    const EA = IE * 0.2;
+    const electronegativity = (IE + EA) / 2;
+
+    let crystal = "Variable";
+    if (V === 0) crystal = "Close-packed (noble gas)";
+    else if (V === cap/2 && cap === 6) crystal = "Tetrahedral (diamond-like)";
+    else if (cap === 10 && occ >= 6) crystal = "BCC / FCC (metal)";
+    else if (cap === 6 && occ >= 4) crystal = "Covalent network";
+
+    const lattice = 2 * slaterRadius * 1.2;
+    const heatCapacity = 3 * (n + 1);
+    const configEntropy = occ * Math.log(occ + 1) * 0.1;
+
+    const r2 = x => Math.round(x*100)/100;
+    const r3 = x => Math.round(x*1000)/1000;
+    return {
+      V:r2(V), S:r2(S), Zeff:r2(Zeff), half, bonding,
+      slaterRadius:r3(slaterRadius), orbitalEnergy:r2(orbitalEnergy),
+      unpaired, magneticMoment:r2(magneticMoment),
+      electronegativity:r2(electronegativity), IE:r2(IE), EA:r2(EA),
+      coordination, crystal, lattice:r3(lattice), heatCapacity:r2(heatCapacity),
+      configEntropy:r2(configEntropy)
+    };
+  }
+
+  const elements = elementData.map(row => {
+    const [Z,symbol,name,period,block,occ,cap,mass] = row;
+    const phys = computeFVT(Z,occ,cap,period,block);
+    return { Z,symbol,name,period,block,occ,cap,mass, ...phys };
+  });
+  const bySymbol = {}; elements.forEach(e => bySymbol[e.symbol] = e);
+
+  // ---- Bridge to OrbitalVisualizer.js, which expects window.PDT.bySymbol
+  // entries shaped like PDT.js's (snake_case slater_radius in particular).
+  window.PDT = { bySymbol: {} };
+  elements.forEach(e => { window.PDT.bySymbol[e.symbol] = Object.assign({}, e, { slater_radius: e.slaterRadius }); });
+
+(function(root) {
+    'use strict';
+    if (!root.PDT || !root.THREE) throw new Error('Requires PDT and THREE');
+
+    // ─── Orbital shapes, by block ─────────────────────────────────
+    // Each entry's fn(ct, st, phi) returns the magnitude of the real spherical
+    // harmonic for that orbital (ct = cos(theta), st = sin(theta)); `max` is
+    // that function's true maximum over the sphere, used to normalize
+    // probability-weighted rejection sampling in _createParticles. `ring:true`
+    // marks the one shape (dz2) that has a real toroidal lobe in addition to
+    // its point cloud.
+    var ORBITAL_DEFS = {
+        s: {
+            order: ['s'],
+            s:  { label: 's · sphere', max: 1, fn: function() { return 1; } }
+        },
+        p: {
+            order: ['pz', 'px', 'py'],
+            pz: { label: 'pz · dumbbell', max: 1, fn: function(ct, st, phi) { return Math.abs(ct); } },
+            px: { label: 'px · dumbbell', max: 1, fn: function(ct, st, phi) { return Math.abs(st * Math.cos(phi)); } },
+            py: { label: 'py · dumbbell', max: 1, fn: function(ct, st, phi) { return Math.abs(st * Math.sin(phi)); } }
+        },
+        d: {
+            order: ['dz2', 'dxy', 'dx2y2', 'dxz', 'dyz'],
+            dz2:   { label: 'dz2 · dumbbell + torus', max: 2,   ring: true, fn: function(ct) { return Math.abs(3 * ct * ct - 1); } },
+            dxy:   { label: 'dxy · cloverleaf',       max: 1,   fn: function(ct, st, phi) { return Math.abs(st * st * Math.sin(2 * phi)); } },
+            dx2y2: { label: 'dx2-y2 · cloverleaf',    max: 1,   fn: function(ct, st, phi) { return Math.abs(st * st * Math.cos(2 * phi)); } },
+            dxz:   { label: 'dxz · cloverleaf',       max: 0.5, fn: function(ct, st, phi) { return Math.abs(st * ct * Math.cos(phi)); } },
+            dyz:   { label: 'dyz · cloverleaf',       max: 0.5, fn: function(ct, st, phi) { return Math.abs(st * ct * Math.sin(phi)); } }
+        },
+        f: {
+            order: ['fz3'],
+            fz3: { label: 'fz3 · multi-lobed', max: 2, fn: function(ct) { return Math.abs(5 * ct * ct * ct - 3 * ct); } }
+        }
+    };
+
+    function defsForBlock(block) { return ORBITAL_DEFS[block] || ORBITAL_DEFS.s; }
+    function defaultOrbitalFor(block) { return defsForBlock(block).order[0]; }
+    function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+
+    // Real electron markers are colored by the element's bonding character,
+    // so e.g. Carbon reads as "donor" (green) at a glance without opening
+    // the data panel.
+    var BOND_COLORS = {
+        inert: 0xffe066,      // yellow
+        donor: 0x4caf50,      // green
+        acceptor: 0xef4444,   // red
+        amphoteric: 0x9c55e0  // purple
+    };
+    var VACANT_COLOR = 0x00aaff; // matches the cloud's own cyan
+
+    // A vacant-slot marker needs to read as an unmistakable hollow ring from
+    // every angle, at any rotation — a 3D torus mesh looks like a ring only
+    // face-on and a thin line edge-on, and a wireframe sphere just looks like
+    // a fuzzy ball. A camera-facing Sprite drawn from a ring texture solves
+    // both: sprites always billboard to the camera regardless of the group's
+    // rotation, so it stays a clean circle no matter how the orbital spins.
+    // Built once and cached — the texture is identical for every instance.
+    // Drawn in white and tinted via SpriteMaterial.color (not baked into the
+    // texture itself), so VACANT_COLOR renders at full, unmuddied strength.
+    var ringTextureCache = null;
+    function getRingTexture() {
+        if (ringTextureCache) return ringTextureCache;
+        var canvas = document.createElement('canvas');
+        canvas.width = canvas.height = 64;
+        var ctx = canvas.getContext('2d');
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 7;
+        ctx.beginPath();
+        ctx.arc(32, 32, 24, 0, Math.PI * 2);
+        ctx.stroke();
+        ringTextureCache = new root.THREE.CanvasTexture(canvas);
+        return ringTextureCache;
+    }
+
+    // Rejection-samples one point on the shell for the given orbital def,
+    // returning {ct, st, phi, r} (spherical) so callers can place either a
+    // cloud point or a discrete electron marker with the same real shape.
+    function sampleShell(def, shellInner, shellThickness) {
+        var ct, st, phi, r, density, attempts = 0, accepted = false;
+        do {
+            attempts++;
+            r = shellInner + Math.random() * shellThickness;
+            ct = Math.random() * 2 - 1; // uniform in [-1,1] == uniform solid angle
+            st = Math.sqrt(1 - ct * ct);
+            phi = Math.random() * Math.PI * 2;
+            density = def.fn(ct, st, phi);
+            accepted = Math.random() < (density / def.max);
+        } while (!accepted && attempts < 40);
+        return { ct: ct, st: st, phi: phi, r: r };
+    }
+
+    function getElement(symbol) {
+        if (root.PDT.bySymbol[symbol]) return root.PDT.bySymbol[symbol];
+        var lower = symbol.toLowerCase();
+        for (var key in root.PDT.bySymbol) {
+            if (key.toLowerCase() === lower) return root.PDT.bySymbol[key];
+        }
+        return null;
+    }
+
+    // options.ui (default true) controls whether OrbitalVisualizer builds its
+    // own fixed dark control panel. Pass { ui: false } to drive everything
+    // through the public API instead (setOrbital, isPulsing, isRotating,
+    // showElectrons, spherical.radius, target, setElement, destroy) from a
+    // host page's own themed controls; see OrbitalVisualizer.orbitalsForBlock
+    // for populating an external shape list. options.onDestroy, if given, is
+    // called at the end of destroy() so a host page can remove any wrapper
+    // markup (e.g. a caption header) it built around `container`.
+    var OrbitalVisualizer = function(container, symbol, orbitalChoice, options) {
+        this.container = container;
+        this.elementData = getElement(symbol);
+        if (!this.elementData) throw new Error('Element not found');
+        this._showUI = !options || options.ui !== false;
+
+        var defs0 = defsForBlock(this.elementData.block);
+        this.orbitalChoice = (orbitalChoice && defs0[orbitalChoice]) ? orbitalChoice : defaultOrbitalFor(this.elementData.block);
+
+        // Main Scene
+        this.scene = new root.THREE.Scene();
+        this.camera = new root.THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+        this.camera.position.z = 8;
+
+        this.renderer = new root.THREE.WebGLRenderer({ alpha: true, antialias: true });
+        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        container.appendChild(this.renderer.domElement);
+
+        this.clock = new root.THREE.Clock();
+        this.isPulsing = true;    // Pulse is ON by default
+        this.isRotating = true;   // Auto-rotate is ON by default; pause freezes in place
+        this.showElectrons = false; // Discrete electron markers are opt-in
+        this.cloudOpacity = 0.7;  // base opacity of the diffuse point cloud; Pulse modulates around this
+        this.hudVisible = true;   // built-in control panel visibility (has no effect in headless mode)
+        this.isDragging = false;
+        this.previousMousePosition = { x: 0, y: 0 };
+        this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
+        this.target = { x: 0, y: 0, z: 0 }; // orbit/look-at center; Cmd+Drag pans this
+        this._elapsed = 0; // advances every frame (drives Pulse)
+        this._rotAngle = 0; // advances only while isRotating (drives the Y spin)
+        this._wobble = 0;    // advances only while isRotating (drives the X wobble)
+        this._recorder = null;
+        this._recordedChunks = [];
+        this.saveRecording = this._defaultSaveRecording.bind(this); // overridable hook
+        // Fires at the end of destroy() so a host page can remove whatever
+        // wrapper markup it built around `container` (e.g. Orbital Scope's
+        // sibling caption header), which OrbitalVisualizer has no way to
+        // reach on its own.
+        this.onDestroy = (options && typeof options.onDestroy === 'function') ? options.onDestroy : null;
+
+        // Build the full visualization
+        this._updateShellRadius();
+        this._createParticles();
+        this._createRing();
+        this._createElectrons();
+        this._createNucleus();
+        this._setupCameraControls();
+        this._setupResize();
+        if (this._showUI) this._createUI();
+        this._animate();
+    };
+
+    OrbitalVisualizer.create = function(container, symbol, orbitalChoice, options) {
+        return new OrbitalVisualizer(container, symbol, orbitalChoice, options);
+    };
+
+    // Static helper so a host page can build its own orbital-shape picker
+    // for whatever block the current element belongs to, without reaching
+    // into OrbitalVisualizer's internals: [{ key, label, ring }, ...].
+    OrbitalVisualizer.orbitalsForBlock = function(block) {
+        var defs = defsForBlock(block);
+        return defs.order.map(function(key) {
+            return { key: key, label: defs[key].label, ring: !!defs[key].ring };
+        });
+    };
+
+    // ─── Camera Controls ─────────────────────────────────────────
+    OrbitalVisualizer.prototype._setupCameraControls = function() {
+        var self = this;
+        this.renderer.domElement.addEventListener('mousedown', function(e) {
+            self.isDragging = true;
+            self.previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        this.renderer.domElement.addEventListener('mousemove', function(e) {
+            if (!self.isDragging) return;
+            var dx = e.clientX - self.previousMousePosition.x;
+            var dy = e.clientY - self.previousMousePosition.y;
+            if (e.metaKey) {
+                // Cmd only, not Ctrl: Ctrl+Drag collides with OS/browser
+                // gestures (e.g. trackpad zoom, right-click emulation) on
+                // several platforms, which made panning unreliable there.
+                self._pan(dx, dy);
+            } else {
+                self.spherical.theta -= dx * 0.01;
+                self.spherical.phi -= dy * 0.01;
+                self.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, self.spherical.phi));
+            }
+            self.previousMousePosition = { x: e.clientX, y: e.clientY };
+        });
+        this.renderer.domElement.addEventListener('mouseup', function() { self.isDragging = false; });
+
+        // Touch stays single-finger-orbit only; Cmd+Drag pan is a desktop
+        // (mouse + modifier key) interaction, not extended to touch here.
+        this.renderer.domElement.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                self.isDragging = true;
+                self.previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }, { passive: true });
+        this.renderer.domElement.addEventListener('touchmove', function(e) {
+            if (e.touches.length === 1 && self.isDragging) {
+                e.preventDefault();
+                var dx = e.touches[0].clientX - self.previousMousePosition.x;
+                var dy = e.touches[0].clientY - self.previousMousePosition.y;
+                self.spherical.theta -= dx * 0.01;
+                self.spherical.phi -= dy * 0.01;
+                self.spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, self.spherical.phi));
+                self.previousMousePosition = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+            }
+        }, { passive: false });
+        this.renderer.domElement.addEventListener('touchend', function() { self.isDragging = false; });
+        this.renderer.domElement.addEventListener('wheel', function(e) {
+            e.preventDefault();
+            self.spherical.radius += e.deltaY * 0.01;
+            self.spherical.radius = Math.max(3, Math.min(15, self.spherical.radius));
+        });
+    };
+
+    // The renderer/camera are only ever sized once, at construction, from
+    // container.clientWidth/Height — so when the *container's* CSS size
+    // changes later (a host page's layout reflowing, e.g. Orbital Scope's
+    // grid going full-width once only one scope is left), the canvas never
+    // follows unless something tells it to. A ResizeObserver on the
+    // container is exactly that signal.
+    OrbitalVisualizer.prototype._setupResize = function() {
+        var self = this;
+        if (typeof ResizeObserver === 'undefined') return;
+        this._resizeObserver = new ResizeObserver(function() { self._onResize(); });
+        this._resizeObserver.observe(this.container);
+    };
+
+    OrbitalVisualizer.prototype._onResize = function() {
+        if (!this.container || !this.renderer) return;
+        var width = this.container.clientWidth;
+        var height = this.container.clientHeight;
+        if (!width || !height) return;
+        this.camera.aspect = width / height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(width, height);
+    };
+
+    // Screen-space pan: reads the camera's own current right/up axes (so it
+    // matches whatever THREE actually rendered last frame, poles included)
+    // and moves the orbit target along them, scaled by distance so pan
+    // speed feels consistent whether zoomed in or out.
+    OrbitalVisualizer.prototype._pan = function(dx, dy) {
+        var panScale = this.spherical.radius * 0.0018;
+        var right = new root.THREE.Vector3();
+        var up = new root.THREE.Vector3();
+        var ignored = new root.THREE.Vector3();
+        this.camera.matrixWorld.extractBasis(right, up, ignored);
+        this.target.x += (-right.x * dx + up.x * dy) * panScale;
+        this.target.y += (-right.y * dx + up.y * dy) * panScale;
+        this.target.z += (-right.z * dx + up.z * dy) * panScale;
+    };
+
+    // Undoes any Cmd+Drag panning and returns to the default framing.
+    OrbitalVisualizer.prototype.resetView = function() {
+        this.target = { x: 0, y: 0, z: 0 };
+        this.spherical = { radius: 8, theta: 0, phi: Math.PI / 2 };
+    };
+
+    OrbitalVisualizer.prototype._updateCamera = function() {
+        var x = this.target.x + this.spherical.radius * Math.sin(this.spherical.phi) * Math.cos(this.spherical.theta);
+        var y = this.target.y + this.spherical.radius * Math.sin(this.spherical.phi) * Math.sin(this.spherical.theta);
+        var z = this.target.z + this.spherical.radius * Math.cos(this.spherical.phi);
+        this.camera.position.set(x, y, z);
+        this.camera.lookAt(this.target.x, this.target.y, this.target.z);
+    };
+
+    // ─── Shell scale (ties the particle cloud and the dz2 ring to the ──
+    // ─── same element-dependent radius, instead of a hardcoded value) ──
+    OrbitalVisualizer.prototype._updateShellRadius = function() {
+        var sr = (this.elementData.slater_radius || 1) * 3;
+        this.shellRadius = clamp(sr, 1.2, 4.2);
+    };
+
+    // ─── THE PARTICLE CLOUD (real orbital shape via rejection sampling) ──
+    OrbitalVisualizer.prototype._createParticles = function() {
+        if (this.points) {
+            this.scene.remove(this.points);
+            this.points.geometry.dispose();
+        }
+
+        var count = 20000;
+        var positions = new Float32Array(count * 3);
+        var def = defsForBlock(this.elementData.block)[this.orbitalChoice];
+
+        var shellInner = this.shellRadius;
+        var shellThickness = this.shellRadius * 0.6; // outer = inner * 1.6
+
+        for (var i = 0; i < count; i++) {
+            var s = sampleShell(def, shellInner, shellThickness);
+            positions[i * 3]     = s.r * s.st * Math.cos(s.phi);
+            positions[i * 3 + 1] = s.r * s.st * Math.sin(s.phi);
+            positions[i * 3 + 2] = s.r * s.ct;
+        }
+
+        var geometry = new root.THREE.BufferGeometry();
+        geometry.setAttribute('position', new root.THREE.BufferAttribute(positions, 3));
+
+        // Standard PointsMaterial for reliability
+        this.material = new root.THREE.PointsMaterial({
+            color: 0x00aaff,
+            size: 0.03,
+            transparent: true,
+            opacity: 0.7,
+            blending: root.THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        this.points = new root.THREE.Points(geometry, this.material);
+        this.scene.add(this.points);
+    };
+
+    // ─── THE RING (dz2's real toroidal lobe only — no other orbital has one) ──
+    OrbitalVisualizer.prototype._createRing = function() {
+        if (this.ring) {
+            this.scene.remove(this.ring);
+            this.ring.geometry.dispose();
+            this.ring = null;
+        }
+
+        var def = defsForBlock(this.elementData.block)[this.orbitalChoice];
+        if (!def.ring) return;
+
+        // The torus sits at dz2's equatorial anti-node, inside the axial lobes;
+        // TorusGeometry already lies flat in the xy-plane by default, which is
+        // exactly where dz2's ring belongs relative to its z-axis lobes.
+        var radius = this.shellRadius * 0.85;
+        var ringGeometry = new root.THREE.TorusGeometry(radius, 0.05, 8, 32);
+        var ringMaterial = new root.THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.5 });
+        this.ring = new root.THREE.Mesh(ringGeometry, ringMaterial);
+        this.scene.add(this.ring);
+    };
+
+    // ─── ELECTRONS (optional: occ real + (cap-occ) vacant, same real shape) ──
+    // Off by default. When on, samples all `cap` slots of the current
+    // orbital using the same rejection-sampled density as the diffuse cloud
+    // (so every marker lands where the orbital is actually dense): the
+    // first `occ` render as solid, opaque electron spheres colored by the
+    // element's bonding character (BOND_COLORS); the remaining `cap - occ`
+    // render as hollow #DDD ring sprites (never a filled shape, so they
+    // can't be mistaken for a dim electron) showing the orbital's unfilled
+    // capacity — so e.g. Carbon's p-orbital reads at a glance as
+    // "2 filled donor-green electrons, 4 empty rings".
+    OrbitalVisualizer.prototype._createElectrons = function() {
+        if (this.electronGroup) {
+            this.scene.remove(this.electronGroup);
+            this.electronGroup = null;
+        }
+        [this._electronGeometry, this._electronMaterial, this._vacantMaterial]
+            .forEach(function(o) { if (o) o.dispose(); });
+        this._electronGeometry = this._electronMaterial = this._vacantMaterial = null;
+        if (!this.showElectrons) return;
+
+        var def = defsForBlock(this.elementData.block)[this.orbitalChoice];
+        var shellInner = this.shellRadius;
+        var shellThickness = this.shellRadius * 0.6;
+        var cap = this.elementData.cap || 1;
+        var occ = Math.min(this.elementData.occ || 0, cap);
+        var bondColor = BOND_COLORS[this.elementData.bonding && this.elementData.bonding.type] || 0xffffff;
+
+        this._electronGeometry = new root.THREE.SphereGeometry(0.09, 12, 12);
+        this._electronMaterial = new root.THREE.MeshBasicMaterial({ color: bondColor });
+        this._vacantMaterial = new root.THREE.SpriteMaterial({ map: getRingTexture(), color: VACANT_COLOR, transparent: true, opacity: 0.85, depthWrite: false });
+
+        this.electronGroup = new root.THREE.Group();
+
+        for (var i = 0; i < cap; i++) {
+            var s = sampleShell(def, shellInner, shellThickness);
+            var x = s.r * s.st * Math.cos(s.phi), y = s.r * s.st * Math.sin(s.phi), z = s.r * s.ct;
+            if (i < occ) {
+                var mesh = new root.THREE.Mesh(this._electronGeometry, this._electronMaterial);
+                mesh.position.set(x, y, z);
+                this.electronGroup.add(mesh);
+            } else {
+                // A Sprite always billboards to the camera, so this stays a
+                // clean ring from any angle, unlike a 3D torus or wireframe.
+                var ring = new root.THREE.Sprite(this._vacantMaterial);
+                ring.position.set(x, y, z);
+                ring.scale.set(0.24, 0.24, 1);
+                this.electronGroup.add(ring);
+            }
+        }
+        this.scene.add(this.electronGroup);
+    };
+
+    // Toggle the discrete electron markers on/off from outside (host UI or
+    // the built-in checkbox both go through this).
+    OrbitalVisualizer.prototype.setShowElectrons = function(bool) {
+        this.showElectrons = !!bool;
+        this._createElectrons();
+    };
+
+    // Sets the cloud's base opacity (0-1); Pulse, if on, still modulates
+    // around whatever this is set to. No rebuild needed — _animate reads
+    // cloudOpacity every frame — so this is safe to call continuously from
+    // a slider's input event.
+    OrbitalVisualizer.prototype.setCloudOpacity = function(v) {
+        this.cloudOpacity = clamp(Number(v), 0, 1);
+    };
+
+    // Shows/hides the built-in control panel so the shape itself can fill
+    // the view unobstructed. The small hudToggleBtn that triggers this lives
+    // outside uiPanel (appended straight to the container) specifically so
+    // it never hides along with the rest of the HUD — otherwise there'd be
+    // no way to bring the controls back. No-op in headless mode (ui:false),
+    // since there's no built-in panel to hide.
+    OrbitalVisualizer.prototype.setHudVisible = function(visible) {
+        this.hudVisible = !!visible;
+        if (this.uiPanel) this.uiPanel.style.display = this.hudVisible ? 'flex' : 'none';
+        if (this.hudToggleBtn) this.hudToggleBtn.textContent = this.hudVisible ? 'Hide HUD' : 'Show HUD';
+    };
+
+    // ─── The Nucleus ────────────────────────────────────────────
+    OrbitalVisualizer.prototype._createNucleus = function() {
+        var nucleusGeometry = new root.THREE.SphereGeometry(0.1, 16, 16);
+        var nucleusMaterial = new root.THREE.MeshBasicMaterial({ color: 0xffffff });
+        this.nucleus = new root.THREE.Mesh(nucleusGeometry, nucleusMaterial);
+        this.scene.add(this.nucleus);
+    };
+
+    // Change the orbital subtype within the current element's block (e.g.
+    // 'dxy' while on Fe). Silently ignored if `key` isn't valid for the
+    // current block. Safe to call whether or not the built-in UI exists.
+    OrbitalVisualizer.prototype.setOrbital = function(key) {
+        var defs = defsForBlock(this.elementData.block);
+        if (!defs[key]) return;
+        this.orbitalChoice = key;
+        if (this.orbitalSelect) this.orbitalSelect.value = key;
+        this._createRing();
+        this._createParticles();
+        this._createElectrons();
+    };
+
+    // ─── Case-Insensitive Switch ────────────────────────────────
+    OrbitalVisualizer.prototype.setElement = function(symbol) {
+        if (!symbol) return;
+        var newData = getElement(symbol);
+        if (!newData) return;
+        this.elementData = newData;
+        this.orbitalChoice = defaultOrbitalFor(newData.block);
+        this._updateShellRadius();
+        this._rebuildOrbitalOptions();
+        this._createParticles();
+        this._createRing();
+        this._createElectrons();
+        console.log(`✅ Element switched to '${this.elementData.symbol}'`);
+    };
+
+    // ─── Recording (canvas capture -> WebM blob) ─────────────────
+    // Uses captureStream + MediaRecorder directly on the rendered canvas, so
+    // whatever is currently visible (any rotation/pause/electrons state) is
+    // exactly what gets recorded. Unsupported in browsers without
+    // HTMLCanvasElement.captureStream or MediaRecorder (notably older Safari);
+    // callers should check isRecordingSupported() before offering the control.
+    OrbitalVisualizer.prototype.isRecordingSupported = function() {
+        return !!(this.renderer.domElement.captureStream && root.MediaRecorder);
+    };
+
+    OrbitalVisualizer.prototype.startRecording = function() {
+        if (this._recorder || !this.isRecordingSupported()) return false;
+        var self = this;
+        var stream = this.renderer.domElement.captureStream(30);
+        this._recordedChunks = [];
+        this._recorder = new root.MediaRecorder(stream, { mimeType: 'video/webm' });
+        this._recorder.ondataavailable = function(e) {
+            if (e.data && e.data.size) self._recordedChunks.push(e.data);
+        };
+        this._recorder.start();
+        return true;
+    };
+
+    // Resolves with the recorded video/webm Blob once the recorder has
+    // fully flushed. Rejects if nothing was recording.
+    OrbitalVisualizer.prototype.stopRecording = function() {
+        var self = this;
+        return new Promise(function(resolve, reject) {
+            if (!self._recorder) { reject(new Error('Not recording')); return; }
+            self._recorder.onstop = function() {
+                var blob = new root.Blob(self._recordedChunks, { type: 'video/webm' });
+                self._recordedChunks = [];
+                self._recorder = null;
+                resolve(blob);
+            };
+            self._recorder.stop();
+        });
+    };
+
+    // Default save behavior: a plain <a download> blob link, which works in
+    // an ordinary browser tab. A host page can override `instance.saveRecording`
+    // with its own function(blob, filename) — e.g. routing through a
+    // platform's own file-save capability where a plain link would be inert.
+    OrbitalVisualizer.prototype._defaultSaveRecording = function(blob, filename) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() { URL.revokeObjectURL(url); }, 4000);
+    };
+
+    // ─── UI (With Pulse Toggle) ─────────────────────────────────
+    OrbitalVisualizer.prototype._rebuildOrbitalOptions = function() {
+        if (!this.orbitalSelect) return;
+        var defs = defsForBlock(this.elementData.block);
+        this.orbitalSelect.innerHTML = '';
+        for (var i = 0; i < defs.order.length; i++) {
+            var key = defs.order[i];
+            var opt = document.createElement('option');
+            opt.value = key;
+            opt.textContent = defs[key].label;
+            this.orbitalSelect.appendChild(opt);
+        }
+        this.orbitalSelect.value = this.orbitalChoice;
+    };
+
+    OrbitalVisualizer.prototype._createUI = function() {
+        var self = this;
+        this.uiPanel = document.createElement('div');
+        this.uiPanel.style.cssText = 'position:absolute;top:20px;left:20px;background:rgba(0,0,0,0.9);border:1px solid #00aaff;border-radius:8px;padding:12px;z-index:10000;font-family:monospace;color:white;display:flex;flex-direction:column;gap:10px;max-width:200px;';
+
+        var zoomRow = document.createElement('div');
+        zoomRow.style.cssText = 'display:flex;gap:5px;';
+        this.zoomInBtn = document.createElement('button');
+        this.zoomInBtn.textContent = '+';
+        this.zoomInBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:8px;border-radius:4px;cursor:pointer;font-size:18px;';
+        this.zoomInBtn.addEventListener('click', function() { self.spherical.radius -= 0.5; if (self.spherical.radius < 3) self.spherical.radius = 3; });
+        this.zoomOutBtn = document.createElement('button');
+        this.zoomOutBtn.textContent = '-';
+        this.zoomOutBtn.style.cssText = 'background:#ff00aa;color:#000;border:none;padding:8px;border-radius:4px;cursor:pointer;font-size:18px;';
+        this.zoomOutBtn.addEventListener('click', function() { self.spherical.radius += 0.5; if (self.spherical.radius > 15) self.spherical.radius = 15; });
+        this.resetBtn = document.createElement('button');
+        this.resetBtn.textContent = '⟳';
+        this.resetBtn.title = 'Reset view';
+        this.resetBtn.style.cssText = 'background:#333;color:#fff;border:1px solid #666;padding:8px;border-radius:4px;cursor:pointer;font-size:14px;';
+        this.resetBtn.addEventListener('click', function() { self.resetView(); });
+        zoomRow.appendChild(this.zoomInBtn);
+        zoomRow.appendChild(this.zoomOutBtn);
+        zoomRow.appendChild(this.resetBtn);
+
+        this.pulseBtn = document.createElement('button');
+        this.pulseBtn.textContent = 'Pulse: ON'; // Default ON
+        this.pulseBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:6px;border-radius:4px;cursor:pointer;';
+        this.pulseBtn.addEventListener('click', function() {
+            self.isPulsing = !self.isPulsing;
+            self.pulseBtn.textContent = self.isPulsing ? 'Pulse: ON' : 'Pulse: OFF';
+        });
+
+        this.rotateBtn = document.createElement('button');
+        this.rotateBtn.textContent = 'Rotate: ON';
+        this.rotateBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:6px;border-radius:4px;cursor:pointer;';
+        this.rotateBtn.addEventListener('click', function() {
+            self.isRotating = !self.isRotating;
+            self.rotateBtn.textContent = self.isRotating ? 'Rotate: ON' : 'Rotate: OFF';
+        });
+
+        this.electronsLabel = document.createElement('label');
+        this.electronsLabel.style.cssText = 'display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;';
+        this.electronsLabel.title = 'Filled = bonding color (yellow inert, green donor, red acceptor, purple amphoteric). Cyan ring outline = vacant slot.';
+        this.electronsCheckbox = document.createElement('input');
+        this.electronsCheckbox.type = 'checkbox';
+        this.electronsCheckbox.checked = this.showElectrons;
+        this.electronsCheckbox.addEventListener('change', function() {
+            self.setShowElectrons(self.electronsCheckbox.checked);
+        });
+        this.electronsLabel.appendChild(this.electronsCheckbox);
+        this.electronsLabel.appendChild(document.createTextNode('Show Electrons'));
+
+        this.opacityLabel = document.createElement('label');
+        this.opacityLabel.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:11px;';
+        this.opacitySlider = document.createElement('input');
+        this.opacitySlider.type = 'range';
+        this.opacitySlider.min = '0.05';
+        this.opacitySlider.max = '1';
+        this.opacitySlider.step = '0.05';
+        this.opacitySlider.value = String(this.cloudOpacity);
+        this.opacitySlider.style.cssText = 'flex:1;';
+        this.opacitySlider.addEventListener('input', function() {
+            self.setCloudOpacity(self.opacitySlider.value);
+        });
+        this.opacityLabel.appendChild(document.createTextNode('Cloud'));
+        this.opacityLabel.appendChild(this.opacitySlider);
+
+        this.input = document.createElement('input');
+        this.input.placeholder = 'Enter symbol (e.g., Fe)';
+        this.input.style.cssText = 'background:#111;color:#0ff;border:1px solid #0ff;padding:4px;border-radius:4px;';
+        this.setBtn = document.createElement('button');
+        this.setBtn.textContent = 'Set Element';
+        this.setBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:4px;border-radius:4px;cursor:pointer;';
+        this.setBtn.addEventListener('click', function() {
+            self.setElement(self.input.value);
+            self.electronsCheckbox.checked = self.showElectrons;
+        });
+
+        this.orbitalSelect = document.createElement('select');
+        this.orbitalSelect.style.cssText = 'background:#111;color:#fff;border:1px solid #0ff;padding:4px;border-radius:4px;';
+        this._rebuildOrbitalOptions();
+        this.orbitalSelect.addEventListener('change', function() {
+            self.setOrbital(this.value);
+        });
+
+        this.recordBtn = document.createElement('button');
+        this.recordBtn.style.cssText = 'background:#00aaff;color:#000;border:none;padding:6px;border-radius:4px;cursor:pointer;';
+        if (!this.isRecordingSupported()) {
+            this.recordBtn.textContent = 'Record (unsupported)';
+            this.recordBtn.disabled = true;
+            this.recordBtn.style.opacity = '0.5';
+            this.recordBtn.style.cursor = 'not-allowed';
+        } else {
+            this.recordBtn.textContent = 'Record';
+            this.recordBtn.addEventListener('click', function() {
+                if (!self._recorder) {
+                    self.startRecording();
+                    self.recordBtn.textContent = 'Stop';
+                    self.recordBtn.style.background = '#ff0000';
+                    self.recordBtn.style.color = '#fff';
+                } else {
+                    self.recordBtn.disabled = true;
+                    self.stopRecording().then(function(blob) {
+                        var filename = self.elementData.symbol + '-' + self.orbitalChoice + '.webm';
+                        self.saveRecording(blob, filename);
+                        self.recordBtn.textContent = 'Record';
+                        self.recordBtn.style.background = '#00aaff';
+                        self.recordBtn.style.color = '#000';
+                        self.recordBtn.disabled = false;
+                    });
+                }
+            });
+        }
+
+        this.destroyBtn = document.createElement('button');
+        this.destroyBtn.textContent = 'Destroy';
+        this.destroyBtn.style.cssText = 'background:#ff0000;color:#fff;border:none;padding:4px;border-radius:4px;cursor:pointer;';
+        this.destroyBtn.addEventListener('click', function() { self.destroy(); });
+
+        this.uiPanel.appendChild(zoomRow);
+        this.uiPanel.appendChild(this.pulseBtn);
+        this.uiPanel.appendChild(this.rotateBtn);
+        this.uiPanel.appendChild(this.electronsLabel);
+        this.uiPanel.appendChild(this.opacityLabel);
+        this.uiPanel.appendChild(this.input);
+        this.uiPanel.appendChild(this.setBtn);
+        this.uiPanel.appendChild(this.orbitalSelect);
+        this.uiPanel.appendChild(this.recordBtn);
+        this.uiPanel.appendChild(this.destroyBtn);
+        this.container.appendChild(this.uiPanel);
+
+        // Deliberately outside uiPanel and appended after it, so it always
+        // sits on top and is never hidden along with the rest of the HUD.
+        this.hudToggleBtn = document.createElement('button');
+        this.hudToggleBtn.textContent = 'Hide HUD';
+        this.hudToggleBtn.style.cssText = 'position:absolute;top:20px;right:20px;background:rgba(0,0,0,0.7);color:#00aaff;border:1px solid #00aaff;padding:6px 10px;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;z-index:10001;';
+        this.hudToggleBtn.addEventListener('click', function() { self.setHudVisible(!self.hudVisible); });
+        this.container.appendChild(this.hudToggleBtn);
+    };
+
+    OrbitalVisualizer.prototype.destroy = function() {
+        if (this._recorder) { try { this._recorder.stop(); } catch (e) {} this._recorder = null; }
+        if (this._resizeObserver) { this._resizeObserver.disconnect(); this._resizeObserver = null; }
+        if (this.container) {
+            // .remove() (not container.removeChild) so this is safe even if a
+            // host page already replaced the container's contents itself
+            // (e.g. innerHTML = ...) before calling destroy().
+            if (this.uiPanel) this.uiPanel.remove();
+            if (this.hudToggleBtn) this.hudToggleBtn.remove();
+            if (this.renderer && this.renderer.domElement) this.renderer.domElement.remove();
+            this.container.style.display = 'none';
+            this.container = null;
+        }
+        if (this.renderer) this.renderer.dispose();
+        if (this.material) this.material.dispose();
+        if (this.points) this.points.geometry.dispose();
+        if (this.ring) this.ring.geometry.dispose();
+        [this._electronGeometry, this._electronMaterial, this._vacantMaterial]
+            .forEach(function(o) { if (o) o.dispose(); });
+        if (this.nucleus) this.nucleus.geometry.dispose();
+        cancelAnimationFrame(this._animationId);
+        this._animationId = null;
+        if (this.onDestroy) this.onDestroy();
+    };
+
+    // ─── ANIMATION (Includes Pulse) ──────────────────────────────
+    OrbitalVisualizer.prototype._animate = function() {
+        var self = this;
+        var loop = function() {
+            self._animationId = requestAnimationFrame(loop);
+
+            var dt = self.clock.getDelta();
+            self._elapsed += dt;
+            if (self.isRotating) {
+                self._rotAngle += dt * 0.5;
+                self._wobble += dt * 0.3;
+            }
+            self._updateCamera();
+
+            // PULSE: modulates around the user-set base (cloudOpacity), not a
+            // fixed value, and scales down with it so a low base doesn't get
+            // swamped by a disproportionately large swing. Independent of Rotate.
+            if (self.isPulsing) {
+                self.material.opacity = clamp(self.cloudOpacity + self.cloudOpacity * 0.4 * Math.sin(self._elapsed * 3.0), 0, 1);
+            } else {
+                self.material.opacity = self.cloudOpacity;
+            }
+
+            // Rotate (frozen in place, not reset, while isRotating is off)
+            self.points.rotation.y = self._rotAngle;
+            self.points.rotation.x = Math.sin(self._wobble) * 0.2;
+            if (self.ring) {
+                self.ring.rotation.y = self._rotAngle;
+                self.ring.rotation.x = Math.sin(self._wobble) * 0.2;
+            }
+            if (self.electronGroup) {
+                self.electronGroup.rotation.y = self._rotAngle;
+                self.electronGroup.rotation.x = Math.sin(self._wobble) * 0.2;
+            }
+
+            self.renderer.render(self.scene, self.camera);
+        };
+        loop();
+    };
+
+    root.OrbitalVisualizer = OrbitalVisualizer;
+})(window);
+
+
+  // ---- Layout: classic table shape, colored by V instead of group ----
+  const PULLED = [[57,71,'f1'],[89,103,'f2']];
+  function pulledRow(Z){ for (const [a,b,row] of PULLED) if (Z>=a && Z<=b) return row; return null; }
+
+  const cells = [];
+  const counters = {};
+  const pulledEls = { f1:[], f2:[] };
+  elements.forEach(e => {
+    const pr = pulledRow(e.Z);
+    if (pr){ pulledEls[pr].push(e); return; }
+    if (!counters[e.period]) counters[e.period] = { s:1, p:13, d:(e.period===6||e.period===7)?4:3 };
+    const c = counters[e.period];
+    let col;
+    if (e.symbol === 'He') col = 18;
+    else if (e.block === 's'){ col = c.s++; }
+    else if (e.block === 'p'){ col = c.p++; }
+    else { col = c.d++; }
+    cells.push({ el:e, row:e.period, col });
+  });
+  ['f1','f2'].forEach(key => {
+    pulledEls[key].sort((a,b)=>a.Z-b.Z).forEach((e,i) => cells.push({ el:e, row:key, col:3+i }));
+  });
+  cells.push({ placeholder:'57–71', narrative:'f1', row:6, col:3 });
+  cells.push({ placeholder:'89–103', narrative:'f2', row:7, col:3 });
+
+  const rowOrder = [1,2,3,4,5,6,7,'gap','f1','f2'];
+  const rowIndex = {}; rowOrder.forEach((r,i)=>rowIndex[r]=i+1);
+
+  // ---- Render grid ----
+  const ptable = document.getElementById('ptable');
+  ptable.style.gridTemplateRows = 'repeat(' + rowOrder.length + ', 58px)';
+  // shrink the gap row
+  const gapRowIdx = rowIndex['gap'];
+
+  function makeTile(cell){
+    if (cell.placeholder){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tile placeholder';
+      btn.style.gridRow = rowIndex[cell.row];
+      btn.style.gridColumn = cell.col;
+      btn.dataset.narrative = cell.narrative;
+      btn.setAttribute('aria-label', 'Elements ' + cell.placeholder + ', pulled-out series');
+      btn.innerHTML = cell.placeholder + '<span class="arrow">&darr;</span>';
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('selected')) clearSelection();
+        else selectNarrative(cell.narrative);
+      });
+      return btn;
+    }
+    const e = cell.el;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'tile block-' + e.block + (e.V === e.half ? ' peak' : '');
+    btn.style.gridRow = rowIndex[cell.row];
+    btn.style.gridColumn = cell.col;
+    btn.style.setProperty('--v', e.half ? (e.V / e.half) : 0);
+    btn.dataset.symbol = e.symbol;
+    btn.setAttribute('aria-label', e.name + ', FV ' + e.V + ', atomic mass ' + formatMass(e));
+    btn.innerHTML = '<span class="z">' + e.Z + '</span><span class="fv-badge">FV' + e.V + '</span>' +
+      '<span class="sym">' + e.symbol + '</span><span class="mass">' + formatMass(e) + '</span>';
+    btn.addEventListener('click', () => {
+      if (btn.classList.contains('selected')) clearSelection();
+      else selectElement(e.symbol);
+    });
+    return btn;
+  }
+  cells.forEach(c => ptable.appendChild(makeTile(c)));
+  // spacer row
+  const spacer = document.createElement('div');
+  spacer.style.gridRow = gapRowIdx;
+  spacer.style.gridColumn = '1 / -1';
+  spacer.className = 'gap-row';
+  ptable.appendChild(spacer);
+
+  // ---- Legend ----
+  const legend = document.getElementById('legend');
+  const blockInfo = [
+    { block:'s', cap:2, label:'s-orbital', hue:'var(--hue-s)', sat:'var(--sat-s)' },
+    { block:'p', cap:6, label:'p-orbital', hue:'var(--hue-p)', sat:'var(--sat-p)' },
+    { block:'d', cap:10, label:'d-orbital', hue:'var(--hue-d)', sat:'var(--sat-d)' },
+    { block:'f', cap:14, label:'f-orbital', hue:'var(--hue-f)', sat:'var(--sat-f)' }
+  ];
+  blockInfo.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    const ramp = document.createElement('div');
+    ramp.className = 'legend-ramp';
+    ramp.style.background = 'linear-gradient(to right, hsl(' + b.hue + ' ' + b.sat + ' calc(var(--l-max)*1%)), hsl(' + b.hue + ' ' + b.sat + ' calc(var(--l-min)*1%)))';
+    const text = document.createElement('div');
+    text.className = 'legend-text';
+    text.innerHTML = '<b>' + b.label + '</b><br>cap ' + b.cap + ' &middot; half ' + (b.cap/2);
+    item.appendChild(ramp); item.appendChild(text);
+    legend.appendChild(item);
+  });
+  const peakLegend = document.createElement('div');
+  peakLegend.className = 'legend-peak';
+  peakLegend.innerHTML = '<span class="peak-swatch"></span><span class="legend-text"><b>half-filled peak</b><br>FV = half</span>';
+  legend.appendChild(peakLegend);
+
+  // ---- Detail panel ----
+  const panel = document.getElementById('panel');
+  const hueVar = { s:'var(--hue-s)', p:'var(--hue-p)', d:'var(--hue-d)', f:'var(--hue-f)' };
+  const satVar = { s:'var(--sat-s)', p:'var(--sat-p)', d:'var(--sat-d)', f:'var(--sat-f)' };
+
+  function mountainSVG(cap, half, block, dotOcc, dotV){
+    const w = 280, h = 96, pad = 16;
+    const x = occ => pad + (occ/cap) * (w - pad*2);
+    const y = v => (h - 22) - (v/half) * (h - 40);
+    let path = 'M ' + x(0) + ' ' + y(0);
+    for (let occ = 0; occ <= cap; occ++){
+      const v = half - Math.abs(occ - half);
+      path += ' L ' + x(occ) + ' ' + y(v);
+    }
+    const area = path + ' L ' + x(cap) + ' ' + y(0) + ' L ' + x(0) + ' ' + y(0) + ' Z';
+    const hue = hueVar[block], sat = satVar[block];
+    let mark = '';
+    if (dotOcc != null){
+      const dotX = x(dotOcc), dotY = y(dotV);
+      mark = '<circle class="dot" cx="' + dotX + '" cy="' + dotY + '" r="3.6"/>' +
+        '<text class="lbl" x="' + (dotX+6) + '" y="' + (dotY-6) + '">FV=' + dotV + '</text>';
+    }
+    return '<svg class="mountain" viewBox="0 0 ' + w + ' ' + h + '" style="--mtn-hue:hsl(' + hue + ' ' + sat + ' 45%)">' +
+      '<line class="grid-line" x1="' + pad + '" y1="' + y(0) + '" x2="' + (w-pad) + '" y2="' + y(0) + '"/>' +
+      '<path class="area" d="' + area + '"/>' +
+      '<path class="line" d="' + path + '"/>' +
+      mark +
+      '<text class="tick" x="' + x(0) + '" y="' + (h-6) + '">occ 0</text>' +
+      '<text class="tick" x="' + (x(cap)-24) + '" y="' + (h-6) + '">occ ' + cap + '</text>' +
+    '</svg>';
+  }
+
+  const NARRATIVES = {
+    f1: {
+      title: '57–71',
+      name: 'The Lanthanide Fold',
+      body: [
+        'This isn\'t a gap in the data — it\'s a space-saving fold. Pulled out below are the 15 elements from <b>La</b> through <b>Lu</b>, squeezed into a single "group 3" seat so the table stays 18 columns wide instead of 32.',
+        '<b>La</b> and <b>Lu</b> bookend the series as true d-block members (occ=1, same family as Sc and Y). Everything between them — <b>Ce</b> through <b>Yb</b> — is where the f-orbital actually fills: FV climbs from 1 to the half-filled peak at <b>Eu &middot; Gd</b> (FV=7), then back down to 0 at Yb.',
+        'Click any tile in the pulled-out row below to inspect it directly.'
+      ]
+    },
+    f2: {
+      title: '89–103',
+      name: 'The Actinide Fold',
+      body: [
+        'The heavier twin of the lanthanide fold, pulled out for the same reason — <b>Ac</b> through <b>Lr</b>, 15 elements, sharing one seat in the main table.',
+        '<b>Ac</b> and <b>Lr</b> bookend the series as d-block members (occ=1), while <b>Th</b> through <b>No</b> fill the f-orbital, climbing to its half-filled peak at <b>Am &middot; Cm</b> (FV=7). Everything past Uranium (Z=92) is synthetic — made in a lab, not found in nature in measurable quantity.',
+        'Click any tile in the pulled-out row below to inspect it directly.'
+      ]
+    }
+  };
+
+  function row(k,v){ return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+  function bondingLabel(b){
+    if (Array.isArray(b.value)) return b.type + ' (' + b.value.join(' / ') + ')';
+    const sign = b.value > 0 ? '+1' : b.value < 0 ? '−1' : '0';
+    return b.type + ' (' + sign + ')';
+  }
+
+  function clearTileSelection(){
+    document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
+  }
+
+  // Live headless OrbitalVisualizer instance for the panel's 3D view, if
+  // open. Must be destroyed before panel.innerHTML is replaced (element
+  // change, narrative, or close) — otherwise its renderer and animation
+  // loop keep running against a canvas that's no longer in the document.
+  let active3D = null;
+  function destroy3D(){
+    if (active3D) { active3D.destroy(); active3D = null; }
+  }
+
+  function clearSelection(){
+    destroy3D();
+    clearTileSelection();
+    panel.innerHTML =
+      '<div class="panel-empty">' +
+        '<p>Select an element — or the lanthanide / actinide fold — to see its FV profile.</p>' +
+        '<span class="formula-mini">FV = half &minus; |occ &minus; half|</span>' +
+      '</div>';
+  }
+
+  function closeButton(){ return '<button type="button" class="panel-close" aria-label="Close">&times;</button>'; }
+  function wireClose(){ panel.querySelector('.panel-close').addEventListener('click', clearSelection); }
+
+  function orbit3DBlock(){
+    return (
+      '<button type="button" class="btn-ghost orbit3d-toggle" id="orbit3d-toggle">View 3D orbital</button>' +
+      '<div class="orbit3d" id="orbit3d" hidden>' +
+        '<div class="orbit3d-controls">' +
+          '<select class="orbit3d-select" id="orbit3d-select" aria-label="Orbital shape"></select>' +
+          '<button type="button" class="btn-ghost" id="orbit3d-pulse">Pulse: on</button>' +
+          '<button type="button" class="btn-ghost" id="orbit3d-rotate">Rotate: on</button>' +
+        '</div>' +
+        '<div class="orbit3d-controls">' +
+          '<label class="orbit3d-checkbox"><input type="checkbox" id="orbit3d-electrons"> Show Electrons</label>' +
+          '<span class="orbit3d-zoom">' +
+            '<button type="button" class="btn-ghost" id="orbit3d-zoomin" aria-label="Zoom in">+</button>' +
+            '<button type="button" class="btn-ghost" id="orbit3d-zoomout" aria-label="Zoom out">&minus;</button>' +
+            '<button type="button" class="btn-ghost" id="orbit3d-reset" aria-label="Reset view" title="Reset view">&#10227;</button>' +
+          '</span>' +
+        '</div>' +
+        '<div class="orbit3d-controls">' +
+          '<label class="orbit3d-opacity">Cloud <input type="range" id="orbit3d-opacity" min="0.05" max="1" step="0.05"></label>' +
+        '</div>' +
+        '<div class="orbit3d-canvas" id="orbit3d-canvas"></div>' +
+        '<div class="orbit3d-controls" style="margin-top:10px;">' +
+          '<button type="button" class="btn-ghost" id="orbit3d-record">Record</button>' +
+        '</div>' +
+        '<p class="orbit3d-hint">Drag to orbit &middot; Ctrl+drag to pan &middot; scroll to zoom</p>' +
+        '<p class="orbit3d-hint">Electrons: <span class="dot dot-inert"></span>inert &middot; <span class="dot dot-donor"></span>donor &middot; <span class="dot dot-acceptor"></span>acceptor &middot; <span class="dot dot-amphoteric"></span>amphoteric &middot; <span class="dot dot-vacant"></span>vacant (ring)</p>' +
+      '</div>'
+    );
+  }
+
+  // Wires the 3D-orbital toggle button that orbit3DBlock() renders into the
+  // panel. The canvas only mounts (and OrbitalVisualizer only spins up)
+  // when a viewer actually opens it — collapsed by default, same as every
+  // other element selection, to avoid running a WebGL context nobody asked
+  // for. Runs headless (ui:false): every control here is FVT's own themed
+  // markup driving OrbitalVisualizer's public API directly.
+  function wireOrbit3D(e){
+    const toggle = document.getElementById('orbit3d-toggle');
+    const wrap = document.getElementById('orbit3d');
+    const canvasMount = document.getElementById('orbit3d-canvas');
+    const select = document.getElementById('orbit3d-select');
+    const pulseBtn = document.getElementById('orbit3d-pulse');
+    const rotateBtn = document.getElementById('orbit3d-rotate');
+    const electronsCheckbox = document.getElementById('orbit3d-electrons');
+    const zoomInBtn = document.getElementById('orbit3d-zoomin');
+    const zoomOutBtn = document.getElementById('orbit3d-zoomout');
+    const resetBtn = document.getElementById('orbit3d-reset');
+    const recordBtn = document.getElementById('orbit3d-record');
+    const opacitySlider = document.getElementById('orbit3d-opacity');
+
+    toggle.addEventListener('click', () => {
+      if (active3D) {
+        destroy3D();
+        wrap.hidden = true;
+        toggle.textContent = 'View 3D orbital';
+        return;
+      }
+
+      wrap.hidden = false;
+      toggle.textContent = 'Hide 3D orbital';
+
+      select.innerHTML = '';
+      OrbitalVisualizer.orbitalsForBlock(e.block).forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.key;
+        opt.textContent = o.label;
+        select.appendChild(opt);
+      });
+
+      active3D = new OrbitalVisualizer(canvasMount, e.symbol, undefined, { ui: false });
+      select.value = active3D.orbitalChoice;
+      pulseBtn.textContent = active3D.isPulsing ? 'Pulse: on' : 'Pulse: off';
+      rotateBtn.textContent = active3D.isRotating ? 'Rotate: on' : 'Rotate: off';
+      electronsCheckbox.checked = active3D.showElectrons;
+      opacitySlider.value = String(active3D.cloudOpacity);
+      recordBtn.disabled = !active3D.isRecordingSupported();
+      recordBtn.textContent = recordBtn.disabled ? 'Record (unsupported)' : 'Record';
+
+      // Route the recorded clip through the platform's own save prompt —
+      // a plain <a download> link is inert inside the Artifact viewer.
+      active3D.saveRecording = async (blob, filename) => {
+        try {
+          const downloads = await claude.use('downloads');
+          if (downloads) { await downloads.save({ filename, data: blob }); return; }
+        } catch (err) { /* declined or unavailable — fall through */ }
+        active3D._defaultSaveRecording(blob, filename);
+      };
+    });
+
+    select.addEventListener('change', () => { if (active3D) active3D.setOrbital(select.value); });
+    pulseBtn.addEventListener('click', () => {
+      if (!active3D) return;
+      active3D.isPulsing = !active3D.isPulsing;
+      pulseBtn.textContent = active3D.isPulsing ? 'Pulse: on' : 'Pulse: off';
+    });
+    rotateBtn.addEventListener('click', () => {
+      if (!active3D) return;
+      active3D.isRotating = !active3D.isRotating;
+      rotateBtn.textContent = active3D.isRotating ? 'Rotate: on' : 'Rotate: off';
+    });
+    electronsCheckbox.addEventListener('change', () => {
+      if (active3D) active3D.setShowElectrons(electronsCheckbox.checked);
+    });
+    opacitySlider.addEventListener('input', () => {
+      if (active3D) active3D.setCloudOpacity(opacitySlider.value);
+    });
+    zoomInBtn.addEventListener('click', () => { if (active3D) active3D.spherical.radius = Math.max(3, active3D.spherical.radius - 0.5); });
+    zoomOutBtn.addEventListener('click', () => { if (active3D) active3D.spherical.radius = Math.min(15, active3D.spherical.radius + 0.5); });
+    resetBtn.addEventListener('click', () => { if (active3D) active3D.resetView(); });
+    recordBtn.addEventListener('click', () => {
+      if (!active3D) return;
+      if (!active3D._recorder) {
+        active3D.startRecording();
+        recordBtn.textContent = 'Stop';
+      } else {
+        recordBtn.disabled = true;
+        active3D.stopRecording().then(blob => {
+          active3D.saveRecording(blob, e.symbol + '-' + active3D.orbitalChoice + '.webm');
+          recordBtn.textContent = 'Record';
+          recordBtn.disabled = false;
+        });
+      }
+    });
+  }
+
+  function selectElement(symbol){
+    const e = bySymbol[symbol];
+    destroy3D();
+    clearTileSelection();
+    const btn = document.querySelector('.tile[data-symbol="' + symbol + '"]');
+    if (btn) btn.classList.add('selected');
+
+    panel.innerHTML =
+      closeButton() +
+      '<div class="panel-head"><span class="panel-sym">' + e.symbol + '</span><span class="panel-name">' + e.name + '</span></div>' +
+      '<div class="panel-z">Z=' + e.Z + ' &middot; ' + formatMass(e) + ' u &middot; period ' + e.period + ' &middot; ' + e.block + '-block &middot; ' + e.occ + '/' + e.cap + ' occupied</div>' +
+      mountainSVG(e.cap, e.half, e.block, e.occ, e.V) +
+      orbit3DBlock() +
+      '<div class="group-title">Valence</div>' +
+      '<div class="rows">' +
+        row('FV (Fobbs Valence)', e.V) +
+        row('S (screening)', e.S) +
+        row('Zₑₓₓ (effective nuclear charge)', e.Zeff) +
+        row('Bonding', bondingLabel(e.bonding)) +
+      '</div>' +
+      '<div class="group-title">Energetics</div>' +
+      '<div class="rows">' +
+        row('Electronegativity', e.electronegativity) +
+        row('Ionization energy', e.IE + ' eV') +
+        row('Electron affinity', e.EA + ' eV') +
+        row('Orbital energy', e.orbitalEnergy + ' eV') +
+      '</div>' +
+      '<div class="group-title">Structure</div>' +
+      '<div class="rows">' +
+        row('Atomic mass', formatMass(e) + ' u') +
+        row('Coordination', e.coordination) +
+        row('Crystal structure', e.crystal) +
+        row('Slater radius', e.slaterRadius + ' a₀') +
+        row('Lattice constant', e.lattice) +
+      '</div>' +
+      '<div class="group-title">Magnetism &amp; thermo</div>' +
+      '<div class="rows">' +
+        row('Unpaired spins', e.unpaired) +
+        row('Magnetic moment', e.magneticMoment + ' μ_B') +
+        row('Heat capacity', e.heatCapacity) +
+        row('Config. entropy', e.configEntropy) +
+      '</div>';
+    wireClose();
+    wireOrbit3D(e);
+  }
+
+  function selectNarrative(key){
+    destroy3D();
+    clearTileSelection();
+    const btn = document.querySelector('.tile[data-narrative="' + key + '"]');
+    if (btn) btn.classList.add('selected');
+    const n = NARRATIVES[key];
+
+    panel.innerHTML =
+      closeButton() +
+      '<div class="panel-head"><span class="panel-sym">' + n.title + '</span><span class="panel-name">' + n.name + '</span></div>' +
+      '<div class="panel-z">15 elements &middot; f-block (bookended by d) &middot; cap 14 &middot; half 7</div>' +
+      mountainSVG(14, 7, 'f', null, null) +
+      '<div class="narrative">' + n.body.map(p => '<p>' + p + '</p>').join('') + '</div>';
+    wireClose();
+  }
+
+  selectElement('H');
+})();
+</script>
