@@ -44,9 +44,22 @@ collide:
 | 16 | 64 B (SME at SVL=512) | **128** | no |
 
 So the 2x below is specifically an x86 result: it needs a 64-byte load *and* a
-64-byte line. Apple silicon has 128-byte lines, so a 64-byte SME load at offset 16
-sits inside one line and pays nothing — and 16-byte NEON loads are immune on both
-platforms. Measure, do not port the constant.
+64-byte line.
+
+### Measured on both targets
+
+| platform | node | allocator offset | line | 64 B loads |
+|---|---|---|---|---|
+| Linux x86_64 (Xeon, AVX-512) | v22.22.2 | **0, 16, 32, 48** — varies by allocator *and* size | 64 B | **straddle, ~2x** |
+| Darwin arm64 (Apple silicon) | v22.21.1 | **0** — every allocator | 128 B | clean |
+
+Darwin/ARM Node hands back 128-byte-aligned buffers, so SDOT, BDOT and SME pay
+nothing there. The penalty is confined to the Linux x86 tier — which is where
+AMX and VNNI live, so the fix matters exactly where the deployment is.
+
+Note the x86 offset is **not constant** (0/16/32/48 depending on allocator and
+requested size), so a hardcoded correction is wrong. Read the address back.
+Measure, do not port the constant.
 
 This never presents as a bug. It presents as "Node is slow, rewrite in C" —
 and that conclusion is wrong by a factor of two. Aligned Node **beats** the
