@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Refined 3D Quantum Circle: Von Neumann Nested Architecture</title>
+    <style>
+        :root {
+            --bg-color: #050811;
+            --panel-bg: #0e1524;
+            --panel-border: rgba(34, 211, 238, 0.15);
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --accent-cyan: #22d3ee;
+            --accent-magenta: #f43f5e;
+            --accent-quantum: #a855f7;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 950px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.9);
+            border: 1px solid var(--panel-border);
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+        }
+        .header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+        .header p { margin: 6px 0 0 0; color: var(--text-muted); font-size: 13px; }
+        
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .viewport-box {
+            background: #02040a;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.01);
+            position: relative;
+        }
+        .viewport-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        canvas { display: block; width: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+
+        .state-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.03);
+            font-family: monospace;
+        }
+        .state-row { display: flex; justify-content: space-between; font-size: 13px; }
+        .state-lbl { color: var(--text-muted); }
+        .state-val { font-weight: bold; color: var(--accent-cyan); }
+        
+        .controls-panel {
+            background: rgba(255,255,255,0.01);
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .control-group { display: flex; flex-direction: column; gap: 8px; }
+        .control-header { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: #94a3b8; }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-cyan);
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1>Refined Quantum Circle: Von Neumann Set Lattice Framework</h1>
+        <p>Lattice connection wires overlaying concentric ordinal layers down to the core seed</p>
+    </div>
+
+    <div class="layout-grid">
+        <div class="viewport-box">
+            <div class="viewport-title">
+                <span>3D Wireframe + Node Cross-Section</span>
+                <span style="color: var(--accent-magenta);" id="sliceStatus">Structural Overlay Active</span>
+            </div>
+            <canvas id="quantumCanvas" width="480" height="320"></canvas>
+        </div>
+
+        <div class="viewport-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div class="viewport-title">Ordinal Shell Properties</div>
+                <div class="state-panel">
+                    <div class="state-row"><span class="state-lbl">Von Neumann Set</span><span id="lblSet" style="color: var(--accent-quantum);">V₃ = {Ø, {Ø}, {Ø, {Ø}}}</span></div>
+                    <div class="state-row"><span class="state-lbl">Active Shell Layer</span><span id="lblLayer" class="state-val">Layer 3</span></div>
+                    <div class="state-row"><span class="state-lbl">Lattice Coordinates</span><span id="lblNodes" class="state-val">24 Active Channels</span></div>
+                    <div class="state-row"><span class="state-lbl">State Phase Vector</span><span id="lblEq" class="state-val" style="color: var(--accent-cyan);">|Ψ⟩ = α|0⟩ + β|1⟩</span></div>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0; padding-top: 12px;">
+                <strong>Lattice Optimization:</strong> Node diameters have been scaled down to reveal clear structural boundaries. Connecting layout lines trace longitudinal and latitudinal phase paths, allowing you to examine the nested rings clearly when navigating top-down.
+            </p>
+        </div>
+    </div>
+
+    <div class="controls-panel">
+        <div class="control-grid">
+            <div class="control-group">
+                <div class="control-header"><span>Cross-Section Slice Offset</span><span id="sliceDisplay" style="font-family: monospace;">2.00</span></div>
+                <input type="range" id="sliceSlider" min="-50" max="50" value="2">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span>Von Neumann Nesting Depth</span><span id="layerDisplay" style="font-family: monospace;">Layer 3</span></div>
+                <input type="range" id="layerSlider" min="1" max="5" value="3">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('quantumCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const sliceSlider = document.getElementById('sliceSlider');
+    const sliceDisplay = document.getElementById('sliceDisplay');
+    const layerSlider = document.getElementById('layerSlider');
+    const layerDisplay = document.getElementById('layerDisplay');
+
+    const lblSet = document.getElementById('lblSet');
+    const lblLayer = document.getElementById('lblLayer');
+    const lblNodes = document.getElementById('lblNodes');
+    const lblEq = document.getElementById('lblEq');
+
+    // 3D Matrix View Setup (Slight top-down default pitch to track ring structures)
+    let rotX = -0.7; 
+    let rotY = 0.5;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+    let clockPhase = 0;
+
+    const setNotations = [
+        "V₀ = Ø",
+        "V₁ = {Ø}",
+        "V₂ = {Ø, {Ø}}",
+        "V₃ = {Ø, {Ø}, {Ø, {Ø}}}",
+        "V₄ = {Ø, {Ø}, {Ø, {Ø}}, ...}"
+    ];
+
+    function renderQuantumCircle() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#02040a';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const sliceOffset = parseInt(sliceSlider.value) * 1.5;
+        const selectedLayer = parseInt(layerSlider.value);
+        
+        sliceDisplay.innerText = (sliceOffset / 1.5).toFixed(2);
+        layerDisplay.innerText = `Layer ${selectedLayer}`;
+
+        // Update Set Theory Panel metrics
+        lblSet.innerText = setNotations[Math.min(selectedLayer - 1, 4)];
+        lblLayer.innerText = `Ordinal Shell Depth ${selectedLayer} / 5`;
+        
+        const calculationNodes = 12 + selectedLayer * 4;
+        lblNodes.innerText = `${calculationNodes} Active Wave Nodes`;
+        
+        const alpha = Math.cos((selectedLayer * 18 * Math.PI)/180).toFixed(3);
+        const beta = Math.sin((selectedLayer * 18 * Math.PI)/180).toFixed(3);
+        lblEq.innerText = `|Ψ⟩ = ${alpha}|0⟩ + ${beta}e^(iφ)|1⟩`;
+
+        let particles = [];
+        const TOTAL_SHELLS = 5;
+
+        // Generate nested coordinate sets with explicit grid index links
+        for (let s = 1; s <= TOTAL_SHELLS; s++) {
+            const shellRadius = s * 24;
+            const ringsCount = 8; 
+            const nodesPerRing = 12 + s * 2;
+
+            for (let r = 0; r < ringsCount; r++) {
+                const lon = (r / ringsCount) * Math.PI; // Latitude angle
+                for (let n = 0; n < nodesPerRing; n++) {
+                    const lat = (n / nodesPerRing) * 2 * Math.PI; // Longitude angle
+
+                    let x0 = shellRadius * Math.sin(lon) * Math.cos(lat);
+                    let y0 = shellRadius * Math.sin(lon) * Math.sin(lat);
+                    let z0 = shellRadius * Math.cos(lon);
+
+                    // Cross-section check condition
+                    if (y0 <= sliceOffset) {
+                        let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                        let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                        let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                        let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                        const scale = 400 / (400 + z2);
+                        particles.push({
+                            x: canvas.width / 2 + x1 * scale,
+                            y: canvas.height / 2 + y2 * scale,
+                            depth: z2,
+                            layer: s,
+                            ringIdx: r,
+                            nodeIdx: n,
+                            maxNodes: nodesPerRing,
+                            isEdgeNode: Math.abs(y0 - sliceOffset) < 5.0
+                        });
+                    }
+                }
+            }
+        }
+
+        // Depth buffer array sorting
+        particles.sort((a, b) => b.depth - a.depth);
+
+        // 1. Draw Structural Lattice Connection Lines
+        ctx.lineWidth = 0.5;
+        particles.forEach(p => {
+            if (p.layer === selectedLayer) {
+                // Find latitudinal structural neighbor node
+                const nextNode = particles.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+                if (nextNode) {
+                    ctx.strokeStyle = p.isEdgeNode ? 'rgba(244, 63, 94, 0.4)' : 'rgba(34, 211, 238, 0.15)';
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+            } else {
+                // Background environmental faded mesh lines
+                const nextNode = particles.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+                if (nextNode && Math.random() < 0.15) { // Sparsely sample to maintain grid scannability
+                    ctx.strokeStyle = 'rgba(100, 116, 139, 0.04)';
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+            }
+        });
+
+        // 2. Draw Micro-Sized Quantum Node Elements
+        particles.forEach(p => {
+            ctx.beginPath();
+            
+            // Reduced node dot radiuses matching clean feedback guidelines
+            let radius = p.layer === selectedLayer ? 2.5 : 1.0;
+            ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+
+            if (p.isEdgeNode && p.layer === selectedLayer) {
+                ctx.fillStyle = 'var(--accent-magenta)';
+                ctx.fill();
+            } else if (p.layer === selectedLayer) {
+                const dynamicGlow = Math.floor(200 + Math.sin(clockPhase * 0.1) * 55);
+                ctx.fillStyle = `rgb(34, ${dynamicGlow}, 238)`;
+                ctx.fill();
+            } else {
+                ctx.fillStyle = `rgba(100, 116, 139, ${0.1 + (p.layer * 0.03)})`;
+                ctx.fill();
+            }
+        });
+
+        // 3. Draw Sliced Exposure Cross Section Overlay Rim Outline
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.15)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2 + sliceOffset * Math.cos(rotX), 120 * (300/(300+sliceOffset)), 0, 2*Math.PI);
+        ctx.stroke();
+    }
+
+    // Rotational Gestures Control
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+        renderQuantumCircle();
+    });
+
+    sliceSlider.addEventListener('input', renderQuantumCircle);
+    layerSlider.addEventListener('input', renderQuantumCircle);
+
+    function stepClock() {
+        clockPhase += 0.5;
+        renderQuantumCircle();
+        requestAnimationFrame(stepClock);
+    }
+    stepClock();
+</script>

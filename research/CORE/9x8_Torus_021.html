@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNNT Stoichiometric Balance Studio [Educational Module]</title>
+    <style>
+        :root {
+            --bg-main: #020408;
+            --panel-bg: #090f1d;
+            --panel-border: #a855f7;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(168, 85, 247, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .version-tag {
+            background: rgba(16, 185, 129, 0.1); border: 2px solid var(--green-glow); color: #34d399;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(168, 85, 247, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--purple-glow); color: var(--text-primary); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--purple-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Stoichiometric Balance Studio: Relational Chemistry</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Educational Module: Visualizing Conservation Invariants as Balanced Lattice Relations</p>
+        </div>
+        <div class="version-tag">EDUCATION VALIDATED</div>
+    </div>
+
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--cyan-glow);">
+            <div class="tel-lbl">Active Chemical Relation</div>
+            <div class="tel-val" id="lblEquation">2 H₂ + O₂ → 2 H₂O</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Reactant Mass Density (\(\rho_{\text{in}}\))</div>
+            <div class="tel-val" id="lblReactantMass" style="color: var(--purple-glow);">4.03 g</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--green-glow);">
+            <div class="tel-lbl">Product Mass Density (\(\rho_{\text{out}}\))</div>
+            <div class="tel-val" id="lblProductMass" style="color: var(--green-glow);">4.03 g</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Mass Invariant Conservation Balance (\(\partial_t \rho = 0\))</div>
+            <canvas id="balanceCanvas" width="540" height="320"></canvas>
+        </div>
+        <div class="viewport-box">
+            <div class="viewport-title">Window 3: Balanced Product Lattice Network</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="reactionSelect" onchange="changeReactionProfile()">
+                <option value="water">Synthesis of Water [2 H₂ + O₂ → 2 H₂O]</option>
+                <option value="rust">Oxidation of Iron (Rust) [4 Fe + 3 O₂ → 2 Fe₂O₃]</option>
+                <option value="pyrite">Synthesis of Iron Disulfide (Pyrite) [Fe + 2 S → FeS₂]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Reactant Moles Allocation Scale Vector</span><span id="molesDisplay" style="font-family: monospace; color: var(--purple-glow); font-weight: bold; font-size: 14px;">1.00x Base</span></div>
+            <input type="range" id="molesSlider" min="50" max="300" value="100">
+        </div>
+    </div>
+</div>
+<script>
+    const balCanvas = document.getElementById('balanceCanvas');
+    const balCtx = balCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const reactionSelect = document.getElementById('reactionSelect');
+    const molesSlider = document.getElementById('molesSlider');
+    const molesDisplay = document.getElementById('molesDisplay');
+
+    const lblEquation = document.getElementById('lblEquation');
+    const lblReactantMass = document.getElementById('lblReactantMass');
+    const lblProductMass = document.getElementById('lblProductMass');
+
+    let visualClock = 0;
+
+    const reactionDatabase = {
+        water: { eq: "2 H₂ + O₂ → 2 H₂O", rMass: 4.032, pMass: 4.032, rings: 3, points: 12, label: "Water Matrix", color: "#22d3ee" },
+        rust: { eq: "4 Fe + 3 O₂ → 2 Fe₂O₃", rMass: 319.38, pMass: 319.38, rings: 5, points: 16, label: "Hematite Matrix", color: "#f43f5e" },
+        pyrite: { eq: "Fe + 2 S → FeS₂", rMass: 119.98, pMass: 119.98, rings: 4, points: 14, label: "Pyrite Matrix", color: "#fbbf24" }
+    };
+
+    function recalculateStoichiometry() {
+        try {
+            const reactionKey = reactionSelect.value;
+            const profile = reactionDatabase[reactionKey];
+            const multiplier = parseInt(molesSlider.value) / 100;
+
+            molesDisplay.innerText = multiplier.toFixed(2) + 'x Base';
+            lblEquation.innerText = profile.eq;
+            
+            lblReactantMass.innerText = (profile.rMass * multiplier).toFixed(2) + ' g';
+            lblProductMass.innerText = (profile.pMass * multiplier).toFixed(2) + ' g';
+
+            const clockRad = (visualClock * Math.PI) / 180;
+
+            // ==========================================
+            // WINDOW 1: MASS CONSERVATION IDENTITY GRAPH
+            // ==========================================
+            balCtx.fillStyle = '#000000';
+            balCtx.fillRect(0, 0, balCanvas.width, balCanvas.height);
+
+            balCtx.strokeStyle = '#111827';
+            balCtx.lineWidth = 1.5;
+            for(let i = 0; i < balCanvas.width; i += 40) {
+                balCtx.beginPath(); balCtx.moveTo(i, 0); balCtx.lineTo(i, balCanvas.height); balCtx.stroke();
+            }
+
+            const midX = balCanvas.width / 2;
+            const midY = balCanvas.height / 2 + 20;
+            
+            // Central scale support pillar
+            balCtx.strokeStyle = '#334155';
+            balCtx.lineWidth = 6;
+            balCtx.beginPath(); balCtx.moveTo(midX, midY); balCtx.lineTo(midX, balCanvas.height - 20); balCtx.stroke();
+
+            // Balance beam remains strictly horizontal due to conservation invariants
+            balCtx.strokeStyle = 'var(--green-glow)';
+            balCtx.lineWidth = 4;
+            balCtx.beginPath(); balCtx.moveTo(midX - 160, midY - 20); balCtx.lineTo(midX + 160, midY - 20); balCtx.stroke();
+
+            balCtx.fillStyle = '#a855f7';
+            balCtx.fillRect(midX - 190, midY - 20, 60, 6);
+            balCtx.fillStyle = 'var(--green-glow)';
+            balCtx.fillRect(midX + 130, midY - 20, 60, 6);
+
+            const scalePulse = Math.sin(clockRad * 2) * 4;
+            balCtx.fillStyle = '#a855f7';
+            balCtx.beginPath(); balCtx.arc(midX - 160, midY - 45 + scalePulse, 12 + multiplier * 6, 0, 2 * Math.PI); balCtx.fill();
+            balCtx.fillStyle = 'var(--green-glow)';
+            balCtx.beginPath(); balCtx.arc(midX + 160, midY - 45 + scalePulse, 12 + multiplier * 6, 0, 2 * Math.PI); balCtx.fill();
+
+            // ==========================================
+            // WINDOW 3: CONCENTRIC SUBSHELL NODE LATTICE
+            // ==========================================
+            latCtx.fillStyle = '#000000';
+            latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+            let nodes = [];
+            const ringsCount = profile.rings;
+            const pointsPerRing = profile.points;
+            
+            const pitchRot = -0.7;
+            const yawRot = 0.5;
+
+            for (let r = 1; r <= ringsCount; r++) {
+                const radius = r * 24;
+                for (let p = 0; p < pointsPerRing; p++) {
+                    const angle = (p / pointsPerRing) * 2 * Math.PI;
+                    const pulse = Math.sin(angle * 2 + clockRad * 2) * (multiplier * 4);
+                    
+                    const x0 = (radius + pulse) * Math.cos(angle);
+                    const y0 = (radius + pulse) * Math.sin(angle);
+                    const z0 = Math.sin(angle * 2) * 15;
+
+                    let x1 = x0 * Math.cos(yawRot) - z0 * Math.sin(yawRot);
+                    let z1 = x0 * Math.sin(yawRot) + z0 * Math.cos(yawRot);
+                    let y2 = y0 * Math.cos(pitchRot) - z1 * Math.sin(pitchRot);
+
+                    nodes.push({
+                        x: latticeCanvas.width / 2 + x1,
+                        y: latticeCanvas.height / 2 + y2,
+                        layer: r,
+                        index: p
+                    });
+                }
+            }
+
+            nodes.forEach(n => {
+                const next = nodes.find(o => o.layer === n.layer && o.index === (n.index + 1) % pointsPerRing);
+                if (next) {
+                    latCtx.strokeStyle = profile.color;
+                    latCtx.lineWidth = n.layer === ringsCount ? 3.5 : 1.5;
+                    latCtx.beginPath(); latCtx.moveTo(n.x, n.y); latCtx.lineTo(next.x, next.y); latCtx.stroke();
+                }
+            });
+
+            nodes.forEach(n => {
+                latCtx.beginPath();
+                latCtx.arc(n.x, n.y, n.layer === ringsCount ? 5.0 : 3.0, 0, 2 * Math.PI);
+                latCtx.fillStyle = '#ffffff';
+                latCtx.fill();
+            });
+        } catch (err) {
+            console.error("Render loop execution safeguarded:", err);
+        }
+    }
+
+    function changeReactionProfile() {
+        molesSlider.value = 100;
+        recalculateStoichiometry();
+    }
+
+    molesSlider.addEventListener('input', recalculateStoichiometry);
+
+    function stepTimelineLoop() {
+        visualClock += 0.5;
+        recalculateStoichiometry();
+        requestAnimationFrame(stepTimelineLoop);
+    }
+    stepTimelineLoop();
+</script>
+</body>
+</html>

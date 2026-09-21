@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kähler Manifold Holonomy Tracker [Lab 27 - Hardened]</title>
+    <style>
+        :root {
+            --bg-main: #020408;
+            --panel-bg: #090f1d;
+            --panel-border: #22d3ee;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(34, 211, 238, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .lab-badge {
+            background: rgba(34, 211, 238, 0.1); border: 2px solid var(--cyan-glow); color: #c2f3fc;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #latticeCanvas { cursor: grab; }
+        #latticeCanvas:active { cursor: grabbing; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(34, 211, 238, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(34, 211, 238, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--cyan-glow); color: var(--text-primary); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--cyan-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Kähler Manifold Holonomy Tracker</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Geometric Phase Profiler: Tracking Parallel Transport Deficits Along 4π Complex Trajectories</p>
+        </div>
+        <div class="lab-badge">LAB DISCOVERY 27 / 30</div>
+    </div>
+
+    <!-- Active Holonomy Metrics -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Holonomy Phase Deficit</div>
+            <div class="tel-val" id="lblPhaseDeficit" style="color: var(--purple-glow);">180.0°</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--magenta-glow);">
+            <div class="tel-lbl">Geometric Cover Layer</div>
+            <div class="tel-val" id="lblCoverLayer" style="color: var(--magenta-glow);">Layer 1 [Alpha Phase]</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--green-glow);">
+            <div class="tel-lbl">Metric Status</div>
+            <div class="tel-val" id="lblMetricStatus" style="color: var(--green-glow);">Non-Terminal Continuum</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Unrolled 4π Parallel Transport Phase Matrix</div>
+            <canvas id="streamCanvas" width="540" height="320"></canvas>
+        </div>
+        <div class="viewport-box">
+            <div class="viewport-title" id="activeOffsetDisplay">Window 3: 3D Kähler Tangent Vector Space (Left Click + Drag)</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="holonomySelect" onchange="changeHolonomyProfile()">
+                <option value="kahlerU1">Unitary Homogeneous Space [U(2)/(U(1)×U(1))]</option>
+                <option value="kahlerCP">Complex Projective Space [\(\mathbb{CP}^{2^N-1}\) Manifold]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Parallel Transport Trajectory Path Angle</span><span id="shiftDisplay" style="font-family: monospace; color: var(--cyan-glow); font-weight: bold; font-size: 14px;">360°</span></div>
+            <input type="range" id="shiftSlider" min="0" max="720" value="360">
+        </div>
+    </div>
+</div>
+<script>
+    const streamCanvas = document.getElementById('streamCanvas');
+    const streamCtx = streamCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const holonomySelect = document.getElementById('holonomySelect');
+    const shiftSlider = document.getElementById('shiftSlider');
+    const shiftDisplay = document.getElementById('shiftDisplay');
+
+    const lblPhaseDeficit = document.getElementById('lblPhaseDeficit');
+    const lblCoverLayer = document.getElementById('lblCoverLayer');
+    const lblMetricStatus = document.getElementById('lblMetricStatus');
+    const activeOffsetDisplay = document.getElementById('activeOffsetDisplay');
+
+    let dynamicTimelineClock = 0;
+    
+    // Interactive mouse rotation tracking variables for Window 3
+    let rotX = -0.75;
+    let rotY = 0.45;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const holonomyDatabase = {
+        kahlerU1: { name: "Unitary Space", baseDeficit: 180, color: "#22d3ee", rings: 4, points: 14 },
+        kahlerCP: { name: "Complex Projective Space", baseDeficit: 360, color: "#a855f7", rings: 5, points: 16 }
+    };
+
+    function processLinguisticManifold() {
+        try {
+            const profileKey = holonomySelect.value;
+            const profile = holonomyDatabase[profileKey];
+            const sliderVal = parseInt(shiftSlider.value);
+
+            shiftDisplay.innerText = sliderVal + '° Path';
+            activeOffsetDisplay.innerText = `Window 3: 3D Kähler Tangent Vector Space (Path: ${sliderVal}°)`;
+
+            const clockRad = (dynamicTimelineClock * Math.PI) / 180;
+            const pathRad = (sliderVal * Math.PI) / 180;
+
+            const currentDeficit = Math.abs((360 - sliderVal) % 360);
+            lblPhaseDeficit.innerText = currentDeficit.toFixed(1) + '°';
+            
+            // Hoisted structural evaluation parameter
+            let splitMultiplier = 0.0;
+            if (sliderVal > 360) {
+                splitMultiplier = 1.0;
+                lblCoverLayer.innerText = "Layer 2 [Beta Conjugate State]";
+                lblCoverLayer.style.color = "var(--magenta-glow)";
+            } else {
+                lblCoverLayer.innerText = "Layer 1 [Alpha Phase State]";
+                lblCoverLayer.style.color = "var(--cyan-glow)";
+            }
+
+            if (sliderVal === 0 || sliderVal === 720) {
+                lblMetricStatus.innerText = "Identity Reached (Resolved)";
+                lblMetricStatus.style.color = "var(--green-glow)";
+            } else {
+                lblMetricStatus.innerText = "Non-Terminal Continuum";
+                lblMetricStatus.style.color = "var(--amber-glow)";
+            }
+
+            // ==========================================
+            // WINDOW 1: UNROLLED 4π PHASE MATRIX
+            // ==========================================
+            streamCtx.fillStyle = '#000000';
+            streamCtx.fillRect(0, 0, streamCanvas.width, streamCanvas.height);
+
+            streamCtx.strokeStyle = '#111827';
+            streamCtx.lineWidth = 1.5;
+            for(let i=0; i<streamCanvas.width; i+=40) {
+                streamCtx.beginPath(); streamCtx.moveTo(i, 0); streamCtx.lineTo(i, streamCanvas.height); streamCtx.stroke();
+            }
+
+            streamCtx.lineWidth = 4;
+            streamCtx.strokeStyle = '#a855f7';
+            streamCtx.beginPath();
+            for(let x=0; x<streamCanvas.width; x++) {
+                const angle = (x / streamCanvas.width) * 4 * Math.PI; 
+                
+                // Pure multiplier injection bypassing text character token dropout
+                const splitFactor = splitMultiplier * 20 * Math.sin(angle * 2);
+                
+                const y = (streamCanvas.height / 2) + Math.sin(angle + clockRad * 2) * 35 + Math.cos(angle - pathRad) * 15 + splitFactor;
+                if(x === 0) streamCtx.moveTo(x, y); else streamCtx.lineTo(x, y);
+            }
+            streamCtx.stroke();
+
+            const mappedX = (sliderVal / 720) * streamCanvas.width;
+            streamCtx.strokeStyle = '#22d3ee';
+            streamCtx.lineWidth = 2.5;
+            streamCtx.beginPath(); streamCtx.moveTo(mappedX, 0); streamCtx.lineTo(mappedX, streamCanvas.height); streamCtx.stroke();
+
+            // ==========================================
+            // WINDOW 3: INTERACTIVE 3D KÄHLER LATTICE
+            // ==========================================
+            latCtx.fillStyle = '#000000';
+            latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+            let meshPoints = [];
+            const layers = profile.rings;
+            const totalParallelRings = 8;
+            const nodesPerRing = profile.points;
+
+            for (let s = 1; s <= layers; s++) {
+                const radius = s * 24;
+                for(let r=0; r<totalParallelRings; r++) {
+                    const lon = (r / totalParallelRings) * Math.PI;
+                    for(let n=0; n<nodesPerRing; n++) {
+                        const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                        const phaseShift = (s === 1) ? pathRad : 0;
+                        const x0 = radius * Math.sin(lon) * Math.cos(lat + phaseShift);
+                        const y0 = radius * Math.sin(lon) * Math.sin(lat + phaseShift);
+                        const z0 = radius * Math.cos(lon) + Math.sin(lat * 2 + clockRad) * 6;
+
+                        if (y0 <= 30) {
+                            let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                            let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                            let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                            let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                            const scale = 380 / (380 + z2);
+                            meshPoints.push({
+                                x: latticeCanvas.width / 2 + x1 * scale,
+                                y: latticeCanvas.height / 2 + y2 * scale,
+                                depth: z2,
+                                layerIndex: s,
+                                nodeIndex: n,
+                                maxNodes: nodesPerRing,
+                                fill: (phaseShift !== 0 ) ? '#440000':'#FFFFFF',
+                                isActiveVector: (s === 1 && Math.abs(n - Math.floor(sliderVal / 45)) < 1)
+                            });
+                        }
+                    }
+                }
+            }
+
+            meshPoints.sort((a, b) => b.depth - a.depth);
+
+            meshPoints.forEach(p => {
+                const next = meshPoints.find(o => o.layerIndex === p.layerIndex && o.nodeIndex === (p.nodeIndex + 1) % p.maxNodes);
+                if (next) {
+                    if (p.isActiveVector) {
+                        latCtx.strokeStyle = '#f43f5e';
+                        latCtx.lineWidth = 3.5;
+                    } else {
+                        latCtx.strokeStyle = profile.color;
+                        latCtx.lineWidth = 0.5;
+                    }
+                    latCtx.beginPath(); latCtx.moveTo(p.x, p.y); latCtx.lineTo(next.x, next.y); latCtx.stroke();
+                }
+            });
+
+            meshPoints.forEach(p => {
+                latCtx.beginPath();
+                latCtx.arc(p.x, p.y, p.isActiveVector ? 3.0 : 1.8, 0, 2 * Math.PI);
+                latCtx.fillStyle = p.isActiveVector ? '#FF0000' : p.fill;
+                latCtx.fill();
+            });
+
+        } catch (err) {
+            console.error("Holonomy engine loop protected:", err);
+        }
+    }
+
+    latticeCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    latticeCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        processLinguisticManifold();
+    });
+
+    window.changeHolonomyProfile = function() {
+        shiftSlider.value = 360;
+        processLinguisticManifold();
+    };
+
+    shiftSlider.addEventListener('input', processLinguisticManifold);
+
+    function stepClockTimeline() {
+        dynamicTimelineClock += 0.5;
+        processLinguisticManifold();
+        requestAnimationFrame(stepClockTimeline);
+    }
+    stepClockTimeline();
+</script>

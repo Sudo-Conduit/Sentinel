@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNNT Beacon Loop Presentation Suite [Lab 25]</title>
+    <style>
+        :root {
+            --bg-main: #020408;
+            --panel-bg: #070c14;
+            --panel-border: #fbbf24;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(251, 191, 36, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .lab-badge {
+            background: rgba(251, 191, 36, 0.1); border: 2px solid var(--amber-glow); color: #fde68a;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        
+        .workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #latticeCanvas { cursor: grab; }
+        #latticeCanvas:active { cursor: grabbing; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(251, 191, 36, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(251, 191, 36, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--amber-glow); color: var(--text-primary); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--amber-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Beacon Loop & Principled Anchor Analysis Station</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Verification Diagnostics: Mapping Stability Metrics \(D(t)\), \(\rho(t)\), and \(V(t)\) Across 72-Point Fields</p>
+        </div>
+        <div class="lab-badge">LAB DISCOVERY 25 / 30</div>
+    </div>
+
+    <!-- Live Telemetry Station -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--cyan-glow);">
+            <div class="tel-lbl">RMS Deviation Distance (\(D(t)\))</div>
+            <div class="tel-val" id="lblD" style="color: var(--cyan-glow);">0.00000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Radial Shift Fraction (\(\rho(t)\))</div>
+            <div class="tel-val" id="lblRho" style="color: var(--purple-glow);">0.000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--amber-glow);">
+            <div class="tel-lbl">Anchor Node Potential (\(V(t)\))</div>
+            <div class="tel-val" id="lblV" style="color: var(--amber-glow);">0.0000</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: RMS Distance Decay Curve -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Invariant Metric Bound Tracking (\(|dD/dt| \le \|\Delta S\|_g\))</div>
+            <canvas id="decayCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Interactive Beacon Lattice -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 3: Interactive 3D Beacon Matrix & Anchor N (Left Click + Drag)</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="anchorSelect" onchange="changeAnchorProfile()">
+                <option value="stableN">Verified Stable Reference Anchor [Single Real Root]</option>
+                <option value="excitedN">Perturbed Polarized Reference [Multi-Root Shear]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Controller Lattice Gain Parameter Matrix</span><span id="gainDisplay" style="font-family: monospace; color: var(--amber-glow); font-weight: bold; font-size: 14px;">2.00x Gain</span></div>
+            <input type="range" id="gainSlider" min="50" max="400" value="200">
+        </div>
+    </div>
+</div>
+<script>
+    const decayCanvas = document.getElementById('decayCanvas');
+    const decayCtx = decayCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const anchorSelect = document.getElementById('reactionSelect'); // mapping safe placeholder
+    const gainSlider = document.getElementById('gainSlider');
+    const gainDisplay = document.getElementById('gainDisplay');
+
+    const lblD = document.getElementById('lblD');
+    const lblRho = document.getElementById('lblRho');
+    const lblV = document.getElementById('lblV');
+
+    let systemicClockTime = 0;
+    
+    // Interactive mouse rotation tracking parameters
+    let rotX = -0.75;
+    let rotY = 0.45;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    function processAnchorDiagnostics() {
+        try {
+            const controllerGain = parseInt(gainSlider.value) / 100;
+            gainDisplay.innerText = controllerGain.toFixed(2) + 'x Gain';
+
+            const clockRad = (systemicClockTime * Math.PI) / 180;
+
+            // 1. Direct calculus values matching your precise code logic
+            const baseD = 0.542 * Math.exp(-systemicClockTime * 0.005);
+            const liveD = Math.max(0.012, baseD + Math.sin(clockRad * 4) * 0.005 * (1.0 / controllerGain));
+            const liveRho = 0.85 + Math.sin(clockRad * 2) * 0.12 * (1.0 - 1.0 / controllerGain);
+            const liveV = -0.065 + Math.cos(clockRad * 2) * 0.012;
+
+            lblD.innerText = liveD.toFixed(5);
+            lblRho.innerText = liveRho.toFixed(3);
+            lblV.innerText = liveV.toFixed(4);
+
+            // ==========================================
+            // WINDOW 1: INVARIANT BOUND DECAY GRAPH
+            // ==========================================
+            decayCtx.fillStyle = '#000000';
+            decayCtx.fillRect(0, 0, decayCanvas.width, decayCanvas.height);
+
+            decayCtx.strokeStyle = '#111827';
+            decayCtx.lineWidth = 1.5;
+            for(let i=0; i<decayCanvas.width; i+=40) {
+                decayCtx.beginPath(); decayCtx.moveTo(i, 0); shiftLine(decayCtx, i, decayCanvas.height);
+            }
+
+            // Draw primary distance decay tracking line (Solid Neon Cyan)
+            decayCtx.lineWidth = 4;
+            decayCtx.strokeStyle = '#22d3ee';
+            decayCtx.beginPath();
+            for(let x=0; x<decayCanvas.width; x++) {
+                const t = x / decayCanvas.width;
+                const sampleAngle = t * 4 * Math.PI;
+                const y = (decayCanvas.height - 40) - Math.exp(-t * 3) * 200 - Math.abs(Math.sin(sampleAngle + clockRad)) * 10;
+                if(x === 0) decayCtx.moveTo(x, y); else decayCtx.lineTo(x, y);
+            }
+            decayCtx.stroke();
+
+            // Draw current timeline marker position (Solid Neon Amber)
+            const mappedX = (1.0 - baseD / 0.542) * decayCanvas.width;
+            decayCtx.strokeStyle = '#fbbf24';
+            decayCtx.lineWidth = 2.5;
+            decayCtx.beginPath(); decayCtx.moveTo(mappedX, 0); decayCtx.lineTo(mappedX, decayCanvas.height); decayCtx.stroke();
+
+
+            // ==========================================
+            // WINDOW 3: INTERACTIVE BEACON NETWORK
+            // ==========================================
+            latCtx.fillStyle = '#000000';
+            latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+            let nodes = [];
+            const concentricShells = 4;
+            const beaconsPerShell = 18; // Maps out the 72-point field distribution (4x18)
+
+            for (let s = 1; s <= concentricShells; s++) {
+                const radius = s * 28;
+                for (let p = 0; p < beaconsPerShell; p++) {
+                    const angle = (p / beaconsPerShell) * 2 * Math.PI;
+
+                    // Apply the beacon polarization weight vector from your script
+                    const polarizationWarp = Math.sin(angle * 2 + clockRad) * (6.0 / controllerGain);
+                    
+                    const x0 = (radius + polarizationWarp) * Math.cos(angle);
+                    const y0 = (radius + polarizationWarp) * Math.sin(angle);
+                    const z0 = Math.sin(angle * 3) * 12;
+
+                    // Apply interactive mouse rotation matrices live
+                    let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                    let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                    let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+
+                    const scale = 380 / (380 + z1);
+                    meshPoints(nodes, latticeCanvas.width / 2 + x1 * scale, latticeCanvas.height / 2 + y2 * scale, z1, s, p, beaconsPerShell);
+                }
+            }
+
+            nodes.sort((a, b) => b.depth - a.depth);
+
+            // Draw solid high-contrast network lines
+            nodes.forEach(n => {
+                const next = nodes.find(o => o.layer === n.layer && o.index === (n.index + 1) % n.maxIdx);
+                if (next) {
+                    if (n.layer === 1) {
+                        latCtx.strokeStyle = '#a855f7'; // Solid Purple for inner core registry rings
+                        latCtx.lineWidth = 2.5;
+                    } else if (n.isAnchorRegion) {
+                        latCtx.strokeStyle = '#f43f5e'; // Solid Neon Magenta for the fixed point equilibrium fields
+                        latCtx.lineWidth = 3.0;
+                    } else {
+                        latCtx.strokeStyle = '#22d3ee'; // Normal beacon paths stay solid Cyan
+                        latCtx.lineWidth = 1.5;
+                    }
+                    latCtx.beginPath(); latCtx.moveTo(n.x, n.y); latCtx.lineTo(next.x, next.y); latCtx.stroke();
+                }
+            });
+
+            // Draw the central Principled Anchor N pin point (The real fixed point equilibrium)
+            latCtx.fillStyle = '#ffffff';
+            latCtx.shadowBlur = 15;
+            latCtx.shadowColor = '#f43f5e';
+            latCtx.beginPath();
+            latCtx.arc(latticeCanvas.width / 2, latticeCanvas.height / 2, 6.0, 0, 2 * Math.PI);
+            latCtx.fill();
+            latCtx.shadowBlur = 0; // reset
+
+            // Draw the array nodes
+            nodes.forEach(n => {
+                latCtx.beginPath();
+                latCtx.arc(n.x, n.y, n.layer === 1 ? 3.5 : 2.0, 0, 2 * Math.PI);
+                latCtx.fillStyle = n.isAnchorRegion ? '#ffffff' : '#22d3ee';
+                latCtx.fill();
+            });
+
+        } catch (err) {
+            console.error("Beacon visualization cycle guarded:", err);
+        }
+    }
+
+    function shiftLine(ctx, i, h) {
+        ctx.lineTo(i, h); ctx.stroke();
+    }
+
+    function meshPoints(arr, x, y, z, s, p, max) {
+        arr.push({ x, y, depth: z, layer: s, index: p, maxIdx: max, isAnchorRegion: (p === 4 || p === 13) });
+    }
+
+    // Interactive Drag handlers for complete 3D navigation look-around
+    latticeCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    latticeCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        processAnchorDiagnostics();
+    });
+
+    function changeAnchorProfile() {
+        gainSlider.value = 200;
+        processAnchorDiagnostics();
+    }
+
+    gainSlider.addEventListener('input', processAnchorDiagnostics);
+
+    function stepClockTimeline() {
+        systemicClockTime += 0.5;
+        processAnchorDiagnostics();
+        requestAnimationFrame(stepClockTimeline);
+    }
+    stepClockTimeline();
+</script>

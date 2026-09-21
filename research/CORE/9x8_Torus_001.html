@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toroidal Matrix Dashboard: 9x8 Tensor Bridge</title>
+    <style>
+        :root {
+            --bg-color: #0d131f;
+            --panel-bg: #151c2c;
+            --cell-bg: #1b2437;
+            --accent-blue: #2563eb;
+            --accent-green: #10b981;
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 900px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .top-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .panel-title {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 16px 0;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+        }
+        .matrix-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 6px;
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 8px;
+        }
+        .matrix-cell {
+            background: var(--cell-bg);
+            border: 1px solid rgba(255,255,255,0.02);
+            border-radius: 4px;
+            aspect-ratio: 1.2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 11px;
+            font-family: monospace;
+            color: #94a3b8;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .matrix-cell:hover, .matrix-cell.active {
+            background: var(--accent-blue);
+            color: #fff;
+            box-shadow: 0 0 10px rgba(37,99,235,0.5);
+            border-color: #60a5fa;
+        }
+        .matrix-cell.neighbor {
+            border: 1px solid var(--accent-green);
+            color: #34d399;
+        }
+        .legend-text {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .green-dot {
+            width: 6px;
+            height: 6px;
+            background: var(--accent-green);
+            border-radius: 50%;
+        }
+        .viewport-container {
+            background: #090d16;
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        canvas { display: block; }
+        .transform-overlay {
+            position: absolute;
+            bottom: 12px;
+            font-size: 12px;
+            font-family: monospace;
+            color: #94a3b8;
+            background: rgba(13,19,31,0.8);
+            padding: 4px 12px;
+            border-radius: 4px;
+        }
+        .metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 16px 0;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .metric-item div:first-child {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .metric-item div:last-child {
+            font-size: 16px;
+            font-weight: 700;
+            font-family: monospace;
+        }
+        .sliders-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .slider-label span:last-child {
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-blue);
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="top-split">
+        <div class="matrix-container">
+            <div class="panel-title">
+                <span>2D UNFOLDED MATRIX (9 × 8)</span>
+                <span id="activeCoordDisplay" style="color: #38bdf8; font-family: monospace;">Col: 5, Row: 3</span>
+            </div>
+            <div class="matrix-grid" id="grid"></div>
+            <div class="legend-text">
+                <div class="green-dot"></div>
+                <span>Green outlines display seamless wrapping adjacent neighborhood boundaries.</span>
+            </div>
+        </div>
+
+        <div class="viewport-container">
+            <canvas id="torusCanvas" width="400" height="280"></canvas>
+            <div class="transform-overlay" id="transformOverlay">Torus Transform: 119° Yaw / -36° Pitch</div>
+        </div>
+    </div>
+
+    <div class="metrics-bar">
+        <div class="metric-item">
+            <div>Grid Area</div>
+            <div>9 × 8 Nodes</div>
+        </div>
+        <div class="metric-item">
+            <div>Mapped Index</div>
+            <div id="mappedIndexDisplay" style="color:#38bdf8;">#44</div>
+        </div>
+        <div class="metric-item">
+            <div>Topology</div>
+            <div>Toroidal</div>
+        </div>
+    </div>
+
+    <div class="sliders-panel">
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Torus Yaw Rotation</span>
+                <span id="yawVal">119°</span>
+            </div>
+            <input type="range" id="yawSlider" min="0" max="360" value="119">
+        </div>
+        <div class="slider-group">
+            <div class="slider-label">
+                <span>Torus Pitch Angle</span>
+                <span id="pitchVal">-36°</span>
+            </div>
+            <input type="range" id="pitchSlider" min="-90" max="90" value="-36">
+        </div>
+    </div>
+</div>
+<script>
+    const grid = document.getElementById('grid');
+    const canvas = document.getElementById('torusCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const yawSlider = document.getElementById('yawSlider');
+    const pitchSlider = document.getElementById('pitchSlider');
+    const yawVal = document.getElementById('yawVal');
+    const pitchVal = document.getElementById('pitchVal');
+    const overlay = document.getElementById('transformOverlay');
+    
+    const activeCoordDisplay = document.getElementById('activeCoordDisplay');
+    const mappedIndexDisplay = document.getElementById('mappedIndexDisplay');
+
+    const COLS = 9;
+    const ROWS = 8;
+    
+    let activeCol = 5;
+    let activeRow = 3;
+
+    let yawRad = (119 * Math.PI) / 180;
+    let pitchRad = (-36 * Math.PI) / 180;
+
+    function buildGrid() {
+        grid.innerHTML = '';
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.innerText = c + ',' + r;
+                cell.dataset.col = c;
+                cell.dataset.row = r;
+                cell.addEventListener('mouseenter', () => handleHover(c, r));
+                grid.appendChild(cell);
+            }
+        }
+        updateGridHighlight();
+    }
+
+    function handleHover(c, r) {
+        activeCol = c;
+        activeRow = r;
+        const index = r * COLS + c;
+        activeCoordDisplay.innerText = 'Col: ' + c + ', Row: ' + r;
+        mappedIndexDisplay.innerText = '#' + index;
+        updateGridHighlight();
+        drawTorus();
+    }
+
+    function updateGridHighlight() {
+        const cells = document.querySelectorAll('.matrix-cell');
+        cells.forEach(cell => {
+            const c = parseInt(cell.dataset.col);
+            const r = parseInt(cell.dataset.row);
+            cell.className = 'matrix-cell';
+
+            if (c === activeCol && r === activeRow) {
+                cell.classList.add('active');
+            } else {
+                const dc = Math.abs(c - activeCol);
+                const dr = Math.abs(r - activeRow);
+                const isNeighborX = (dc === 1 || dc === COLS - 1) && (r === activeRow);
+                const isNeighborY = (dr === 1 || dr === ROWS - 1) && (c === activeCol);
+                if (isNeighborX || isNeighborY) {
+                    cell.classList.add('neighbor');
+                }
+            }
+        });
+    }
+
+    function drawTorus() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const R = 75; 
+        const r = 28;
+        let nodes = [];
+
+        for (let c = 0; c < COLS; c++) {
+            for (let r_idx = 0; r_idx < ROWS; r_idx++) {
+                const theta = (c / COLS) * 2 * Math.PI;
+                const phi = (r_idx / ROWS) * 2 * Math.PI;
+
+                const x0 = (R + r * Math.cos(phi)) * Math.cos(theta);
+                const y0 = (R + r * Math.cos(phi)) * Math.sin(theta);
+                const z0 = r * Math.sin(phi);
+
+                let x1 = x0 * Math.cos(yawRad) - z0 * Math.sin(yawRad);
+                let z1 = x0 * Math.sin(yawRad) + z0 * Math.cos(yawRad);
+                let y2 = y0 * Math.cos(pitchRad) - z1 * Math.sin(pitchRad);
+                let z2 = y0 * Math.sin(pitchRad) + z1 * Math.cos(pitchRad);
+
+                const focal = 300;
+                const scale = focal / (focal + z2);
+                nodes.push({ x: canvas.width / 2 + x1 * scale, y: canvas.height / 2 + y2 * scale, depth: z2, c: c, r: r_idx });
+            }
+        }
+
+        nodes.sort((a, b) => b.depth - a.depth);
+
+        nodes.forEach(node => {
+            const rightNeighbor = nodes.find(n => n.c === (node.c + 1) % COLS && n.r === node.r);
+            const bottomNeighbor = nodes.find(n => n.c === node.c && n.r === (node.r + 1) % ROWS);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            if (rightNeighbor) { ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(rightNeighbor.x, rightNeighbor.y); ctx.stroke(); }
+            if (bottomNeighbor) { ctx.beginPath(); ctx.moveTo(node.x, node.y); ctx.lineTo(bottomNeighbor.x, bottomNeighbor.y); ctx.stroke(); }
+        });
+
+        nodes.forEach(node => {
+            ctx.beginPath();
+            const isActive = (node.c === activeCol && node.r === activeRow);
+            const dc = Math.abs(node.c - activeCol);
+            const dr = Math.abs(node.r - activeRow);
+            const isNeighbor = ((dc === 1 || dc === COLS - 1) && node.r === activeRow) || ((dr === 1 || dr === ROWS - 1) && node.c === activeCol);
+
+            let radius = isActive ? 7 : (isNeighbor ? 4.5 : 2.5);
+            ctx.arc(node.x, node.y, radius, 0, 2 * Math.PI);
+
+            if (isActive) {
+                ctx.fillStyle = '#2563eb'; ctx.fill(); ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 2; ctx.stroke();
+            } else if (isNeighbor) {
+                ctx.fillStyle = '#10b981'; ctx.fill(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 1; ctx.stroke();
+            } else {
+                ctx.fillStyle = 'rgba(71, 85, 105, 0.6)'; ctx.fill();
+            }
+        });
+    }
+
+    function updateRotations() {
+        yawVal.innerText = yawSlider.value + '°';
+        pitchVal.innerText = pitchSlider.value + '°';
+        overlay.innerText = 'Torus Transform: ' + yawSlider.value + '° Yaw / ' + pitchSlider.value + '° Pitch';
+        yawRad = (yawSlider.value * Math.PI) / 180;
+        pitchRad = (pitchSlider.value * Math.PI) / 180;
+        drawTorus();
+    }
+
+    yawSlider.addEventListener('input', updateRotations);
+    pitchSlider.addEventListener('input', updateRotations);
+    buildGrid();
+    drawTorus();
+</script>
+</body>
+</html>

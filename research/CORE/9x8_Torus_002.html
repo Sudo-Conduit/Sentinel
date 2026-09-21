@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toroidal Topology Wave Signal Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #0d131f;
+            --panel-bg: #151c2c;
+            --cell-bg: #1e293b;
+            --cell-active: #2563eb;
+            --text-main: #f1f5f9;
+            --text-muted: #64748b;
+            --accent-blue: #38bdf8;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 900px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .top-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        .panel-header {
+            font-size: 14px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            margin: 0 0 16px 0;
+            color: #94a3b8;
+        }
+        /* 2D Periodic Matrix Layout */
+        .matrix-container {
+            display: flex;
+            flex-direction: column;
+        }
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(9, 1fr);
+            gap: 6px;
+            background: rgba(0,0,0,0.2);
+            padding: 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.2);
+            position: relative;
+        }
+        /* Grid separation axes lines matching your screenshot */
+        .matrix-grid::before {
+            content: '';
+            position: absolute;
+            top: 50%; left: 0; right: 0;
+            border-top: 1px dashed rgba(255,255,255,0.1);
+            pointer-events: none;
+        }
+        .matrix-grid::after {
+            content: '';
+            position: absolute;
+            left: 22.2%; top: 0; bottom: 0;
+            border-left: 1px dashed rgba(255,255,255,0.1);
+            pointer-events: none;
+        }
+        .matrix-cell {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 6px;
+            aspect-ratio: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .matrix-cell:hover {
+            border-color: var(--accent-blue);
+            background: rgba(56, 189, 248, 0.1);
+        }
+        /* 3D Viewport Layout */
+        .viewport-container {
+            background: #090d16;
+            border-radius: 12px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255,255,255,0.2);
+            min-height: 280px;
+        }
+        canvas { display: block; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        
+        /* Information Metrics Bar */
+        .metrics-bar {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+            padding: 16px 0;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .metric-item div:first-child {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+        .metric-item div:last-child {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        /* Controls Panel Configuration */
+        .controls-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        select {
+            background: #1e293b;
+            color: var(--text-main);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            width: 100%;
+        }
+        .slider-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        input[type="range"] {
+            flex: 1;
+            accent-color: var(--cell-active);
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .slider-value {
+            font-family: monospace;
+            font-size: 14px;
+            width: 60px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="top-split">
+        <!-- 2D Matrix Presentation Grid -->
+        <div class="matrix-container">
+            <div class="panel-header">2D Periodic Matrix Layout (9 × 8)</div>
+            <div class="matrix-grid" id="matrixGrid"></div>
+        </div>
+
+        <!-- 3D Signal Wireframe Perspective -->
+        <div class="viewport-container">
+            <div class="panel-header" style="position:absolute; top:16px; left:16px; margin:0;">3D Topology Wireframe Torus</div>
+            <canvas id="torusCanvas" width="400" height="280"></canvas>
+        </div>
+    </div>
+
+    <!-- Live Hardware Readout Data -->
+    <div class="metrics-bar">
+        <div class="metric-item">
+            <div>Target Matrix</div>
+            <div style="color: var(--text-main);">9 × 8 Grid</div>
+        </div>
+        <div class="metric-item">
+            <div>Focused Node</div>
+            <div id="focusedNodeDisplay" style="color: var(--text-muted);">None Selected</div>
+        </div>
+        <div class="metric-item">
+            <div>Active Excitation</div>
+            <div id="excitationDisplay" style="color: var(--accent-blue);">0 Nodes</div>
+        </div>
+    </div>
+
+    <!-- Parameter Modulation Interfaces -->
+    <div class="controls-panel">
+        <div class="control-group">
+            <div class="control-label">Toroidal Topology Wave Signal</div>
+            <select id="signalType">
+                <option value="axial">Linear Column Sweep</option>
+                <option value="pulse">Periodic Space Pulse</option>
+                <option value="orbit">Helical Angular Ring</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <div class="control-label">Propagation Wave Velocity</div>
+            <div class="slider-wrapper">
+                <input type="range" id="velocitySlider" min="2" max="50" value="4">
+                <span class="slider-value" id="velocityDisplay">4 km/s</span>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const matrixGrid = document.getElementById('matrixGrid');
+    const canvas = document.getElementById('torusCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    const focusedNodeDisplay = document.getElementById('focusedNodeDisplay');
+    const excitationDisplay = document.getElementById('excitationDisplay');
+    const signalTypeSelect = document.getElementById('signalType');
+    const velocitySlider = document.getElementById('velocitySlider');
+    const velocityDisplay = document.getElementById('velocityDisplay');
+
+    const COLS = 9;
+    const ROWS = 8;
+    
+    let selectedCol = null;
+    let selectedRow = null;
+    let waveTime = 0;
+    
+    // Viewing perspective parameters
+    let rotX = -0.5;
+    let rotY = 0.4;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    // Generate the 2D layout array framework
+    function initMatrix() {
+        matrixGrid.innerHTML = '';
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.dataset.col = c;
+                cell.dataset.row = r;
+                
+                cell.addEventListener('mouseenter', () => {
+                    selectedCol = c;
+                    selectedRow = r;
+                    focusedNodeDisplay.innerText = `Col: ${c}, Row: ${r}`;
+                    focusedNodeDisplay.style.color = '#38bdf8';
+                });
+                
+                cell.addEventListener('mouseleave', () => {
+                    selectedCol = null;
+                    selectedRow = null;
+                    focusedNodeDisplay.innerText = 'None Selected';
+                    focusedNodeDisplay.style.color = 'var(--text-muted)';
+                });
+                
+                matrixGrid.appendChild(cell);
+            }
+        }
+    }
+
+    // Dynamic wave transformation formulas matching your signal rules
+    function evaluateWaveIntensity(c, r, time, speed, mode) {
+        const normalizedSpeed = speed * 0.001;
+        
+        if (mode === 'pulse') {
+            // Radial spatial expansion tracking wrapping infinity boundary limits
+            const centerX = 4 + Math.sin(time * 0.02) * 3;
+            const centerY = 3.5 + Math.cos(time * 0.03) * 2;
+            
+            // Toroidal short-path coordinate metrics
+            let dc = Math.abs(c - centerX);
+            if (dc > COLS / 2) dc = COLS - dc;
+            let dr = Math.abs(r - centerY);
+            if (dr > ROWS / 2) dr = ROWS - dr;
+            
+            const distance = Math.sqrt(dc * dc + dr * dr);
+            const waveFront = (time * normalizedSpeed * 12) % 6;
+            return Math.max(0, 1 - Math.abs(distance - waveFront) * 1.5);
+        } 
+        else if (mode === 'axial') {
+            // Linear directional sweeping phase
+            const columnTarget = (time * normalizedSpeed * 8) % COLS;
+            let distance = Math.abs(c - columnTarget);
+            if (distance > COLS / 2) distance = COLS - distance;
+            return Math.max(0, 1 - distance * 1.2);
+        } 
+        else if (mode === 'orbit') {
+            // Diagonal spiral lattice flow vector
+            const phase = (c / COLS + r / ROWS + time * normalizedSpeed * 2) % 1.0;
+            return Math.max(0, 1 - Math.abs(phase - 0.5) * 6);
+        }
+        return 0;
+    }
+
+    function updateSimulation() {
+        const velocity = parseInt(velocitySlider.value);
+        const mode = signalTypeSelect.value;
+        waveTime += 1;
+
+        let totalExcited = 0;
+        const cells = matrixGrid.children;
+
+        // Render parameters loop for geometry updates
+        let nodeIntensities = [];
+
+        for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+                const cellIndex = r * COLS + c;
+                const cellElement = cells[cellIndex];
+                
+                const intensity = evaluateWaveIntensity(c, r, waveTime, velocity, mode);
+                nodeIntensities.push(intensity);
+
+                // Map excitation highlights onto UI cells
+                if (intensity > 0.3) {
+                    totalExcited++;
+                    const blueAlpha = Math.floor(intensity * 255).toString(16).padStart(2, '0');
+                    cellElement.style.background = `#2563eb${blueAlpha}`;
+                    cellElement.style.borderColor = `rgba(56, 189, 248, ${intensity})`;
+                } else {
+                    cellElement.style.background = 'rgba(30, 41, 59, 0.3)';
+                    cellElement.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                }
+                
+                // Keep cursor item locked to hover focus color style overrides
+                if (c === selectedCol && r === selectedRow) {
+                    cellElement.style.background = '#38bdf8';
+                    cellElement.style.borderColor = '#ffffff';
+                }
+            }
+        }
+
+        excitationDisplay.innerText = `${totalExcited} Nodes`;
+        render3D(nodeIntensities);
+        requestAnimationFrame(updateSimulation);
+    }
+
+    function render3D(intensities) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const R = 75; // Major Ring Space Dimension
+        const r = 30; // Minor Loop Tube Radius
+        let points = [];
+
+        // Project coordinate array elements to 3D matrix space
+        for (let c = 0; c < COLS; c++) {
+            for (let r_idx = 0; r_idx < ROWS; r_idx++) {
+                const theta = (c / COLS) * 2 * Math.PI;
+                const phi = (r_idx / ROWS) * 2 * Math.PI;
+                const intensity = intensities[r_idx * COLS + c];
+
+                // Native Torus Math Formula mappings
+                const x0 = (R + r * Math.cos(phi)) * Math.cos(theta);
+                const y0 = (R + r * Math.cos(phi)) * Math.sin(theta);
+                const z0 = r * Math.sin(phi);
+
+                // Apply Rotational matrices transformations
+                let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                const focal = 350;
+                const scale = focal / (focal + z2);
+                points.push({
+                    x: canvas.width / 2 + x1 * scale,
+                    y: canvas.height / 2 + y2 * scale,
+                    depth: z2,
+                    c: c,
+                    r: r_idx,
+                    intensity: intensity
+                });
+            }
+        }
+
+        // Apply Painter sorting algorithm for clear topology visual hierarchy
+        points.sort((a, b) => b.depth - a.depth);
+
+        // Draw spatial structural web lines
+        ctx.lineWidth = 1;
+        points.forEach(p => {
+            const right = points.find(n => n.c === (p.c + 1) % COLS && n.r === p.r);
+            const bottom = points.find(n => n.c === p.c && n.r === (p.r + 1) % ROWS);
+            
+            ctx.strokeStyle = `rgba(240, 240, 240, ${0.4 + p.intensity * 0.8})`;//`rgba(51, 65, 85, ${0.15 + p.intensity * 0.3})`;
+            
+            if (right) {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(right.x, right.y); ctx.stroke();
+            }
+            if (bottom) {
+                ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(bottom.x, bottom.y); ctx.stroke();
+            }
+        });
+
+        // Draw excitation nodes glowing clusters matching your pattern layout
+        points.forEach(p => {
+            ctx.beginPath();
+            const isHovered = (p.c === selectedCol && p.r === selectedRow);
+            
+            let radius = 2.5 + p.intensity * 4.5;
+            if (isHovered) radius = 8;
+            
+            ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+
+            if (isHovered) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            } else if (p.intensity > 0.3) {
+                ctx.fillStyle = `rgba(56, 189, 248, ${0.4 + p.intensity * 0.6})`;
+                ctx.fill();
+                // Add soft ambient flare radius matching layout visuals
+                ctx.fillStyle = `rgba(37, 99, 235, ${p.intensity * 0.25})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius * 2.2, 0, 2 * Math.PI);
+                ctx.fill();
+            } else {
+                ctx.fillStyle = 'rgba(71, 85, 105, 0.4)';
+                ctx.fill();
+            }
+        });
+    }
+
+    // Capture dragging gestures for rotational control
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    velocitySlider.addEventListener('input', (e) => {
+        velocityDisplay.innerText = `${e.target.value} km/s`;
+    });
+
+    // Execute application bootstrap logic 
+    initMatrix();
+    updateSimulation();
+</script>
+</body>
+</html>

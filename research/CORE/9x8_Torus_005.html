@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geometric Phase Transition Dashboard: Visualizing Dynamic Pi</title>
+    <style>
+        :root {
+            --bg-color: #0b0f19;
+            --panel-bg: #131a26;
+            --panel-border: rgba(255,255,255,0.06);
+            --text-main: #f3f4f6;
+            --text-muted: #6b7280;
+            --accent-blue: #38bdf8;
+            --accent-purple: #a855f7;
+            --accent-orange: #f97316;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 950px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+            border: 1px solid var(--panel-border);
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+        }
+        .header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .header p { margin: 6px 0 0 0; color: var(--text-muted); font-size: 13px; }
+        
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .viewport-box {
+            background: #04060a;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .viewport-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        canvas { display: block; width: 100%; }
+        
+        /* Interactive Formula Display Box */
+        .formula-box {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-family: monospace;
+            font-size: 15px;
+        }
+        .formula-element { text-align: center; }
+        .formula-lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .formula-val { font-size: 18px; font-weight: bold; }
+        
+        .controls-panel {
+            background: rgba(255,255,255,0.01);
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-purple);
+            background: #1f2937;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .state-indicator {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1>$\pi$ State Transition Interface: The Unrolled Circle</h1>
+        <p>Watch a standard circle reshape its Sine wave pattern as geometry transitions into local non-Euclidean space</p>
+    </div>
+
+    <div class="layout-grid">
+        <!-- Left Window: Circle & Sine Wave Unrolling Graph -->
+        <div class="viewport-box">
+            <div class="viewport-title">
+                <span>Circle To Sine Wave Translation</span>
+                <span id="stateIndicator" class="state-indicator" style="background: rgba(56,189,248,0.15); color: var(--accent-blue);">Observed Flat State</span>
+            </div>
+            <canvas id="geometryCanvas" width="480" height="280"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Toroidal Grid Tracking Geometry -->
+        <div class="viewport-box">
+            <div class="viewport-title">Local Curved Toroidal Metrics</div>
+            <canvas id="torusCanvas" width="400" height="280"></canvas>
+        </div>
+    </div>
+
+    <!-- Live Formula Calculation Interface -->
+    <div class="formula-box">
+        <div class="formula-element">
+            <div class="formula-lbl">Circumference ($C$)</div>
+            <div id="fCirc" class="formula-val" style="color: var(--accent-blue);">314.16</div>
+        </div>
+        <div class="formula-element" style="font-size: 20px; color: var(--text-muted);">÷</div>
+        <div class="formula-element">
+            <div class="formula-lbl">Diameter ($D$)</div>
+            <div id="fDiam" class="formula-val">100.00</div>
+        </div>
+        <div class="formula-element" style="font-size: 20px; color: var(--text-muted);">=</div>
+        <div class="formula-element">
+            <div class="formula-lbl">Dynamic Value ($\pi = \frac{C}{D}$)</div>
+            <div id="fPi" class="formula-val" style="color: var(--accent-orange);">3.14159</div>
+        </div>
+    </div>
+
+    <!-- Interactive Navigation Control -->
+    <div class="controls-panel">
+        <div class="control-group">
+            <div class="control-header">
+                <span>Geometric Observation State Slider</span>
+                <span id="sliderDisplay" style="font-family: monospace; color: var(--accent-purple);">0% (Standard Euclidean Baseline)</span>
+            </div>
+            <input type="range" id="stateSlider" min="0" max="100" value="0">
+        </div>
+    </div>
+</div>
+<script>
+    const geoCanvas = document.getElementById('geometryCanvas');
+    const geoCtx = geoCanvas.getContext('2d');
+    const torusCanvas = document.getElementById('torusCanvas');
+    const torusCtx = torusCanvas.getContext('2d');
+
+    const stateSlider = document.getElementById('stateSlider');
+    const sliderDisplay = document.getElementById('sliderDisplay');
+    const stateIndicator = document.getElementById('stateIndicator');
+
+    const fCirc = document.getElementById('fCirc');
+    const fDiam = document.getElementById('fDiam');
+    const fPi = document.getElementById('fPi');
+
+    const COLS = 9;
+    const ROWS = 8;
+    let rotX = -0.4, rotY = 0.5;
+    let wavePhase = 0;
+
+    function renderEngine() {
+        const value = parseInt(stateSlider.value);
+        const factor = value / 100; // 0.0 to 1.0 (Euclidean -> Non-Euclidean Local Space -> Euclidean)
+        
+        // Model a symmetrical state loop: starts normal, deforms at 50% (local core), wraps back
+        const deformation = Math.sin(factor * Math.PI); 
+
+        // 1. Math Values Calculations
+        const baseRadius = 45;
+        const currentDiameter = baseRadius * 2 * (1 + deformation * 0.4);
+        
+        // Elliptical deformation circumference tracking
+        const radiusX = baseRadius * (1 + deformation * 0.4);
+        const radiusY = baseRadius * (1 - deformation * 0.3);
+        const h = Math.pow(radiusX - radiusY, 2) / Math.pow(radiusX + radiusY, 2);
+        const currentCircumference = Math.PI * (radiusX + radiusY) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+        
+        const computedPi = currentCircumference / currentDiameter;
+
+        // Update Formula Panel
+        fCirc.innerText = currentCircumference.toFixed(2);
+        fDiam.innerText = currentDiameter.toFixed(2);
+        fPi.innerText = computedPi.toFixed(5);
+
+        // Update UI Text states based on trajectory mapping position
+        if (value === 0 || value === 100) {
+            sliderDisplay.innerText = `${value}% (Observed Euclidean State)`;
+            stateIndicator.innerText = "Observed Flat State";
+            stateIndicator.style.background = "rgba(56,189,248,0.15)";
+            stateIndicator.style.color = "var(--accent-blue)";
+        } else if (value === 50) {
+            sliderDisplay.innerText = "50% (Max Local Space Distortion)";
+            stateIndicator.innerText = "Local Non-Euclidean State";
+            stateIndicator.style.background = "rgba(249,115,22,0.15)";
+            stateIndicator.style.color = "var(--accent-orange)";
+        } else {
+            sliderDisplay.innerText = `${value}% (Transition Phase Matrix)`;
+            stateIndicator.innerText = "Dynamic Transition State";
+            stateIndicator.style.background = "rgba(168,85,247,0.15)";
+            stateIndicator.style.color = "var(--accent-purple)";
+        }
+
+        // 2. Draw Left Window: Unrolling Circle to Sine Wave
+        geoCtx.clearRect(0, 0, geoCanvas.width, geoCanvas.height);
+        
+        // Draw baseline center split axis
+        geoCtx.strokeStyle = 'rgba(255,255,255,0.05)';
+        geoCtx.lineWidth = 1;
+        geoCtx.beginPath(); geoCtx.moveTo(0, 140); geoCtx.lineTo(geoCanvas.width, 140); geoCtx.stroke();
+
+        const circleCenterX = 110;
+        const circleCenterY = 140;
+
+        // Draw the deformed physical tracking loop shape
+        geoCtx.beginPath();
+        for (let i = 0; i <= 100; i++) {
+            const angle = (i / 100) * 2 * Math.PI;
+            // Deform the perimeter boundary coordinates locally using the modulation index
+            const radialWarp = 1 + Math.sin(angle * 2) * deformation * 0.15;
+            const x = circleCenterX + Math.cos(angle) * radiusX * radialWarp;
+            const y = circleCenterY + Math.sin(angle) * radiusY * radialWarp;
+            if (i === 0) geoCtx.moveTo(x, y); else geoCtx.lineTo(x, y);
+        }
+        geoCtx.strokeStyle = 'var(--accent-blue)';
+        geoCtx.lineWidth = 3;
+        geoCtx.stroke();
+
+        // Draw the Unrolled Linear Function Path (The Sine Wave representation mapping)
+        const waveStartX = 220;
+        const waveWidth = 240;
+        geoCtx.beginPath();
+        for (let x = 0; x <= waveWidth; x++) {
+            const sampleX = x / waveWidth;
+            const angle = sampleX * 2 * Math.PI;
+            
+            // The sine wave amplitude directly reflects the degree of local non-Euclidean deformation
+            const amplitude = (radiusY * 0.6) * deformation * Math.sin(angle * 2 + wavePhase);
+            const y = 140 + amplitude;
+            
+            if (x === 0) geoCtx.moveTo(waveStartX + x, y); else geoCtx.lineTo(waveStartX + x, y);
+        }
+        geoCtx.strokeStyle = deformation > 0.1 ? 'var(--accent-orange)' : 'rgba(56,189,248,0.2)';
+        geoCtx.lineWidth = 2.5;
+        geoCtx.stroke();
+
+        // Draw dynamic connector link ray connecting the unrolled state vectors
+        geoCtx.strokeStyle = 'rgba(168,85,247,0.3)';
+        geoCtx.setLineDash([4, 4]);
+        geoCtx.beginPath();
+        geoCtx.moveTo(circleCenterX + radiusX, circleCenterY);
+        geoCtx.lineTo(waveStartX, 140);
+        geoCtx.stroke();
+        geoCtx.setLineDash([]);
+
+        // 3. Draw Right Window: 3D Surface Lattice Network
+        torusCtx.clearRect(0, 0, torusCanvas.width, torusCanvas.height);
+        const R_MAJOR = 75, r_MINOR = 28;
+        let nodes = [];
+
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const theta = (c / COLS) * 2 * Math.PI;
+                const phi = (r / ROWS) * 2 * Math.PI;
+
+                let x0 = (R_MAJOR + r_MINOR * Math.cos(phi)) * Math.cos(theta);
+                let y0 = (R_MAJOR + r_MINOR * Math.cos(phi)) * Math.sin(theta);
+                let z0 = r_MINOR * Math.sin(phi);
+
+                // Warping coordinate lattices locally matching left circle conditions
+                const localWarpFactor = 1 + Math.sin(theta * 2) * deformation * 0.3;
+                x0 *= localWarpFactor;
+                y0 *= localWarpFactor;
+
+                let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                const scale = 300 / (300 + z2);
+                nodes.push({ x: torusCanvas.width / 2 + x1 * scale, y: torusCanvas.height / 2 + y2 * scale, depth: z2, c: c, r: r });
+            }
+        }
+
+        nodes.sort((n1, n2) => n2.depth - n1.depth);
+
+        nodes.forEach(n => {
+            const right = nodes.find(o => o.c === (n.c + 1) % COLS && o.r === n.r);
+            const bottom = nodes.find(o => o.c === n.c && o.r === (n.r + 1) % ROWS);
+            torusCtx.strokeStyle = `rgba(71, 85, 105, ${0.12 + deformation * 0.15})`;
+            if (right) { torusCtx.beginPath(); torusCtx.moveTo(n.x, n.y); torusCtx.lineTo(right.x, right.y); torusCtx.stroke(); }
+            if (bottom) { torusCtx.beginPath(); torusCtx.moveTo(n.x, n.y); torusCtx.lineTo(bottom.x, bottom.y); torusCtx.stroke(); }
+        });
+
+        nodes.forEach(n => {
+            torusCtx.beginPath();
+            const isActiveStrip = (n.r === 2);
+            torusCtx.arc(n.x, n.y, isActiveStrip ? 4 : 1.8, 0, 2 * Math.PI);
+            torusCtx.fillStyle = isActiveStrip ? (deformation > 0.1 ? 'var(--accent-orange)' : 'var(--accent-blue)') : 'rgba(255,255,255,0.1)';
+            torusCtx.fill();
+        });
+    }
+
+    // Animate phase loop text overlays smoothly
+    function cyclePhase() {
+        if (parseInt(stateSlider.value) > 0) {
+            wavePhase += 0.05;
+            renderEngine();
+        }
+        requestAnimationFrame(cyclePhase);
+    }
+
+    stateSlider.addEventListener('input', renderEngine);
+    renderEngine();
+    cyclePhase();
+</script>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Navier-Stokes Vortex Core Simulator [v6.0]</title>
+    <style>
+        :root {
+            --bg-main: #010204;
+            --panel-bg: #070c14;
+            --panel-border: #fbbf24;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(251, 191, 36, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .badge {
+            background: rgba(251, 191, 36, 0.1); border: 2px solid var(--amber-glow); color: #fde68a;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        .workspace-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #flowCanvas { cursor: grab; }
+        #flowCanvas:active { cursor: grabbing; }
+
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(251, 191, 36, 0.2); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(251, 191, 36, 0.3);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 32px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 8px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--amber-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>Navier-Stokes Vortex Core Simulator [v6.0]</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Human Intuition Anchor: Visualizing Kinetic Vorticity & Rotational Shear Across Relational Shells</p>
+        </div>
+        <div class="badge">VORTEX CORE EXCITATION</div>
+    </div>
+
+    <!-- Live Metrics Readout -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Angular Angular Velocity (\(\omega\))</div>
+            <div class="tel-val" id="lblOmega" style="color: var(--purple-glow);">0.00 rad/s</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--amber-glow);">
+            <div class="tel-lbl">Core Shearing Gradient (\(\nabla \times j\))</div>
+            <div class="tel-val" id="lblVorticity" style="color: var(--amber-glow);">0.0000</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--magenta-glow);">
+            <div class="tel-lbl">Centrifugal Displaced Radius</div>
+            <div class="tel-val" id="lblBreathing" style="color: var(--magenta-glow);">0.0000 a₀</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Unrolled Kinetic Phase Field -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Unrolled 4π Core Shear Wave Amplitude</div>
+            <canvas id="phaseCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Geodesic Flow Viewport -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 3: Interactive 3D Fast-Spin Vortex Manifold (Left Click + Drag)</div>
+            <canvas id="flowCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <!-- Command Console Sliders -->
+    <div class="command-station">
+        <div class="slider-group">
+            <div class="meta-text"><span>Vortex Core Spin Velocity (\(\omega_{\text{spin}}\))</span><span id="spinDisplay" style="font-family: monospace; color: var(--amber-glow); font-weight: bold; font-size: 14px;">4.0x Speed</span></div>
+            <input type="range" id="spinSlider" min="0" max="10" value="4">
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Observer Cross-Section Slice Offset</span><span id="sliceDisplay" style="font-family: monospace; color: var(--cyan-glow); font-weight: bold; font-size: 14px;">-11.00</span></div>
+            <input type="range" id="sliceSlider" min="-50" max="50" value="-11">
+        </div>
+    </div>
+</div>
+<script>
+    const phaseCanvas = document.getElementById('phaseCanvas');
+    const phaseCtx = phaseCanvas.getContext('2d');
+    const flowCanvas = document.getElementById('flowCanvas');
+    const flowCtx = flowCanvas.getContext('2d');
+
+    const spinSlider = document.getElementById('spinSlider');
+    const spinDisplay = document.getElementById('spinDisplay');
+    const sliceSlider = document.getElementById('sliceSlider');
+    const sliceDisplay = document.getElementById('sliceDisplay');
+
+    const lblOmega = document.getElementById('lblOmega');
+    const lblVorticity = document.getElementById('lblVorticity');
+    const lblBreathing = document.getElementById('lblBreathing');
+
+    let automaticClock = 0;
+    let angularRotationOffset = 0;
+    
+    // Interactive mouse rotation states
+    let rotX = -0.55;
+    let rotY = 0.45;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+
+    function executeVortexCalculus() {
+        const spinVelocity = parseInt(spinSlider.value);
+        const sliceVal = parseInt(sliceSlider.value);
+        
+        spinDisplay.innerText = `${spinVelocity.toFixed(1)}x Speed`;
+        sliceDisplay.innerText = sliceVal.toFixed(2);
+
+        const clockRad = (automaticClock * Math.PI) / 180;
+
+        // 1. First Principles Vortex Calculations
+        const liveOmega = spinVelocity * 1.75;
+        // As spin velocity increases, the shearing gradient across concentric shells sharpens
+        const coreVorticity = spinVelocity * 3.42 * (1.0 + Math.sin(clockRad));
+        const centrifugalBreathing = 0.667 + (spinVelocity * 0.015) * Math.cos(clockRad * 2);
+
+        lblOmega.innerText = `${liveOmega.toFixed(2)} rad/s`;
+        lblVorticity.innerText = coreVorticity.toFixed(4);
+        lblBreathing.innerText = `${centrifugalBreathing.toFixed(4)} a₀`;
+
+        // Update angular rotation track accumulator using the spin variable
+        angularRotationOffset += spinVelocity * 0.03;
+
+        // ==========================================
+        // WINDOW 1: UNROLLED SHEAR WAVE GRAPH
+        // ==========================================
+        phaseCtx.fillStyle = '#000000';
+        phaseCtx.fillRect(0, 0, phaseCanvas.width, phaseCanvas.height);
+
+        phaseCtx.strokeStyle = '#111827';
+        phaseCtx.lineWidth = 1.5;
+        for(let i = 0; i < phaseCanvas.width; i += 40) {
+            phaseCtx.beginPath(); phaseCtx.moveTo(i, 0); phaseCtx.lineTo(i, phaseCanvas.height); phaseCtx.stroke();
+        }
+
+        phaseCtx.lineWidth = 4;
+        phaseCtx.strokeStyle = '#a855f7';
+        phaseCtx.beginPath();
+        for(let x = 0; x < phaseCanvas.width; x++) {
+            const sampleAngle = (x / phaseCanvas.width) * 4 * Math.PI; // Full 4π double-cover tracking
+            // Fast spin creates complex spiral harmonics along the unrolled phase view
+            const spinHarmonic = spinVelocity * 8 * Math.sin(sampleAngle * 4 - angularRotationOffset);
+            const y = (phaseCanvas.height / 2) + Math.sin(sampleAngle + clockRad) * 25 + spinHarmonic;
+            if(x === 0) phaseCtx.moveTo(x, y); else phaseCtx.lineTo(x, y);
+        }
+        phaseCtx.stroke();
+
+        // ==========================================
+        // WINDOW 3: 3D INTERACTIVE FAST-SPIN VORTEX
+        // ==========================================
+        flowCtx.fillStyle = '#000000';
+        flowCtx.fillRect(0, 0, flowCanvas.width, flowCanvas.height);
+
+        let arrayMesh = [];
+        const shells = 5;
+        const rings = 10;
+        const nodesPerRing = 14;
+
+        for (let s = 1; s <= shells; s++) {
+            const shellRadius = s * 24;
+            
+            for(let r = 0; r < rings; r++) {
+                const lon = (r / rings) * Math.PI;
+                for(let n = 0; n < nodesPerRing; n++) {
+                    const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                    // CORE VORTEX PRINCIPLE: Inner shells spin exponentially faster than outer shells
+                    const layerShearVelocity = angularRotationOffset * (8 / (s + 1));
+                    const dynamicLat = lat + layerShearVelocity;
+
+                    // Centrifugal radial pushing factor
+                    const radialExpansion = 1.0 + (spinVelocity * 0.04) * (1.0 / s);
+
+                    const x0 = (shellRadius * radialExpansion) * Math.sin(lon) * Math.cos(dynamicLat);
+                    const y0 = (shellRadius * radialExpansion) * Math.sin(lon) * Math.sin(dynamicLat);
+                    const z0 = (shellRadius * radialExpansion) * Math.cos(lon);
+
+                    if (y0 <= sliceVal * 1.6) {
+                        let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                        let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                        let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                        let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                        const scaling = 380 / (380 + z2);
+                        arrayMesh.push({
+                            x: flowCanvas.width / 2 + x1 * scaling,
+                            y: flowCanvas.height / 2 + y2 * scaling,
+                            depth: z2,
+                            layer: s,
+                            ringIdx: r,
+                            nodeIdx: n,
+                            maxNodes: nodesPerRing,
+                            speedFactor: (10 / s) * spinVelocity
+                        });
+                    }
+                }
+            }
+        }
+
+        arrayMesh.sort((a, b) => b.depth - a.depth);
+
+        // Render high contrast flow pipelines
+        arrayMesh.forEach(p => {
+            const nextNode = arrayMesh.find(o => o.layer === p.layer && o.ringIdx === p.ringIdx && o.nodeIdx === (p.nodeIdx + 1) % p.maxNodes);
+            if (nextNode) {
+                if (spinVelocity > 0 && p.layer <= 2) {
+                    // Fast-spinning inner core vortex links ignite in solid Neon Amber/Orange
+                    flowCtx.strokeStyle = '#fbbf24';
+                    flowCtx.lineWidth = 2.5;
+                } else if (p.layer === 1 && sliceVal === -11) {
+                    flowCtx.strokeStyle = '#a855f7'; // Square Core line registry anchor
+                    flowCtx.lineWidth = 2.0;
+                } else {
+                    flowCtx.strokeStyle = '#22d3ee'; // Outer valence buffer lines stay Cyan
+                    flowCtx.lineWidth = 1.25;
+                }
+                flowCtx.beginPath(); flowCtx.moveTo(p.x, p.y); flowCtx.lineTo(nextNode.x, nextNode.y); flowCtx.stroke();
+            }
+        });
+
+        // Render point nodes
+        arrayMesh.forEach(p => {
+            flowCtx.beginPath();
+            flowCtx.arc(p.x, p.y, p.layer <= 2 ? 3.0 : 1.5, 0, 2 * Math.PI);
+            flowCtx.fillStyle = (spinVelocity > 0 && p.layer <= 2) ? '#ffffff' : '#22d3ee';
+            flowCtx.fill();
+        });
+    }
+
+    // ==========================================
+    // INTERACTIVE MOUSE MOVEMENT HANDLERS
+    // ==========================================
+    flowCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    flowCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        executeVortexCalculus();
+    });
+
+    spinSlider.addEventListener('input', executeVortexCalculus);
+    sliceSlider.addEventListener('input', executeVortexCalculus);
+
+    function stepCalculusTimeline() {
+        automaticClock += 0.5;
+        executeVortexCalculus();
+        requestAnimationFrame(stepCalculusTimeline);
+    }
+    stepCalculusTimeline();
+</script>

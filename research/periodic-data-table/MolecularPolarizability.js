@@ -145,7 +145,14 @@
     var BOHR_TO_ANGSTROM = 0.529177;
     var MIN_EXCITATION_EV = 0.1; // numerical-safety floor, not a physical constant - guards the denominator against a near-zero (near-degenerate) occ/unocc gap blowing the result up artificially, the same failure mode openShellHOMO already flags for the exactly-degenerate case.
 
-    function analyzePiElectronic(molecule, options) {
+    // Shared by analyzePiElectronic (alpha) and analyzeOscillatorStrength
+    // (f) - both are built on the SAME set of occ->unocc Huckel
+    // transitions and the SAME ZDO transition-dipole matrix element; this
+    // computes that shared list once (with all the existing validity
+    // checks) so the two features can't silently drift apart or duplicate
+    // the physics. Returns either {applicable:false, reason, version} or
+    // {applicable:true, transitions: [{gapEv, muVecBohr:[x,y,z]}], minGapEv}.
+    function _computeTransitions(molecule, options) {
         options = options || {};
         if (molecule.error) return molecule;
         var structure = options.structureResult || MolecularStructure.analyze(molecule, options);
@@ -179,19 +186,20 @@
         });
 
         var minGapEv = Infinity;
-        var tensorAu = [0, 0, 0]; // xx, yy, zz - atomic units (Bohr^3)
+        var transitions = [];
         for (var i = 0; i < occupiedCount; i++) {
             for (var j = occupiedCount; j < n; j++) {
                 var gapEv = eigenvaluesEv[j] - eigenvaluesEv[i];
                 if (gapEv < minGapEv) minGapEv = gapEv;
-                var gapHartree = gapEv / HARTREE_TO_EV;
+                var muVecBohr = [0, 0, 0];
                 for (var axis = 0; axis < 3; axis++) {
                     var mu = 0;
                     for (var atomIdx = 0; atomIdx < positionsBohr.length; atomIdx++) {
                         mu += coefficients[i][atomIdx] * coefficients[j][atomIdx] * positionsBohr[atomIdx][axis];
                     }
-                    tensorAu[axis] += 2 * (mu * mu) / gapHartree;
+                    muVecBohr[axis] = mu;
                 }
+                transitions.push({ occMoIndex: i, unoccMoIndex: j, gapEv: gapEv, muVecBohr: muVecBohr });
             }
         }
 
@@ -199,11 +207,27 @@
             return { applicable: false, reason: 'Near-degenerate frontier pi orbitals (smallest occupied-to-unoccupied gap ' + minGapEv.toFixed(3) + ' eV) make the static sum-over-states denominator unreliable - not computed rather than reporting an artificially inflated number.', version: '0.1' };
         }
 
+        return { applicable: true, transitions: transitions, minGapEv: minGapEv, piElectrons: piElectrons };
+    }
+
+    function analyzePiElectronic(molecule, options) {
+        var t = _computeTransitions(molecule, options);
+        if (!t.applicable) return t;
+
+        var tensorAu = [0, 0, 0]; // xx, yy, zz - atomic units (Bohr^3)
+        t.transitions.forEach(function(tr) {
+            var gapHartree = tr.gapEv / HARTREE_TO_EV;
+            for (var axis = 0; axis < 3; axis++) {
+                tensorAu[axis] += 2 * (tr.muVecBohr[axis] * tr.muVecBohr[axis]) / gapHartree;
+            }
+        });
+
         var BOHR3_TO_ANGSTROM3 = BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM * BOHR_TO_ANGSTROM;
         var xxA3 = tensorAu[0] * BOHR3_TO_ANGSTROM3;
         var yyA3 = tensorAu[1] * BOHR3_TO_ANGSTROM3;
         var zzA3 = tensorAu[2] * BOHR3_TO_ANGSTROM3;
         var isotropic = (xxA3 + yyA3 + zzA3) / 3;
+        var minGapEv = t.minGapEv;
 
         return {
             applicable: true,
@@ -223,9 +247,42 @@
                 yy: Math.round(yyA3 * 1000) / 1000,
                 zz: Math.round(zzA3 * 1000) / 1000
             },
-            piElectronsIncluded: piElectrons,
+            piElectronsIncluded: t.piElectrons,
             smallestExcitationEv: Math.round(minGapEv * 1000) / 1000,
-            note: 'This is the pi-ELECTRONIC polarizability only (response of the conjugated pi system alone) - it does NOT include sigma-bond framework polarizability (this codebase has no sigma MO theory), so it is a different physical quantity than the whole-molecule Miller additivity estimate above, not directly summable with it. The ZDO position operator used here is atom-CENTERED (<chi_mu|r|chi_nu> ~= r_mu), so for a planar ring the "zz" (out-of-plane) component comes out exactly 0 by construction - a real p_z orbital\'s own spatial extent perpendicular to the ring plane is a separate physical effect this atom-position-only model cannot see, not a finding that out-of-plane polarizability is actually zero. Coordinates come from MolecularGeometry.js\'s idealized VSEPR geometry, including its own documented ring-closure placement limitations (see geometry.warnings) - a real ring conformer would shift atom positions and therefore this number.',
+            note: 'This is the pi-ELECTRONIC polarizability only (response of the conjugated pi system alone) - it does NOT include sigma-bond framework polarizability (this codebase has no sigma MO theory), so it is a different physical quantity than the whole-molecule Miller additivity estimate above, not directly summable with it. The ZDO position operator used here is atom-CENTERED (<chi_mu|r|chi_nu> ~= r_mu), so for a planar ring the "zz" (out-of-plane) component comes out exactly 0 by construction - a real p_z orbital\'s own spatial extent perpendicular to the ring plane is a separate physical effect this atom-position-only model cannot see, not a finding that out-of-plane polarizability is actually zero. Coordinates are computed rather than experimental, including the ring-closure placement limitations reported in geometry.warnings - a real ring conformer would shift atom positions and therefore this number.',
+            version: '0.1'
+        };
+    }
+
+    // Transition energies/wavelengths only - deliberately NOT oscillator
+    // strength. An earlier version of this function computed f =
+    // (2/3)*dE_hartree*|mu_ij|^2 from the same ZDO transition dipole
+    // analyzePiElectronic uses, but checked against real spectroscopy it
+    // was wrong by ~100x on benzene's textbook symmetry-forbidden 255nm
+    // band (simple Huckel + ZDO has no mechanism to enforce D6h selection
+    // rules). The energy/wavelength for every occ->unocc transition is
+    // real and already cross-validated (benzene's 255.1nm HOMO-LUMO gap
+    // matches this codebase's own established value elsewhere) - that
+    // part ships. Oscillator strength does not, and stays unshipped on
+    // the roadmap until the symmetry gap is addressed.
+    function analyzeTransitionEnergies(molecule, options) {
+        var t = _computeTransitions(molecule, options);
+        if (!t.applicable) return t;
+
+        var transitions = t.transitions.map(function(tr) {
+            return {
+                occMoIndex: tr.occMoIndex,
+                unoccMoIndex: tr.unoccMoIndex,
+                transitionEv: Math.round(tr.gapEv * 1000) / 1000,
+                wavelengthNm: Math.round((1239.84 / tr.gapEv) * 10) / 10
+            };
+        }).sort(function(a, b) { return a.transitionEv - b.transitionEv; });
+
+        return {
+            applicable: true,
+            method: 'Transition energy/wavelength for every occ->unocc Huckel pi-system transition (Aromaticity.js spectroscopic-beta eigenbasis) - the same sum-over-states transitions analyzePiElectronic() uses for pi-electronic polarizability. Oscillator strength intentionally NOT included here - see header comment.',
+            transitions: transitions,
+            homoLumo: transitions[0],
             version: '0.1'
         };
     }
@@ -233,6 +290,7 @@
     return {
         analyze: analyze,
         analyzePiElectronic: analyzePiElectronic,
+        analyzeTransitionEnergies: analyzeTransitionEnergies,
         ATOMIC_CONTRIBUTION: ATOMIC_CONTRIBUTION,
         version: '0.1'
     };

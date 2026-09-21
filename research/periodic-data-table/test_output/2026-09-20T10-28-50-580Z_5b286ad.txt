@@ -1,0 +1,18 @@
+research/periodic-data-table test suite
+Run at: 2026-09-20T10:28:50.580Z
+Commit: 5b286ad
+
+Suite	Result
+MolecularSymmetry.test.js	ALL 6 CHECKS PASSED
+MolecularThermodynamics.test.js	ALL 6 CHECKS PASSED
+MolecularVibrationalModes.test.js	ALL 6 CHECKS PASSED
+MolecularDescriptors.test.js	ALL 7 CHECKS PASSED
+Aromaticity.test.js	ALL 7 CHECKS PASSED
+PDT.test.js	ALL 8 CHECKS PASSED
+MolecularReactivity.test.js	ALL 20 CHECKS PASSED
+MolecularPolarizability.test.js	ALL 6 CHECKS PASSED
+RulesEngine.test.js	ALL 7 CHECKS PASSED
+Stoichiometry.test.js	ALL 27 CHECKS PASSED
+ChemistryProblemGenerator.test.js	ALL 46 CHECKS PASSED
+TestRunner.test.js	ALL 19 CHECKS PASSED
+Total: 165/165 checks passing, 12/12 suites green.

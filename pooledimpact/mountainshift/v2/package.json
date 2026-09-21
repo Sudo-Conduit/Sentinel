@@ -1,0 +1,12 @@
+{
+  "name": "mountainshift-os",
+  "version": "1.0.0",
+  "description": "MountainShift OS -- build tooling (Terminal.pdf packaging via PDFVaultX). Not a publishable package; the OS source itself has no runtime dependencies.",
+  "private": true,
+  "scripts": {
+    "test": "node test/run-all.js"
+  },
+  "devDependencies": {
+    "pdf-lib": "^1.17.1"
+  }
+}
