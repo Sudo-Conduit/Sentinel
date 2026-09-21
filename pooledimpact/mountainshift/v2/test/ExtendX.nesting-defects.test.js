@@ -124,13 +124,23 @@ function run() {
     // hasMixin() goes false, so the class agrees the mixin is gone -- but a
     // freshly constructed instance still dispatches into it. The resolved
     // pipeline is memoized on cacheToken plus a registry generation, and
-    // removeMixin() appears not to move either, so the stale chain is served.
+    // removeMixin() (byte-identical across all three copies of ExtendX in
+    // this repo) moves neither, so the stale chain is served.
     //
     // The inconsistency is the problem: "removed" and "still running" cannot
     // both be true. Runtime removal is one of the four operations a provider
     // tier needs (drop a flaky WebGPU adapter and fall through to WASM), and
     // a removal that reports success without taking effect is worse than one
     // that refuses.
+    //
+    // ORDER-DEPENDENT, which is the worse half. Any later extend() re-runs
+    // reindex() (global, alphabetical) and shifts bit indices, which moves
+    // cacheToken and invalidates the memo -- so the removal retroactively
+    // "works". A removal therefore takes effect in a busy process and not in
+    // a quiet one. Measuring this across the three ExtendX copies initially
+    // suggested two of them had it fixed; they do not. That reading was an
+    // artifact of the checks that ran before it. D3a below pins the
+    // determinism directly so the same mistake cannot be made twice.
     check('D3: removeMixin() stops the mixin from dispatching', () => {
         class Core { pick() { return 'fallback'; } }
         const only = { mixinId: 'rm.only', pick() { return 'mixin'; } };
@@ -146,6 +156,35 @@ function run() {
         if (after !== 'fallback') {
             throw new Error(`removed mixin still dispatching: got "${after}"`);
         }
+    });
+
+    // Removal must not depend on whether anything else happened afterwards.
+    // Same removal, twice: once alone, once followed by an unrelated extend()
+    // that re-runs reindex(). If the two disagree, the memo -- not the
+    // removal -- is deciding the outcome.
+    check('D3a: removal takes effect regardless of later registry activity', () => {
+        const outcome = (perturb) => {
+            class Core { pick() { return 'fallback'; } }
+            const tag = perturb ? 'b' : 'a';
+            const only = { mixinId: 'order.' + tag, pick() { return 'mixin'; } };
+            const Eng = ExtendX.extend(Core, only);
+            if (new Eng().pick() !== 'mixin') throw new Error('baseline wrong');
+
+            ExtendX.removeMixin(Eng, only);
+            if (perturb) {
+                // Anything at all that composes -- this class is never used.
+                ExtendX.extend(class {}, { mixinId: 'order.noise.' + Date.now() });
+            }
+            return new Eng().pick();
+        };
+
+        const quiet = outcome(false);
+        const busy = outcome(true);
+        if (quiet !== busy) {
+            throw new Error(`removal is order-dependent: alone -> "${quiet}", `
+                + `after an unrelated extend() -> "${busy}"`);
+        }
+        if (quiet !== 'fallback') throw new Error('removal never takes effect: ' + quiet);
     });
 
     // ── What is verified WORKING, so a fix to the above does not cost it ──
