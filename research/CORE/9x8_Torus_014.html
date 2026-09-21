@@ -67,7 +67,7 @@
             <h1 style="background: linear-gradient(to right, #fff, var(--purple-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Base 0 Sentinel Verification Suite</h1>
             <p style="margin:4px 0 0 0; color: var(--text-secondary); font-size: 13px;">Proof of Geometrical Serialization: Compressing Non-Terminal Infinity into Observable Terminal States</p>
         </div>
-        <div class="status-badge" id="lblGlobalStatus">FIELD RESOLUTION COMPLETE</div>
+        <div class="status-badge" id="lblGlobalStatus">OBSERVATION MATRIX TERMINAL</div>
     </div>
 
     <div class="workspace-grid">
@@ -135,7 +135,7 @@
             lblTimeStatus.style.color = "#10b981";
             lblPiState.innerText = "3.14159 (Terminal)";
             lblPiState.style.color = "var(--amber-glow)";
-            lblGlobalStatus.innerText = "OBSERVATION MATRIX TERMINAL";
+            lblGlobalStatus.innerText = "FIELD RESOLUTION COMPLETE";
             lblGlobalStatus.style.background = "rgba(34,211,238,0.1)";
             lblGlobalStatus.style.borderColor = "var(--cyan-glow)";
             lblGlobalStatus.style.color = "var(--cyan-glow)";
@@ -148,7 +148,7 @@
             lblTimeStatus.style.color = "var(--text-primary)";
             lblPiState.innerText = "Infinite Wave";
             lblPiState.style.color = "var(--purple-glow)";
-            lblGlobalStatus.innerText = "FIELD RESOLUTION COMPLETE";
+            lblGlobalStatus.innerText = "OBSERVATION MATRIX TERMINAL";
             lblGlobalStatus.style.background = "rgba(168,85,247,0.1)";
             lblGlobalStatus.style.borderColor = "var(--purple-glow)";
             lblGlobalStatus.style.color = "#d8b4fe";
@@ -203,30 +203,37 @@
             // Draw a pristine crystallized, discrete 9x8 coordinate registry grid mapping out from center
             const cols = 9; const rows = 8;
             const spacingX = 28; const spacingY = 18;
+            // Zero-indexed (0..cols-1, 0..rows-1), matching the rest of the series'
+            // (col,row) convention (e.g. 9x8_Torus_001.html), then offset so the
+            // whole grid is centered on the canvas. This gives exactly cols*rows
+            // nodes (72, not 90) and guarantees (0,0) -- the sentinel origin -- is
+            // an actual grid point rather than an unreachable half-integer gap.
+            const gx = cx - (cols - 1) / 2 * spacingX;
+            const gy = cy - (rows - 1) / 2 * spacingY;
 
             latCtx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
             latCtx.lineWidth = 1;
 
             // Render structural connecting wire channels
-            for(let r = -rows/2; r <= rows/2; r++) {
+            for(let r = 0; r < rows; r++) {
                 latCtx.beginPath();
-                latCtx.moveTo(cx - (cols/2)*spacingX, cy + r*spacingY);
-                latCtx.lineTo(cx + (cols/2)*spacingX, cy + r*spacingY);
+                latCtx.moveTo(gx, gy + r*spacingY);
+                latCtx.lineTo(gx + (cols-1)*spacingX, gy + r*spacingY);
                 latCtx.stroke();
             }
-            for(let c = -cols/2; c <= cols/2; c++) {
+            for(let c = 0; c < cols; c++) {
                 latCtx.beginPath();
-                latCtx.moveTo(cx + c*spacingX, cy - (rows/2)*spacingY);
-                latCtx.lineTo(cx + c*spacingX, cy + (rows/2)*spacingY);
+                latCtx.moveTo(gx + c*spacingX, gy);
+                latCtx.lineTo(gx + c*spacingX, gy + (rows-1)*spacingY);
                 latCtx.stroke();
             }
 
             // Draw crisp terminal node points
-            for(let r = -rows/2; r <= rows/2; r++) {
-                for(let c = -cols/2; c <= cols/2; c++) {
+            for(let r = 0; r < rows; r++) {
+                for(let c = 0; c < cols; c++) {
                     latCtx.beginPath();
                     const isOriginSentinel = (r === 0 && c === 0);
-                    latCtx.arc(cx + c*spacingX, cy + r*spacingY, isOriginSentinel ? 4.5 : 1.5, 0, 2*Math.PI);
+                    latCtx.arc(gx + c*spacingX, gy + r*spacingY, isOriginSentinel ? 4.5 : 1.5, 0, 2*Math.PI);
                     latCtx.fillStyle = isOriginSentinel ? 'var(--magenta-glow)' : 'var(--cyan-glow)';
                     latCtx.fill();
                 }
@@ -235,7 +242,7 @@
             // Text tag for origin identifier
             latCtx.fillStyle = '#fff';
             latCtx.font = 'bold 9px monospace';
-            latCtx.fillText("[SENTINEL KEY PIN 1,1]", cx + 8, cy - 8);
+            latCtx.fillText("[SENTINEL KEY PIN 1,1]", gx + 8, gy - 8);
 
         } else {
             // Un-sentineled state: space is blurry, unmapped, and drifting with no center coordinate anchor
