@@ -29,13 +29,13 @@
 #define DIAG_SCHED_H
 #include <stddef.h>
 
-#define DIAG_TR 9
-#define DIAG_TC 8
+#define DIAG_TR 8   /* tile-ROWS: 8 */
+#define DIAG_TC 9   /* tile-COLS: 9 -- ODD, so even M-remainders stay coprime */
 #define DIAG_NTILE (DIAG_TR * DIAG_TC)          /* 72 */
 
 /* MC/NC for an engine whose micro-tile is TROWS x TCOLS */
-#define DIAG_MC(TROWS) ((size_t)DIAG_TR * (TROWS))
-#define DIAG_NC(TCOLS) ((size_t)DIAG_TC * (TCOLS))
+#define DIAG_MC(TROWS) ((size_t)DIAG_TR * (TROWS))   /* 8 * tile_rows */
+#define DIAG_NC(TCOLS) ((size_t)DIAG_TC * (TCOLS))   /* 9 * tile_cols */
 
 /* Position of step t. Full 9x8 block -> CRT diagonal. Ragged edge block ->
  * row-major over the tiles that exist. Both visit every tile exactly once;
