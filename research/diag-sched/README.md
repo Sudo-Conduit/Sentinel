@@ -1,4 +1,40 @@
-# diag-sched — coprime diagonal micro-tile schedule
+# diag-sched — the diagonal is a SELECTION, not a traversal
+
+> **Read this first.** Everything below was written treating the diagonal as an
+> *order to visit tiles*. That framing is wrong and was measured wrong four
+> separate ways (simulated L2 traffic, simulated FFN shapes, wall-clock GOPS on
+> the reference shapes, and whole-output vs blocked at M=720). Reordering work
+> you still perform does not reduce work. A Hamiltonian path over 72 tiles costs
+> exactly what row-major over 72 tiles costs.
+>
+> **What a diagonal actually is:** the set of cells you need out of a grid you
+> would otherwise compute in full.
+>
+> ```
+> diag(A·B)_i = sum_k A[i,k]·B[k,i]      n·k flops, not n·k·n
+> ```
+>
+> You never form the product. Measured: einsum 'ik,ki->i' is 6.3x faster than
+> np.diag(A@B) at n=512, and n-fold fewer flops.
+>
+> **Where inference needs this:** any place a full grid is computed to use one
+> cell per row — MoE expert routing, per-token LoRA adapters, speculative-decode
+> verification, mixed quantization across a batch. Reshape to (row x variant),
+> take the routed diagonal, save the variant count. Measured on routed MoE
+> (B=720, d=2048, E=8): **8x fewer flops**, exactly E.
+>
+> **Two corrections to the geometry while we are here.** Any p x q grid splits
+> into exactly `gcd(p,q)` diagonals of length `lcm(p,q)`, always, with no gaps —
+> coprimality is not a requirement, it is just the gcd=1 case. And 720 is a
+> **length**, not a batch size: lcm(90,80) = 720, and a 720-token x 8-expert
+> routing grid is likewise 8 diagonals of length 720.
+>
+> The scheduling material below still holds as *scheduling* — uniform disjoint
+> work units, any unit count, one integer as position. It simply never was a
+> speedup, and should not be read as one.
+
+---
+
 
 Engine-agnostic. Header-only. `diag_sched.h` + `verify_sched.c`.
 
