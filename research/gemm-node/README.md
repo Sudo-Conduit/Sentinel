@@ -28,9 +28,25 @@ a cache line and fetches twice.
 | 2048×1024×1024 | 265.0 | **570.6** | **2.15x** |
 | 4096×2048×2048 | 171.0 | 290.1 | 1.70x |
 
-The fix is to over-allocate by 64, read the true address back through FFI, and
-hand the kernel an offset view (`alignedSab` in `main.js`; workers rebuild the
-same view from `offset` passed in `workerData`).
+The fix is to over-allocate by one cache line, read the true address back through
+FFI, and hand the kernel an offset view (`alignedSab` in `main.js`; workers rebuild
+the same view from `offset` passed in `workerData`).
+
+**Check your target before applying this.** Whether it bites depends on three
+platform facts, not on Node: the allocator's offset, the cache line size, and the
+load width. Run `node probe-align.js`, which reports all three and whether they
+collide:
+
+| offset | load | line | straddles? |
+|---|---|---|---|
+| 16 | 16 B (NEON / SDOT / BDOT) | 64 or 128 | no |
+| 16 | 64 B (AVX-512, SME at SVL=512) | **64** | **yes** |
+| 16 | 64 B (SME at SVL=512) | **128** | no |
+
+So the 2x below is specifically an x86 result: it needs a 64-byte load *and* a
+64-byte line. Apple silicon has 128-byte lines, so a 64-byte SME load at offset 16
+sits inside one line and pays nothing — and 16-byte NEON loads are immune on both
+platforms. Measure, do not port the constant.
 
 This never presents as a bug. It presents as "Node is slow, rewrite in C" —
 and that conclusion is wrong by a factor of two. Aligned Node **beats** the
