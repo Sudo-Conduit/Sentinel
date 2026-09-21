@@ -13,6 +13,7 @@
  *           the CPU has it and the kernel grants XTILEDATA.
  *
  * usage: engines caps
+ *        engines amxinfo                              -> why AMX is/isn't usable
  *        engines verify <TOT> <K> <N> <RPB>
  *        engines <engine> <TOT> <K> <N> <RPB> <reps>   -> prints GOPS
  */
@@ -127,15 +128,53 @@ static double now(void) {
 #define ARCH_REQ_XCOMP_PERM 0x1023
 #define XFEATURE_XTILEDATA  18
 
+#define ARCH_GET_XCOMP_PERM 0x1022
+
+static void cpuid_(unsigned lf, unsigned sub, unsigned *r) {
+  __asm__ __volatile__("cpuid" : "=a"(r[0]), "=b"(r[1]), "=c"(r[2]), "=d"(r[3])
+                       : "a"(lf), "c"(sub));
+}
+
 static int amx_ok(void) {
-  unsigned a = 7, b = 0, c = 0, d = 0;
-  __asm__ __volatile__("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d)
-                       : "a"(7), "c"(0));
-  if (!((d >> 25) & 1)) return 0;                 /* AMX-INT8 */
-  if (!((d >> 24) & 1)) return 0;                 /* AMX-TILE */
+  unsigned r[4];
+  cpuid_(7, 0, r);
+  if (!((r[3] >> 24) & 1)) return 0;              /* AMX-TILE */
+  if (!((r[3] >> 25) & 1)) return 0;              /* AMX-INT8 */
   if (syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA))
-    return 0;
+    return 0;                                     /* kernel withheld the grant */
+  unsigned lo, hi;
+  __asm__ __volatile__("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+  unsigned long long xcr0 = ((unsigned long long)hi << 32) | lo;
+  if (!((xcr0 >> 17) & 1) || !((xcr0 >> 18) & 1)) return 0;   /* TILE state off */
   return 1;
+}
+
+/* Says WHY, not just whether. A hypervisor that masks CPUID and a kernel that
+   withholds XTILEDATA look identical from `amx 0`, and they are not the same
+   problem. Run this on the box you think has AMX. */
+static void amx_report(void) {
+  unsigned r[4];
+  cpuid_(0, 0, r);
+  printf("max cpuid leaf     : %u%s\n", r[0],
+         r[0] < 0x1d ? "  (< 0x1d: AMX palette leaves not even enumerable)" : "");
+  cpuid_(7, 0, r);
+  printf("leaf 7.0 edx       : 0x%08x  AMX-TILE(24)=%u AMX-INT8(25)=%u "
+         "AMX-BF16(22)=%u\n", r[3], (r[3] >> 24) & 1, (r[3] >> 25) & 1,
+         (r[3] >> 22) & 1);
+  cpuid_(0xd, 0, r);
+  printf("leaf D.0 xcr0 mask : 0x%08x  XTILECFG(17)=%u XTILEDATA(18)=%u\n",
+         r[0], (r[0] >> 17) & 1, (r[0] >> 18) & 1);
+  unsigned lo, hi;
+  __asm__ __volatile__("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+  unsigned long long xcr0 = ((unsigned long long)hi << 32) | lo;
+  printf("XCR0 (live)        : 0x%llx  bit17=%llu bit18=%llu\n",
+         xcr0, (xcr0 >> 17) & 1, (xcr0 >> 18) & 1);
+  long rc = syscall(SYS_arch_prctl, ARCH_REQ_XCOMP_PERM, XFEATURE_XTILEDATA);
+  unsigned long long perm = 0;
+  syscall(SYS_arch_prctl, ARCH_GET_XCOMP_PERM, &perm);
+  printf("XTILEDATA grant    : req=%ld perm=0x%llx\n", rc, perm);
+  printf("verdict            : %s\n", amx_ok() ? "AMX-INT8 usable"
+                                               : "AMX-INT8 NOT usable here");
 }
 
 /* ---- backends ----------------------------------------------------------- */
@@ -288,6 +327,8 @@ static void run_amx(const uint8_t *A, const int8_t *Q, int32_t *C,
 /* ---- driver ------------------------------------------------------------- */
 int main(int argc, char **argv) {
   if (argc < 2) { fprintf(stderr, "see header\n"); return 2; }
+
+  if (!strcmp(argv[1], "amxinfo")) { amx_report(); return 0; }
 
   if (!strcmp(argv[1], "caps")) {
     int b = blas_init();
