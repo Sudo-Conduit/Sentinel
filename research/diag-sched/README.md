@@ -50,6 +50,31 @@ That matters where static partitioning fails: heterogeneous cores, preemption,
 work stealing, or an engine count that isn't a convenient factor — 2 SME units,
 3 threads, 13 cores.
 
+## Coverage on real shapes
+
+Tested against the reference shape set, measuring the fraction of FLOPs that
+land in full 9x8 blocks (where the diagonal actually engages) rather than in
+ragged edge blocks (where it falls back to row-major):
+
+| shape | 9x8 (MC=144 NC=512) | 8x9 (MC=128 NC=576) |
+|---|---|---|
+| 1x576x576 | 0.0% | 0.0% |
+| 32x576x576 | 0.0% | 0.0% |
+| 1024x576x576 | 87.5% | **100.0%** |
+| 2048x1024x1024 | **98.4%** | 56.2% |
+| 4096x2048x2048 | **98.4%** | 84.4% |
+| 4096x4096x4096 | **98.4%** | 98.4% |
+
+`NC=512` is the better default because 512 divides 1024, 2048 and 4096 exactly.
+`NC=576` is perfect on 576-wide (576 = 9x64, no remainder) but leaves a 7-col
+stub on 1024-wide. Selecting NC per shape is a one-line dispatch on N.
+
+**Hard limit: M <= 32 gets 0% under every configuration.** Nine tile-rows
+requires M >= 9 x tile_rows (144 for SME2, 288 for AMX int8, 72 for VNNI).
+Below that the grid has no diagonal to walk and the schedule degenerates to
+row-major. Decode-shape parallelism has to come from splitting N, or from
+batching requests -- not from this.
+
 ## Verify
 
 ```
