@@ -2,6 +2,36 @@
 
 Engine-agnostic. Header-only. `diag_sched.h` + `verify_sched.c`.
 
+## The shortcut: pick the batch, not the blocking
+
+Everything below manufactures a coprime grid out of `MC`/`NC` when the shape
+does not have one. But if you control the **batch** dimension you get it for
+free, over the whole output, with no blocking at all:
+
+```
+M = 720, micro-tile 16 rows   ->  720/16 = 45 = 3^2·5   (odd)
+N = 2048, micro-tile 64 cols  ->  2048/64 = 32 = 2^5
+gcd(45, 32) = 1  ->  45 x 32 = 1440 tiles, ONE diagonal over the entire output
+```
+
+The rule is symmetric — **one of the two tile counts must be odd**:
+
+| dimension | gives | axis |
+|---|---|---|
+| N = 576 = 9·64 | 9 tile-cols (odd) | columns |
+| M = 720 = 45·16 | 45 tile-rows (odd) | rows |
+
+720 is 4pi in degrees. It holds on every engine whose micro-tile is **16 rows**
+(SME2 ZA tile, AMX 1x2 TMM block, a 16-row VNNI kernel); it fails on a 32-row
+AMX 2x2 block (720/32 = 22.5) and an 8-row VNNI kernel (90x32, gcd 2). So:
+**batch 720, micro-tile 16 rows** and the structure is native everywhere.
+
+By contrast 4096^3 = 2^36 has a 256x64 tile grid, gcd 64 — the worst case
+possible. The same work is 22.76 ops of 720x2048x2048, each perfectly coprime.
+
+Batch 720 also clears the roofline threshold (>=143 for int8 7B) for getting
+off the memory wall, so it satisfies the structure and the economics at once.
+
 ## The idea
 
 A GEMM has exactly two numbers the programmer freely chooses: the cache-block
