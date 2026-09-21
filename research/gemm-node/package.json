@@ -1,0 +1,11 @@
+{
+  "name": "gemm-node",
+  "version": "1.0.0",
+  "private": true,
+  "description": "int8 VNNI GEMM reached from Node via koffi; alignment + pinning + submission-shape findings",
+  "scripts": {
+    "build":  "gcc -O3 -march=native -mavx512vnni -shared -fPIC -o libgemm.so gemm.c",
+    "verify": "node verify.js"
+  },
+  "dependencies": { "koffi": "^2.8.0" }
+}
