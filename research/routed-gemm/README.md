@@ -138,6 +138,46 @@ expert its own weights, so the total weight traffic is `E·K·N` either way and
 the amortizing engines have less to gain at the top end than the 720-row row
 suggests. That makes the cliff worse for them in practice, not better.
 
+## No-C version: `routed-node.js`
+
+The op is a selection and a matmul. Only the selection is ours, and a
+selection is index arithmetic — so it belongs in Node. The matmul is a GEMM
+that is already compiled and sitting on the machine, reached with koffi.
+
+No gcc, no `.so` of ours, no node-gyp, no second language in the repo:
+
+```
+node routed-node.js --b 720 --k 512 --n 512 --e 8
+```
+
+`ArrayBuffer` and typed-array views only — no `Buffer`. The target runtime is
+WebLLM in a browser, where `Buffer` does not exist, so the same source has to
+run in both. Alignment to 64 bytes is done by over-allocating and taking a
+view at the next boundary (backing stores land at `addr % 64 == 32` here).
+
+Measured, fp32 via OpenBLAS, every shape exact against the dense reference:
+
+| B | K=N | E | rows/expert | dense | routed | speedup |
+|---|---|---|---|---|---|---|
+| 720 | 512 | 8 | 90 | 7.9 ms | 2.5 ms | 3.2x |
+| 720 | 512 | 60 | 12 | 54.3 ms | 7.3 ms | 7.4x |
+| 720 | 512 | 64 | 11 | 57.7 ms | 7.1 ms | 8.1x |
+| 4096 | 512 | 8 | 512 | 41.7 ms | 15.9 ms | 2.6x |
+| 720 | 1024 | 8 | 90 | 28.8 ms | 7.3 ms | 3.9x |
+
+Lower than the C path's 6.5-41.6x, and the engine table above says exactly
+why: at E=64 the C path runs VNNI, which is flat, and gets 41x; this path
+runs BLAS on 11-row blocks, which retains ~22%, and gets 8x. The two results
+explain each other rather than disagreeing.
+
+Which also says what MKL buys here, and it is not raw speed. `cblas_gemm_s8u8s32`
+is a plain C ABI that MKL dispatches internally to VNNI and to AMX, so int8
+and the tile engines are reachable with zero C — and, per the table, a flatter
+curve is worth more than a higher peak once the blocks are short. That path is
+bound in `routed-node.js` and gated behind a known-answer self-check against a
+pure-JS reference, because MKL is not on this container and a backend that
+cannot prove itself should be dropped, not trusted for having compiled.
+
 ## Limits
 
 - `topk = 1` only. Mixtral routes top-2 of 8, so the saving there is E/k = 4x,

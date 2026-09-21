@@ -1,0 +1,120 @@
+{
+  "host": {
+    "model": "Intel(R) Xeon(R) Processor @ 2.80GHz",
+    "features": [
+      "avx512f",
+      "avx512_vnni"
+    ],
+    "cores": 4,
+    "virtual": true
+  },
+  "recorded": "2026-09-21T21:37:03.877Z",
+  "blas": "blas: /usr/local/lib/python3.11/dist-packages/numpy.libs/libscipy_openblas64_-32a4b2a6.so (ilp64)",
+  "shape": {
+    "tot": 720,
+    "k": 512,
+    "n": 512,
+    "reps": 2,
+    "runs": 3
+  },
+  "engines": [
+    {
+      "id": "code",
+      "label": "code",
+      "unit": "GOPS int8"
+    },
+    {
+      "id": "vnni",
+      "label": "VNNI",
+      "unit": "GOPS int8"
+    },
+    {
+      "id": "blas",
+      "label": "BLAS",
+      "unit": "GFLOPS fp32"
+    },
+    {
+      "id": "blasb",
+      "label": "BLAS batch",
+      "unit": "GFLOPS fp32"
+    }
+  ],
+  "rows": [
+    {
+      "rpb": 720,
+      "cells": {
+        "code": 22.64,
+        "vnni": 210.28,
+        "blas": 108.8,
+        "blasb": 111.73
+      }
+    },
+    {
+      "rpb": 90,
+      "cells": {
+        "code": 22.69,
+        "vnni": 208.72,
+        "blas": 94.25,
+        "blasb": 95.46
+      }
+    },
+    {
+      "rpb": 45,
+      "cells": {
+        "code": 22.58,
+        "vnni": 223.26,
+        "blas": 79.26,
+        "blasb": 78.57
+      }
+    },
+    {
+      "rpb": 16,
+      "cells": {
+        "code": 22.58,
+        "vnni": 220.22,
+        "blas": 64.59,
+        "blasb": 62.14
+      }
+    },
+    {
+      "rpb": 12,
+      "cells": {
+        "code": 22.61,
+        "vnni": 217.91,
+        "blas": 58.51,
+        "blasb": 58.97
+      }
+    },
+    {
+      "rpb": 6,
+      "cells": {
+        "code": 22.54,
+        "vnni": 218.08,
+        "blas": 30.07,
+        "blasb": 30.57
+      }
+    },
+    {
+      "rpb": 3,
+      "cells": {
+        "code": 22.55,
+        "vnni": 222.66,
+        "blas": 48.2,
+        "blasb": {
+          "failed": "SIGSEGV"
+        }
+      }
+    },
+    {
+      "rpb": 1,
+      "cells": {
+        "code": 22.16,
+        "vnni": 221.4,
+        "blas": 31.46,
+        "blasb": {
+          "failed": "SIGSEGV"
+        }
+      }
+    }
+  ]
+}
