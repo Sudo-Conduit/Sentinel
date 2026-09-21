@@ -21,6 +21,7 @@ const files = [
     'MemoryMapFS.nodeToNode.test.js',
     'BIOS.nvramFastPath.test.js',
     'ExtendX.stacking.test.js',
+    'ExtendX.token.test.js',
     'BIOS.firstBoot.test.js',
     'MountainShift.opaque.test.js',
     'WeightedGraphMixin.test.js',
