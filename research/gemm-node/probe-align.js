@@ -1,50 +1,66 @@
 /**
- * probe-align.js — measure how Node's allocator actually lands, on THIS machine.
- * No benchmark, no load. Run on each target (x86 Linux, Apple ARM) before
- * assuming any alignment constant.
+ * probe-align.js — does Node's allocator land where your SIMD loads care?
  *
  *   npm i koffi && node probe-align.js
+ *
+ * Reports three facts and whether they collide: the allocator's offset,
+ * your cache line size, and the load widths that matter per ISA.
+ * No benchmark, no load on the machine.
  */
 const koffi = require('koffi');
 const { execSync } = require('child_process');
 
-// tiny inline lib just to read back a real pointer value
-const os = process.platform;
-const libm = koffi.load(os === 'darwin' ? 'libSystem.dylib' : 'libc.so.6');
-const memcpy = libm.func('void *memcpy(void *, const void *, size_t)');
-const ptrOf = b => BigInt(koffi.address(b));      // koffi exposes the address directly
-
-function lineSize() {
+const lineSize = () => {
   try {
-    if (os === 'darwin') return +execSync('sysctl -n hw.cachelinesize').toString().trim();
-    return +execSync('cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size').toString().trim();
+    return process.platform === 'darwin'
+      ? +execSync('sysctl -n hw.cachelinesize').toString().trim()
+      : +execSync('cat /sys/devices/system/cpu/cpu0/cache/index0/coherency_line_size').toString().trim();
   } catch { return null; }
-}
-const L = lineSize() || 64;
-console.log(`platform ${os} ${process.arch}   cache line = ${L} B   node ${process.version}\n`);
-
-const kinds = {
-  'Buffer.alloc(1MB)':        () => Buffer.alloc(1 << 20),
-  'Buffer.allocUnsafe(1MB)':  () => Buffer.allocUnsafe(1 << 20),
-  'Buffer.allocUnsafeSlow':   () => Buffer.allocUnsafeSlow(1 << 20),
-  'SharedArrayBuffer(1MB)':   () => Buffer.from(new SharedArrayBuffer(1 << 20)),
-  'ArrayBuffer(1MB)':         () => Buffer.from(new ArrayBuffer(1 << 20)),
 };
-// vector widths that matter per ISA
-const loads = { 'NEON/SDOT 16B': 16, 'SVE/SME 64B': 64, 'AVX-512 64B': 64 };
+const L = lineSize() || 64;
+const addr = b => BigInt(koffi.address(b));
 
-console.log(`${'allocator'.padEnd(26)} ${('addr%'+L).padStart(8)}   straddle risk for a load of...`);
-for (const [name, mk] of Object.entries(kinds)) {
-  const offs = [];
-  for (let i = 0; i < 8; i++) offs.push(Number(ptrOf(mk()) % BigInt(L)));   // sample, allocators vary
-  const uniq = [...new Set(offs)];
-  const risk = Object.entries(loads)
-    .filter(([, w]) => w <= L)
-    .map(([n, w]) => `${n}:${uniq.some(o => o !== 0 && (o % w !== 0 || o + w > L)) ? 'YES' : 'no '}`)
-    .join('  ');
-  console.log(`${name.padEnd(26)} ${uniq.join(',').padStart(8)}   ${risk}`);
+console.log(`\nplatform ${process.platform} ${process.arch}   node ${process.version}   cache line = ${L} B\n`);
+
+const allocators = {
+  'Buffer.alloc':            n => Buffer.alloc(n),
+  'Buffer.allocUnsafe':      n => Buffer.allocUnsafe(n),
+  'Buffer.allocUnsafeSlow':  n => Buffer.allocUnsafeSlow(n),
+  'SharedArrayBuffer':       n => Buffer.from(new SharedArrayBuffer(n)),
+  'ArrayBuffer':             n => Buffer.from(new ArrayBuffer(n)),
+};
+const loads = [
+  ['NEON / SDOT / BDOT', 16],
+  ['SVE / SME (SVL=512b)', 64],
+  ['AVX-512 / AMX tile row', 64],
+];
+
+// a load of width w starting at offset o crosses a line iff o+w > L
+const straddles = (o, w) => o !== 0 && (o % L) + w > L;
+
+const width = Math.max(...Object.keys(allocators).map(s => s.length));
+console.log(`${'allocator'.padEnd(width)}  ${('addr%' + L).padStart(8)}`);
+const offsets = new Set();
+for (const [name, mk] of Object.entries(allocators)) {
+  const seen = new Set();
+  for (const n of [1 << 16, 1 << 20, 1 << 22]) seen.add(Number(addr(mk(n)) % BigInt(L)));
+  [...seen].forEach(o => offsets.add(o));
+  console.log(`${name.padEnd(width)}  ${[...seen].join(',').padStart(8)}`);
 }
-console.log(`\nAligned view costs one over-allocation of ${L} B:`);
-console.log(`  const s = new SharedArrayBuffer(n + ${L});`);
-console.log(`  const off = (${L} - Number(koffi.address(Buffer.from(s)) % ${L}n)) % ${L};`);
-console.log(`  const buf = Buffer.from(s, off, n);          // hand THIS to the kernel`);
+
+console.log(`\n${'load'.padEnd(24)} ${'width'.padStart(6)}   straddles a cache line?`);
+for (const [name, w] of loads) {
+  const bad = [...offsets].filter(o => straddles(o, w));
+  console.log(`${name.padEnd(24)} ${(w + ' B').padStart(6)}   ` +
+    (bad.length ? `YES at offset ${bad.join(',')}  -> align, ~2x on the table`
+                : `no  -> nothing to fix`));
+}
+
+const worst = [...offsets].find(o => loads.some(([, w]) => straddles(o, w)));
+console.log(worst === undefined
+  ? `\nVERDICT: your buffers are fine as-is on this platform.\n`
+  : `\nVERDICT: align buffers before handing them to a SIMD kernel:
+  const s   = new SharedArrayBuffer(n + ${L});
+  const off = (${L} - Number(BigInt(koffi.address(Buffer.from(s))) % ${L}n)) % ${L};
+  const buf = Buffer.from(s, off, n);     // hand THIS to the kernel
+  // workers: pass \`off\` in workerData and rebuild the same view\n`);
