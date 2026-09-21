@@ -1,8 +1,9 @@
 // Life-cycle proof for ChemistryPdfExport.js: builds real PDFs from real
 // ChemistryProblemGenerator results, reads them back with pdf-lib, and
-// checks structure (page count, non-empty text-bearing content streams)
-// rather than just "pdf-lib didn't throw." Async suite, same pattern as
-// BuildViewerPdf.test.js - run-all.js awaits it before reporting.
+// checks structure (page count, non-empty text-bearing content streams,
+// real fillable form fields) rather than just "pdf-lib didn't throw."
+// Async suite, same pattern as BuildViewerPdf.test.js - run-all.js awaits
+// it before reporting.
 var PDFDocument = require('pdf-lib').PDFDocument;
 var G = require('../ChemistryProblemGenerator.js');
 var ChemistryPdfExport = require('../ChemistryPdfExport.js');
@@ -37,34 +38,68 @@ module.exports = Promise.all([
     check('Questions PDF has at least one page', questionsDoc.getPageCount() >= 1);
     check('Answer key PDF has at least one page', answerKeyDoc.getPageCount() >= 1);
 
-    // The answer key embeds everything the questions PDF embeds (question
-    // text) plus answers and steps, so it should never be smaller.
-    check('Answer key PDF content is not smaller than the questions-only PDF (it strictly adds answer+step text)',
-      answerKeyBytes.length >= questionsBytes.length * 0.9);
+    // Both PDFs must actually carry real content, not be near-empty stubs.
+    // (Questions.pdf now also carries AcroForm field overhead, so it is no
+    // longer guaranteed smaller than the answer key - that's expected.)
+    check('Both PDFs are a real, non-trivial size', questionsBytes.length > 1000 && answerKeyBytes.length > 1000);
 
-    // A worksheet with only errored results (e.g. every type unknown)
-    // should still produce a loadable, non-empty PDF rather than throwing.
-    var allErrors = [{ error: 'unknown type' }, { error: 'unknown type' }];
-    return Promise.all([
-      ChemistryPdfExport.buildQuestionsPdf(allErrors),
-      ChemistryPdfExport.buildAnswerKeyPdf(allErrors)
-    ]).then(function(emptyPdfs) {
-      return Promise.all([
-        PDFDocument.load(emptyPdfs[0]),
-        PDFDocument.load(emptyPdfs[1])
-      ]).then(function(emptyDocs) {
-        check('A worksheet with no valid results (all errors) still produces a loadable PDF, not a throw',
-          emptyDocs[0].getPageCount() >= 1 && emptyDocs[1].getPageCount() >= 1);
+    // Questions.pdf must be actually fillable (students "enter answers"),
+    // not just printed blank lines - one real AcroForm text field per
+    // non-error question, named predictably.
+    var nonErrorCount = results.filter(function(r) { return !r.error; }).length;
+    var qFields = questionsDoc.getForm().getFields();
+    check('Questions PDF has exactly one fillable text field per question (real form fields, not printed blanks)',
+      qFields.length === nonErrorCount);
+    check('Questions PDF field names are predictable (q1_answer, q2_answer, ...)',
+      qFields.every(function(f, i) { return f.getName() === 'q' + (i + 1) + '_answer'; }));
+    check('Answer key PDF has no fillable fields (it is the reference copy, not the student worksheet)',
+      answerKeyDoc.getForm().getFields().length === 0);
 
-        // A long-question stress case to prove pagination/wrapping doesn't throw.
-        var manyResults = [];
-        for (var i = 0; i < 60; i++) manyResults.push(G.generate('balance-equation', i));
-        return ChemistryPdfExport.buildAnswerKeyPdf(manyResults).then(function(bigBytes) {
-          return PDFDocument.load(bigBytes).then(function(bigDoc) {
-            check('A 60-problem worksheet answer key paginates onto more than one page',
-              bigDoc.getPageCount() > 1);
+    // A value typed into a field must actually survive a save/reload
+    // round trip - proof it is genuinely fillable, not decorative.
+    questionsDoc.getForm().getTextField('q1_answer').setText('158.0 g/mol');
+    return questionsDoc.save().then(function(filledBytes) {
+      return PDFDocument.load(filledBytes).then(function(reloaded) {
+        check('A value typed into a Questions.pdf field survives a save/reload round trip',
+          reloaded.getForm().getTextField('q1_answer').getText() === '158.0 g/mol');
 
-            return { name: 'ChemistryPdfExport.test.js', checks: checks, failures: failures };
+        // A worksheet with only errored results (e.g. every type unknown)
+        // should still produce a loadable, non-empty PDF rather than
+        // throwing, with zero fields (nothing to answer).
+        var allErrors = [{ error: 'unknown type' }, { error: 'unknown type' }];
+        return Promise.all([
+          ChemistryPdfExport.buildQuestionsPdf(allErrors),
+          ChemistryPdfExport.buildAnswerKeyPdf(allErrors)
+        ]).then(function(emptyPdfs) {
+          return Promise.all([
+            PDFDocument.load(emptyPdfs[0]),
+            PDFDocument.load(emptyPdfs[1])
+          ]).then(function(emptyDocs) {
+            check('A worksheet with no valid results (all errors) still produces a loadable PDF, not a throw',
+              emptyDocs[0].getPageCount() >= 1 && emptyDocs[1].getPageCount() >= 1);
+            check('A worksheet with no valid results has zero fillable fields',
+              emptyDocs[0].getForm().getFields().length === 0);
+
+            // A long-question stress case to prove pagination/wrapping of
+            // both prose text and form field widgets doesn't throw.
+            var manyResults = [];
+            for (var i = 0; i < 60; i++) manyResults.push(G.generate('balance-equation', i));
+            return Promise.all([
+              ChemistryPdfExport.buildAnswerKeyPdf(manyResults),
+              ChemistryPdfExport.buildQuestionsPdf(manyResults)
+            ]).then(function(bigPdfs) {
+              return Promise.all([
+                PDFDocument.load(bigPdfs[0]),
+                PDFDocument.load(bigPdfs[1])
+              ]).then(function(bigDocs) {
+                check('A 60-problem worksheet answer key paginates onto more than one page',
+                  bigDocs[0].getPageCount() > 1);
+                check('A 60-problem worksheet questions PDF (60 form fields, paginated) still has exactly 60 fields',
+                  bigDocs[1].getForm().getFields().length === 60);
+
+                return { name: 'ChemistryPdfExport.test.js', checks: checks, failures: failures };
+              });
+            });
           });
         });
       });
