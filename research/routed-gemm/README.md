@@ -23,12 +23,24 @@ routedGemm(X, Wp, route, Y, { B, K, N, E, threads: 4 });
 From Node, 4 threads, median of 3, every config verified exact against the
 dense reference (not assumed — `bench.js` compares element-wise):
 
-| config | B | E | dense | routed | speedup | dense MB | routed MB |
-|---|---|---|---|---|---|---|---|
-| Mixtral-ish | 720 | 8 | 184.5 ms | 24.9 ms | **7.4x** | 47.2 | 5.9 |
-| fine-grained | 720 | 64 | 2325.9 ms | 47.4 ms | **49.1x** | 377.5 | 5.9 |
-| Qwen-ish | 720 | 60 | 473.9 ms | 14.6 ms | **32.4x** | 243.3 | 4.1 |
-| big batch | 4096 | 8 | 1389.7 ms | 134.7 ms | **10.3x** | 268.4 | 33.6 |
+| | | | | | performed GOPS | | useful GOPS | | | |
+| config | B | E | dense ms | routed ms | dense | routed | dense | routed | speedup | MB |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Mixtral-ish | 720 | 8 | 207.0 | 26.1 | 233 | 231 | **29** | **231** | **7.9x** | 47.2 → 5.9 |
+| fine-grained | 720 | 64 | 1825.6 | 44.9 | 212 | 135 | **3** | **135** | **40.7x** | 377.5 → 5.9 |
+| Qwen-ish | 720 | 60 | 454.5 | 13.9 | 274 | 149 | **5** | **149** | **32.6x** | 243.3 → 4.1 |
+| big batch | 4096 | 8 | 1207.3 | 172.0 | 228 | 200 | **28** | **200** | **7.0x** | 268.4 → 33.6 |
+
+- **performed GOPS** — flops each path actually executes. A measure of kernel
+  efficiency, and the two paths are *the same*: 212-274 dense, 135-231 routed.
+  At E=64 the routed path is the **slower** kernel (135 vs 212) because 11-row
+  per-expert blocks are inefficient.
+- **useful GOPS** — `2·B·K·N / time`, the work the answer actually requires.
+  Here they differ by 40x.
+
+The dense path at E=64 sustains 212 GOPS of arithmetic and delivers 3 GOPS of
+answer: **98.4% of what it computes is thrown away**, exactly (E-1)/E. This is
+not a faster kernel. It is a slower kernel doing 64x less work, winning by 40x.
 
 The intermediate is never allocated, never written, never read back. On a
 GPU-less server that is DRAM bandwidth not spent, which is the binding

@@ -8,7 +8,8 @@ const cfgs = [
 const med = a => { a = [...a].sort((x,y)=>x-y); const n=a.length;
                    return n%2 ? a[(n-1)/2] : (a[n/2-1]+a[n/2])/2; };
 console.log('\nrouted-gemm from Node via koffi, 4 threads, median of 3\n');
-console.log('config                 B     E |   dense ms  routed ms  speedup |   dense MB  routed MB');
+console.log('                              |        performed GOPS |           useful GOPS |');
+console.log('config                 B     E |   dense ms  routed ms |    dense     routed |    dense     routed | speedup');
 for (const c of cfgs) {
   const { B,K,N,E } = c;
   const X = aligned(B*K), W = aligned(E*K*N);
@@ -26,9 +27,15 @@ for (const c of cfgs) {
   for (let r=0;r<3;r++){ let t=process.hrtime.bigint(); routedGemm(X,Wp,route,Yr,c); tr.push(Number(process.hrtime.bigint()-t)/1e6);
                               t=process.hrtime.bigint(); denseGemm (X,Wp,route,Yd,c); td.push(Number(process.hrtime.bigint()-t)/1e6); }
   const d=med(td), rt=med(tr);
+  const useful = 2*B*K*N;              // flops the result actually requires
+  const perfD  = 2*B*E*K*N;            // flops the dense path performs
+  const perfR  = useful;               // flops the routed path performs
+  const g = (f,ms) => (f/(ms/1e3)/1e9);
   console.log(`${c.name.padEnd(20)} ${String(B).padStart(5)} ${String(E).padStart(5)} |`
-    + `${d.toFixed(1).padStart(10)} ${rt.toFixed(1).padStart(10)} ${(d/rt).toFixed(1).padStart(8)}x |`
-    + `${(E*B*N*4/1e6).toFixed(1).padStart(10)} ${(B*N*4/1e6).toFixed(1).padStart(10)}`
-    + (bad ? `   *** ${bad} MISMATCHES ***` : '   exact match'));
+    + `${d.toFixed(1).padStart(10)} ${rt.toFixed(1).padStart(10)} |`
+    + `${g(perfD,d).toFixed(0).padStart(9)} ${g(perfR,rt).toFixed(0).padStart(10)} |`
+    + `${g(useful,d).toFixed(0).padStart(9)} ${g(useful,rt).toFixed(0).padStart(10)} |`
+    + `${(d/rt).toFixed(1).padStart(7)}x`
+    + (bad ? `  *** ${bad} MISMATCHES ***` : '  exact'));
 }
 console.log();
