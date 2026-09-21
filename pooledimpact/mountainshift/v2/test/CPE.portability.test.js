@@ -1,4 +1,4 @@
-// CPE.js -- the three things that must hold for the engine to be one engine
+// ComputeCore.js (CPE's internals) -- the three things that must hold for the engine to be one engine
 // across Linux, browser and Mac rather than three that happen to share a name:
 //
 //   1. correctness is provider-independent -- the routed diagonal and the
@@ -7,7 +7,7 @@
 //      require, no process, no Buffer), which is asserted by executing it in
 //      a vm context that has none of them rather than by reading the source;
 //   3. ops arrive by ExtendX composition, so a new op (Quantum, when it is
-//      mainline) is a mixin rather than an edit to CPE.js.
+//      mainline) is a mixin rather than an edit to ComputeCore.js.
 //
 // Run with: node test/CPE.portability.test.js
 'use strict';
@@ -15,7 +15,7 @@ const path = require('path');
 const fs = require('fs');
 const vm = require('vm');
 const V2 = path.join(__dirname, '..');
-const CPE = require(path.join(V2, 'CPE.js'));
+const ComputeCore = require(path.join(V2, 'ComputeCore.js'));
 const { check, report } = require('./helpers.js');
 
 // Small shared problem. Deliberately not a multiple of any tile height, and
@@ -53,9 +53,9 @@ function maxRelErr(a, b) {
 
 function run() {
     // --- 1. every provider agrees with the dense evaluation ---
-    for (const p of CPE.create().available.map(x => x.id)) {
+    for (const p of ComputeCore.create().available.map(x => x.id)) {
         check(`provider "${p}": routed == dense`, () => {
-            const e = CPE.create({ provider: p });
+            const e = ComputeCore.create({ provider: p });
             const args = problem(e, 91, 64, 64, 7);
             const Yd = e.run(Object.assign({ op: 'dense' }, args));
             const Yr = e.run(Object.assign({ op: 'routed' }, args));
@@ -64,7 +64,7 @@ function run() {
         });
 
         check(`provider "${p}": an expert owning zero rows`, () => {
-            const e = CPE.create({ provider: p });
+            const e = ComputeCore.create({ provider: p });
             const args = problem(e, 91, 64, 64, 7, 3);   // nothing routes to 3
             if (args.route.includes(3)) throw new Error('setup wrong');
             const Yd = e.run(Object.assign({ op: 'dense' }, args));
@@ -78,7 +78,7 @@ function run() {
     // Regression: the gather/scatter scratch is cached between calls, and a
     // buffer kept from a smaller shape silently overflows the next gather.
     check('scratch survives a growing shape on one engine', () => {
-        const e = CPE.create();
+        const e = ComputeCore.create();
         for (const [B, K, N, E] of [[64, 32, 32, 4], [64, 128, 128, 4], [256, 128, 128, 8]]) {
             const args = problem(e, B, K, N, E);
             const Yd = e.run(Object.assign({ op: 'dense' }, args));
@@ -101,13 +101,13 @@ function run() {
         sandbox.document = {};
         vm.createContext(sandbox);
 
-        for (const f of ['ExtendX.js', 'CPE.js']) {
+        for (const f of ['ExtendX.js', 'ComputeCore.js']) {
             vm.runInContext(fs.readFileSync(path.join(V2, f), 'utf8'),
                             sandbox, { filename: f });
         }
 
         const out = vm.runInContext(`(function () {
-            const e = CPE.create();
+            const e = ComputeCore.create();
             const caps = e.run('caps');
             const B = 60, K = 32, N = 32, E = 5;
             const X = e.alloc(Float32Array, B * K);
@@ -138,25 +138,25 @@ function run() {
     });
 
     // --- 4. ops are composition, not inheritance ---
-    check('a new op arrives as a mixin, with no edit to CPE.js', () => {
-        const before = CPE.create().ops();
+    check('a new op arrives as a mixin, with no edit to ComputeCore.js', () => {
+        const before = ComputeCore.create().ops();
         if (before.includes('echo')) throw new Error('test op already present');
 
-        CPE.use({ mixinId: 'cpe.test.echo', op_echo(cmd) { return cmd.value; } });
+        ComputeCore.use({ mixinId: 'cpe.test.echo', op_echo(cmd) { return cmd.value; } });
 
-        const e = CPE.create();
+        const e = ComputeCore.create();
         if (!e.ops().includes('echo')) throw new Error('mixin op did not compose');
         if (e.run({ op: 'echo', value: 42 }) !== 42) throw new Error('mixin op did not dispatch');
     });
 
-    check('CPE.use() rejects a layer with no stable id', () => {
+    check('ComputeCore.use() rejects a layer with no stable id', () => {
         let threw = false;
-        try { CPE.use({ op_nope() {} }); } catch (e) { threw = true; }
+        try { ComputeCore.use({ op_nope() {} }); } catch (e) { threw = true; }
         if (!threw) throw new Error('accepted a mixin with no mixinId');
     });
 
     check('an unknown op names the ops that do exist', () => {
-        const e = CPE.create();
+        const e = ComputeCore.create();
         let msg = '';
         try { e.run({ op: 'nosuchop' }); } catch (err) { msg = err.message; }
         if (!/unknown op/.test(msg) || !/matmul/.test(msg)) {
