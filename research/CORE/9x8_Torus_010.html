@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNNT Hyper Web Fractal Topology Simulator</title>
+    <style>
+        :root {
+            --bg-main: #02040a;
+            --panel-bg: #090f1c;
+            --panel-border: rgba(34, 211, 238, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --amber-glow: #fbbf24;
+            --purple-glow: #a855f7;
+        }
+        body {
+            margin: 0;
+            padding: 24px;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%;
+            max-width: 1100px;
+            background: var(--panel-bg);
+            border-radius: 12px;
+            padding: 28px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.95);
+            border: 1px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; text-transform: uppercase; }
+        .badge {
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid var(--purple-glow);
+            color: #d8b4fe;
+            font-family: monospace; font-size: 11px; padding: 4px 10px; border-radius: 4px;
+        }
+        
+        .workspace-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr;
+            gap: 28px;
+            margin-bottom: 24px;
+        }
+        .viewport-box {
+            background: #010205;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.02);
+            position: relative;
+        }
+        .viewport-lbl {
+            font-size: 11px; font-weight: 800; color: var(--text-secondary);
+            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px;
+            display: flex; justify-content: space-between;
+        }
+        canvas { display: block; width: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+        
+        /* Dashboard Telemetry Metrics readout elements */
+        .telemetry-stack { display: flex; flex-direction: column; gap: 16px; }
+        .telemetry-card {
+            background: rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.03);
+            border-radius: 6px; padding: 16px;
+        }
+        .data-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 13px; margin-bottom: 10px; }
+        .data-row:last-child { margin-bottom: 0; }
+        .d-lbl { color: var(--text-secondary); }
+        .d-val { font-weight: bold; }
+        
+        /* Command Console Station */
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px;
+            border-radius: 8px; border: 1px solid rgba(34, 211, 238, 0.15);
+            display: grid; grid-template-columns: 1.5fr 1fr; gap: 24px;
+        }
+        .slider-block { display: flex; flex-direction: column; gap: 8px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--cyan-glow); background: #111622; height: 4px; border-radius: 2px; cursor: pointer;
+        }
+        .filter-buttons { display: flex; gap: 10px; align-items: center; justify-content: flex-end; }
+        .btn {
+            background: #111726; border: 1px solid rgba(255,255,255,0.08); color: var(--text-secondary);
+            padding: 8px 14px; border-radius: 4px; font-size: 12px; font-family: monospace; cursor: pointer; transition: all 0.2s;
+        }
+        .btn.active { border-color: var(--cyan-glow); color: var(--cyan-glow); background: rgba(34,211,238,0.05); }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1 style="background: linear-gradient(to right, #fff, var(--purple-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Hyper Web Fractal Topology Simulator</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 13px;">Mapping multi-layer Geometric Shortcut Geometries & Accelerating Trajectory Physics</p>
+        </div>
+        <div class="badge">FRACTAL GRID TRAVERSAL ENGINE</div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Pane: Full Active Core Lattice Viewport -->
+        <div class="viewport-box">
+            <div class="viewport-lbl">
+                <span>3D Multiplex Hyper Web Mesh</span>
+                <span style="color: var(--amber-glow); font-family: monospace;" id="activeSymmetryText">GEOMETRY STATE: HEXAGON</span>
+            </div>
+            <canvas id="hyperCanvas" width="520" height="340"></canvas>
+        </div>
+
+        <!-- Right Pane: Real-Time Network Telemetry Readouts -->
+        <div class="telemetry-stack">
+            <div class="telemetry-card" style="border-left: 3px solid var(--purple-glow);">
+                <div class="viewport-lbl" style="margin-bottom:12px; border:none; padding:0;">Lattice State Profiler</div>
+                <div class="data-row"><span class="d-lbl">Unified Node Count</span><span class="d-val" style="color: var(--cyan-glow);">\(9 \times 8 = 72\) Matrix</span></div>
+                <div class="data-row"><span class="d-lbl">Concentric Scaling Mode</span><span class="d-val" style="color: var(--purple-glow);">Von Neumann Fractal</span></div>
+                <div class="data-row"><span class="d-lbl">Shortcut Array Status</span><span class="d-val" id="lblShortcut" style="color: var(--amber-glow);">Fast Traversal Active</span></div>
+            </div>
+
+            <div class="telemetry-card" style="border-left: 3px solid var(--amber-glow);">
+                <div class="viewport-lbl" style="margin-bottom:12px; border:none; padding:0;">Shortcut Calculation Analytics</div>
+                <div class="data-row"><span class="d-lbl">Standard Traversal Cost</span><span class="d-val" style="color: var(--text-secondary);">72 Compute Cycles</span></div>
+                <div class="data-row"><span class="d-lbl">Accelerated Path Cost</span><span class="d-val" id="lblCost" style="color: var(--amber-glow);">12 Cycles (Max Speed)</span></div>
+                <div class="data-row"><span class="d-lbl">Approximation Delta</span><span class="d-val" style="color: #10b981;">&gt; 94.6% Accuracy</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Active Command Station Interface controls -->
+    <div class="command-station">
+        <div class="slider-block">
+            <div class="meta-text"><span>Fractal Shell Level Focus ($V_n$)</span><span id="shellDisplay" style="font-family: monospace; color: var(--purple-glow); font-weight: bold;">Layer 5</span></div>
+            <input type="range" id="shellSlider" min="1" max="5" value="5">
+        </div>
+        <div class="filter-buttons">
+            <button class="btn" id="btnSquare" onclick="setSymmetry('square')">SQUARE</button>
+            <button class="btn" id="btnOctagon" onclick="setSymmetry('octagon')">OCTAGON</button>
+            <button class="btn" id="btnHexagon" onclick="setSymmetry('hexagon')">HEXAGON</button>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('hyperCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const shellSlider = document.getElementById('shellSlider');
+    const shellDisplay = document.getElementById('shellDisplay');
+    const activeSymmetryText = document.getElementById('activeSymmetryText');
+    const lblShortcut = document.getElementById('lblShortcut');
+    const lblCost = document.getElementById('lblCost');
+
+    let currentSymmetry = 'hexagon'; // Default visualization mode
+    let rotX = -0.65;
+    let rotY = 0.55;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+    let networkPulseClock = 0;
+
+    function setSymmetry(type) {
+        currentSymmetry = type;
+        document.querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+        if(type === 'square') {
+            document.getElementById('btnSquare').classList.add('active');
+            activeSymmetryText.innerText = "GEOMETRY STATE: SQUARE REGISTRY";
+            lblCost.innerText = "4 Cycles (Core Registry)";
+        } else if(type === 'octagon') {
+            document.getElementById('btnOctagon').classList.add('active');
+            activeSymmetryText.innerText = "GEOMETRY STATE: OCTAGONAL FIELD";
+            lblCost.innerText = "8 Cycles (Diagonal Phase)";
+        } else {
+            document.getElementById('btnHexagon').classList.add('active');
+            activeSymmetryText.innerText = "GEOMETRY STATE: HEXAGON VALENCE";
+            lblCost.innerText = "12 Cycles (Max Fast Traversal)";
+        }
+        renderHyperWeb();
+    }
+
+    function renderHyperWeb() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#010205';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const focusLayer = parseInt(shellSlider.value);
+        shellDisplay.innerText = `Layer ${focusLayer}`;
+
+        let nodes = [];
+        const TOTAL_SHELLS = 5;
+
+        // Generate the fractal multiplex node arrays inside the coordinate field
+        for (let s = 1; s <= TOTAL_SHELLS; s++) {
+            const baseRadius = s * 28;
+            
+            // Set up point divisions explicitly matching crystallographic bounds
+            let pointsCount = 16;
+            if (currentSymmetry === 'square') pointsCount = 4;
+            else if (currentSymmetry === 'octagon') pointsCount = 8;
+            else if (currentSymmetry === 'hexagon') pointsCount = 12;
+
+            for (let i = 0; i < pointsCount; i++) {
+                const angle = (i / pointsCount) * 2 * Math.PI;
+                
+                // Add soft 3D z-depth separation layer vectors to map full space
+                for (let layerZ = -1; layerZ <= 1; layerZ += 2) {
+                    const radiusModifier = 1 + (layerZ * 0.08);
+                    const x0 = baseRadius * Math.cos(angle) * radiusModifier;
+                    const y0 = baseRadius * Math.sin(angle) * radiusModifier;
+                    const z0 = layerZ * 12 * (s * 0.4);
+
+                    // Coordinate transforms
+                    let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                    let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                    let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                    let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                    const scale = 450 / (450 + z2);
+                    
+                    // Identify the critical 45-degree shortcut paths
+                    const deg = (angle * 180 / Math.PI);
+                    const isShortcutNode = (Math.abs(deg % 45) < 2 || Math.abs((deg % 60)) < 2);
+
+                    nodes.push({
+                        x: canvas.width / 2 + x1 * scale,
+                        y: canvas.height / 2 + y2 * scale,
+                        depth: z2,
+                        layer: s,
+                        index: i,
+                        maxIndex: pointsCount,
+                        isShortcut: isShortcutNode,
+                        side: layerZ
+                    });
+                }
+            }
+        }
+
+        // Depth Sort
+        nodes.sort((a, b) => b.depth - a.depth);
+
+        // 1. Draw High-Opacity Geometric Lattice Network Channels
+        nodes.forEach(p => {
+            if (p.layer === focusLayer) {
+                // Find next node along circumference ring wire
+                const nextNode = nodes.find(o => o.layer === p.layer && o.side === p.side && o.index === (p.index + 1) % p.maxIndex);
+                if (nextNode) {
+                    // Highlight shortcut vectors in crisp amber channels
+                    ctx.strokeStyle = (p.isShortcut && currentSymmetry === 'hexagon') ? 'rgba(251, 191, 36, 0.85)' : 'rgba(168, 85, 247, 0.65)';
+                    ctx.lineWidth = (p.isShortcut && currentSymmetry === 'hexagon') ? 2.0 : 1.25;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+
+                // Cross-layer fractal vertical connections link beams
+                const belowNode = nodes.find(o => o.layer === p.layer - 1 && o.side === p.side && o.index === p.index % o.maxIndex);
+                if (belowNode) {
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
+                    ctx.lineWidth = 0.75;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(belowNode.x, belowNode.y); ctx.stroke();
+                }
+            } else {
+                // Dim non-focused environment background fractal elements
+                const nextNode = nodes.find(o => o.layer === p.layer && o.side === p.side && o.index === (p.index + 1) % p.maxIndex);
+                if (nextNode && Math.random() < 0.3) {
+                    ctx.strokeStyle = 'rgba(34, 211, 238, 0.08)';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(nextNode.x, nextNode.y); ctx.stroke();
+                }
+            }
+        });
+
+        // 2. Render State Point Array Nodes
+        nodes.forEach(p => {
+            ctx.beginPath();
+            let r = p.layer === focusLayer ? 2.5 : 1.0;
+            ctx.arc(p.x, p.y, r, 0, 2 * Math.PI);
+
+            if (p.layer === focusLayer) {
+                if (p.isShortcut && currentSymmetry === 'hexagon') {
+                    ctx.fillStyle = 'var(--amber-glow)';
+                    ctx.fill();
+                    // Connective vertex halo indicator
+                    ctx.fillStyle = `rgba(251, 191, 36, ${0.15 + Math.sin(networkPulseClock * 0.1) * 0.05})`;
+                    ctx.beginPath(); ctx.arc(p.x, p.y, r * 2.5, 0, 2*Math.PI); ctx.fill();
+                } else {
+                    ctx.fillStyle = 'var(--purple-glow)';
+                    ctx.fill();
+                }
+            } else {
+                ctx.fillStyle = 'rgba(71, 85, 105, 0.3)';
+                ctx.fill();
+            }
+        });
+    }
+
+    // Drag Rotational Handler events
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+    });
+    window.addEventListener('mouseup', () => isDragging = false);
+    canvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const dx = e.clientX - lastMouseX;
+        const dy = e.clientY - lastMouseY;
+        rotY += dx * 0.007;
+        rotX += dy * 0.007;
+        lastMouseX = e.clientX; lastMouseY = e.clientY;
+        renderHyperWeb();
+    });
+
+    shellSlider.addEventListener('input', renderHyperWeb);
+
+    function stepSystemClock() {
+        networkPulseClock += 0.5;
+        renderHyperWeb();
+        requestAnimationFrame(stepSystemClock);
+    }
+
+    // Initialize application bootstrap layout configuration
+    setSymmetry('hexagon');
+    stepSystemClock();
+</script>

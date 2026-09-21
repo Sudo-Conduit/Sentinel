@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Pi & Chemical Metric Interface</title>
+    <style>
+        :root {
+            --bg-color: #080c14;
+            --panel-bg: #111827;
+            --panel-border: rgba(255,255,255,0.06);
+            --text-main: #f3f4f6;
+            --text-muted: #6b7280;
+            --accent-blue: #38bdf8;
+            --accent-orange: #f97316;
+            --accent-green: #10b981;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 950px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7);
+            border: 1px solid var(--panel-border);
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+        }
+        .header h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+        .header p { margin: 6px 0 0 0; color: var(--text-muted); font-size: 13px; }
+        
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        /* Viewport Windows */
+        .viewport-box {
+            background: #04060a;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.02);
+            position: relative;
+        }
+        .viewport-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        canvas { display: block; width: 100%; }
+        
+        /* Analytics Metric Strip */
+        .analytics-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            background: rgba(0,0,0,0.2);
+            padding: 16px;
+            border-radius: 10px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255,255,255,0.02);
+        }
+        .metric-card text-align: center; {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .metric-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .metric-value { font-size: 20px; font-weight: 700; font-family: monospace; }
+        
+        /* Interactivity Controls */
+        .controls-panel {
+            background: rgba(255,255,255,0.01);
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-orange);
+            background: #1f2937;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .desc-text {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <h1>Dynamical Metric Engine: Non-Euclidean \(\pi\) Space</h1>
+        <p>Observing \(\pi\) distortion across a 9x8 Toroidal Field during Molecular Transition coordinates</p>
+    </div>
+
+    <!-- Dual Space Viewports -->
+    <div class="layout-grid">
+        <!-- Left: 2D Chemical Transition Coordinate -->
+        <div class="viewport-box">
+            <div class="viewport-title">
+                <span>Transition Coordinate Mapping</span>
+                <span style="color: var(--accent-orange);" id="stateLabel">Reactant State</span>
+            </div>
+            <canvas id="chemCanvas" width="420" height="280"></canvas>
+        </div>
+
+        <!-- Right: 3D Geometry Space Wapping -->
+        <div class="viewport-box">
+            <div class="viewport-title">3D Toroidal Geometric Metric Space</div>
+            <canvas id="torusCanvas" width="420" height="280"></canvas>
+        </div>
+    </div>
+
+    <!-- Live Mathematical Analysis Strip -->
+    <div class="analytics-strip">
+        <div class="metric-card">
+            <div class="metric-label">Circumference (C)</div>
+            <div class="metric-value" id="circVal" style="color: var(--accent-blue);">0.00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Diameter (D)</div>
+            <div class="metric-value" id="diamVal" style="color: var(--text-main);">0.00</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Effective \(\pi\) Ratio</div>
+            <div class="metric-value" id="piVal" style="color: var(--accent-orange);">3.1416</div>
+        </div>
+        <div class="metric-card">
+            <div class="metric-label">Metric Deviances</div>
+            <div class="metric-value" id="devVal" style="color: var(--accent-green);">0.00%</div>
+        </div>
+    </div>
+
+    <!-- Parameter Controls -->
+    <div class="controls-panel">
+        <div class="control-group">
+            <div class="control-header">
+                <span>Reaction Path Coordinate (\(\xi\))</span>
+                <span id="coordDisplay" style="font-family: monospace;">0.00 (Stable Basin)</span>
+            </div>
+            <input type="range" id="pathSlider" min="0" max="100" value="0">
+        </div>
+        <p class="desc-text">
+            <strong>Theoretical Mechanics:</strong> As the reaction coordinate shifts from 0 (Reactant) to 50 (Transition State Topology) and ends at 100 (Product), the spatial configuration stretches across the toroidal boundary. Watch the effective ratio of \(\pi = \frac{C}{D}\) adapt dynamically as the structural loop encounters localized non-zero curvature.
+        </p>
+    </div>
+</div>
+<script>
+    const chemCanvas = document.getElementById('chemCanvas');
+    const chemCtx = chemCanvas.getContext('2d');
+    const torusCanvas = document.getElementById('torusCanvas');
+    const torusCtx = torusCanvas.getContext('2d');
+
+    const pathSlider = document.getElementById('pathSlider');
+    const coordDisplay = document.getElementById('coordDisplay');
+    const stateLabel = document.getElementById('stateLabel');
+    
+    const circVal = document.getElementById('circVal');
+    const diamVal = document.getElementById('diamVal');
+    const piVal = document.getElementById('piVal');
+    const devVal = document.getElementById('devVal');
+
+    const COLS = 9;
+    const ROWS = 8;
+    
+    // 3D View orientation settings
+    let rotX = -0.4;
+    let rotY = 0.5;
+
+    function renderDash() {
+        const sliderVal = parseInt(pathSlider.value);
+        const progress = sliderVal / 100; // 0.0 to 1.0
+
+        // 1. Calculate dynamic non-Euclidean variations
+        // As it approaches the saddle/transition state (0.5), spatial deformation maximizes
+        const deformationFactor = Math.sin(progress * Math.PI); 
+        
+        // Base metric parameters
+        const baseRadius = 25 + progress * 15;
+        const stretchX = 1 + deformationFactor * 0.8;
+        const stretchY = 1 - deformationFactor * 0.3;
+
+        // Calculate non-Euclidean path metric lengths
+        const pseudoDiameter = baseRadius * 2 * stretchX;
+        // Ramanujan approximation for ellipse circumference to evaluate metric drift
+        const a = baseRadius * stretchX;
+        const b = baseRadius * stretchY;
+        const h = Math.pow(a - b, 2) / Math.pow(a + b, 2);
+        const pseudoCircumference = Math.PI * (a + b) * (1 + (3 * h) / (10 + Math.sqrt(4 - 3 * h)));
+
+        // Dynamic Pi Evaluation
+        const dynamicPi = pseudoCircumference / pseudoDiameter;
+        const standardPi = Math.PI;
+        const variancePct = ((dynamicPi - standardPi) / standardPi) * 100;
+
+        // Update analytical text readouts
+        coordDisplay.innerText = `${progress.toFixed(2)} ${sliderVal === 50 ? '(Saddle Point)' : ''}`;
+        circVal.innerText = pseudoCircumference.toFixed(2);
+        diamVal.innerText = pseudoDiameter.toFixed(2);
+        piVal.innerText = dynamicPi.toFixed(5);
+        devVal.innerText = `${variancePct >= 0 ? '+' : ''}${variancePct.toFixed(2)}%`;
+
+        if (sliderVal < 35) {
+            stateLabel.innerText = "Reactant Matrix State";
+            stateLabel.style.color = "#38bdf8";
+        } else if (sliderVal > 65) {
+            stateLabel.innerText = "Product Reconfiguration";
+            stateLabel.style.color = "#10b981";
+        } else {
+            stateLabel.innerText = "Quantum Transition State";
+            stateLabel.style.color = "#f97316";
+        }
+
+        // 2. Draw 2D Chemical State Window
+        chemCtx.clearRect(0, 0, chemCanvas.width, chemCanvas.height);
+        // Draw grid lines
+        chemCtx.strokeStyle = 'rgba(255,255,255,0.03)';
+        chemCtx.lineWidth = 1;
+        for(let i=0; i<chemCanvas.width; i+=30) {
+            chemCtx.beginPath(); chemCtx.moveTo(i,0); chemCtx.lineTo(i,chemCanvas.height); chemCtx.stroke();
+        }
+        for(let j=0; j<chemCanvas.height; j+=30) {
+            chemCtx.beginPath(); chemCtx.moveTo(0,j); chemCtx.lineTo(chemCanvas.width,j); chemCtx.stroke();
+        }
+
+        // Draw Electron Density Orbit Ring
+        const cx = chemCanvas.width / 2;
+        const cy = chemCanvas.height / 2;
+        chemCtx.beginPath();
+        chemCtx.ellipse(cx, cy, a, b, 0, 0, 2 * Math.PI);
+        chemCtx.strokeStyle = sliderVal === 50 ? 'var(--accent-orange)' : 'var(--accent-blue)';
+        chemCtx.lineWidth = 3;
+        chemCtx.shadowBlur = 15;
+        chemCtx.shadowColor = chemCtx.strokeStyle;
+        chemCtx.stroke();
+        chemCtx.shadowBlur = 0; // reset
+
+        // Draw active nucleophilic center points
+        chemCtx.fillStyle = '#ffffff';
+        chemCtx.beginPath(); chemCtx.arc(cx - a, cy, 5, 0, 2*Math.PI); chemCtx.fill();
+        chemCtx.beginPath(); chemCtx.arc(cx + a, cy, 5, 0, 2*Math.PI); chemCtx.fill();
+
+
+        // 3. Draw 3D Geometric Space Viewport
+        torusCtx.clearRect(0, 0, torusCanvas.width, torusCanvas.height);
+        
+        const R_MAJOR = 80;
+        const r_MINOR = 32;
+        let nodes = [];
+
+        // Build 9x8 toroidal structural network geometry
+        for (let c = 0; c < COLS; c++) {
+            for (let r = 0; r < ROWS; r++) {
+                const theta = (c / COLS) * 2 * Math.PI;
+                const phi = (r / ROWS) * 2 * Math.PI;
+
+                // Standard baseline positions
+                let x0 = (R_MAJOR + r_MINOR * Math.cos(phi)) * Math.cos(theta);
+                let y0 = (R_MAJOR + r_MINOR * Math.cos(phi)) * Math.sin(theta);
+                let z0 = r_MINOR * Math.sin(phi);
+
+                // Inject non-Euclidean warp vectors using the reaction progress state variable
+                const scaleWarp = 1 + Math.sin(theta) * deformationFactor * 0.4;
+                x0 *= scaleWarp;
+                y0 *= scaleWarp;
+
+                // Standard rotational matrix multiplications
+                let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                const focal = 300;
+                const scale = focal / (focal + z2);
+                nodes.push({
+                    x: torusCanvas.width / 2 + x1 * scale,
+                    y: torusCanvas.height / 2 + y2 * scale,
+                    depth: z2,
+                    c: c,
+                    r: r
+                });
+            }
+        }
+
+        // Depth buffer sort
+        nodes.sort((n1, n2) => n2.depth - n1.depth);
+
+        // Draw wireframe grid structure links
+        nodes.forEach(n => {
+            const right = nodes.find(o => o.c === (n.c + 1) % COLS && o.r === n.r);
+            const bottom = nodes.find(o => o.c === n.c && o.r === (n.r + 1) % ROWS);
+            torusCtx.strokeStyle = `rgba(71, 85, 105, ${0.15 + deformationFactor * 0.2})`;
+            torusCtx.lineWidth = 1;
+            
+            if (right) {
+                torusCtx.beginPath(); torusCtx.moveTo(n.x, n.y); torusCtx.lineTo(right.x, right.y); torusCtx.stroke();
+            }
+            if (bottom) {
+                torusCtx.beginPath(); torusCtx.moveTo(n.x, n.y); torusCtx.lineTo(bottom.x, bottom.y); torusCtx.stroke();
+            }
+        });
+
+        // Highlight the measuring circle on the torus surface demonstrating metric contraction
+        nodes.forEach(n => {
+            torusCtx.beginPath();
+            const isMeasuringLoop = (n.r === 2); // Structural circle strip
+            
+            let radius = isMeasuringLoop ? 4 : 2;
+            torusCtx.arc(n.x, n.y, radius, 0, 2 * Math.PI);
+            
+            if (isMeasuringLoop) {
+                torusCtx.fillStyle = sliderVal === 50 ? 'var(--accent-orange)' : 'var(--accent-blue)';
+                torusCtx.fill();
+            } else {
+                torusCtx.fillStyle = 'rgba(255,255,255,0.15)';
+                torusCtx.fill();
+            }
+        });
+    }
+
+    pathSlider.addEventListener('input', renderDash);
+    
+    // Initial bootstrapping execution
+    renderDash();
+</script>
+</body>
+</html>

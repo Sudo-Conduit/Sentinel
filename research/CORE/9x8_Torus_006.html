@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Sliced Quantum Circle: QBit Internal Architecture</title>
+    <style>
+        :root {
+            --bg-color: #060913;
+            --panel-bg: #0f1626;
+            --panel-border: rgba(56, 189, 248, 0.1);
+            --text-main: #f8fafc;
+            --text-muted: #64748b;
+            --accent-cyan: #22d3ee;
+            --accent-magenta: #f43f5e;
+            --accent-quantum: #a855f7;
+        }
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        .dashboard {
+            width: 100%;
+            max-width: 950px;
+            background: var(--panel-bg);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.85);
+            border: 1px solid var(--panel-border);
+        }
+        .header {
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--panel-border);
+            padding-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header-text h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; color: #fff; }
+        .header-text p { margin: 6px 0 0 0; color: var(--text-muted); font-size: 13px; }
+        
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+        
+        .viewport-box {
+            background: #030712;
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid rgba(255,255,255,0.01);
+            position: relative;
+        }
+        .viewport-title {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+        }
+        canvas { display: block; width: 100%; cursor: grab; }
+        canvas:active { cursor: grabbing; }
+
+        /* QBit Internal State Readout */
+        .state-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.03);
+            font-family: monospace;
+        }
+        .state-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+        }
+        .state-lbl { color: var(--text-muted); }
+        .state-val { font-weight: bold; color: var(--accent-cyan); }
+        
+        /* Interactive Controls */
+        .controls-panel {
+            background: rgba(255,255,255,0.01);
+            padding: 18px;
+            border-radius: 10px;
+            border: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .control-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--accent-quantum);
+            background: #1e293b;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="dashboard">
+    <div class="header">
+        <div class="header-text">
+            <h1>Internal Architecture: Sliced Quantum Circle</h1>
+            <p>Peering directly into the multi-layer nested Bloch sphere matrices at cross-section</p>
+        </div>
+    </div>
+
+    <div class="layout-grid">
+        <!-- Left Box: The Sliced 3D Canvas Geometry viewport -->
+        <div class="viewport-box">
+            <div class="viewport-title">
+                <span>3D Hemisphere Cross-Sectional Cut</span>
+                <span style="color: var(--accent-magenta);" id="sliceStatus">Cross-Section Active</span>
+            </div>
+            <canvas id="quantumCanvas" width="480" height="320"></canvas>
+        </div>
+
+        <!-- Right Box: Live Inner Node State Array Matrix Tracker -->
+        <div class="viewport-box" style="display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div class="viewport-title">Internal QBit State Matrix</div>
+                <div class="state-panel">
+                    <div class="state-row"><span class="state-lbl">Active Shell Layer</span><span id="lblLayer" class="state-val">Core (r = 1)</span></div>
+                    <div class="state-row"><span class="state-lbl">Superposition Angle (θ)</span><span id="lblTheta" class="state-val">45.0°</span></div>
+                    <div class="state-row"><span class="state-lbl">Phase Vector Angle (φ)</span><span id="lblPhi" class="state-val">90.0°</span></div>
+                    <div class="state-row"><span class="state-lbl">Lattice State Equation</span><span id="lblEq" class="state-val" style="color: var(--accent-quantum);">|Ψ⟩ = α|0⟩ + β|1⟩</span></div>
+                </div>
+            </div>
+            <p style="font-size: 12px; color: var(--text-muted); line-height: 1.5; margin: 0; padding-top: 12px;">
+                <strong>Slicing Mechanics:</strong> By setting the slice offset plane, the sphere is programmatically halved. This reveals the nested concentric shells inside. Each shell hosts a localized ring of QBits balancing dynamic phase probabilities across the 72-point system.
+            </p>
+        </div>
+    </div>
+
+    <!-- Parameter Navigation Modulators -->
+    <div class="controls-panel">
+        <div class="control-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div class="control-group">
+                <div class="control-header"><span>Cross-Section Slice Offset</span><span id="sliceDisplay" style="font-family: monospace;">0.00 (Perfect Half)</span></div>
+                <input type="range" id="sliceSlider" min="-50" max="50" value="0">
+            </div>
+            <div class="control-group">
+                <div class="control-header"><span>Quantum Shell Layer Depth</span><span id="layerDisplay" style="font-family: monospace;">Layer 3 (Mid-Shell)</span></div>
+                <input type="range" id="layerSlider" min="1" max="5" value="3">
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    const canvas = document.getElementById('quantumCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const sliceSlider = document.getElementById('sliceSlider');
+    const sliceDisplay = document.getElementById('sliceDisplay');
+    const layerSlider = document.getElementById('layerSlider');
+    const layerDisplay = document.getElementById('layerDisplay');
+
+    const lblLayer = document.getElementById('lblLayer');
+    const lblTheta = document.getElementById('lblTheta');
+    const lblPhi = document.getElementById('lblPhi');
+    const lblEq = document.getElementById('lblEq');
+
+    // 3D Matrix Perspective Properties
+    let rotX = -0.5;
+    let rotY = 0.6;
+    let isDragging = false;
+    let lastMouseX = 0, lastMouseY = 0;
+    let localPhaseClock = 0;
+
+    function renderQuantumCircle() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Dark space vacuum ambient background filling
+        ctx.fillStyle = '#030712';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const sliceOffset = parseInt(sliceSlider.value) * 1.5;
+        const selectedLayer = parseInt(layerSlider.value);
+        
+        sliceDisplay.innerText = (sliceOffset / 1.5).toFixed(2);
+        layerDisplay.innerText = `Layer ${selectedLayer} ${selectedLayer === 1 ? '(Core Seed)' : selectedLayer === 5 ? '(Outer Valence)' : ''}`;
+
+        // Dynamic State Dashboard updates
+        const sampleTheta = (selectedLayer * 18).toFixed(1);
+        const samplePhi = (localPhaseClock * 2).toFixed(1);
+        lblLayer.innerText = `Layer Depth ${selectedLayer} / 5`;
+        lblTheta.innerText = `${sampleTheta}°`;
+        lblPhi.innerText = `${(samplePhi % 360).toFixed(1)}°`;
+        
+        // Evaluate dynamic probability state mapping
+        const alpha = Math.cos((selectedLayer * 18 * Math.PI)/180).toFixed(3);
+        const beta = Math.sin((selectedLayer * 18 * Math.PI)/180).toFixed(3);
+        lblEq.innerText = `|Ψ⟩ = ${alpha}|0⟩ + ${beta}e^(iφ)|1⟩`;
+
+        let particles = [];
+        const TOTAL_SHELLS = 5;
+
+        // Generate nested concentric shell node matrices
+        for (let s = 1; s <= TOTAL_SHELLS; s++) {
+            const shellRadius = s * 24; // Concentric spacing step
+            const totalNodesInShell = 12 + s * 4; // Node scaling logic
+
+            for (let i = 0; i < totalNodesInShell; i++) {
+                const lat = (i / totalNodesInShell) * 2 * Math.PI;
+                for (let j = 0; j < totalNodesInShell / 2; j++) {
+                    const lon = (j / (totalNodesInShell / 2)) * Math.PI;
+
+                    // Standard spherical geometric positions
+                    let x0 = shellRadius * Math.sin(lon) * Math.cos(lat);
+                    let y0 = shellRadius * Math.sin(lon) * Math.sin(lat);
+                    let z0 = shellRadius * Math.cos(lon);
+
+                    // Apply the mathematical structural slicing threshold condition
+                    // If the node falls past our cross section cut plane (Y-Axis cut), flag it
+                    const isCutAway = y0 > sliceOffset;
+
+                    if (!isCutAway) {
+                        // Standard Rotational matrix transformations
+                        let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                        let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                        let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                        let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                        const scale = 400 / (400 + z2);
+                        particles.push({
+                            x: canvas.width / 2 + x1 * scale,
+                            y: canvas.height / 2 + y2 * scale,
+                            depth: z2,
+                            layer: s,
+                            isEdgeNode: Math.abs(y0 - sliceOffset) < 6, // Identifies cut edge
+                            rawX: x0, rawY: y0, rawZ: z0
+                        });
+                    }
+                }
+            }
+        }
+
+        // Apply Painter Sorting for layered 3D spatial alignment transparency
+        particles.sort((a, b) => b.depth - a.depth);
+
+        // Draw structural connecting cross-section rings
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(34, 211, 238, 0.04)';
+        
+        // 1. Render Layer Matrix Structural Framework Lines
+        particles.forEach(p => {
+            if (p.layer === selectedLayer) {
+                ctx.fillStyle = `rgba(168, 85, 247, ${0.1 + Math.sin(localPhaseClock * 0.05) * 0.05})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3.5, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+        });
+
+        // 2. Draw Quantum Particle Nodes Viewport Array
+        particles.forEach(p => {
+            ctx.beginPath();
+            
+            let radius = p.layer === selectedLayer ? 4 : 1.5;
+            ctx.arc(p.x, p.y, radius, 0, 2 * Math.PI);
+
+            if (p.isEdgeNode) {
+                // Highlight the explicit cross-section cut plane rim in glowing Magenta
+                ctx.fillStyle = 'rgba(244, 63, 94, 0.8)';
+                ctx.fill();
+            } else if (p.layer === selectedLayer) {
+                // Highlight the user focused quantum shell layer deep in Cyan
+                const pulseColorFactor = Math.floor(180 + Math.sin(localPhaseClock * 0.1) * 75);
+                ctx.fillStyle = `rgb(34, ${pulseColorFactor}, 238)`;
+                ctx.fill();
+                
+                // Add tiny ambient excitation ring flare around target layer nodes
+                ctx.strokeStyle = 'rgba(34, 211, 238, 0.3)';
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+            } else {
+                // Default faded structural environment nodes
+                ctx.fillStyle = `rgba(100, 116, 139, ${0.12 + (p.layer * 0.04)})`;
+                ctx.fill();
+            }
+        });
+
+        // 3. Draw Sliced Exposure Cross Section Overlay Outline
+        ctx.strokeStyle = 'rgba(244, 63, 94, 0.2)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 8]);
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height / 2 + sliceOffset * Math.cos(rotX), 110 * (300/(300+sliceOffset)), 0, 2*Math.PI);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Capture user drag mouse gestures for complete spherical rotational look-around
+    canvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => isDragging = false);
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.clientY - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += deltaY * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        renderQuantumCircle();
+    });
+
+    // Wire slider input events directly to rendering frame updates
+    sliceSlider.addEventListener('input', renderQuantumCircle);
+    layerSlider.addEventListener('input', renderQuantumCircle);
+
+    // Dynamic execution clock phase animation looping
+    function stepClock() {
+        localPhaseClock += 0.5;
+        renderQuantumCircle();
+        requestAnimationFrame(stepClock);
+    }
+
+    // Initialize Engine
+    stepClock();
+</script>
+</body>
+</html>

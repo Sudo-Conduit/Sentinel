@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoNLP Linguistic Manifest Studio [v6.0]</title>
+    <style>
+        :root {
+            --bg-main: #020408;
+            --panel-bg: #090f1d;
+            --panel-border: #a855f7;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+            --green-glow: #10b981;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1250px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 50px 100px rgba(0,0,0,0.95); border: 2px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 2px solid rgba(168, 85, 247, 0.3); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .engine-tag {
+            background: rgba(16, 185, 129, 0.1); border: 2px solid var(--green-glow); color: #34d399;
+            font-family: monospace; font-size: 12px; font-weight: bold; padding: 6px 14px; border-radius: 4px;
+        }
+        
+        .workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .viewport-box { background: #000000; border-radius: 8px; padding: 20px; border: 2px solid rgba(255,255,255,0.1); position: relative; }
+        .viewport-title {
+            font-size: 12px; font-weight: 800; color: var(--text-primary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 2px solid rgba(255,255,255,0.1); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; background: #000000; border-radius: 4px; }
+        #latticeCanvas { cursor: grab; }
+        #latticeCanvas:active { cursor: grabbing; }
+        
+        .telemetry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+        .telemetry-card { background: rgba(0,0,0,0.8); border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 6px; padding: 16px; text-align: center; }
+        .tel-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .tel-val { font-size: 18px; font-weight: bold; font-family: monospace; }
+        
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 2px solid rgba(168, 85, 247, 0.3);
+            display: grid; grid-template-columns: 1fr 1.5fr; gap: 24px; align-items: center;
+        }
+        .select-input {
+            background: #111726; border: 2px solid var(--purple-glow); color: var(--text-primary); padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; width: 100%; outline: none; font-size: 14px;
+        }
+        .slider-group { display: flex; flex-direction: column; gap: 6px; }
+        .meta-text { display: flex; justify-content: space-between; font-size: 13px; font-weight: 600; color: var(--text-secondary); }
+        input[type="range"] {
+            width: 100%; accent-color: var(--purple-glow); background: #111622; height: 8px; border-radius: 4px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1>GeoNLP Linguistic Manifest Studio</h1>
+            <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 14px;">Manifold Diagnostics: Analyzing 9D Structural Translation Ratios on Offline Edge Hardware</p>
+        </div>
+        <div class="engine-tag">DETERMINISTIC OPERATIONAL</div>
+    </div>
+
+    <!-- 9D Manifold Live Diagnostics -->
+    <div class="telemetry-grid">
+        <div class="telemetry-card" style="border-top: 4px solid var(--purple-glow);">
+            <div class="tel-lbl">Symmetry Horizon State (\(\sigma\))</div>
+            <div class="tel-val" id="lblSymmetry" style="color: var(--purple-glow);">\(\sigma\) = 0.842 (Phase I)</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--cyan-glow);">
+            <div class="tel-lbl">Relational Dissonance Distance (\(D(t)\))</div>
+            <div class="tel-val" id="lblDissonance" style="color: var(--cyan-glow);">0.0000 (Aligned)</div>
+        </div>
+        <div class="telemetry-card" style="border-top: 4px solid var(--green-glow);">
+            <div class="tel-lbl">Effective Jacobian Rank (\(r_{\text{eff}}\))</div>
+            <div class="tel-val" id="lblRank" style="color: var(--green-glow);">Rank 1.15 (Compressed)</div>
+        </div>
+    </div>
+
+    <div class="workspace-grid">
+        <!-- Left Window: Wave Interference Fields -->
+        <div class="viewport-box">
+            <div class="viewport-title">Window 1: Representation Flow Field (\(F(S) = \phi(S) - S\))</div>
+            <canvas id="streamCanvas" width="540" height="320"></canvas>
+        </div>
+
+        <!-- Right Window: 3D Interactive B-Spline Topology -->
+        <div class="viewport-box">
+            <div class="viewport-title" id="activeOffsetDisplay">Window 3: 3D Slipped Polysemy Branches (Left Click + Drag)</div>
+            <canvas id="latticeCanvas" width="540" height="320"></canvas>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <select class="select-input" id="phraseSelect" onchange="changeLinguisticProfile()">
+                <option value="italianNonna">Italian Grandma Translation [4π Double-Cover Arm]</option>
+                <option value="hindiGirl">Rural India Cognitive Stream [Lasagna Limit Axis]</option>
+            </select>
+        </div>
+        <div class="slider-group">
+            <div class="meta-text"><span>Linguistic Path Shift Operator Vector</span><span id="shiftDisplay" style="font-family: monospace; color: var(--purple-glow); font-weight: bold; font-size: 14px;">0° (Terminal Base)</span></div>
+            <input type="range" id="shiftSlider" min="0" max="360" value="0">
+        </div>
+    </div>
+</div>
+<script>
+    const streamCanvas = document.getElementById('streamCanvas');
+    const streamCtx = streamCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const phraseSelect = document.getElementById('phraseSelect');
+    const shiftSlider = document.getElementById('shiftSlider');
+    const shiftDisplay = document.getElementById('shiftDisplay');
+
+    const lblSymmetry = document.getElementById('lblSymmetry');
+    const lblDissonance = document.getElementById('lblDissonance');
+    const lblRank = document.getElementById('lblRank');
+    const activeOffsetDisplay = document.getElementById('activeOffsetDisplay');
+
+    let processingTimeline = 0;
+    
+    // Interactive mouse rotation tracking variables for Window 3
+    let rotX = -0.75;
+    let rotY = 0.45;
+    let isDragging = false;
+    let lastMouseX = 0;
+    let lastMouseY = 0;
+
+    const nlpDatabase = {
+        italianNonna: { name: "Italian Grandma [4π Arm]", sigma: 0.842, rank: 1.15, rings: 4, points: 14, color: "#a855f7" },
+        hindiGirl: { name: "Rural India Stream [Lasagna Axis]", sigma: 0.985, rank: 1.02, rings: 3, points: 12, color: "#fbbf24" }
+    };
+
+    function processLinguisticManifold() {
+        try {
+            const profileKey = phraseSelect.value;
+            const profile = nlpDatabase[profileKey];
+            const sliderVal = parseInt(shiftSlider.value);
+
+            shiftDisplay.innerText = sliderVal + '° Shift';
+            activeOffsetDisplay.innerText = `Window 3: 3D Slipped Polysemy Branches (Shift: ${sliderVal}°)`;
+
+            const clockRad = (processingTimeline * Math.PI) / 180;
+            const shiftRad = (sliderVal * Math.PI) / 180;
+
+            // Compute dynamic telemetry values matching your representation flow math
+            const dynamicSigma = profile.sigma + Math.sin(clockRad) * 0.01 * (1.0 - sliderVal/360);
+            const dynamicRank = profile.rank + Math.abs(Math.cos(clockRad)) * 0.05 * (sliderVal/360);
+            const computedDissonance = Math.abs(Math.sin(shiftRad) * 0.35);
+
+            lblSymmetry.innerText = `\u00A0= ${dynamicSigma.toFixed(3)} (${dynamicSigma > 0.9 ? 'Lasagna Limit' : 'Phase I'})`;
+            lblRank.innerText = `Rank ${dynamicRank.toFixed(2)} (${dynamicRank < 1.1 ? 'Collapsed' : 'Deforming'})`;
+            lblDissonance.innerText = computedDissonance.toFixed(4);
+
+            // ==========================================
+            // WINDOW 1: REPRESENTATION SHIFT FIELDS
+            // ==========================================
+            streamCtx.fillStyle = '#000000';
+            streamCtx.fillRect(0, 0, streamCanvas.width, streamCanvas.height);
+
+            streamCtx.strokeStyle = '#111827';
+            streamCtx.lineWidth = 1.5;
+            for(let i=0; i<streamCanvas.width; i+=40) {
+                streamCtx.beginPath(); streamCtx.moveTo(i, 0); streamCtx.lineTo(i, streamCanvas.height); streamCtx.stroke();
+            }
+
+            // Draw solid high-contrast representation flow waves
+            streamCtx.lineWidth = 4;
+            streamCtx.strokeStyle = '#a855f7'; // Shift field vector F(S) trace
+            streamCtx.beginPath();
+            for(let x=0; x<streamCanvas.width; x++) {
+                const angle = (x / streamCanvas.width) * 4 * Math.PI; // 4π double-cover mapping
+                const y = (streamCanvas.height / 2) + Math.sin(angle + clockRad * 2) * 35 + Math.cos(angle * 2 - shiftRad) * 15;
+                if(x === 0) streamCtx.moveTo(x, y); else streamCtx.lineTo(x, y);
+            }
+            streamCtx.stroke();
+
+            // ==========================================
+            // WINDOW 3: INTERACTIVE 3D B-SPLINES
+            // ==========================================
+            latCtx.fillStyle = '#000000';
+            latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+            let meshPoints = [];
+            const layers = profile.rings;
+            const nodesPerRing = profile.points;
+
+            for (let s = 1; s <= layers; s++) {
+                const radius = s * 25;
+                for(let n=0; n<nodesPerRing; n++) {
+                    const lat = (n / nodesPerRing) * 2 * Math.PI;
+
+                    // Interpolate continuous B-Spline curves by modulating the latitudinal vertices smoothly
+                    const splineWarp = Math.sin(lat * 3 + clockRad * 2) * 6 * (s / layers);
+                    const shiftOffset = (s === 1) ? shiftRad * 15 : 0;
+
+                    const x0 = (radius + splineWarp) * Math.cos(lat) + shiftOffset;
+                    const y0 = (radius + splineWarp) * Math.sin(lat);
+                    const z0 = Math.sin(lat * 2) * 12;
+
+                    // Apply active user drag rotation matrices live
+                    let x1 = x0 * Math.cos(rotY) - z0 * Math.sin(rotY);
+                    let z1 = x0 * Math.sin(rotY) + z0 * Math.cos(rotY);
+                    let y2 = y0 * Math.cos(rotX) - z1 * Math.sin(rotX);
+                    let z2 = y0 * Math.sin(rotX) + z1 * Math.cos(rotX);
+
+                    const scale = 380 / (380 + z2);
+                    meshPoints.push({
+                        x: latticeCanvas.width / 2 + x1 * scale,
+                        y: latticeCanvas.height / 2 + y2 * scale,
+                        depth: z2,
+                        layerIndex: s,
+                        nodeIndex: n,
+                        maxNodes: nodesPerRing
+                    });
+                }
+            }
+
+            meshPoints.sort((a, b) => b.depth - a.depth);
+
+            // Draw solid high-contrast continuous B-Spline wire networks
+            meshPoints.forEach(p => {
+                const next = meshPoints.find(o => o.layerIndex === p.layerIndex && o.nodeIndex === (p.nodeIndex + 1) % p.maxNodes);
+                if (next) {
+                    if (sliderVal > 0 && p.layerIndex === 1) {
+                        latCtx.strokeStyle = '#f43f5e'; // Highlights active polysemous branch fork in solid Magenta
+                        latCtx.lineWidth = 3.0;
+                    } else {
+                        latCtx.strokeStyle = profile.color; // Mapped language subpatch channel rails
+                        latCtx.lineWidth = 1.5;
+                    }
+                    latCtx.beginPath(); latCtx.moveTo(p.x, p.y); latCtx.lineTo(next.x, next.y); latCtx.stroke();
+                }
+            });
+
+            // Draw nodes
+            meshPoints.forEach(p => {
+                latCtx.beginPath();
+                latCtx.arc(p.x, p.y, p.layerIndex === 1 ? 3.5 : 1.8, 0, 2 * Math.PI);
+                latCtx.fillStyle = (sliderVal > 0 && p.layerIndex === 1) ? '#ffffff' : '#22d3ee';
+                latCtx.fill();
+            });
+
+        } catch (err) {
+            console.error("Linguistic manifold render cycle protected:", err);
+        }
+    }
+
+    // Interactive Drag handlers for 3D look-around
+    latticeCanvas.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+    });
+
+    window.addEventListener('mouseup', () => { isDragging = false; });
+
+    latticeCanvas.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - lastMouseX;
+        const deltaY = e.mousemove - lastMouseY;
+
+        rotY += deltaX * 0.007;
+        rotX += (e.clientY - lastMouseY) * 0.007;
+
+        lastMouseX = e.clientX;
+        lastMouseY = e.clientY;
+        processLinguisticManifold();
+    });
+
+    function changeLinguisticProfile() {
+        shiftSlider.value = 0;
+        processLinguisticManifold();
+    }
+
+    shiftSlider.addEventListener('input', processLinguisticManifold);
+
+    function stepClockTimeline() {
+        processingTimeline += 0.5;
+        processLinguisticManifold();
+        requestAnimationFrame(stepClockTimeline);
+    }
+    stepClockTimeline();
+</script>

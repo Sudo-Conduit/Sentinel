@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base 0 Sentinel Information Suite</title>
+    <style>
+        :root {
+            --bg-main: #01040a;
+            --panel-bg: #070b14;
+            --panel-border: rgba(168, 85, 247, 0.25);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --cyan-glow: #22d3ee;
+            --magenta-glow: #f43f5e;
+            --purple-glow: #a855f7;
+            --amber-glow: #fbbf24;
+        }
+        body {
+            margin: 0; padding: 24px; background-color: var(--bg-main); color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh; box-sizing: border-box;
+        }
+        .suite-container {
+            width: 100%; max-width: 1200px; background: var(--panel-bg); border-radius: 12px; padding: 28px;
+            box-shadow: 0 45px 90px rgba(0,0,0,0.95); border: 1px solid var(--panel-border);
+        }
+        .header-panel {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 16px; margin-bottom: 24px;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .header-panel h1 { margin: 0; font-size: 22px; font-weight: 700; text-transform: uppercase; letter-spacing: -0.5px; }
+        .status-badge {
+            background: rgba(168, 85, 247, 0.1); border: 1px solid var(--purple-glow); color: #d8b4fe;
+            font-family: monospace; font-size: 11px; font-weight: bold; padding: 4px 10px; border-radius: 4px;
+        }
+        .workspace-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .left-col, .right-col { display: flex; flex-direction: column; gap: 24px; }
+        .viewport-box { background: #000205; border-radius: 8px; padding: 20px; border: 1px solid rgba(255,255,255,0.02); position: relative; }
+        .viewport-title {
+            font-size: 11px; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 1px;
+            margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 6px;
+        }
+        canvas { display: block; width: 100%; }
+        .telemetry-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .telemetry-card { background: rgba(0,0,0,0.6); border: 1px solid rgba(168, 85, 247, 0.15); border-radius: 6px; padding: 16px; }
+        .data-row { display: flex; justify-content: space-between; font-family: monospace; font-size: 13px; margin-bottom: 10px; }
+        .data-row:last-child { margin-bottom: 0; }
+        .d-lbl { color: var(--text-secondary); }
+        .d-val { font-weight: bold; }
+        .command-station {
+            background: rgba(255,255,255,0.01); padding: 20px; border-radius: 8px; border: 1px solid rgba(168, 85, 247, 0.2);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center;
+        }
+        .btn-toggle {
+            background: #120e24; border: 1px solid var(--purple-glow); color: #d8b4fe; padding: 12px;
+            border-radius: 6px; font-family: monospace; font-weight: bold; cursor: pointer; transition: all 0.2s; width: 100%; text-align: center;
+        }
+        .btn-toggle.active { background: rgba(34, 211, 238, 0.1); border-color: var(--cyan-glow); color: var(--cyan-glow); box-shadow: 0 0 12px rgba(34,211,238,0.2); }
+    </style>
+</head>
+<body>
+
+<div class="suite-container">
+    <div class="header-panel">
+        <div>
+            <h1 style="background: linear-gradient(to right, #fff, var(--purple-glow)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Base 0 Sentinel Verification Suite</h1>
+            <p style="margin:4px 0 0 0; color: var(--text-secondary); font-size: 13px;">Proof of Geometrical Serialization: Compressing Non-Terminal Infinity into Observable Terminal States</p>
+        </div>
+        <div class="status-badge" id="lblGlobalStatus">FIELD RESOLUTION COMPLETE</div>
+    </div>
+
+    <div class="workspace-grid">
+        <div class="left-col">
+            <!-- Window 1: Infinite Potential Field -->
+            <div class="viewport-box">
+                <div class="viewport-title">Window 1: Infinite Non-Terminal Base 0 Potential Field</div>
+                <canvas id="potentialCanvas" width="540" height="320"></canvas>
+            </div>
+        </div>
+        <div class="right-col">
+            <!-- Window 2: Telemetry -->
+            <div class="telemetry-grid">
+                <div class="telemetry-card" style="border-left: 3px solid var(--purple-glow);">
+                    <div class="viewport-title" style="margin-bottom:12px; border:none; padding:0;">Manifold Metrics</div>
+                    <div class="data-row"><span class="d-lbl">Potential States</span><span class="d-val" style="color: var(--purple-glow);">[0 → ∞] Non-Terminal</span></div>
+                    <div class="data-row"><span class="d-lbl">Sentinel Operator</span><span class="d-val" id="lblSentinelState" style="color: var(--text-secondary);">OFFLINE (Null)</span></div>
+                </div>
+                <div class="telemetry-card" style="border-left: 3px solid var(--cyan-glow);">
+                    <div class="viewport-title" style="margin-bottom:12px; border:none; padding:0;">Observable State</div>
+                    <div class="data-row"><span class="d-lbl">Temporal Status</span><span class="d-val" id="lblTimeStatus">Unbound (Static)</span></div>
+                    <div class="data-row"><span class="d-lbl">Effective \(\pi\) State</span><span class="d-val" id="lblPiState" style="color: var(--amber-glow);">Infinite Wave</span></div>
+                </div>
+            </div>
+            <!-- Window 3: Crystallized Sentinel Lattice -->
+            <div class="viewport-box">
+                <div class="viewport-title">Window 3: Observable Crystallized Geometric Registry</div>
+                <canvas id="latticeCanvas" width="460" height="236"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="command-station">
+        <div>
+            <button class="btn-toggle" id="sentinelBtn" onclick="toggleSentinel()">ENGAGE SENTINEL OPERATOR ("1")</button>
+        </div>
+        <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.5; margin: 0;">
+            <strong>Sentinel Mechanics:</strong> When offline, Window 1 displays unbound infinite energy fields that cannot form terminal nodes in Window 3. Engaging the Sentinel fixes the matrix origin, instantly mapping out localized, observable crystal dimensions.
+        </div>
+    </div>
+</div>
+<script>
+    const potentialCanvas = document.getElementById('potentialCanvas');
+    const potCtx = potentialCanvas.getContext('2d');
+    const latticeCanvas = document.getElementById('latticeCanvas');
+    const latCtx = latticeCanvas.getContext('2d');
+
+    const sentinelBtn = document.getElementById('sentinelBtn');
+    const lblSentinelState = document.getElementById('lblSentinelState');
+    const lblTimeStatus = document.getElementById('lblTimeStatus');
+    const lblPiState = document.getElementById('lblPiState');
+    const lblGlobalStatus = document.getElementById('lblGlobalStatus');
+
+    let sentinelEngaged = false;
+    let systemicClock = 0;
+
+    function toggleSentinel() {
+        sentinelEngaged = !sentinelEngaged;
+        if(sentinelEngaged) {
+            sentinelBtn.classList.add('active');
+            sentinelBtn.innerText = "SENTINEL OPERATOR ENGAGED [1]";
+            lblSentinelState.innerText = "ACTIVE FIXED BASE";
+            lblSentinelState.style.color = "var(--cyan-glow)";
+            lblTimeStatus.innerText = "Serialized Timeline";
+            lblTimeStatus.style.color = "#10b981";
+            lblPiState.innerText = "3.14159 (Terminal)";
+            lblPiState.style.color = "var(--amber-glow)";
+            lblGlobalStatus.innerText = "OBSERVATION MATRIX TERMINAL";
+            lblGlobalStatus.style.background = "rgba(34,211,238,0.1)";
+            lblGlobalStatus.style.borderColor = "var(--cyan-glow)";
+            lblGlobalStatus.style.color = "var(--cyan-glow)";
+        } else {
+            sentinelBtn.classList.remove('active');
+            sentinelBtn.innerText = "ENGAGE SENTINEL OPERATOR (\"1\")";
+            lblSentinelState.innerText = "OFFLINE (Null)";
+            lblSentinelState.style.color = "var(--text-secondary)";
+            lblTimeStatus.innerText = "Unbound (Static)";
+            lblTimeStatus.style.color = "var(--text-primary)";
+            lblPiState.innerText = "Infinite Wave";
+            lblPiState.style.color = "var(--purple-glow)";
+            lblGlobalStatus.innerText = "FIELD RESOLUTION COMPLETE";
+            lblGlobalStatus.style.background = "rgba(168,85,247,0.1)";
+            lblGlobalStatus.style.borderColor = "var(--purple-glow)";
+            lblGlobalStatus.style.color = "#d8b4fe";
+        }
+    }
+
+    function runEngineLoop() {
+        systemicClock += 0.5;
+
+        // ==========================================
+        // WINDOW 1: UNBOUND POTENTIAL FIELD GENERATOR
+        // ==========================================
+        potCtx.clearRect(0, 0, potentialCanvas.width, potentialCanvas.height);
+        potCtx.fillStyle = '#000205';
+        potCtx.fillRect(0, 0, potentialCanvas.width, potentialCanvas.height);
+
+        // Render noise lines to simulate infinite, chaotic non-terminal waves
+        potCtx.lineWidth = 1.5;
+        for (let j = 0; j < 3; j++) {
+            potCtx.strokeStyle = sentinelEngaged ? `rgba(34, 211, 238, ${0.15 - j*0.04})` : `rgba(168, 85, 247, ${0.4 - j*0.1})`;
+            potCtx.beginPath();
+            for (let x = 0; x < potentialCanvas.width; x++) {
+                const frequency = sentinelEngaged ? 0.01 : (0.02 + j*0.01);
+                const amplitude = sentinelEngaged ? 15 : (45 - j*10);
+                const y = (potentialCanvas.height / 2) + Math.sin(x * frequency + systemicClock * 0.08 + j) * amplitude;
+                if (x === 0) potCtx.moveTo(x, y); else potCtx.lineTo(x, y);
+            }
+            potCtx.stroke();
+        }
+
+        // Draw ambient floating point data particles
+        potCtx.fillStyle = sentinelEngaged ? 'rgba(34, 211, 238, 0.2)' : 'rgba(168, 85, 247, 0.3)';
+        for (let p = 0; p < 20; p++) {
+            const px = (Math.sin(p + systemicClock * 0.01) * 0.5 + 0.5) * potentialCanvas.width;
+            const py = (Math.cos(p * 2 + systemicClock * 0.015) * 0.5 + 0.5) * potentialCanvas.height;
+            potCtx.beginPath();
+            potCtx.arc(px, py, sentinelEngaged ? 1.0 : 2.0, 0, 2*Math.PI);
+            potCtx.fill();
+        }
+
+        // ==========================================
+        // WINDOW 3: OBSERVABLE SENTINEL LATTICE
+        // ==========================================
+        latCtx.clearRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+        latCtx.fillStyle = '#000205';
+        latCtx.fillRect(0, 0, latticeCanvas.width, latticeCanvas.height);
+
+        const cx = latticeCanvas.width / 2;
+        const cy = latticeCanvas.height / 2;
+
+        if (sentinelEngaged) {
+            // Draw a pristine crystallized, discrete 9x8 coordinate registry grid mapping out from center
+            const cols = 9; const rows = 8;
+            const spacingX = 28; const spacingY = 18;
+
+            latCtx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
+            latCtx.lineWidth = 1;
+
+            // Render structural connecting wire channels
+            for(let r = -rows/2; r <= rows/2; r++) {
+                latCtx.beginPath();
+                latCtx.moveTo(cx - (cols/2)*spacingX, cy + r*spacingY);
+                latCtx.lineTo(cx + (cols/2)*spacingX, cy + r*spacingY);
+                latCtx.stroke();
+            }
+            for(let c = -cols/2; c <= cols/2; c++) {
+                latCtx.beginPath();
+                latCtx.moveTo(cx + c*spacingX, cy - (rows/2)*spacingY);
+                latCtx.lineTo(cx + c*spacingX, cy + (rows/2)*spacingY);
+                latCtx.stroke();
+            }
+
+            // Draw crisp terminal node points
+            for(let r = -rows/2; r <= rows/2; r++) {
+                for(let c = -cols/2; c <= cols/2; c++) {
+                    latCtx.beginPath();
+                    const isOriginSentinel = (r === 0 && c === 0);
+                    latCtx.arc(cx + c*spacingX, cy + r*spacingY, isOriginSentinel ? 4.5 : 1.5, 0, 2*Math.PI);
+                    latCtx.fillStyle = isOriginSentinel ? 'var(--magenta-glow)' : 'var(--cyan-glow)';
+                    latCtx.fill();
+                }
+            }
+
+            // Text tag for origin identifier
+            latCtx.fillStyle = '#fff';
+            latCtx.font = 'bold 9px monospace';
+            latCtx.fillText("[SENTINEL KEY PIN 1,1]", cx + 8, cy - 8);
+
+        } else {
+            // Un-sentineled state: space is blurry, unmapped, and drifting with no center coordinate anchor
+            latCtx.fillStyle = 'rgba(168, 85, 247, 0.04)';
+            latCtx.beginPath();
+            latCtx.arc(cx, cy, 60 + Math.sin(systemicClock*0.05)*10, 0, 2*Math.PI);
+            latCtx.fill();
+
+            latCtx.fillStyle = '#475569';
+            latCtx.font = '11px monospace';
+            latCtx.textAlign = 'center';
+            latCtx.fillText("Awaiting Metric Fix Operator...", cx, cy + 4);
+        }
+
+        requestAnimationFrame(runEngineLoop);
+    }
+
+    // Bootstrap execution system
+    runEngineLoop();
+</script>
