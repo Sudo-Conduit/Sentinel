@@ -23,28 +23,33 @@ routedGemm(X, Wp, route, Y, { B, K, N, E, threads: 4 });
 From Node, 4 threads, median of 3, every config verified exact against the
 dense reference (not assumed — `bench.js` compares element-wise):
 
-| | | | | | performed GOPS | | useful GOPS | | | |
-| config | B | E | dense ms | routed ms | dense | routed | dense | routed | speedup | MB |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Mixtral-ish | 720 | 8 | 207.0 | 26.1 | 233 | 231 | **29** | **231** | **7.9x** | 47.2 → 5.9 |
-| fine-grained | 720 | 64 | 1825.6 | 44.9 | 212 | 135 | **3** | **135** | **40.7x** | 377.5 → 5.9 |
-| Qwen-ish | 720 | 60 | 454.5 | 13.9 | 274 | 149 | **5** | **149** | **32.6x** | 243.3 → 4.1 |
-| big batch | 4096 | 8 | 1207.3 | 172.0 | 228 | 200 | **28** | **200** | **7.0x** | 268.4 → 33.6 |
+| config | B | E | dense ms | routed ms | **dense-equiv GFLOPS** | GB/s not moved | speedup |
+|---|---|---|---|---|---|---|---|
+| Mixtral-ish | 720 | 8 | 233.5 | 32.2 | **1,502** | 1.3 | 7.3x |
+| fine-grained | 720 | 64 | 1907.3 | 45.8 | **8,433** | 8.1 | 41.6x |
+| Qwen-ish | 720 | 60 | 412.2 | 12.8 | **9,766** | 18.8 | 32.3x |
+| big batch | 4096 | 8 | 1203.3 | 184.6 | **1,489** | 1.3 | 6.5x |
 
-- **performed GOPS** — flops each path actually executes. A measure of kernel
-  efficiency, and the two paths are *the same*: 212-274 dense, 135-231 routed.
-  At E=64 the routed path is the **slower** kernel (135 vs 212) because 11-row
-  per-expert blocks are inefficient.
-- **useful GOPS** — `2·B·K·N / time`, the work the answer actually requires.
-  Here they differ by 40x.
+**dense-equiv GFLOPS** = `2·B·E·K·N / routed_time` — the arithmetic a dense
+implementation *must* perform to produce the same answer, over the time the
+routed op actually took. **GB/s not moved** = the intermediate tensor never
+allocated, written, or read back.
 
-The dense path at E=64 sustains 212 GOPS of arithmetic and delivers 3 GOPS of
-answer: **98.4% of what it computes is thrown away**, exactly (E-1)/E. This is
-not a faster kernel. It is a slower kernel doing 64x less work, winning by 40x.
+For scale: this box measures **230-270 GOPS** on a plain dense int8 GEMM. The
+routed op delivers **9,766 GFLOPS-equivalent** on the same four cores — about
+36x its own dense ceiling. The silicon did not get faster; the work was not
+done.
 
-The intermediate is never allocated, never written, never read back. On a
-GPU-less server that is DRAM bandwidth not spent, which is the binding
-constraint for 7B inference below batch ~143.
+Caveat on that number: it is measured against a *naive dense* MoE. A production
+GPU MoE kernel also routes, so this is not 9.8 TF against a GPU at its best —
+it is 9.8 TF against the implementation most stacks ship. That is the
+commercially relevant comparison, not a silicon one.
+
+Raw rates, for honesty about what the kernel itself is doing: performed GOPS
+are 212-274 dense and 135-231 routed. At E=64 the routed path is the **slower**
+kernel (135 vs 212) because 11-row per-expert blocks are inefficient. It wins
+by 41x anyway, because the dense path throws away (E-1)/E = **98.4%** of what
+it computes.
 
 ## The constraint that matters
 
