@@ -43,10 +43,67 @@ typedef int          i32;
 /* One expert's block: rows listed in `rows`, against weight matrix w.
  * Four columns at a time. f32x4 mul + add, no FMA -- WASM's MVP SIMD has
  * none, which is the honest ceiling for this target. */
+/* Walk size. The unblocked loop below does one 16-byte load of w for 8
+ * flops -- 0.5 flops/byte, which is bandwidth-bound, which is why neither
+ * -ffast-math (+3%) nor relaxed-simd FMA (-9%) moved it: you cannot make
+ * waiting faster with a better multiply.
+ *
+ * ROWS rows share each w load instead, giving ROWS*4*2 flops per 16 bytes.
+ * At ROWS=4 that is 2.0 flops/byte, 4x the intensity. ROWS also has to fit
+ * in registers alongside the operands -- 4 accumulators plus b plus the
+ * splats is comfortable for 16 wasm locals, 8 would spill. */
+#define ROWS 4
+
+static void block_rows(const float *X, const float *w, float *Y,
+                       const i32 *rows, int r0, int K, int N)
+{
+    const float *x0 = X + (u32)rows[r0 + 0] * (u32)K;
+    const float *x1 = X + (u32)rows[r0 + 1] * (u32)K;
+    const float *x2 = X + (u32)rows[r0 + 2] * (u32)K;
+    const float *x3 = X + (u32)rows[r0 + 3] * (u32)K;
+    float *y0 = Y + (u32)rows[r0 + 0] * (u32)N;
+    float *y1 = Y + (u32)rows[r0 + 1] * (u32)N;
+    float *y2 = Y + (u32)rows[r0 + 2] * (u32)N;
+    float *y3 = Y + (u32)rows[r0 + 3] * (u32)N;
+
+    int j = 0;
+    for (; j + 4 <= N; j += 4) {
+        v128_t a0 = wasm_f32x4_splat(0.0f), a1 = wasm_f32x4_splat(0.0f);
+        v128_t a2 = wasm_f32x4_splat(0.0f), a3 = wasm_f32x4_splat(0.0f);
+        for (int k = 0; k < K; k++) {
+            v128_t b = wasm_v128_load(&w[(u32)k * (u32)N + j]);   /* loaded ONCE */
+#ifdef __wasm_relaxed_simd__
+            a0 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x0[k]), b, a0);
+            a1 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x1[k]), b, a1);
+            a2 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x2[k]), b, a2);
+            a3 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x3[k]), b, a3);
+#else
+            a0 = wasm_f32x4_add(a0, wasm_f32x4_mul(wasm_f32x4_splat(x0[k]), b));
+            a1 = wasm_f32x4_add(a1, wasm_f32x4_mul(wasm_f32x4_splat(x1[k]), b));
+            a2 = wasm_f32x4_add(a2, wasm_f32x4_mul(wasm_f32x4_splat(x2[k]), b));
+            a3 = wasm_f32x4_add(a3, wasm_f32x4_mul(wasm_f32x4_splat(x3[k]), b));
+#endif
+        }
+        wasm_v128_store(&y0[j], a0); wasm_v128_store(&y1[j], a1);
+        wasm_v128_store(&y2[j], a2); wasm_v128_store(&y3[j], a3);
+    }
+    for (; j < N; j++) {
+        float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+        for (int k = 0; k < K; k++) {
+            float bv = w[(u32)k * (u32)N + j];
+            s0 += x0[k] * bv; s1 += x1[k] * bv;
+            s2 += x2[k] * bv; s3 += x3[k] * bv;
+        }
+        y0[j] = s0; y1[j] = s1; y2[j] = s2; y3[j] = s3;
+    }
+}
+
 static void block(const float *X, const float *w, float *Y,
                   const i32 *rows, int nrows, int K, int N)
 {
-    for (int r = 0; r < nrows; r++) {
+    int r = 0;
+    for (; r + ROWS <= nrows; r += ROWS) block_rows(X, w, Y, rows, r, K, N);
+    for (; r < nrows; r++) {
         const float *xrow = X + (u32)rows[r] * (u32)K;
         float       *yrow = Y + (u32)rows[r] * (u32)N;
 
@@ -56,7 +113,16 @@ static void block(const float *X, const float *w, float *Y,
             for (int k = 0; k < K; k++) {
                 v128_t a = wasm_f32x4_splat(xrow[k]);
                 v128_t b = wasm_v128_load(&w[(u32)k * (u32)N + j]);
+                /* MVP SIMD has no FMA, so the baseline is a separate mul and
+                 * add. relaxed-simd adds one. -ffp-contract cannot fuse these
+                 * for us because they are explicit intrinsic calls, not
+                 * arithmetic the compiler is free to reassociate -- it has to
+                 * be written. Guarded, so one source still builds for both. */
+#ifdef __wasm_relaxed_simd__
+                acc = wasm_f32x4_relaxed_madd(a, b, acc);
+#else
                 acc = wasm_f32x4_add(acc, wasm_f32x4_mul(a, b));
+#endif
             }
             wasm_v128_store(&yrow[j], acc);
         }
