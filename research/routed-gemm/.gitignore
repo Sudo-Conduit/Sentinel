@@ -3,3 +3,5 @@ node_modules/
 engines
 iso_scalar
 iso_auto
+r*.wasm
+vrun.mjs

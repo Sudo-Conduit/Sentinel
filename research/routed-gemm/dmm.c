@@ -52,49 +52,53 @@ typedef int          i32;
  * At ROWS=4 that is 2.0 flops/byte, 4x the intensity. ROWS also has to fit
  * in registers alongside the operands -- 4 accumulators plus b plus the
  * splats is comfortable for 16 wasm locals, 8 would spill. */
+/* -DROWS=n at build time, so the same source produces the whole sweep and
+ * the block size can be DERIVED rather than guessed. ROWS is a compile-time
+ * constant, so the inner loops over it unroll and `acc` stays in registers.
+ *
+ * Arithmetic intensity is exactly ROWS/2 flops per byte: each 16-byte load
+ * of w feeds ROWS * 4 lanes * 2 flops. That closed form is what makes a
+ * one-probe calibration possible -- measure the machine's ridge point and
+ * solve ROWS >= 2 * ridge, instead of sweeping every shape. */
+#ifndef ROWS
 #define ROWS 4
+#endif
 
 static void block_rows(const float *X, const float *w, float *Y,
                        const i32 *rows, int r0, int K, int N)
 {
-    const float *x0 = X + (u32)rows[r0 + 0] * (u32)K;
-    const float *x1 = X + (u32)rows[r0 + 1] * (u32)K;
-    const float *x2 = X + (u32)rows[r0 + 2] * (u32)K;
-    const float *x3 = X + (u32)rows[r0 + 3] * (u32)K;
-    float *y0 = Y + (u32)rows[r0 + 0] * (u32)N;
-    float *y1 = Y + (u32)rows[r0 + 1] * (u32)N;
-    float *y2 = Y + (u32)rows[r0 + 2] * (u32)N;
-    float *y3 = Y + (u32)rows[r0 + 3] * (u32)N;
+    const float *xp[ROWS];
+    float       *yp[ROWS];
+    for (int t = 0; t < ROWS; t++) {
+        xp[t] = X + (u32)rows[r0 + t] * (u32)K;
+        yp[t] = Y + (u32)rows[r0 + t] * (u32)N;
+    }
 
     int j = 0;
     for (; j + 4 <= N; j += 4) {
-        v128_t a0 = wasm_f32x4_splat(0.0f), a1 = wasm_f32x4_splat(0.0f);
-        v128_t a2 = wasm_f32x4_splat(0.0f), a3 = wasm_f32x4_splat(0.0f);
+        v128_t acc[ROWS];
+        for (int t = 0; t < ROWS; t++) acc[t] = wasm_f32x4_splat(0.0f);
         for (int k = 0; k < K; k++) {
             v128_t b = wasm_v128_load(&w[(u32)k * (u32)N + j]);   /* loaded ONCE */
+            for (int t = 0; t < ROWS; t++) {
 #ifdef __wasm_relaxed_simd__
-            a0 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x0[k]), b, a0);
-            a1 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x1[k]), b, a1);
-            a2 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x2[k]), b, a2);
-            a3 = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(x3[k]), b, a3);
+                acc[t] = wasm_f32x4_relaxed_madd(wasm_f32x4_splat(xp[t][k]), b, acc[t]);
 #else
-            a0 = wasm_f32x4_add(a0, wasm_f32x4_mul(wasm_f32x4_splat(x0[k]), b));
-            a1 = wasm_f32x4_add(a1, wasm_f32x4_mul(wasm_f32x4_splat(x1[k]), b));
-            a2 = wasm_f32x4_add(a2, wasm_f32x4_mul(wasm_f32x4_splat(x2[k]), b));
-            a3 = wasm_f32x4_add(a3, wasm_f32x4_mul(wasm_f32x4_splat(x3[k]), b));
+                acc[t] = wasm_f32x4_add(acc[t],
+                             wasm_f32x4_mul(wasm_f32x4_splat(xp[t][k]), b));
 #endif
+            }
         }
-        wasm_v128_store(&y0[j], a0); wasm_v128_store(&y1[j], a1);
-        wasm_v128_store(&y2[j], a2); wasm_v128_store(&y3[j], a3);
+        for (int t = 0; t < ROWS; t++) wasm_v128_store(&yp[t][j], acc[t]);
     }
     for (; j < N; j++) {
-        float s0 = 0, s1 = 0, s2 = 0, s3 = 0;
+        float s[ROWS];
+        for (int t = 0; t < ROWS; t++) s[t] = 0.0f;
         for (int k = 0; k < K; k++) {
             float bv = w[(u32)k * (u32)N + j];
-            s0 += x0[k] * bv; s1 += x1[k] * bv;
-            s2 += x2[k] * bv; s3 += x3[k] * bv;
+            for (int t = 0; t < ROWS; t++) s[t] += xp[t][k] * bv;
         }
-        y0[j] = s0; y1[j] = s1; y2[j] = s2; y3[j] = s3;
+        for (int t = 0; t < ROWS; t++) yp[t][j] = s[t];
     }
 }
 
