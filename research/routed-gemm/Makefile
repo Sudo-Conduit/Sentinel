@@ -40,13 +40,16 @@ WBASE = --target=wasm32 -O3 -msimd128 -fno-builtin -nostdlib -Wl,--no-entry
 WMEM  = -Wl,--initial-memory=268435456
 WRUN  = -Wl,--export=run -Wl,--export=__heap_base
 NFLAGS = -O3 -march=native
+# Defined here, not next to its rules: Make expands prerequisites when the
+# rule is read, so a later assignment leaves `dense:` with none.
+FLOATOBJ = fk_cref.o fk_avx.o fk_avxf16.o fk_avx2.o fk_f16c.o
 
 ROWSET = 1 2 4 8
 VECSET = 1 2 4 8
 SWEEP  = $(foreach r,$(ROWSET),$(foreach v,$(VECSET),f_$(r)_$(v).wasm))
 KERNELS = dmm.wasm dmm8.wasm av1.wasm av4.wasm iso.wasm peak.wasm
 
-.PHONY: all wasm native sweep verify fastmath ceiling clean
+.PHONY: all wasm native sweep verify fastmath ceiling ladder-check clean
 all: wasm native
 wasm: $(KERNELS) $(SWEEP)
 sweep: $(SWEEP)
@@ -131,9 +134,49 @@ native: peak_native iso_scalar iso_auto engines dense amxprobe libroutedgemm.so
 # The dense harness needs the BF16 tile ISA as well as INT8. Both kernels are
 # compiled unconditionally and gated at RUNTIME on the CPUID bit plus the
 # kernel's XTILEDATA grant, so one binary runs on an AMX box and a non-AMX one.
-dense: dense.c
+dense: dense.c $(FLOATOBJ)
 	gcc $(NFLAGS) -mavx512vnni -mamx-tile -mamx-int8 -mamx-bf16 \
-	    -o $@ $< -ldl -lm -lpthread
+	    -o $@ $< $(FLOATOBJ) -ldl -lm -lpthread
+
+# One kernel, four ISA tiers, four translation units. NOT -march=native and
+# NOT a target attribute -- see floatkern.c for the two ways the attribute
+# silently produced a Haswell kernel labelled AVX.
+# The "CPU" baseline the AVX conjecture is measured against: plain C, no
+# intrinsics, built for generic x86-64 (SSE2) -- what a portable binary gets.
+fk_cref.o: floatkern.c
+	gcc -O3 -march=x86-64 -DPLAIN=1 -DKERNNAME=kern_cref -c -o $@ $<
+
+fk_avx.o: floatkern.c
+	gcc -O3 -mavx -mno-fma -mno-avx2 -mno-f16c -DKERNNAME=kern_avx -c -o $@ $<
+fk_avxf16.o: floatkern.c
+	gcc -O3 -mavx -mf16c -mno-fma -mno-avx2 -DTIER_F16=1 \
+	    -DKERNNAME=kern_avxf16 -c -o $@ $<
+fk_avx2.o: floatkern.c
+	gcc -O3 -mavx2 -mfma -mno-avx512f -DTIER_FMA=1 \
+	    -DKERNNAME=kern_avx2 -c -o $@ $<
+fk_f16c.o: floatkern.c
+	gcc -O3 -mavx2 -mfma -mf16c -mno-avx512f -DTIER_FMA=1 -DTIER_F16=1 \
+	    -DKERNNAME=kern_f16c -c -o $@ $<
+
+# The label check. Each tier must contain ONLY instructions it is allowed to
+# have; a kernel stays correct when its label is a lie, so no test catches
+# this and only the disassembly does.
+ladder-check: dense
+	@fail=0; \
+	chk() { n=$$(objdump -d --no-show-raw-insn dense \
+	        | awk "/<$$1>:/{f=1;next} f&&/^\$$/{exit} f" | grep -c "$$2"); \
+	        if [ "$$3" = "0" ] && [ "$$n" != "0" ]; then \
+	          echo "  FAIL $$1 contains $$2 ($$n)"; fail=1; \
+	        elif [ "$$3" != "0" ] && [ "$$n" = "0" ]; then \
+	          echo "  FAIL $$1 has no $$2"; fail=1; \
+	        else echo "  ok   $$1 $$2=$$n"; fi; }; \
+	chk kern_avx    vfmadd    0; chk kern_avx    vmulps    1; \
+	chk kern_avx    vcvtph2ps 0; chk kern_avx    zmm       0; \
+	chk kern_avxf16 vfmadd    0; chk kern_avxf16 vcvtph2ps 1; \
+	chk kern_avx2   vfmadd    1; chk kern_avx2   vcvtph2ps 0; \
+	chk kern_avx2   zmm       0; \
+	chk kern_f16c   vfmadd    1; chk kern_f16c   vcvtph2ps 1; \
+	exit $$fail
 
 # Asks by executing, not by reading CPUID. See the file header for why that
 # is the only question that gets a straight answer on a virtualized box.
@@ -165,4 +208,5 @@ libroutedgemm.so: routed_gemm.c
 
 clean:
 	rm -f $(KERNELS) $(SWEEP) fm_*.wasm peak_*.wasm \
-	      peak_native iso_scalar iso_auto engines dense amxprobe libroutedgemm.so
+	      peak_native iso_scalar iso_auto engines dense amxprobe \
+	      fk_*.o libroutedgemm.so

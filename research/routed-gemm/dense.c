@@ -263,6 +263,149 @@ static void kern_vnnip(const uint8_t *A, const int8_t *Qp, int32_t *C,
   }
 }
 
+/* ---- the AVX ladder: the tiers most machines actually are ---------------
+ *
+ * Everything above needs AVX-512 (VNNI) or tile registers (AMX). Below that
+ * there are three distinct generations, and they are NOT one tier:
+ *
+ *   avx      Sandy Bridge, 2011.  256-bit float mul and add. No FMA, and no
+ *            256-bit integer at all, so VNNI-style int8 is not merely slower
+ *            here, it does not exist.
+ *   avxf16   Ivy Bridge, 2012.    + F16C: VCVTPH2PS / VCVTPS2PH. Still no FMA.
+ *   avx2     Haswell, 2013.       + FMA3 and 256-bit integer.
+ *   f16c     Haswell.             + F16C on top of FMA.
+ *
+ * Each kernel carries its own __attribute__((target("arch=..."))). The arch=
+ * form is load-bearing and the obvious spelling is wrong: target("avx") ADDS
+ * avx to whatever -march already gave, it does not reset to it. Built with
+ * -march=native and target("avx"), gcc still had FMA available and contracted
+ * _mm256_add_ps(_mm256_mul_ps(a,b),c) into a single VFMADD -- objdump showed
+ * 8 vfmadd in kern_avx, the same count as kern_avx2, so the "AVX" row was
+ * measuring Haswell wearing a Sandy Bridge label. target("arch=sandybridge")
+ * does reset it, but resets too far -- the SSE2 intrinsics inside the fp16
+ * pack then fail to inline ("target specific option mismatch"). What works
+ * is naming the negatives explicitly: "avx,no-fma,no-avx2,no-f16c" keeps the
+ * baseline intact and removes exactly the instructions that would make the
+ * label a lie.
+ *
+ * `make ladder-check` greps the disassembly for exactly this, because the
+ * failure is silent: the kernel is correct either way and only the label is
+ * a lie. One binary still runs everywhere; dispatch is at runtime on CPUID,
+ * same as AMX.
+ *
+ * F16C is a FOOTPRINT change, not a precision change -- the arithmetic is
+ * identical fp32, and the accumulator never sees a half. Footprint is the
+ * variable this project has already measured twice: int8 weights took two
+ * routed shapes from 52% -> 72% and 48% -> 81% purely by cutting traffic,
+ * and the dense N sweep found a cliff at exactly one page of stride. Half the
+ * weight bytes is half the pages. What fp16 buys over int8 for the same
+ * halving is no scales, no zero points, no calibration pass, and 11 bits of
+ * mantissa instead of 8 bits total. What it costs is one VCVTPH2PS per 8
+ * columns per k -- the same trade dmm8.c made with its widening chain, and
+ * won.
+ *
+ * Register budget is the fourth point on the "structure transfers, constants
+ * do not" line: 16 xmm for the wasm JIT, 32 zmm for VNNI, 8 tiles for AMX,
+ * 16 ymm here. ROWS*VEC + VEC + 1 <= 16, so ROWS=4 VEC=2 (11) fits and
+ * ROWS=3 VEC=4 (17) does not.
+ *
+ * All four are panel-packed. The N sweep settled that; re-litigating it per
+ * engine would be measuring the same thing four more times.
+ */
+#define AVX_ROWS 4
+#define AVX_VEC  2           /* 8 lanes * VEC = 16 columns per j step */
+
+/* Panel pack for the float paths. No k-folding -- there is no dot-product
+   instruction to feed, so the only job is making the k step contiguous:
+   Wp[p][k][64] means stepping k moves 64 elements, not N. */
+static void pack_f32_panel(const float *W, float *Wp, int K, int N) {
+  int P = N / 64;
+  for (int p = 0; p < P; p++)
+    for (int k = 0; k < K; k++)
+      for (int jj = 0; jj < 64; jj++)
+        Wp[((size_t)p * K + k) * 64 + jj] = W[(size_t)k * N + p * 64 + jj];
+}
+/* Software fp32 -> fp16, round to nearest even. Deliberately NOT VCVTPS2PH:
+   the pack is one-time setup, never timed, and giving it a target attribute
+   made an always_inline SSE2 intrinsic fail to inline under the restricted
+   ISA. A setup routine is not worth a target constraint. */
+static uint16_t f2h(float f) {
+  uint32_t x; memcpy(&x, &f, 4);
+  uint32_t sign = (x >> 16) & 0x8000u;
+  int32_t  e    = (int32_t)((x >> 23) & 0xff) - 127 + 15;
+  uint32_t m    = x & 0x7fffffu;
+  if (e >= 31) return (uint16_t)(sign | 0x7c00u);          /* inf / overflow */
+  if (e <= 0) {                                            /* subnormal */
+    if (e < -10) return (uint16_t)sign;
+    m |= 0x800000u;
+    uint32_t sh = (uint32_t)(14 - e);
+    uint32_t h  = m >> sh;
+    if ((m >> (sh - 1)) & 1u) h++;
+    return (uint16_t)(sign | h);
+  }
+  uint32_t h = ((uint32_t)e << 10) | (m >> 13);
+  uint32_t r = m & 0x1fffu;
+  if (r > 0x1000u || (r == 0x1000u && (h & 1u))) h++;
+  return (uint16_t)(sign | h);
+}
+static void pack_f16_panel(const float *W, uint16_t *Wp, int K, int N) {
+  int P = N / 64;
+  for (int p = 0; p < P; p++)
+    for (int k = 0; k < K; k++)
+      for (int jj = 0; jj < 64; jj++)
+        Wp[((size_t)p * K + k) * 64 + jj] = f2h(W[(size_t)k * N + p * 64 + jj]);
+}
+
+/* The four tiers live in floatkern.c, compiled once per ISA with real -m
+   flags. See that file for why a target attribute cannot do this job. */
+extern void kern_cref  (const float *, const void *, float *,
+                        int, int, int, int, int, int);
+extern void kern_avx   (const float *, const void *, float *,
+                        int, int, int, int, int, int);
+extern void kern_avxf16(const float *, const void *, float *,
+                        int, int, int, int, int, int);
+extern void kern_avx2  (const float *, const void *, float *,
+                        int, int, int, int, int, int);
+extern void kern_f16c  (const float *, const void *, float *,
+                        int, int, int, int, int, int);
+
+/* Runtime feature detection for the ladder. Leaf 1 ECX: AVX(28), FMA(12),
+   F16C(29). Leaf 7.0 EBX: AVX2(5). XCR0 bits 1 and 2 must both be set or the
+   OS is not saving ymm and every one of these faults. */
+static int have_avx(void) {
+  unsigned r[4]; cpuid_(1, 0, r);
+  if (!((r[2] >> 28) & 1)) return 0;
+  if (!((r[2] >> 27) & 1)) return 0;                 /* OSXSAVE */
+  unsigned lo, hi;
+  __asm__ __volatile__("xgetbv" : "=a"(lo), "=d"(hi) : "c"(0));
+  return ((lo >> 1) & 1) && ((lo >> 2) & 1);
+}
+static int have_f16c(void) {
+  unsigned r[4]; cpuid_(1, 0, r);
+  return have_avx() && ((r[2] >> 29) & 1);
+}
+static int have_fma(void) {
+  unsigned r[4]; cpuid_(1, 0, r);
+  return have_avx() && ((r[2] >> 12) & 1);
+}
+static int have_avx2(void) {
+  unsigned r[4]; cpuid_(7, 0, r);
+  return have_fma() && ((r[1] >> 5) & 1);
+}
+
+static void ref_f32(const float *A, const float *W, float *C,
+                    int M, int K, int N) {
+  for (int i = 0; i < M; i++) {
+    float *o = C + (size_t)i * N;
+    for (int j = 0; j < N; j++) o[j] = 0.0f;
+    for (int k = 0; k < K; k++) {
+      float a = A[(size_t)i * K + k];
+      const float *w = W + (size_t)k * N;
+      for (int j = 0; j < N; j++) o[j] += a * w[j];
+    }
+  }
+}
+
 /* ---- AMX ---------------------------------------------------------------
  * 2 row tiles x 2 column tiles = 4 C tiles + 2 A + 2 B = all eight, which is
  * one TILELOADD per TDP. The 1x1 arrangement is two loads per TDP and is
@@ -406,8 +549,16 @@ static void drain(void) {
       kern_vnnip(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
     else if (G.eng == 1)
       kern_amx_i8(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
-    else
+    else if (G.eng == 2)
       kern_amx_bf(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
+    else {                       /* the AVX ladder, all panel-ranged */
+      int p0 = j0 / 64, p1 = j1 / 64;
+      if      (G.eng == 8) kern_cref  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
+      else if (G.eng == 4) kern_avx   (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
+      else if (G.eng == 5) kern_avxf16(G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
+      else if (G.eng == 6) kern_avx2  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
+      else                 kern_f16c  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
+    }
   }
 }
 
@@ -460,6 +611,8 @@ int main(int argc, char **argv) {
   if (argc < 2) { fprintf(stderr, "see header\n"); return 2; }
 
   if (!strcmp(argv[1], "caps")) {
+    printf("cref 1\navx %d\navxf16 %d\navx2 %d\nf16c %d\n",
+           have_avx(), have_f16c(), have_avx2(), have_avx2() && have_f16c());
     printf("vnni 1\nvnnip 1\namx %d\nbf16 %d\n", amx_have(0), amx_have(1));
     printf("blas %d\n", blas_init(1));
     printf("# blas: %s\n", blas_path ? blas_path : "not found");
@@ -488,15 +641,27 @@ int main(int argc, char **argv) {
      tile engine is, not a differently-generated matrix. */
   int want_bf = verify || !strcmp(eng, "bf16") || !strcmp(eng, "blas");
   int want_bl = verify || !strcmp(eng, "blas");
+  /* One fp32 weight set feeds avx / avx2 / f16c / avxf16 / blas, so every
+     float path computes the same numbers and shares one reference. */
+  int want_f32 = verify || want_bl || !strcmp(eng, "avx") || !strcmp(eng, "avx2")
+                 || !strcmp(eng, "avxf16") || !strcmp(eng, "f16c")
+                 || !strcmp(eng, "cref");
 
   if (!strcmp(eng, "amx")  && !amx_have(0)) { printf("n/a\n"); return 0; }
   if (!strcmp(eng, "vnnip") && N % 64) { printf("n/a\n"); return 0; }
+  if (want_f32 && !want_bl && N % 64) { printf("n/a\n"); return 0; }
+  if (!strcmp(eng, "avx")    && !have_avx())  { printf("n/a\n"); return 0; }
+  if (!strcmp(eng, "avxf16") && !have_f16c()) { printf("n/a\n"); return 0; }
+  if (!strcmp(eng, "avx2")   && !have_avx2()) { printf("n/a\n"); return 0; }
+  if (!strcmp(eng, "f16c")   && !(have_avx2() && have_f16c()))
+                                              { printf("n/a\n"); return 0; }
   if (!strcmp(eng, "bf16") && !amx_have(1)) { printf("n/a\n"); return 0; }
 
   uint8_t *A8 = NULL; int8_t *W8 = NULL, *Q8 = NULL, *Qp8 = NULL;
   int32_t *C32 = NULL;
   bf16 *Ab = NULL, *Wb = NULL, *Qb = NULL; float *Cf = NULL;
-  float *Af32 = NULL, *Wf32 = NULL, *Cf32 = NULL;
+  float *Af32 = NULL, *Wf32 = NULL, *Cf32 = NULL, *Wp32 = NULL;
+  uint16_t *Wp16 = NULL;
 
   srand(1234);
   if (want_i8) {
@@ -526,17 +691,24 @@ int main(int argc, char **argv) {
       Wb[i] = f2b(((i * 53) % 997) / 997.0f - 0.5f);
     pack_bf(Wb, Qb, K, N);
   }
-  if (want_bl) {
-    if (!blas_init(T)) { if (!verify) { printf("n/a\n"); return 0; } }
-    else {
-      Af32 = aligned_alloc(64, (size_t)M * K * 4);
-      Wf32 = aligned_alloc(64, (size_t)K * N * 4);
-      Cf32 = aligned_alloc(64, (size_t)M * N * 4);
-      if (!Af32 || !Wf32 || !Cf32) { fprintf(stderr, "alloc\n"); return 1; }
-      for (size_t i = 0; i < (size_t)M * K; i++)
-        Af32[i] = want_bf ? b2f(Ab[i]) : (float)A8[i];
-      for (size_t i = 0; i < (size_t)K * N; i++)
-        Wf32[i] = want_bf ? b2f(Wb[i]) : (float)W8[i];
+  if (want_bl && !blas_init(T) && !verify) { printf("n/a\n"); return 0; }
+  if (want_f32) {
+    Af32 = aligned_alloc(64, (size_t)M * K * 4);
+    Wf32 = aligned_alloc(64, (size_t)K * N * 4);
+    Cf32 = aligned_alloc(64, (size_t)M * N * 4);
+    if (!Af32 || !Wf32 || !Cf32) { fprintf(stderr, "alloc\n"); return 1; }
+    for (size_t i = 0; i < (size_t)M * K; i++)
+      Af32[i] = ((i * 37) % 1000) / 1000.0f - 0.5f;
+    for (size_t i = 0; i < (size_t)K * N; i++)
+      Wf32[i] = ((i * 53) % 997) / 997.0f - 0.5f;
+    if (N % 64 == 0) {
+      Wp32 = aligned_alloc(64, (size_t)K * N * 4);
+      Wp16 = aligned_alloc(64, (size_t)K * N * 2);
+      if (!Wp32 || !Wp16) { fprintf(stderr, "alloc\n"); return 1; }
+      pack_f32_panel(Wf32, Wp32, K, N);
+      /* fp16 is packed FROM the fp32 set, so the only difference between the
+         avx2 and f16c rows is the storage width -- not a different matrix. */
+      pack_f16_panel(Wf32, Wp16, K, N);
     }
   }
 
@@ -560,6 +732,36 @@ int main(int argc, char **argv) {
       printf("%-5s %s (%zu mismatches)\n", names[e], bad ? "FAIL" : "exact", bad);
     }
     free(ref);
+
+    if (Wp32) {
+      float *rf = aligned_alloc(64, (size_t)M * N * 4);
+      ref_f32(Af32, Wf32, rf, M, K, N);
+      const struct { const char *n; int id; int ok; const void *w; } fl[] = {
+        { "cref",   8, 1,                              Wp32 },
+        { "avx",    4, have_avx(),                     Wp32 },
+        { "avxf16", 5, have_f16c(),                    Wp16 },
+        { "avx2",   6, have_avx2(),                    Wp32 },
+        { "f16c",   7, have_avx2() && have_f16c(),     Wp16 },
+      };
+      for (int e = 0; e < 5; e++) {
+        if (!fl[e].ok) { printf("%-6s skipped (no ISA)\n", fl[e].n); continue; }
+        memset(Cf32, 0, (size_t)M * N * 4);
+        run_parallel(fl[e].id, Af32, fl[e].w, Cf32, M, K, N, T);
+        double worst = 0, scale = 0;
+        for (size_t i = 0; i < (size_t)M * N; i++) {
+          double d = Cf32[i] - rf[i]; if (d < 0) d = -d;
+          if (d > worst) worst = d;
+          double v = rf[i] < 0 ? -rf[i] : rf[i]; if (v > scale) scale = v;
+        }
+        /* fp16 storage rounds the weights, so the f16 rows are held to 1e-3
+           of result scale and the fp32 rows to 1e-5. Both are tolerances, not
+           equality: the reference sums in a different order. */
+        double bar = fl[e].id == 5 || fl[e].id == 7 ? 1e-3 : 1e-5;
+        printf("%-6s %s (max err %.2e of scale %.2e)\n", fl[e].n,
+               worst / scale < bar ? "match" : "FAIL", worst / scale, scale);
+      }
+      free(rf);
+    }
 
     if (amx_have(1)) {
       float *rb = aligned_alloc(64, (size_t)M * N * 4);
@@ -589,6 +791,11 @@ int main(int argc, char **argv) {
     double t0 = now();
     if      (!strcmp(eng, "vnni")) run_parallel(0, A8, Q8, C32, M, K, N, T);
     else if (!strcmp(eng, "vnnip")) run_parallel(3, A8, Qp8, C32, M, K, N, T);
+    else if (!strcmp(eng, "cref"))   run_parallel(8, Af32, Wp32, Cf32, M, K, N, T);
+    else if (!strcmp(eng, "avx"))    run_parallel(4, Af32, Wp32, Cf32, M, K, N, T);
+    else if (!strcmp(eng, "avxf16")) run_parallel(5, Af32, Wp16, Cf32, M, K, N, T);
+    else if (!strcmp(eng, "avx2"))   run_parallel(6, Af32, Wp32, Cf32, M, K, N, T);
+    else if (!strcmp(eng, "f16c"))   run_parallel(7, Af32, Wp16, Cf32, M, K, N, T);
     else if (!strcmp(eng, "amx"))  run_parallel(1, A8, Q8, C32, M, K, N, T);
     else if (!strcmp(eng, "bf16")) run_parallel(2, Ab, Qb, Cf,  M, K, N, T);
     else if (!strcmp(eng, "blas")) {

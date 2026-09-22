@@ -234,6 +234,72 @@ mid-session and the AMX columns cannot be reproduced right now; re-running it
 would silently replace an AMX row with `n/a`. Flagged rather than quietly
 left, and rather than quietly replaced.
 
+## The AVX ladder, and the conjecture about it
+
+Conjecture put to it: **AVX is faster than CPU for diagonals — simple op.**
+Mostly yes, with one inversion that is worth more than the confirmation.
+
+`dense.c`, K=N=512, one thread, median of 5 invocations. M here *is* rows
+per expert: a routed diagonal with E experts hands each one B/E rows, so the
+small-M rows are the shapes a 64-expert model actually produces.
+
+| M (rows/E) | cref (SSE2) | avx (no FMA) | avxf16 | avx2 (FMA) | f16c | avx/cref | f16c/cref |
+|---|---|---|---|---|---|---|---|
+| 1 | 13.8 | 11.2 | 11.9 | 18.5 | 21.3 | **0.81x** | 1.54x |
+| 11 | 18.0 | 29.5 | 31.9 | 32.4 | 40.1 | 1.64x | 2.23x |
+| 45 | 18.0 | 26.3 | 30.0 | 26.7 | 34.2 | 1.46x | 1.90x |
+| 90 | 20.4 | 28.0 | 30.8 | 29.9 | 34.5 | 1.37x | 1.69x |
+| 2048 | 18.0 | 26.8 | 29.5 | 27.8 | 33.9 | 1.49x | 1.88x |
+
+**Confirmed from 3 rows per expert up, at 1.4-1.6x.** Plain C sits flat at
+~18-22 GOPS whatever the shape, exactly like the `code` column in the engine
+table — a non-amortizing kernel has nothing to lose and nothing to gain.
+
+**Refuted at one row per expert**, and that is the interesting cell. The AVX
+kernel is ROWS=4 shaped, so with one row it issues two 32-byte weight loads
+per two multiply-adds and throws away three quarters of its accumulator
+file; plain C, which never blocked, does not care. Same residue argument as
+`vnni:auto` and the CORE 003 walk: a static jump vector is wrong whenever
+the block is shorter than the vector. topk=1 routing on a wide expert count
+lands exactly there.
+
+Note also which tiers survive that cell: `avx` and `avxf16` lose to plain C
+at M=1 (11.2 and 11.9 against 13.8) while `avx2` and `f16c` win (18.5 and
+21.3). With one row there is no reuse to find, so the only lever left is
+issuing one FMA instead of a multiply and an add. **At M=1 it is FMA that
+rescues the kernel, not width.**
+
+### F16C is worth about as much as FMA
+
+`f16c` is the best column at every shape and beats `avx2` — same fp32
+arithmetic, same FMA, only the weights are half as wide. And `avxf16`
+(fp16 weights, *no* FMA) matches or beats `avx2` (fp32 weights, FMA) at
+every row from 11 up. Halving the weight bytes buys about what a fused
+multiply-add buys. That is the footprint result a third time, after int8 on
+the routed shapes and the page-stride cliff on the dense ones.
+
+Against int8 the trade is: same halving, but no scales, no zero points, no
+calibration pass, and 11 mantissa bits instead of 8 bits total. `VCVTPH2PS`
+costs one instruction per 8 columns per k.
+
+### Why the tiers are separate translation units
+
+`floatkern.c` is compiled four times with real `-m` flags, not once with
+`__attribute__((target(...)))`. The attribute **adds to** whatever `-march`
+already gave, so under `-march=native` gcc kept FMA available and contracted
+`_mm256_add_ps(_mm256_mul_ps(a,b),c)` into one `VFMADD` — `objdump` showed
+8 `vfmadd` inside `kern_avx`, the same count as `kern_avx2`. The AVX row was
+Haswell wearing a Sandy Bridge label. Both obvious repairs also fail:
+`target("arch=sandybridge")` resets so far the SSE2 intrinsics in the pack
+stop inlining, and `target("avx,no-fma,...")` stops even
+`_mm256_setzero_ps` from inlining.
+
+`make ladder-check` greps the disassembly per tier, because this failure is
+silent: the kernel stays *correct* when its label is a lie, so no test
+catches it and only the disassembly does. It currently reports `kern_avx`
+with 0 `vfmadd` and 8 `vmulps`, `kern_avxf16` with 0 `vfmadd` and 2
+`vcvtph2ps`, and both Haswell tiers with 8 `vfmadd`.
+
 ## Which engine to route it through
 
 The routed op hands the backend E short dense matmuls instead of one tall one,
