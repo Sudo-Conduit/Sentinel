@@ -13,3 +13,5 @@ fm_*.wasm
 peak_[0-9]*.wasm
 dense
 amxprobe
+blasprobe
+blasbench

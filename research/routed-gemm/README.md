@@ -347,6 +347,71 @@ stop inlining, and `target("avx,no-fma,...")` stops even
 silent: the kernel stays *correct* when its label is a lie, so no test
 catches it and only the disassembly does.
 
+## Is the BLAS column bad, and can the WASM ops fix it?
+
+Challenged on both. The answer is: the library is the right one, the number
+is real, and none of the ops transfer — with the mechanism measured rather
+than asserted.
+
+**It is the optimized build.** `blasprobe` asks the library what it
+dispatched to, because a `DYNAMIC_ARCH` OpenBLAS picks its kernel from CPUID
+at load time and on a virtualized host with a masked leaf that can silently
+fall back to a generic kernel — which looks exactly like "BLAS is slow". It
+reports `OpenBLAS 0.3.31 USE64BITINT DYNAMIC_ARCH NO_AFFINITY SkylakeX
+MAX_THREADS=64`, corename `SkylakeX`, 4 threads, pthreads. AVX-512 kernel,
+correctly dispatched. It is also the only BLAS on the box: no MKL, no system
+OpenBLAS, no BLIS.
+
+**The harness is not penalizing it.** A minimal program that allocates three
+matrices, warms the pool and times one `sgemm` — no packing, no second weight
+copy, no thread pool of ours — agrees with `dense.c`'s column within noise
+(best-of-7: 443.8 vs 454.4, 469.7 vs 465.8, 488.7 vs 498.1).
+
+**What it actually achieves.** Four concurrent `peak_native` give a measured
+all-core AVX-512 FMA ceiling of **756 GFLOPS** (183.9 + 182.4 + 205.3 +
+184.6). Against that:
+
+| shape | 1 thread | 2 threads | 4 threads | scaling | % of 756 |
+|---|---|---|---|---|---|
+| 2048x1024x1024 | 124.7 | 246.7 | 457.0 | 3.66x | 60% |
+| 4096x2048x2048 | 164.1 | 253.9 | 500.5 | 3.05x | 66% |
+| 4096x4096x4096 | 136.2 | 257.0 | 464.0 | 3.41x | 61% |
+| 8192x4096x4096 | 140.9 | 263.6 | 472.2 | 3.35x | 62% |
+
+72% of one core at one thread, 60-66% of four at four. So per-core
+efficiency does fall as it threads, which is what made the WASM ops look
+worth trying.
+
+**They are not.** The obvious transfer is our own dynamic work queue —
+disjoint row blocks, each a single-threaded `sgemm`, exactly the split that
+gives our own kernels 3.6-3.7x. Measured (`blasbench <M> <K> <N> 4 5
+<blocks>`, blocks=0 meaning the library threads it):
+
+| shape | lib | ours, 4 blk | 8 blk | 16 blk | 64 blk |
+|---|---|---|---|---|---|
+| 4096x2048x2048 | 492.3 | 481.6 | 453.3 | 438.1 | 373.2 |
+| 4096x4096x4096 | 447.2 | 484.5 | 462.7 | 388.6 | 332.2 |
+
+**Monotonic in the block count**, and that is the mechanism: every block is
+an independent pack of `B`. OpenBLAS packs `B` once and shares it across its
+threads; splitting rows from outside multiplies the pack. It is the same
+weight-re-streaming cost the engine table measured from the other end, where
+BLAS retained 3% of its rate at one row per block. At 4 blocks — the minimum,
+one per thread — we merely match the library, so there is nothing to win.
+
+**The one op that would help is behind the API.** Pack once and walk
+contiguously is what took the VNNI kernel 2.35x and is what BLAS is paying
+for here too — the weights are static, so packing belongs at model load.
+Doing it needs `sgemm_pack`/`sgemm_compute`, and `nm -D` on this library
+shows no such pair: it exports `sgemm_batch`, `sgemm_batch_strided` and
+`sgemm_direct_SKYLAKEX`, none of which hoist the pack. So the lever we used
+on our own kernels is inside a black box that already did its own blocking.
+
+The practical reading has not changed: BLAS is the right answer for fp32
+without a quantization step, on tall calls. Everything that makes calls
+shorter or more numerous — which is exactly what a routed diagonal does —
+costs it more than it costs anyone else.
+
 ## Which engine to route it through
 
 The routed op hands the backend E short dense matmuls instead of one tall one,

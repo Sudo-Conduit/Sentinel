@@ -129,7 +129,16 @@ fastmath: fold.c dmm.c
 	$(WCC) $(WBASE) -ffast-math $(WRUN) $(WMEM) -DROWS=1 -DVEC=8 -o fm_f_1_8.wasm fold.c
 	$(WCC) $(WBASE) -ffast-math $(WRUN) $(WMEM) -DROWS=4 -o fm_av4.wasm autovec.c
 
-native: peak_native iso_scalar iso_auto engines dense amxprobe libroutedgemm.so
+native: peak_native iso_scalar iso_auto engines dense amxprobe \
+        blasprobe blasbench libroutedgemm.so
+
+# Ask the library what kernel it dispatched to before blaming it for a number.
+blasprobe: blasprobe.c
+	gcc -O1 -o $@ $< -ldl
+
+# Library threading vs our own work queue over single-threaded sgemm calls.
+blasbench: blasbench.c
+	gcc -O2 -o $@ $< -ldl -lpthread
 
 # The dense harness needs the BF16 tile ISA as well as INT8. Both kernels are
 # compiled unconditionally and gated at RUNTIME on the CPUID bit plus the
@@ -207,4 +216,5 @@ libroutedgemm.so: routed_gemm.c
 clean:
 	rm -f $(KERNELS) $(SWEEP) fm_*.wasm peak_*.wasm \
 	      peak_native iso_scalar iso_auto engines dense amxprobe \
+	      blasprobe blasbench \
 	      fk_*.o libroutedgemm.so
