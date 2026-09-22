@@ -42,12 +42,21 @@ const SHAPES = [
   [2048, 1024, 1024], [4096, 2048, 2048], [4096, 4096, 4096],
 ];
 
+// 2*M*K*N counts the same arithmetic whether a tier issues one FMA or a
+// separate multiply and add, so for every float engine below this IS
+// GFLOPS -- there is no GOPS->GFLOPS conversion to apply, and that identity
+// is exactly what makes the ladder comparable rank to rank. Only the int8
+// engines (vnni, amx) are counting integer ops.
 const ENGINES = [
-  { id: 'amx',   label: `AMX-INT8 (${T}-core)`,           unit: 'GOPS' },
-  { id: 'vnnip', label: `VNNI panel-packed (${T}-core)`,  unit: 'GOPS' },
-  { id: 'vnni',  label: `VNNI row-packed (${T}-core)`,    unit: 'GOPS' },
-  { id: 'bf16',  label: `AMX-BF16 (${T}-core, reference)`, unit: 'GFLOPS' },
-  { id: 'blas',  label: `BLAS fp32 (${T}-core)`,          unit: 'GFLOPS' },
+  { id: 'amx',    label: `AMX-INT8 (${T}c)`,      unit: 'GOPS',   cap: 'amx' },
+  { id: 'vnnip',  label: `VNNI panel (${T}c)`,    unit: 'GOPS',   cap: 'vnnip' },
+  { id: 'bf16',   label: `AMX-BF16 (${T}c)`,      unit: 'GFLOPS', cap: 'bf16' },
+  { id: 'f16c',   label: `f16c (${T}c)`,          unit: 'GFLOPS', cap: 'f16c' },
+  { id: 'avx2',   label: `avx2+fma (${T}c)`,      unit: 'GFLOPS', cap: 'avx2' },
+  { id: 'avxf16', label: `avx+f16c (${T}c)`,      unit: 'GFLOPS', cap: 'avxf16' },
+  { id: 'avx',    label: `avx (${T}c)`,           unit: 'GFLOPS', cap: 'avx' },
+  { id: 'blas',   label: `BLAS fp32 (${T}c)`,     unit: 'GFLOPS', cap: 'blas' },
+  { id: 'cref',   label: `cref SSE2 (${T}c)`,     unit: 'GFLOPS', cap: 'cref' },
 ];
 
 function caps() {
@@ -114,7 +123,9 @@ for (const r of body) console.log(fmt(r));
 
 console.log(`\nmedian / best, each over ${RUNS} processes x per-shape reps `
   + `(${rows.map(r => r.reps).join(', ')}).`);
-console.log('int8 columns are GOPS; bf16 and BLAS are GFLOPS. 2*M*K*N either way.');
+console.log('int8 columns (AMX-INT8, VNNI) are GOPS; every float column is');
+console.log('GFLOPS. Both from the same 2*M*K*N -- for the float tiers that count');
+console.log('is flops by construction, so there is no conversion between them.');
 console.log(`${WARMUP} warmup invocation(s) discarded per cell.`);
 const worst = Math.max(...rows.flatMap(r =>
   use.map(e => r.cells[e.id] ? r.cells[e.id].spread : 0)));
