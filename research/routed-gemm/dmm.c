@@ -175,13 +175,33 @@ i32 run(i32 ptr, i32 len)
     for (int e = 0; e < E; e++) g_fill[e] = g_start[e];
     for (int b = 0; b < B; b++) g_rows[g_fill[rt[b]]++] = b;
 
-    for (int e = 0; e < E; e++) {
+    /* Optional expert range, h[9]..h[10], when the caller passes len >= 44.
+     *
+     * Slice on EXPERTS, not rows. The walk is order-free per row, so row
+     * slicing is correct -- but it is slow, because blocking efficiency
+     * lives in rows-per-expert. At B=720 E=64 there are 11.25 rows per
+     * expert; cut that into 8 row-slices and each slice sees 1.4, below the
+     * ROWS=4 block, so every slice collapses to the scalar tail. Measured:
+     * 762 GF-equiv whole, 286 at 16 row-slices, with W already shared.
+     *
+     * Slicing by expert keeps 11.25 rows per expert inside every slice,
+     * touches a disjoint span of W, and writes a disjoint set of Y rows --
+     * so concurrent walks need no coordination and still no copies. */
+    int e0 = 0, e1 = E;
+    if (len >= 44) {
+        e0 = h[9]; e1 = h[10];
+        if (e0 < 0 || e1 > E || e0 > e1) return ERR_BADARG;
+    }
+
+    i32 done = 0;
+    for (int e = e0; e < e1; e++) {
         int n = g_start[e + 1] - g_start[e];
         if (n == 0) continue;
         block(X, W + (u32)e * (u32)K * (u32)N, Y,
               &g_rows[g_start[e]], n, K, N);
+        done += n;
     }
-    return B;
+    return (e0 == 0 && e1 == E) ? B : done;
 }
 
 /* Dense reference: every expert against every row into scratch, then select
