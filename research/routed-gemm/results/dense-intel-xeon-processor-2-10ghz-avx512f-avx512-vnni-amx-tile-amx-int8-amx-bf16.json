@@ -1,0 +1,209 @@
+{
+  "host": {
+    "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cores": 4,
+    "threads": 4,
+    "features": [
+      "avx512f",
+      "avx512_vnni",
+      "amx_tile",
+      "amx_int8",
+      "amx_bf16"
+    ]
+  },
+  "recorded": "2026-09-22T07:36:22.225Z",
+  "blas": "blas: /usr/local/lib/python3.11/dist-packages/numpy.libs/libscipy_openblas64_-32a4b2a6.so",
+  "runs": 3,
+  "engines": [
+    {
+      "id": "amx",
+      "label": "AMX-INT8 (4-core)",
+      "unit": "GOPS"
+    },
+    {
+      "id": "vnni",
+      "label": "VNNI-only (AMX off, 4-core)",
+      "unit": "GOPS"
+    },
+    {
+      "id": "bf16",
+      "label": "AMX-BF16 (4-core, reference)",
+      "unit": "GFLOPS"
+    },
+    {
+      "id": "blas",
+      "label": "BLAS fp32 (4-core)",
+      "unit": "GFLOPS"
+    }
+  ],
+  "rows": [
+    {
+      "M": 1,
+      "K": 576,
+      "N": 576,
+      "reps": 500,
+      "cells": {
+        "amx": {
+          "med": 249.6,
+          "best": 382.9,
+          "spread": 13.037974683544293
+        },
+        "vnni": {
+          "med": 375.5,
+          "best": 598.9,
+          "spread": 11.598224195338515
+        },
+        "bf16": {
+          "med": 170.3,
+          "best": 248.8,
+          "spread": 5.16287645974186
+        },
+        "blas": {
+          "med": 56.3,
+          "best": 61.8,
+          "spread": 4.841713221601479
+        }
+      }
+    },
+    {
+      "M": 32,
+      "K": 576,
+      "N": 576,
+      "reps": 235,
+      "cells": {
+        "amx": {
+          "med": 2550.9,
+          "best": 5669.9,
+          "spread": 16.527091533372428
+        },
+        "vnni": {
+          "med": 2097.8,
+          "best": 2359.3,
+          "spread": 13.134907796829502
+        },
+        "bf16": {
+          "med": 1886.1,
+          "best": 3928.5,
+          "spread": 13.255672721249939
+        },
+        "blas": {
+          "med": 199.6,
+          "best": 316.9,
+          "spread": 50.5030181086519
+        }
+      }
+    },
+    {
+      "M": 1024,
+      "K": 576,
+      "N": 576,
+      "reps": 7,
+      "cells": {
+        "amx": {
+          "med": 4237.7,
+          "best": 4554.1,
+          "spread": 13.653573118788444
+        },
+        "vnni": {
+          "med": 2835.7,
+          "best": 2951.2,
+          "spread": 6.999661488697498
+        },
+        "bf16": {
+          "med": 2722.5,
+          "best": 3204.7,
+          "spread": 15.88693190753263
+        },
+        "blas": {
+          "med": 584.8,
+          "best": 618.1,
+          "spread": 4.314275692739374
+        }
+      }
+    },
+    {
+      "M": 2048,
+      "K": 1024,
+      "N": 1024,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 4897.1,
+          "best": 6937.5,
+          "spread": 16.046305641955218
+        },
+        "vnni": {
+          "med": 2548.6,
+          "best": 2757.3,
+          "spread": 4.304860972194435
+        },
+        "bf16": {
+          "med": 2799.3,
+          "best": 3242,
+          "spread": 8.487071201007629
+        },
+        "blas": {
+          "med": 653,
+          "best": 685.6,
+          "spread": 11.40696909927679
+        }
+      }
+    },
+    {
+      "M": 4096,
+      "K": 2048,
+      "N": 2048,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 5839.5,
+          "best": 6230.2,
+          "spread": 3.7976892736221064
+        },
+        "vnni": {
+          "med": 1270,
+          "best": 1449.2,
+          "spread": 11.17604675366265
+        },
+        "bf16": {
+          "med": 2345.8,
+          "best": 2562.3,
+          "spread": 17.950328565906457
+        },
+        "blas": {
+          "med": 631.2,
+          "best": 675.3,
+          "spread": 7.632027257240197
+        }
+      }
+    },
+    {
+      "M": 4096,
+      "K": 4096,
+      "N": 4096,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 4702.2,
+          "best": 5140.5,
+          "spread": 13.000223064911893
+        },
+        "vnni": {
+          "med": 1215.7,
+          "best": 1255,
+          "spread": 3.200670297444495
+        },
+        "bf16": {
+          "med": 1995.1,
+          "best": 2081.2,
+          "spread": 1.7412685668406285
+        },
+        "blas": {
+          "med": 684.9,
+          "best": 721.7,
+          "spread": 12.835341365461845
+        }
+      }
+    }
+  ]
+}
