@@ -5,3 +5,4 @@ iso_scalar
 iso_auto
 r*.wasm
 vrun.mjs
+peak_native
