@@ -6,3 +6,5 @@ iso_auto
 r*.wasm
 vrun.mjs
 peak_native
+f_*.wasm
+av*.wasm
