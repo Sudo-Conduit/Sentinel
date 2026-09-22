@@ -356,18 +356,21 @@ static void pack_f16_panel(const float *W, uint16_t *Wp, int K, int N) {
         Wp[((size_t)p * K + k) * 64 + jj] = f2h(W[(size_t)k * N + p * 64 + jj]);
 }
 
-/* The four tiers live in floatkern.c, compiled once per ISA with real -m
-   flags. See that file for why a target attribute cannot do this job. */
-extern void kern_cref  (const float *, const void *, float *,
-                        int, int, int, int, int, int);
-extern void kern_avx   (const float *, const void *, float *,
-                        int, int, int, int, int, int);
-extern void kern_avxf16(const float *, const void *, float *,
-                        int, int, int, int, int, int);
-extern void kern_avx2  (const float *, const void *, float *,
-                        int, int, int, int, int, int);
-extern void kern_f16c  (const float *, const void *, float *,
-                        int, int, int, int, int, int);
+/* The tiers live in floatkern.c, compiled once per ISA with real -m flags,
+   each exporting a ROWS x VEC grid. See that file for why a target attribute
+   cannot do this job, and why the grid is swept rather than assumed. */
+typedef void (*fk_fn)(const float *, const void *, float *,
+                      int, int, int, int, int, int);
+struct fk_entry { const char *name; fk_fn fn; int rows, vec, regs; };
+extern const struct fk_entry avx_table[], avxf16_table[],
+                             avx2_table[], f16c_table[];
+extern const int avx_count, avxf16_count, avx2_count, f16c_count;
+extern void cref_cref(const float *, const void *, float *,
+                      int, int, int, int, int, int);
+
+/* Selected once in main, used by every worker. */
+static fk_fn g_fk;
+static const void *g_fkw;
 
 /* Runtime feature detection for the ladder. Leaf 1 ECX: AVX(28), FMA(12),
    F16C(29). Leaf 7.0 EBX: AVX2(5). XCR0 bits 1 and 2 must both be set or the
@@ -551,14 +554,8 @@ static void drain(void) {
       kern_amx_i8(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
     else if (G.eng == 2)
       kern_amx_bf(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
-    else {                       /* the AVX ladder, all panel-ranged */
-      int p0 = j0 / 64, p1 = j1 / 64;
-      if      (G.eng == 8) kern_cref  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
-      else if (G.eng == 4) kern_avx   (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
-      else if (G.eng == 5) kern_avxf16(G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
-      else if (G.eng == 6) kern_avx2  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
-      else                 kern_f16c  (G.A, G.Q, G.C, i0, i1, p0, p1, G.K, G.N);
-    }
+    else                         /* the AVX ladder, all panel-ranged */
+      g_fk(G.A, G.Q, G.C, i0, i1, j0 / 64, j1 / 64, G.K, G.N);
   }
 }
 
@@ -591,6 +588,30 @@ static void pool_start(int T) {
     pthread_create(&th[t], NULL, worker, (void *)t);
 }
 static void pool_stop(void) { __atomic_store_n(&g_stop, 1, __ATOMIC_RELAXED); }
+
+/* "avx", "f16c:6:2", "avx2:auto" -- tier, then optionally the blocking.
+   Bare tier means :auto, which is the descending ladder. */
+static int g_fk_rows;            /* 0 = auto/ladder, handles any M */
+static int fk_select(const char *eng, int *is_float) {
+  const struct fk_entry *tab = NULL; int n = 0;
+  char tier[16]; const char *colon = strchr(eng, ':');
+  size_t tl = colon ? (size_t)(colon - eng) : strlen(eng);
+  if (tl >= sizeof tier) return 0;
+  memcpy(tier, eng, tl); tier[tl] = 0;
+  *is_float = 1;
+  g_fk_rows = 0;
+  if      (!strcmp(tier, "cref"))   { g_fk = cref_cref; return 1; }
+  else if (!strcmp(tier, "avx"))    { tab = avx_table;    n = avx_count; }
+  else if (!strcmp(tier, "avxf16")) { tab = avxf16_table; n = avxf16_count; }
+  else if (!strcmp(tier, "avx2"))   { tab = avx2_table;   n = avx2_count; }
+  else if (!strcmp(tier, "f16c"))   { tab = f16c_table;   n = f16c_count; }
+  else { *is_float = 0; return 0; }
+  const char *want = colon ? colon + 1 : "auto";
+  for (int i = 0; i < n; i++)
+    if (!strcmp(tab[i].name, want)) {
+      g_fk = tab[i].fn; g_fk_rows = tab[i].rows; return 1; }
+  return 0;
+}
 
 static void run_parallel(int eng, const void *A, const void *Q, void *C,
                          int M, int K, int N, int T) {
@@ -643,18 +664,25 @@ int main(int argc, char **argv) {
   int want_bl = verify || !strcmp(eng, "blas");
   /* One fp32 weight set feeds avx / avx2 / f16c / avxf16 / blas, so every
      float path computes the same numbers and shares one reference. */
-  int want_f32 = verify || want_bl || !strcmp(eng, "avx") || !strcmp(eng, "avx2")
-                 || !strcmp(eng, "avxf16") || !strcmp(eng, "f16c")
-                 || !strcmp(eng, "cref");
+  int is_float = 0;
+  int fk_ok = fk_select(eng, &is_float);
+  int want_f32 = verify || want_bl || is_float;
 
   if (!strcmp(eng, "amx")  && !amx_have(0)) { printf("n/a\n"); return 0; }
   if (!strcmp(eng, "vnnip") && N % 64) { printf("n/a\n"); return 0; }
-  if (want_f32 && !want_bl && N % 64) { printf("n/a\n"); return 0; }
-  if (!strcmp(eng, "avx")    && !have_avx())  { printf("n/a\n"); return 0; }
-  if (!strcmp(eng, "avxf16") && !have_f16c()) { printf("n/a\n"); return 0; }
-  if (!strcmp(eng, "avx2")   && !have_avx2()) { printf("n/a\n"); return 0; }
-  if (!strcmp(eng, "f16c")   && !(have_avx2() && have_f16c()))
-                                              { printf("n/a\n"); return 0; }
+  if (is_float && !verify) {
+    if (!fk_ok)                 { printf("n/a\n"); return 0; }   /* no such R:V */
+    if (N % 64)                 { printf("n/a\n"); return 0; }
+    /* A bare grid entry skips the last (M mod R) rows by design -- the ladder
+       is what covers them. Timing one where R does not divide M measures a
+       kernel doing LESS than the GOPS formula assumes, and when R > M it
+       measures an empty loop: the sweep that found this reported 4443 GOPS
+       at M=1 for a kernel that never executed its body. Refuse instead. */
+    if (g_fk_rows && M % g_fk_rows) { printf("n/a\n"); return 0; }
+    if (!strncmp(eng, "avx", 3) && !have_avx())  { printf("n/a\n"); return 0; }
+    if (strstr(eng, "f16")      && !have_f16c()) { printf("n/a\n"); return 0; }
+    if (!strncmp(eng, "avx2", 4) && !have_avx2()){ printf("n/a\n"); return 0; }
+  }
   if (!strcmp(eng, "bf16") && !amx_have(1)) { printf("n/a\n"); return 0; }
 
   uint8_t *A8 = NULL; int8_t *W8 = NULL, *Q8 = NULL, *Qp8 = NULL;
@@ -736,17 +764,30 @@ int main(int argc, char **argv) {
     if (Wp32) {
       float *rf = aligned_alloc(64, (size_t)M * N * 4);
       ref_f32(Af32, Wf32, rf, M, K, N);
-      const struct { const char *n; int id; int ok; const void *w; } fl[] = {
-        { "cref",   8, 1,                              Wp32 },
-        { "avx",    4, have_avx(),                     Wp32 },
-        { "avxf16", 5, have_f16c(),                    Wp16 },
-        { "avx2",   6, have_avx2(),                    Wp32 },
-        { "f16c",   7, have_avx2() && have_f16c(),     Wp16 },
+      /* Every grid point is checked, not just the default blocking. A wrong
+         ROWS x VEC is fast and wrong -- an off-by-one in a tail writes
+         plausible numbers -- which is the failure mode blocking actually has. */
+      const struct { const char *n; const struct fk_entry *t; const int *c;
+                     int ok; const void *w; } fl[] = {
+        { "cref",   NULL,         NULL,          1,                          Wp32 },
+        { "avx",    avx_table,    &avx_count,    have_avx(),                 Wp32 },
+        { "avxf16", avxf16_table, &avxf16_count, have_f16c(),                Wp16 },
+        { "avx2",   avx2_table,   &avx2_count,   have_avx2(),                Wp32 },
+        { "f16c",   f16c_table,   &f16c_count,   have_avx2() && have_f16c(), Wp16 },
       };
       for (int e = 0; e < 5; e++) {
         if (!fl[e].ok) { printf("%-6s skipped (no ISA)\n", fl[e].n); continue; }
+        int nv = fl[e].t ? *fl[e].c : 1;
+        double wv = 0, sv = 0; int bad = 0; const char *badn = NULL;
+        int skipped = 0;
+        for (int g = 0; g < nv; g++) {
+        /* A bare grid entry leaves (rows mod R) undone by design -- the
+           ladder is what covers them -- so it is only checkable standalone
+           when R divides M. `auto` (rows == 0) is always checkable. */
+        if (fl[e].t && fl[e].t[g].rows && M % fl[e].t[g].rows) { skipped++; continue; }
+        g_fk = fl[e].t ? fl[e].t[g].fn : cref_cref;
         memset(Cf32, 0, (size_t)M * N * 4);
-        run_parallel(fl[e].id, Af32, fl[e].w, Cf32, M, K, N, T);
+        run_parallel(4, Af32, fl[e].w, Cf32, M, K, N, T);
         double worst = 0, scale = 0;
         for (size_t i = 0; i < (size_t)M * N; i++) {
           double d = Cf32[i] - rf[i]; if (d < 0) d = -d;
@@ -756,9 +797,15 @@ int main(int argc, char **argv) {
         /* fp16 storage rounds the weights, so the f16 rows are held to 1e-3
            of result scale and the fp32 rows to 1e-5. Both are tolerances, not
            equality: the reference sums in a different order. */
-        double bar = fl[e].id == 5 || fl[e].id == 7 ? 1e-3 : 1e-5;
-        printf("%-6s %s (max err %.2e of scale %.2e)\n", fl[e].n,
-               worst / scale < bar ? "match" : "FAIL", worst / scale, scale);
+        double bar = strstr(fl[e].n, "f16") ? 1e-3 : 1e-5;
+        if (worst / scale >= bar) { bad++; badn = fl[e].t ? fl[e].t[g].name : "-"; }
+        if (worst > wv) wv = worst;
+        sv = scale;
+        }
+        printf("%-6s %s (%d blockings checked, %d skipped, worst err %.2e"
+               " of scale %.2e%s%s)\n", fl[e].n, bad ? "FAIL" : "match",
+               nv - skipped, skipped, wv / (sv ? sv : 1), sv,
+               bad ? ", first bad: " : "", bad ? badn : "");
       }
       free(rf);
     }
@@ -791,11 +838,9 @@ int main(int argc, char **argv) {
     double t0 = now();
     if      (!strcmp(eng, "vnni")) run_parallel(0, A8, Q8, C32, M, K, N, T);
     else if (!strcmp(eng, "vnnip")) run_parallel(3, A8, Qp8, C32, M, K, N, T);
-    else if (!strcmp(eng, "cref"))   run_parallel(8, Af32, Wp32, Cf32, M, K, N, T);
-    else if (!strcmp(eng, "avx"))    run_parallel(4, Af32, Wp32, Cf32, M, K, N, T);
-    else if (!strcmp(eng, "avxf16")) run_parallel(5, Af32, Wp16, Cf32, M, K, N, T);
-    else if (!strcmp(eng, "avx2"))   run_parallel(6, Af32, Wp32, Cf32, M, K, N, T);
-    else if (!strcmp(eng, "f16c"))   run_parallel(7, Af32, Wp16, Cf32, M, K, N, T);
+    else if (is_float) run_parallel(4, Af32,
+               strstr(eng, "f16") ? (const void *)Wp16 : (const void *)Wp32,
+               Cf32, M, K, N, T);
     else if (!strcmp(eng, "amx"))  run_parallel(1, A8, Q8, C32, M, K, N, T);
     else if (!strcmp(eng, "bf16")) run_parallel(2, Ab, Qb, Cf,  M, K, N, T);
     else if (!strcmp(eng, "blas")) {

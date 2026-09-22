@@ -237,50 +237,99 @@ left, and rather than quietly replaced.
 ## The AVX ladder, and the conjecture about it
 
 Conjecture put to it: **AVX is faster than CPU for diagonals — simple op.**
-Mostly yes, with one inversion that is worth more than the confirmation.
+**Confirmed, at 2.4x to 3.8x**, at every block height including one row per
+expert.
 
-`dense.c`, K=N=512, one thread, median of 5 invocations. M here *is* rows
-per expert: a routed diagonal with E experts hands each one B/E rows, so the
-small-M rows are the shapes a 64-expert model actually produces.
+`dense.c`, K=N=512, one thread, median of 5 invocations of 5 reps. M here
+*is* rows per expert: a routed diagonal with E experts hands each one B/E
+rows, so the small-M rows are the shapes a 64-expert model actually
+produces. All engines on `:auto`, the descending ladder.
 
 | M (rows/E) | cref (SSE2) | avx (no FMA) | avxf16 | avx2 (FMA) | f16c | avx/cref | f16c/cref |
 |---|---|---|---|---|---|---|---|
-| 1 | 13.8 | 11.2 | 11.9 | 18.5 | 21.3 | **0.81x** | 1.54x |
-| 11 | 18.0 | 29.5 | 31.9 | 32.4 | 40.1 | 1.64x | 2.23x |
-| 45 | 18.0 | 26.3 | 30.0 | 26.7 | 34.2 | 1.46x | 1.90x |
-| 90 | 20.4 | 28.0 | 30.8 | 29.9 | 34.5 | 1.37x | 1.69x |
-| 2048 | 18.0 | 26.8 | 29.5 | 27.8 | 33.9 | 1.49x | 1.88x |
+| 1 | 18.7 | 44.9 | 45.2 | 58.4 | 51.6 | 2.40x | 2.76x |
+| 3 | 18.0 | 42.9 | 43.7 | 51.0 | 62.4 | 2.38x | 3.47x |
+| 6 | 16.2 | 55.9 | 64.9 | 78.1 | 77.9 | 3.45x | 4.81x |
+| 11 | 16.0 | 60.2 | 61.0 | 84.1 | 79.3 | 3.76x | 4.96x |
+| 45 | 17.6 | 62.0 | 60.4 | 87.3 | 83.2 | 3.52x | 4.73x |
+| 90 | 18.0 | 53.6 | 62.9 | 89.2 | 84.2 | 2.98x | 4.68x |
+| 512 | 17.6 | 53.6 | 56.0 | 71.4 | 84.0 | 3.05x | 4.77x |
+| 2048 | 19.3 | 59.6 | 57.4 | 78.9 | 78.5 | 3.09x | 4.07x |
 
-**Confirmed from 3 rows per expert up, at 1.4-1.6x.** Plain C sits flat at
-~18-22 GOPS whatever the shape, exactly like the `code` column in the engine
-table — a non-amortizing kernel has nothing to lose and nothing to gain.
+Plain C sits flat at 16-19 GOPS whatever the shape — the same signature as
+the `code` column in the engine table, because a kernel that amortizes
+nothing has nothing to lose and nothing to gain. `avx2` peaks at **89.2
+GOPS, which is 99.6% of this core's FMA ceiling** (2 FMA/cycle x 8 lanes x 2
+flops x ~2.8GHz turbo = 89.6).
 
-**Refuted at one row per expert**, and that is the interesting cell. The AVX
-kernel is ROWS=4 shaped, so with one row it issues two 32-byte weight loads
-per two multiply-adds and throws away three quarters of its accumulator
-file; plain C, which never blocked, does not care. Same residue argument as
-`vnni:auto` and the CORE 003 walk: a static jump vector is wrong whenever
-the block is shorter than the vector. topk=1 routing on a wide expert count
-lands exactly there.
+### Retracted: the first version of this table, and both findings drawn from it
 
-Note also which tiers survive that cell: `avx` and `avxf16` lose to plain C
-at M=1 (11.2 and 11.9 against 13.8) while `avx2` and `f16c` win (18.5 and
-21.3). With one row there is no reuse to find, so the only lever left is
-issuing one FMA instead of a multiply and an add. **At M=1 it is FMA that
-rescues the kernel, not width.**
+The first measurement reported 1.4-1.6x and a **refutation at M=1** (0.81x,
+AVX losing to plain C). Both were artefacts of my kernel. Two ops were
+missing, and the evidence for one of them was sitting in that table:
+`avx2` measured the *same* as `avx` when FMA should be worth ~2x, and a
+kernel that does not care whether it has FMA is not compute-bound.
 
-### F16C is worth about as much as FMA
+1. **A runtime row clamp.** The kernel took `nr = min(ROWS, i1-i)` and wrote
+   `for (t < nr)`, so every row loop was runtime-bounded, the compiler
+   stopped unrolling, and it still issued VEC weight loads per k to serve one
+   row. **fold.c already documents this exact failure** — "an earlier version
+   passed the tail length in as a parameter ... the whole ROWS axis
+   flattened ... that was an artefact of the harness, not a result" — and I
+   reintroduced it in a different file. Removing it is worth **1.9x** on its
+   own, same blocking.
+2. **No sweep, and no ladder.** ROWS=4 VEC=2 was picked because 4*2+2+1 = 11
+   registers fits in 16, and never swept — after a 16-point grid existed on
+   the WASM side for exactly that reason. Ragged rows fell to the clamp
+   instead of a descending ladder, which is why M=1 lost.
 
-`f16c` is the best column at every shape and beats `avx2` — same fp32
-arithmetic, same FMA, only the weights are half as wide. And `avxf16`
-(fp16 weights, *no* FMA) matches or beats `avx2` (fp32 weights, FMA) at
-every row from 11 up. Halving the weight bytes buys about what a fused
-multiply-add buys. That is the footprint result a third time, after int8 on
-the routed shapes and the page-stride cliff on the dense ones.
+With both fixed the M=1 cell goes 11.2 -> 44.9 GOPS and the refutation
+disappears. **The conjecture was right and the kernel was wrong.**
 
-Against int8 the trade is: same halving, but no scales, no zero points, no
-calibration pass, and 11 mantissa bits instead of 8 bits total. `VCVTPH2PS`
-costs one instruction per 8 columns per k.
+### The blocking sweep, since assuming it is what went wrong last time
+
+M=480 (divisible by 1, 2, 4, 6 and 8, so every entry is honest), K=N=512,
+one thread, median of 3:
+
+| tier | 1_8 | 2_4 | 4_2 | 4_4 | 6_1 | 6_2 | 8_1 | auto |
+|---|---|---|---|---|---|---|---|---|
+| avx | 42.1 | 39.6 | 56.2 | 46.4 | 51.4 | **62.3** | 52.3 | 60.5 |
+| avxf16 | 44.3 | 46.4 | 53.0 | 45.2 | 56.7 | 56.8 | 54.0 | **61.2** |
+| avx2 | 54.6 | 63.2 | 78.1 | 46.9 | 61.4 | **82.0** | 75.7 | 80.0 |
+| f16c | 50.4 | 62.9 | 64.4 | 74.2 | 49.5 | 76.2 | 65.6 | **80.6** |
+
+`6_2` — 15 of 16 ymm — wins or ties on every tier, against the 11-register
+`4_2` I had assumed. The register wall is visible: `1_8` and `8_1` both want
+17 and both lose. Structure transferred from fold.c; the constant did not,
+again.
+
+### What F16C is actually worth
+
+Revised, and weaker than the first table claimed. `avxf16` (fp16 weights,
+**no** FMA) does *not* match `avx2` (fp32 weights, with FMA) — 61.0 against
+84.1 at M=11. FMA is worth more than halving the weights at these shapes.
+
+Where fp16 does win is the far end: at M=512 `f16c` is 84.0 against `avx2`'s
+71.4, because with enough rows the weight stream is what is left to be
+bound by. Same footprint story as int8 on the routed shapes and the page
+cliff on the dense ones, but it arrives later than I said.
+
+Against int8 the trade is unchanged and still good: same halving, no scales,
+no zero points, no calibration pass, 11 mantissa bits instead of 8 bits
+total, one `VCVTPH2PS` per 8 columns per k.
+
+### Two traps the harness caught, not the author
+
+- **`VEC=3` silently wrote 3/4 of the output.** `jj += 8*3` steps 0, 24, 48
+  and stops, leaving columns 48-63 untouched — a plausible-looking matrix
+  that was 1.5 wrong out of 1.8. `dense verify` now checks **every** grid
+  point, not the default blocking, because a wrong ROWS x VEC is fast and
+  wrong.
+- **A blocking that does not divide M times an empty loop.** A bare grid
+  entry skips the last `M mod R` rows by design (the ladder covers them), so
+  `f16c:6_2` at M=1 executes nothing at all — and the first sweep duly
+  reported **4443 GOPS** for it. Timing now refuses any entry whose R does
+  not divide M.
 
 ### Why the tiers are separate translation units
 
@@ -296,9 +345,7 @@ stop inlining, and `target("avx,no-fma,...")` stops even
 
 `make ladder-check` greps the disassembly per tier, because this failure is
 silent: the kernel stays *correct* when its label is a lie, so no test
-catches it and only the disassembly does. It currently reports `kern_avx`
-with 0 `vfmadd` and 8 `vmulps`, `kern_avxf16` with 0 `vfmadd` and 2
-`vcvtph2ps`, and both Haswell tiers with 8 `vfmadd`.
+catches it and only the disassembly does.
 
 ## Which engine to route it through
 

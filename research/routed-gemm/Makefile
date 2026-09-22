@@ -144,19 +144,17 @@ dense: dense.c $(FLOATOBJ)
 # The "CPU" baseline the AVX conjecture is measured against: plain C, no
 # intrinsics, built for generic x86-64 (SSE2) -- what a portable binary gets.
 fk_cref.o: floatkern.c
-	gcc -O3 -march=x86-64 -DPLAIN=1 -DKERNNAME=kern_cref -c -o $@ $<
+	gcc -O3 -march=x86-64 -DPLAIN=1 -DTIER=cref -c -o $@ $<
 
 fk_avx.o: floatkern.c
-	gcc -O3 -mavx -mno-fma -mno-avx2 -mno-f16c -DKERNNAME=kern_avx -c -o $@ $<
+	gcc -O3 -mavx -mno-fma -mno-avx2 -mno-f16c -DTIER=avx -c -o $@ $<
 fk_avxf16.o: floatkern.c
-	gcc -O3 -mavx -mf16c -mno-fma -mno-avx2 -DTIER_F16=1 \
-	    -DKERNNAME=kern_avxf16 -c -o $@ $<
+	gcc -O3 -mavx -mf16c -mno-fma -mno-avx2 -DTIER_F16=1 -DTIER=avxf16 -c -o $@ $<
 fk_avx2.o: floatkern.c
-	gcc -O3 -mavx2 -mfma -mno-avx512f -DTIER_FMA=1 \
-	    -DKERNNAME=kern_avx2 -c -o $@ $<
+	gcc -O3 -mavx2 -mfma -mno-avx512f -DTIER_FMA=1 -DTIER=avx2 -c -o $@ $<
 fk_f16c.o: floatkern.c
 	gcc -O3 -mavx2 -mfma -mf16c -mno-avx512f -DTIER_FMA=1 -DTIER_F16=1 \
-	    -DKERNNAME=kern_f16c -c -o $@ $<
+	    -DTIER=f16c -c -o $@ $<
 
 # The label check. Each tier must contain ONLY instructions it is allowed to
 # have; a kernel stays correct when its label is a lie, so no test catches
@@ -170,12 +168,12 @@ ladder-check: dense
 	        elif [ "$$3" != "0" ] && [ "$$n" = "0" ]; then \
 	          echo "  FAIL $$1 has no $$2"; fail=1; \
 	        else echo "  ok   $$1 $$2=$$n"; fi; }; \
-	chk kern_avx    vfmadd    0; chk kern_avx    vmulps    1; \
-	chk kern_avx    vcvtph2ps 0; chk kern_avx    zmm       0; \
-	chk kern_avxf16 vfmadd    0; chk kern_avxf16 vcvtph2ps 1; \
-	chk kern_avx2   vfmadd    1; chk kern_avx2   vcvtph2ps 0; \
-	chk kern_avx2   zmm       0; \
-	chk kern_f16c   vfmadd    1; chk kern_f16c   vcvtph2ps 1; \
+	chk avx_k4_2     vfmadd    0; chk avx_k4_2     vmulps    1; \
+	chk avx_k4_2     vcvtph2ps 0; chk avx_k4_2     zmm       0; \
+	chk avxf16_k4_2  vfmadd    0; chk avxf16_k4_2  vcvtph2ps 1; \
+	chk avx2_k4_2    vfmadd    1; chk avx2_k4_2    vcvtph2ps 0; \
+	chk avx2_k4_2    zmm       0; \
+	chk f16c_k4_2    vfmadd    1; chk f16c_k4_2    vcvtph2ps 1; \
 	exit $$fail
 
 # Asks by executing, not by reading CPUID. See the file header for why that
