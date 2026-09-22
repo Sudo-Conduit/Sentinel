@@ -18,7 +18,27 @@
  *                 -Wl,--no-entry -Wl,--export=peak -Wl,--export-memory peak.c
  */
 
-#define ACC 8          /* independent chains -- enough to cover FMA latency */
+/* ACC was fixed at 8 with the comment "enough to cover FMA latency". On the
+ * native side it is: `vfmadd231ps a, m, m` has a ONE-op recurrence, so eight
+ * chains cover four cycles of latency several times over. On the wasm side
+ * it is not, and the asymmetry was invisible until a kernel came in at 121%
+ * of the "ceiling".
+ *
+ * wasm128 has no fused multiply-add, so the probe has to write
+ * `a = a + a*m` and the recurrence is TWO dependent ops, ~8 cycles. Eight
+ * chains issue 16 ops per pass; at the 3 vector ops/cycle this core sustains
+ * that is 5.3 cycles of work against an 8-cycle recurrence, so the probe was
+ * latency-bound and measured its own dependency chain rather than the
+ * machine. The kernel's recurrence is one add (the multiplicand is a loaded
+ * weight, not the accumulator), which is why it could legitimately exceed
+ * the number.
+ *
+ * So ACC is a knob now and `make ceiling` sweeps it. A ceiling you have not
+ * swept is a lower bound on a ceiling.
+ */
+#ifndef ACC
+#define ACC 8
+#endif
 #define INNER 1000
 
 #ifdef __wasm__

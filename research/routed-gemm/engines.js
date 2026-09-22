@@ -140,14 +140,23 @@ if (process.argv.includes('--table')) {
   process.exit(0);
 }
 
+// The blocked columns are the WASM finding ported: the original vnni and amx
+// kernels hold ONE accumulator block, so every weight load feeds one row (or
+// one tile) and the load-to-MAC ratio never improves. `cap` is which
+// capability bit gates the column, since `engines caps` reports the ISA, not
+// the register blocking.
 const have = caps();
 const ENGINES = [
-  { id: 'code', label: 'code',  unit: 'GOPS int8' },
-  { id: 'vnni', label: 'VNNI',  unit: 'GOPS int8' },
-  { id: 'blas', label: 'BLAS',  unit: 'GFLOPS fp32' },
-  { id: 'blasb', label: 'BLAS batch', unit: 'GFLOPS fp32' },
-  { id: 'amx',  label: 'AMX',   unit: 'GOPS int8' },
-].filter(e => have[e.id]);
+  { id: 'code',      label: 'code',       unit: 'GOPS int8',   cap: 'code' },
+  { id: 'vnni',      label: 'VNNI 1x4',   unit: 'GOPS int8',   cap: 'vnni' },
+  { id: 'vnni:6:4',  label: 'VNNI 6x4',   unit: 'GOPS int8',   cap: 'vnni' },
+  { id: 'vnni:auto', label: 'VNNI auto',  unit: 'GOPS int8',   cap: 'vnni' },
+  { id: 'blas',      label: 'BLAS',       unit: 'GFLOPS fp32', cap: 'blas' },
+  { id: 'blasb',     label: 'BLAS batch', unit: 'GFLOPS fp32', cap: 'blasb' },
+  { id: 'amx',       label: 'AMX 1x1',    unit: 'GOPS int8',   cap: 'amx' },
+  { id: 'amx:2:2',   label: 'AMX 2x2',    unit: 'GOPS int8',   cap: 'amx' },
+  { id: 'amx:auto',  label: 'AMX auto',   unit: 'GOPS int8',   cap: 'amx' },
+].filter(e => have[e.cap]);
 
 console.log(`engines: ${ENGINES.map(e => e.label).join(', ')}` +
             (have.amx ? '' : '   (no AMX-INT8 on this cpu)'));

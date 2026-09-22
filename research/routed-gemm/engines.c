@@ -233,6 +233,164 @@ static void run_vnni(const uint8_t *A, const int8_t *Q, int32_t *C,
   }
 }
 
+/* ---- the WASM finding, ported ------------------------------------------
+ *
+ * run_vnni above is ROWS=1, VEC=4 in the vocabulary fold.c settled on: one
+ * row at a time, four zmm accumulators, 64 columns per j step. That is the
+ * same shape the f32x4 kernel started in, and it is the shape that cost that
+ * kernel 1.8x. Each 64-byte load of Q feeds exactly one row, so arithmetic
+ * intensity is 2 ops per weight byte no matter how wide the j step gets --
+ * VEC buys access granularity, ROWS buys intensity, and only ROWS was
+ * missing. The README's explanation for why this kernel sits at 62 GOPS
+ * while BLAS reaches 120 is exactly that ("it re-streams B for every row"),
+ * so the fix is not a new idea, it is the idea already written down.
+ *
+ * What does NOT transfer is the constant. x86-64 exposes 32 zmm to this
+ * kernel against the 16 xmm the wasm JIT exposes, and a VNNI accumulator is
+ * 512 bits, so the budget is ROWS*VEC + VEC + ROWS <= 32 -- a different
+ * optimum from the wasm one, in the same units. The sweep decides, as it did
+ * there: ROWS=4,VEC=4 needs 24 registers and should fit, ROWS=8,VEC=4 needs
+ * 44 and should spill, and if the measurement disagrees with that the model
+ * is wrong, not the measurement.
+ *
+ * One asymmetry worth stating up front, because it predicts the shape of the
+ * result rather than being explained by it: VPDPBUSD accumulates four k
+ * steps per instruction, so a K/4 loop already does what a k-unrolled f32x4
+ * loop has to be written to do. The row blocking is the part that was
+ * genuinely absent.
+ */
+typedef void (*int8_kernel)(const uint8_t *, const int8_t *, int32_t *,
+                            int, int, int, int);
+
+/* Rows that do not fill a block of R. Same inner kernel at ROWS=1 so the
+ * tail costs bandwidth but not vector width -- the fold.c tail lesson. */
+static void vnni_tail(const uint8_t *A, const int8_t *Q, int32_t *C,
+                      int i0, int i1, int K, int N) {
+  for (int i = i0; i < i1; i++) {
+    const uint8_t *a = A + (size_t)i * K;
+    int j = 0;
+    for (; j + 64 <= N; j += 64) {
+      __m512i c0 = _mm512_setzero_si512(), c1 = _mm512_setzero_si512();
+      __m512i c2 = _mm512_setzero_si512(), c3 = _mm512_setzero_si512();
+      for (int k4 = 0; k4 < K / 4; k4++) {
+        __m512i av = _mm512_set1_epi32(*(const int32_t *)(a + k4 * 4));
+        const int8_t *b = Q + ((size_t)k4 * N + j) * 4;
+        c0 = _mm512_dpbusd_epi32(c0, av, _mm512_loadu_si512((void *)b));
+        c1 = _mm512_dpbusd_epi32(c1, av, _mm512_loadu_si512((void *)(b + 64)));
+        c2 = _mm512_dpbusd_epi32(c2, av, _mm512_loadu_si512((void *)(b + 128)));
+        c3 = _mm512_dpbusd_epi32(c3, av, _mm512_loadu_si512((void *)(b + 192)));
+      }
+      int32_t *o = C + (size_t)i * N + j;
+      _mm512_storeu_si512((void *)o, c0);
+      _mm512_storeu_si512((void *)(o + 16), c1);
+      _mm512_storeu_si512((void *)(o + 32), c2);
+      _mm512_storeu_si512((void *)(o + 48), c3);
+    }
+    for (; j < N; j++) {                      /* N not a multiple of 64 */
+      int32_t s = 0;
+      for (int k = 0; k < K; k++)
+        s += (int32_t)a[k] * (int32_t)Q[((size_t)(k / 4) * N + j) * 4 + (k & 3)];
+      C[(size_t)i * N + j] = s;
+    }
+  }
+}
+
+/* R rows and V zmm accumulators per j step. R and V are macro arguments, not
+ * parameters: passing the row count in as a runtime value is what flattened
+ * the whole ROWS axis in fold.c -- the compiler stopped unrolling and ROWS=1
+ * appeared to win everywhere. That was a harness artefact and it is not
+ * repeated here. */
+#define VNNI_BLOCKED(R, V)                                                    \
+static void run_vnni_##R##_##V(const uint8_t *A, const int8_t *Q, int32_t *C, \
+                               int TOT, int K, int N, int RPB) {              \
+  const int STEP = 16 * (V);                                                  \
+  for (int blk = 0; blk < TOT; blk += RPB) {                                  \
+    int hi = blk + RPB > TOT ? TOT : blk + RPB;                               \
+    int i = blk;                                                              \
+    for (; i + (R) <= hi; i += (R)) {                                         \
+      int j = 0;                                                              \
+      for (; j + STEP <= N; j += STEP) {                                      \
+        __m512i acc[R][V];                                                    \
+        for (int t = 0; t < (R); t++)                                         \
+          for (int v = 0; v < (V); v++) acc[t][v] = _mm512_setzero_si512();   \
+        for (int k4 = 0; k4 < K / 4; k4++) {                                  \
+          const int8_t *b = Q + ((size_t)k4 * N + j) * 4;                     \
+          __m512i bv[V];                                                      \
+          for (int v = 0; v < (V); v++)                                       \
+            bv[v] = _mm512_loadu_si512((void *)(b + 64 * v));                 \
+          for (int t = 0; t < (R); t++) {                                     \
+            __m512i av = _mm512_set1_epi32(                                   \
+                *(const int32_t *)(A + (size_t)(i + t) * K + k4 * 4));        \
+            for (int v = 0; v < (V); v++)                                     \
+              acc[t][v] = _mm512_dpbusd_epi32(acc[t][v], av, bv[v]);          \
+          }                                                                   \
+        }                                                                     \
+        for (int t = 0; t < (R); t++)                                         \
+          for (int v = 0; v < (V); v++)                                       \
+            _mm512_storeu_si512(                                              \
+                (void *)(C + (size_t)(i + t) * N + j + 16 * v), acc[t][v]);   \
+      }                                                                       \
+      if (j < N) vnni_tail(A, Q, C, i, i + (R), K, N);   /* rare: N % STEP */ \
+    }                                                                         \
+    if (i < hi) vnni_tail(A, Q, C, i, hi, K, N);                              \
+  }                                                                           \
+}
+
+VNNI_BLOCKED(1, 1) VNNI_BLOCKED(1, 2) VNNI_BLOCKED(1, 4)
+VNNI_BLOCKED(2, 1) VNNI_BLOCKED(2, 2) VNNI_BLOCKED(2, 4)
+VNNI_BLOCKED(4, 1) VNNI_BLOCKED(4, 2) VNNI_BLOCKED(4, 4)
+VNNI_BLOCKED(6, 2) VNNI_BLOCKED(6, 4)
+VNNI_BLOCKED(8, 2) VNNI_BLOCKED(8, 4)
+
+/* The ladder. A fixed R collapses the moment the block is shorter than R:
+ * the leftover rows fall to the ROWS=1 tail, which runs at a fifth of the
+ * blocked rate, and the block-height sweep shows it exactly -- VNNI 6x4 does
+ * 318 GOPS at 12 rows per block and 166 at 16, because 16 rows is two full
+ * blocks of 6 plus four rows at 63. That is not a cliff in the ISA, it is
+ * 12/318 + 4/63 seconds of arithmetic, and the arithmetic says the fix:
+ * descend through the widths instead of falling off the end of one.
+ *
+ * This is the fold.c ragged-tail lesson taken seriously. There I widened the
+ * tail to the same VEC as the main path and claimed +15.6%, then retracted
+ * it -- at 11 rows per expert the tail was 1 row in 11 and could never have
+ * been worth 26 points. Here the tail is up to R-1 rows in R, which at a
+ * 5x rate difference is the whole measurement. Same idea, and this time the
+ * arithmetic says before the run that it should matter. */
+static void run_vnni_auto(const uint8_t *A, const int8_t *Q, int32_t *C,
+                          int TOT, int K, int N, int RPB);
+
+static const struct { const char *name; int8_kernel fn; int regs; }
+VNNI_VARIANTS[] = {
+  { "vnni:1:1", run_vnni_1_1,  3 }, { "vnni:1:2", run_vnni_1_2,  5 },
+  { "vnni:1:4", run_vnni_1_4,  9 }, { "vnni:2:1", run_vnni_2_1,  5 },
+  { "vnni:2:2", run_vnni_2_2,  8 }, { "vnni:2:4", run_vnni_2_4, 14 },
+  { "vnni:4:1", run_vnni_4_1,  9 }, { "vnni:4:2", run_vnni_4_2, 14 },
+  { "vnni:4:4", run_vnni_4_4, 24 }, { "vnni:6:2", run_vnni_6_2, 20 },
+  { "vnni:6:4", run_vnni_6_4, 34 }, { "vnni:8:2", run_vnni_8_2, 26 },
+  { "vnni:8:4", run_vnni_8_4, 44 }, { "vnni:auto", run_vnni_auto, 34 },
+};
+#define N_VNNI (int)(sizeof VNNI_VARIANTS / sizeof VNNI_VARIANTS[0])
+
+static void run_vnni_auto(const uint8_t *A, const int8_t *Q, int32_t *C,
+                          int TOT, int K, int N, int RPB) {
+  for (int blk = 0; blk < TOT; blk += RPB) {
+    int hi = blk + RPB > TOT ? TOT : blk + RPB;
+    int i = blk;
+    while (i < hi) {
+      int left = hi - i;
+      int8_kernel f; int take;
+      if      (left >= 8) { f = run_vnni_8_4; take = (left / 8) * 8; }
+      else if (left >= 6) { f = run_vnni_6_4; take = 6; }
+      else if (left >= 4) { f = run_vnni_4_4; take = 4; }
+      else if (left >= 2) { f = run_vnni_2_4; take = 2; }
+      else                { f = run_vnni_1_4; take = 1; }
+      f(A + (size_t)i * K, Q, C + (size_t)i * N, take, K, N, take);
+      i += take;
+    }
+  }
+}
+
+
 static void run_blas(const float *Af, const float *Bf, float *Cf,
                      int TOT, int K, int N, int RPB) {
   for (int blk = 0; blk < TOT; blk += RPB) {
@@ -324,6 +482,142 @@ static void run_amx(const uint8_t *A, const int8_t *Q, int32_t *C,
   _tile_release();
 }
 
+/* ---- the same finding on AMX -------------------------------------------
+ *
+ * run_amx above uses three of the eight tiles: one A, one B, one C. That
+ * means every TDPBSSD is preceded by two TILELOADDs, a 2:1 load-to-MAC
+ * ratio, and it is the tile-register spelling of exactly the mistake the
+ * f32x4 kernel made -- each weight load feeds one output block instead of
+ * several. On AMX the accumulator blocking is not ROWS and VEC, it is how
+ * many C tiles are live at once, but the budget arithmetic is the same
+ * shape: RT*CT + RT + CT <= 8.
+ *
+ *   1:1   3 tiles, 2 loads per MAC     (what is there now)
+ *   1:2   5 tiles, 1.5 loads per MAC
+ *   2:2   8 tiles, 1 load per MAC      (the canonical AMX GEMM shape)
+ *
+ * Tile indices must be immediates, so these are written out rather than
+ * generated -- a macro cannot pass a loop variable to _tile_dpbssd.
+ *
+ * NOT MEASURED. This box reports AMX-TILE=0 (`engines amxinfo`), so nothing
+ * below has executed. It is wired into `engines verify` so the first AMX box
+ * it meets checks it against the plain-C reference before any number is
+ * taken, because an untested tile kernel that merely compiles has proven
+ * nothing. What IS predicted, and what the sweep on that box should show:
+ * the same ordering as VNNI (more live accumulators wins until the register
+ * file runs out), a bigger effect than on VNNI because the load:MAC ratio
+ * halves rather than shrinking by a fraction, and a WORSE ragged tail than
+ * either -- TDPBSSD consumes a 16-row tile, so a block of 11 rows, which is
+ * what a 64-expert model at B=720 actually produces, discards 5/16 of every
+ * multiply no matter how the accumulators are arranged.
+ */
+static void amx_config_n(int rows_a0, int rows_a1, int nc, int na, int nb) {
+  tilecfg c; memset(&c, 0, sizeof c);
+  c.palette = 1;
+  for (int t = 0; t < nc; t++) {           /* C tiles, row-major over RT x CT */
+    c.rows[t] = (na == 2 && t >= nc / 2) ? rows_a1 : rows_a0;
+    c.colsb[t] = 64;
+  }
+  c.rows[nc] = rows_a0; c.colsb[nc] = 64;                  /* A0 */
+  if (na == 2) { c.rows[nc + 1] = rows_a1; c.colsb[nc + 1] = 64; }
+  for (int v = 0; v < nb; v++) { c.rows[nc + na + v] = 16;
+                                 c.colsb[nc + na + v] = 64; }
+  _tile_loadconfig(&c);
+}
+
+/* 1 row-tile, 2 column-tiles: tmm0,1 = C; tmm2 = A; tmm3,4 = B. */
+static void run_amx_1_2(const uint8_t *A, const int8_t *Q, int32_t *C,
+                        int TOT, int K, int N, int RPB) {
+  int cur = -1;
+  for (int blk = 0; blk < TOT; blk += RPB) {
+    int hi = blk + RPB > TOT ? TOT : blk + RPB;
+    for (int i0 = blk; i0 < hi; i0 += 16) {
+      int m = hi - i0 > 16 ? 16 : hi - i0;
+      if (m != cur) { amx_config_n(m, 0, 2, 1, 2); cur = m; }
+      int j = 0;
+      for (; j + 32 <= N; j += 32) {
+        _tile_zero(0); _tile_zero(1);
+        for (int k0 = 0; k0 + 64 <= K; k0 += 64) {
+          _tile_loadd(2, A + (size_t)i0 * K + k0, K);
+          _tile_loadd(3, Q + ((size_t)(k0 / 4) * N + j) * 4, (size_t)N * 4);
+          _tile_loadd(4, Q + ((size_t)(k0 / 4) * N + j + 16) * 4, (size_t)N * 4);
+          _tile_dpbssd(0, 2, 3);
+          _tile_dpbssd(1, 2, 4);
+        }
+        _tile_stored(0, C + (size_t)i0 * N + j, (size_t)N * 4);
+        _tile_stored(1, C + (size_t)i0 * N + j + 16, (size_t)N * 4);
+      }
+      if (j < N) { _tile_release(); cur = -1;
+                   run_amx(A, Q, C, i0 + 16 > hi ? hi - i0 : 16, K, N, RPB); }
+    }
+  }
+  _tile_release();
+}
+
+/* 2 row-tiles, 2 column-tiles -- all eight tiles live, one load per MAC.
+   tmm0..3 = C in (row-tile, col-tile) order; tmm4,5 = A; tmm6,7 = B. */
+static void run_amx_2_2(const uint8_t *A, const int8_t *Q, int32_t *C,
+                        int TOT, int K, int N, int RPB) {
+  int cur0 = -1, cur1 = -1;
+  for (int blk = 0; blk < TOT; blk += RPB) {
+    int hi = blk + RPB > TOT ? TOT : blk + RPB;
+    int i0 = blk;
+    for (; i0 + 32 <= hi; i0 += 32) {
+      if (cur0 != 16 || cur1 != 16) { amx_config_n(16, 16, 4, 2, 2);
+                                      cur0 = cur1 = 16; }
+      int j = 0;
+      for (; j + 32 <= N; j += 32) {
+        _tile_zero(0); _tile_zero(1); _tile_zero(2); _tile_zero(3);
+        for (int k0 = 0; k0 + 64 <= K; k0 += 64) {
+          _tile_loadd(4, A + (size_t)i0 * K + k0, K);
+          _tile_loadd(5, A + (size_t)(i0 + 16) * K + k0, K);
+          _tile_loadd(6, Q + ((size_t)(k0 / 4) * N + j) * 4, (size_t)N * 4);
+          _tile_loadd(7, Q + ((size_t)(k0 / 4) * N + j + 16) * 4, (size_t)N * 4);
+          _tile_dpbssd(0, 4, 6);
+          _tile_dpbssd(1, 4, 7);
+          _tile_dpbssd(2, 5, 6);
+          _tile_dpbssd(3, 5, 7);
+        }
+        _tile_stored(0, C + (size_t)i0 * N + j, (size_t)N * 4);
+        _tile_stored(1, C + (size_t)i0 * N + j + 16, (size_t)N * 4);
+        _tile_stored(2, C + (size_t)(i0 + 16) * N + j, (size_t)N * 4);
+        _tile_stored(3, C + (size_t)(i0 + 16) * N + j + 16, (size_t)N * 4);
+      }
+      if (j < N) { _tile_release(); cur0 = cur1 = -1;
+                   run_amx(A, Q, C, 32, K, N, RPB); }
+    }
+    if (i0 < hi) {                        /* fewer than 32 rows left */
+      _tile_release(); cur0 = cur1 = -1;
+      run_amx(A + (size_t)i0 * K, Q, C + (size_t)i0 * N,
+              hi - i0, K, N, hi - i0);
+    }
+  }
+  _tile_release();
+}
+
+/* Same ladder as vnni:auto, on tiles. 2x2 needs 32 rows, 1x2 needs 16, and
+   below 16 every variant is padding a 16-row tile whatever it does -- that
+   floor is the ISA and no arrangement of accumulators moves it. Which is the
+   one place the WASM lesson does NOT transfer: an f32x4 kernel with a
+   descending ladder reaches rows=1 at full width, and AMX cannot. */
+static void run_amx_auto(const uint8_t *A, const int8_t *Q, int32_t *C,
+                         int TOT, int K, int N, int RPB) {
+  for (int blk = 0; blk < TOT; blk += RPB) {
+    int hi = blk + RPB > TOT ? TOT : blk + RPB;
+    int i = blk;
+    while (i < hi) {
+      int left = hi - i, take;
+      if (left >= 32) take = (left / 32) * 32;
+      else            take = left;
+      if (take >= 32)
+        run_amx_2_2(A + (size_t)i * K, Q, C + (size_t)i * N, take, K, N, take);
+      else
+        run_amx_1_2(A + (size_t)i * K, Q, C + (size_t)i * N, take, K, N, take);
+      i += take;
+    }
+  }
+}
+
 /* ---- driver ------------------------------------------------------------- */
 int main(int argc, char **argv) {
   if (argc < 2) { fprintf(stderr, "see header\n"); return 2; }
@@ -379,12 +673,31 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < (size_t)TOT * N; i++) if (C[i] != ref[i]) bad++;
     printf("vnni %s (%zu mismatches)\n", bad ? "FAIL" : "exact", bad);
 
-    if (amx_ok()) {
+    /* Every blocked variant is checked, not just the default one. A register
+       blocking that is fast and wrong is the failure mode these kernels
+       actually have -- an off-by-one in the tail writes plausible numbers. */
+    for (int v = 0; v < N_VNNI; v++) {
       memset(C, 0, (size_t)TOT * N * 4);
-      run_amx(A, Q, C, TOT, K, N, RPB);
+      VNNI_VARIANTS[v].fn(A, Q, C, TOT, K, N, RPB);
       bad = 0;
       for (size_t i = 0; i < (size_t)TOT * N; i++) if (C[i] != ref[i]) bad++;
-      printf("amx %s (%zu mismatches)\n", bad ? "FAIL" : "exact", bad);
+      printf("%-9s %s (%zu mismatches)\n", VNNI_VARIANTS[v].name,
+             bad ? "FAIL" : "exact", bad);
+    }
+
+    if (amx_ok()) {
+      struct { const char *n; void (*f)(const uint8_t *, const int8_t *,
+                                        int32_t *, int, int, int, int); } av[] = {
+        { "amx", run_amx }, { "amx:1:2", run_amx_1_2 }, { "amx:2:2", run_amx_2_2 },
+        { "amx:auto", run_amx_auto },
+      };
+      for (int v = 0; v < 4; v++) {
+        memset(C, 0, (size_t)TOT * N * 4);
+        av[v].f(A, Q, C, TOT, K, N, RPB);
+        bad = 0;
+        for (size_t i = 0; i < (size_t)TOT * N; i++) if (C[i] != ref[i]) bad++;
+        printf("%-9s %s (%zu mismatches)\n", av[v].n, bad ? "FAIL" : "exact", bad);
+      }
     } else {
       printf("amx skipped (no AMX-INT8 on this cpu)\n");
     }
@@ -417,7 +730,7 @@ int main(int argc, char **argv) {
     return 0;
   }
 
-  if (!strcmp(eng, "amx") && !amx_ok()) { printf("n/a\n"); return 0; }
+  if (!strncmp(eng, "amx", 3) && !amx_ok()) { printf("n/a\n"); return 0; }
 
   if (!strcmp(eng, "blasb")) batch_setup(Af, Bf, Cf, TOT, K, N, RPB);
 
@@ -429,6 +742,15 @@ int main(int argc, char **argv) {
     else if (!strcmp(eng, "blas")) run_blas(Af, Bf, Cf, TOT, K, N, RPB);
     else if (!strcmp(eng, "blasb")) run_blasb();
     else if (!strcmp(eng, "amx"))  run_amx(A, Q, C, TOT, K, N, RPB);
+    else if (!strcmp(eng, "amx:1:2")) run_amx_1_2(A, Q, C, TOT, K, N, RPB);
+    else if (!strcmp(eng, "amx:2:2")) run_amx_2_2(A, Q, C, TOT, K, N, RPB);
+    else if (!strcmp(eng, "amx:auto")) run_amx_auto(A, Q, C, TOT, K, N, RPB);
+    else if (!strncmp(eng, "vnni:", 5)) {
+      int v = 0;
+      for (; v < N_VNNI && strcmp(eng, VNNI_VARIANTS[v].name); v++) {}
+      if (v == N_VNNI) { fprintf(stderr, "unknown vnni variant %s\n", eng); return 2; }
+      VNNI_VARIANTS[v].fn(A, Q, C, TOT, K, N, RPB);
+    }
     else { fprintf(stderr, "unknown engine %s\n", eng); return 2; }
     double d = now() - t0;
     if (d < best) best = d;

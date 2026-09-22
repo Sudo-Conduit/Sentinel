@@ -1,0 +1,193 @@
+{
+  "host": {
+    "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "features": [
+      "avx512f",
+      "avx512_vnni",
+      "amx_tile",
+      "amx_int8",
+      "amx_bf16"
+    ],
+    "cores": 4,
+    "virtual": true
+  },
+  "recorded": "2026-09-22T07:17:23.929Z",
+  "blas": "blas: /usr/local/lib/python3.11/dist-packages/numpy.libs/libscipy_openblas64_-32a4b2a6.so (ilp64)",
+  "shape": {
+    "tot": 720,
+    "k": 2048,
+    "n": 2048,
+    "reps": 3,
+    "runs": 3
+  },
+  "engines": [
+    {
+      "id": "code",
+      "label": "code",
+      "unit": "GOPS int8",
+      "cap": "code"
+    },
+    {
+      "id": "vnni",
+      "label": "VNNI 1x4",
+      "unit": "GOPS int8",
+      "cap": "vnni"
+    },
+    {
+      "id": "vnni:6:4",
+      "label": "VNNI 6x4",
+      "unit": "GOPS int8",
+      "cap": "vnni"
+    },
+    {
+      "id": "vnni:auto",
+      "label": "VNNI auto",
+      "unit": "GOPS int8",
+      "cap": "vnni"
+    },
+    {
+      "id": "blas",
+      "label": "BLAS",
+      "unit": "GFLOPS fp32",
+      "cap": "blas"
+    },
+    {
+      "id": "blasb",
+      "label": "BLAS batch",
+      "unit": "GFLOPS fp32",
+      "cap": "blasb"
+    },
+    {
+      "id": "amx",
+      "label": "AMX 1x1",
+      "unit": "GOPS int8",
+      "cap": "amx"
+    },
+    {
+      "id": "amx:2:2",
+      "label": "AMX 2x2",
+      "unit": "GOPS int8",
+      "cap": "amx"
+    },
+    {
+      "id": "amx:auto",
+      "label": "AMX auto",
+      "unit": "GOPS int8",
+      "cap": "amx"
+    }
+  ],
+  "rows": [
+    {
+      "rpb": 720,
+      "cells": {
+        "code": 23.02,
+        "vnni": 60.23,
+        "vnni:6:4": 321,
+        "vnni:auto": 315.89,
+        "blas": 172.77,
+        "blasb": 174.97,
+        "amx": 529.19,
+        "amx:2:2": 1408.64,
+        "amx:auto": 1469.42
+      }
+    },
+    {
+      "rpb": 90,
+      "cells": {
+        "code": 22.62,
+        "vnni": 63.1,
+        "vnni:6:4": 302.92,
+        "vnni:auto": 282.41,
+        "blas": 129.91,
+        "blasb": 131.13,
+        "amx": 495.78,
+        "amx:2:2": 835.94,
+        "amx:auto": 1178.71
+      }
+    },
+    {
+      "rpb": 45,
+      "cells": {
+        "code": 22.66,
+        "vnni": 62.53,
+        "vnni:6:4": 252.45,
+        "vnni:auto": 272.26,
+        "blas": 101.35,
+        "blasb": 94.44,
+        "amx": 490.08,
+        "amx:2:2": 816.1,
+        "amx:auto": 1105.18
+      }
+    },
+    {
+      "rpb": 16,
+      "cells": {
+        "code": 22.74,
+        "vnni": 62.76,
+        "vnni:6:4": 156.22,
+        "vnni:auto": 303.46,
+        "blas": 60.54,
+        "blasb": 62.05,
+        "amx": 532.37,
+        "amx:2:2": 528.59,
+        "amx:auto": 876.7
+      }
+    },
+    {
+      "rpb": 12,
+      "cells": {
+        "code": 22.62,
+        "vnni": 64.88,
+        "vnni:6:4": 325.23,
+        "vnni:auto": 276.23,
+        "blas": 53.76,
+        "blasb": 53.57,
+        "amx": 399.7,
+        "amx:2:2": 396.86,
+        "amx:auto": 682.9
+      }
+    },
+    {
+      "rpb": 6,
+      "cells": {
+        "code": 22.65,
+        "vnni": 64.98,
+        "vnni:6:4": 305.02,
+        "vnni:auto": 314.86,
+        "blas": 26.18,
+        "blasb": 26.57,
+        "amx": 202.93,
+        "amx:2:2": 198.71,
+        "amx:auto": 351.69
+      }
+    },
+    {
+      "rpb": 3,
+      "cells": {
+        "code": 22.84,
+        "vnni": 64.53,
+        "vnni:6:4": 63.29,
+        "vnni:auto": 95.35,
+        "blas": 13.69,
+        "blasb": 13.68,
+        "amx": 98.9,
+        "amx:2:2": 100.37,
+        "amx:auto": 177.6
+      }
+    },
+    {
+      "rpb": 1,
+      "cells": {
+        "code": 22.68,
+        "vnni": 61.81,
+        "vnni:6:4": 60.6,
+        "vnni:auto": 65.36,
+        "blas": 5.41,
+        "blasb": 5.41,
+        "amx": 33.57,
+        "amx:2:2": 33.2,
+        "amx:auto": 60.25
+      }
+    }
+  ]
+}

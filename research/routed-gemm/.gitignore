@@ -9,3 +9,5 @@ peak_native
 f_*.wasm
 av*.wasm
 q_*.wasm
+fm_*.wasm
+peak_[0-9]*.wasm
