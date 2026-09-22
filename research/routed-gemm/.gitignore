@@ -1,3 +1,5 @@
 node_modules/
 *.so
 engines
+iso_scalar
+iso_auto
