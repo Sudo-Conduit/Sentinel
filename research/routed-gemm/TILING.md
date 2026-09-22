@@ -5,32 +5,60 @@ Conjecture put forward: an image converted to RGB and tiled into 9x8 (or
 patterns in each tile and across the image; each 9x8 tile is a flat array
 tensor, and together they form a Hilbert -> Hamiltonian space.
 
-Three separable claims. One is exactly decidable and came back with a hard
-constraint, one is measurable and came back well, one is untested and is the
-actual research question.
+Three separable claims. One is exactly decidable, one is measurable and came
+back well, one is untested and is the actual research question.
 
-## 1. The grid choice is not free — only 9x8 is Hamiltonian
+Section 1 below is a correction: the first version of it flattened the
+hierarchy, treated 90x80 as one torus, and reported a constraint that does
+not exist.
 
-`tilewalk.mjs` walks every jump vector on each grid and counts unique cells,
-brute force rather than algebra. CORE 003's Coverage Ratio, exhaustively:
+## 1. It is a hierarchy, and it is the one we already built
 
-| grid | cells | gcd(C,R) | max coverage | Hamiltonian vectors |
+**Corrected.** The first version of this section flattened 90x80 into a
+single `Z_90 x Z_80` torus, found gcd 10, and reported 10% max coverage as a
+hard constraint. Wrong object. **90x80 is (10*9) x (10*8) — a 10x10
+arrangement of 9x8 tiles, 100 cells of 9x8.** 90x8 is a 10x1 row of them.
+Flattening threw away the structure and then blamed the structure.
+
+It is also the same two-level shape this directory has been building all
+along, and the correspondence is exact:
+
+| image tiling | routed-gemm |
+|---|---|
+| 9x8 tile, walked internally | `ROWS x VEC` register block |
+| grid of tiles, each visited once | `MBLK x NBLK` work-unit queue |
+| tile routed to one of E patterns | the routed diagonal, `B x E` |
+
+Nobody asks a single jump vector to cover a register block *and* the work
+queue. Two walks, and the gcd argument applies to **each level
+independently** (CRT: `Z_a x Z_b` is cyclic iff `gcd(a,b) = 1`).
+`tilewalk.mjs` brute-forces both:
+
+| grid | pixels | inner (9x8) | outer (tiles) | composite |
 |---|---|---|---|---|
-| 9x8 | 72 | 1 | **72/72 = 100%** | **24** |
-| 90x8 | 720 | 2 | 360/720 = 50% | 0 |
-| 90x80 | 7200 | 10 | 720/7200 = 10% | 0 |
+| 9x8 | 72 | 72/72 = 100%, 24 vectors | — | **100%** |
+| 90x8 | 720 | 100% | 10/10 = 100%, 4 vectors | **100%** |
+| 90x80 | 7200 | 100% | 10/100 by one vector | inner 100%, outer rasters |
+| 81x64 | 5184 | 100% | 72/72 = 100%, 24 vectors | **100%** |
 
-A jump vector `(sx,sy)` generates a *cyclic* subgroup of `Z_C x Z_R`, of
-order `lcm(C/gcd(sx,C), R/gcd(sy,R))`. That reaches `C*R` only when
-`Z_C x Z_R` is itself cyclic, i.e. **gcd(C,R) = 1** — the Chinese Remainder
-Theorem. The measured coverage agrees with that formula on all 7992 vectors
-tested, with no exceptions.
+So the two claims in the previous version were both wrong: 90x8 is fully
+walkable (I said 50%), and 90x80's inner walk is fully cyclic with only its
+*outer* arrangement non-cyclic (I said 10% and called it impossible).
 
-So 9x8 is not an arbitrary tile size. `gcd(9,8)=1` makes `Z_9 x Z_8 = Z_72`,
-which is exactly the `72 = 0 (mod 72)` that `9x8_Matrix.html` opens the CORE
-series with. **90x8 and 90x80 cannot host a single-vector Hamiltonian cycle
-at all** — not "less efficiently", not ever. Covering those needs more than
-one generator, or a construction that is not a constant jump vector.
+What survives, and it is the useful half:
+
+- **The inner walk is the one that must be cyclic, and 9x8 always is.**
+  `gcd(9,8)=1` gives `Z_9 x Z_8 = Z_72`, which is the `72 = 0 (mod 72)` that
+  `9x8_Matrix.html` opens the CORE series with. 24 of the 72 jump vectors are
+  Hamiltonian cycles on it. That is why 9x8 is the tile and not an arbitrary
+  rectangle.
+- **The outer walk only has to visit every tile**, which any raster does, and
+  which the GEMM work queue already does without caring about order. A
+  non-cyclic tile arrangement like 10x10 costs nothing.
+- **81x64 is the self-similar option**: 9x8 tiles arranged 9x8, both levels
+  cyclic, 5184 = 72^2 cells, a single jump vector valid at each level. If a
+  fully generated address ordering is ever wanted rather than a raster, that
+  is the shape that gives it.
 
 ## 2. The compute shape is healthy
 
