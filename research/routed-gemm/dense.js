@@ -25,7 +25,7 @@ const BIN = path.join(__dirname, 'dense');
 const arg = (n, d) => { const i = process.argv.indexOf('--' + n);
   return i === -1 ? d : Number(process.argv[i + 1]); };
 const T = arg('threads', os.cpus().length);
-const RUNS = arg('runs', 3);
+const RUNS = arg('runs', 5);
 // Invocations discarded before any are kept. A freshly migrated container
 // ramps: five back-to-back invocations of ONE binary at one shape read
 // 2511, 2262, 3103, 3241, 3177 on a box three minutes old. The first two
@@ -35,6 +35,16 @@ const WARMUP = arg('warmup', 2);
 // A cell whose invocation medians disagree by more than this is not a
 // measurement. The run that forced this reported 2149% on one cell and
 // still printed a table.
+//
+// The statistic is the TRIMMED range -- drop the highest and lowest
+// invocation, then (max-min)/min over what is left. The first version used
+// the full range over 3 runs, which is wrong in a way worth writing down:
+// full range can only grow as you sample more, so it punishes the very thing
+// that makes a median trustworthy, and a single scheduler hiccup in 3 runs
+// condemns a cell that is otherwise tight. Trimmed range over 5 estimates
+// typical dispersion instead of worst observed. Both are printed; only the
+// trimmed one gates, and the threshold stays at 25% -- the estimator changed,
+// not the bar.
 const MAXSPREAD = arg('maxspread', 25);
 
 const SHAPES = [
@@ -85,8 +95,11 @@ function measure(eng, M, K, N) {
     meds.push(med); bests.push(best);
   }
   meds.sort((a, b) => a - b);
+  const full = 100 * (meds[meds.length - 1] - meds[0]) / meds[0];
+  const mid = meds.length >= 5 ? meds.slice(1, -1) : meds;
+  const trimmed = 100 * (mid[mid.length - 1] - mid[0]) / mid[0];
   return { med: meds[meds.length >> 1], best: Math.max(...bests),
-           spread: 100 * (meds[meds.length - 1] - meds[0]) / meds[0] };
+           spread: trimmed, full };
 }
 
 const have = caps();
@@ -129,9 +142,13 @@ console.log('is flops by construction, so there is no conversion between them.')
 console.log(`${WARMUP} warmup invocation(s) discarded per cell.`);
 const worst = Math.max(...rows.flatMap(r =>
   use.map(e => r.cells[e.id] ? r.cells[e.id].spread : 0)));
-console.log(`worst spread across invocation medians: ${worst.toFixed(0)}%`);
+const worstFull = Math.max(...rows.flatMap(r =>
+  use.map(e => r.cells[e.id] ? r.cells[e.id].full : 0)));
+console.log(`worst trimmed spread ${worst.toFixed(0)}% `
+  + `(worst full range ${worstFull.toFixed(0)}%), over ${RUNS} invocations.`);
 const suspect = rows.flatMap(r => use.filter(e => bad(r.cells[e.id]))
-  .map(e => `${r.M}x${r.K}x${r.N} ${e.id} +-${r.cells[e.id].spread.toFixed(0)}%`));
+  .map(e => `${r.M}x${r.K}x${r.N} ${e.id} +-${r.cells[e.id].spread.toFixed(0)}%`
+       + ` (full +-${r.cells[e.id].full.toFixed(0)}%)`));
 if (suspect.length) {
   console.log(`\nUNSTABLE (> ${MAXSPREAD}%), marked ! above -- not a measurement:`);
   for (const t of suspect) console.log('  ' + t);
