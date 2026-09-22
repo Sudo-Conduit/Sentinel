@@ -118,6 +118,8 @@ const rows = [];
 for (const [M, K, N] of SHAPES) {
   const cells = {};
   for (const e of use) cells[e.id] = measure(e.id, M, K, N);
+  for (const e of use)
+    if (cells[e.id]) cells[e.id].unstable = cells[e.id].spread > MAXSPREAD;
   rows.push({ M, K, N, reps: reps(M, K, N), cells });
   process.stderr.write(`  measured ${M}x${K}x${N}\n`);
 }
@@ -154,13 +156,21 @@ if (suspect.length) {
   for (const t of suspect) console.log('  ' + t);
 }
 
-// Refuse to write a contaminated result file. The whole point of results/
-// is that it outlives the container; a table taken during a ramp that gets
-// committed is worse than no table, because the next reader cannot tell.
-if (process.argv.includes('--record') && suspect.length
+// results/ outlives the container, and the original sin was writing a table
+// taken during a ramp that a later reader could not distinguish from a good
+// one. Per-cell marking fixes that directly -- every cell carries its own
+// spread and an `unstable` flag -- so a blanket refusal now throws away the
+// good cells to punish the bad ones. It refuses only when the run is mostly
+// noise (a third of cells or more), which is the ramp case it was written
+// for. This is a narrowing of the rule, not a widening of the threshold:
+// the 25% bar per cell is unchanged and unstable cells stay marked.
+const totalCells = rows.length * use.length;
+const tooMany = suspect.length * 3 >= totalCells;
+if (process.argv.includes('--record') && tooMany
     && !process.argv.includes('--force')) {
-  console.log('\nNOT recorded: ' + suspect.length + ' unstable cell(s). '
-    + 'Let the box settle and re-run, or pass --force.');
+  console.log(`\nNOT recorded: ${suspect.length}/${totalCells} cells unstable`
+    + ' -- that is a bad box, not a bad cell. Let it settle and re-run,'
+    + ' or pass --force.');
 } else if (process.argv.includes('--record')) {
   const ci = fs.readFileSync('/proc/cpuinfo', 'utf8');
   const model = (ci.match(/^model name\s*:\s*(.+)$/m) || [, 'unknown'])[1].trim();
@@ -176,6 +186,8 @@ if (process.argv.includes('--record') && suspect.length
   const file = path.join(dir, 'dense-' + slug + '.json');
   fs.writeFileSync(file, JSON.stringify({
     host, recorded: new Date().toISOString(), blas: have.note || null,
-    runs: RUNS, engines: use, rows }, null, 2) + '\n');
+    runs: RUNS, warmup: WARMUP, maxspread: MAXSPREAD,
+    unstableCells: suspect.length, totalCells,
+    engines: use, rows }, null, 2) + '\n');
   console.log(`\nrecorded -> results/${path.basename(file)}`);
 }
