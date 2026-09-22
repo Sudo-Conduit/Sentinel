@@ -11,3 +11,5 @@ av*.wasm
 q_*.wasm
 fm_*.wasm
 peak_[0-9]*.wasm
+dense
+amxprobe
