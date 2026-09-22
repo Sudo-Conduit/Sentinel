@@ -8,3 +8,4 @@ vrun.mjs
 peak_native
 f_*.wasm
 av*.wasm
+q_*.wasm
