@@ -533,6 +533,108 @@ static void ref_bf(const bf16 *A, const bf16 *W, float *C,
  * are knobs and the sweep decides, per CORE 003 rather than per intuition. */
 static int MBLK = 96, NBLK = 64;
 
+/* ---- work-unit traversal order -----------------------------------------
+ * CORE 001-030 is a catalogue of ways to walk a torus and the diagonal is
+ * only one of them. The series shows a linear step counter (9x8_Matrix), an
+ * axial column sweep and a helical orbit (002), arbitrary jump vectors whose
+ * coverage is governed by gcd (003), concentric shells and rings throughout,
+ * and in 010 polygon rings with shortcut vertices framed explicitly as
+ * traversal COST -- 72 steps for a full walk against 4-12 via shortcuts,
+ * which is the routed diagonal's E-fold saving in the series' own language.
+ *
+ * Every order below is a PERMUTATION of the work units: identical arithmetic,
+ * identical results, only the sequence differs. So any difference measured is
+ * the walk and nothing else -- which is worth testing, because changing a
+ * walk is exactly what took the VNNI kernel 2.35x once already.
+ *
+ *   row     mi outer, ni inner. The raster, and what this file has always done.
+ *   col     ni outer, mi inner. The axial sweep of 002: one column panel of
+ *           weights held while every row block runs through it.
+ *   diag    anti-diagonals. The helical band of 002.
+ *   jump    u -> (u*g) mod units with gcd(g,units)=1. CORE 003 applied to the
+ *           flat index, where coprimality guarantees full coverage.
+ *   morton  Z-order. Locality-preserving in BOTH axes at once, which no
+ *           single jump vector is.
+ *   shell   concentric rings out from the centre -- the series' dominant
+ *           traversal, and the only one here that is not axis-aligned.
+ *
+ * Set with ORDER=<name>. An order that is not a permutation would be fast and
+ * wrong, so the table is checked before use. */
+static int *g_order;
+static int g_order_n;
+
+static unsigned morton_key(unsigned x, unsigned y) {
+  unsigned k = 0;
+  for (int b = 0; b < 16; b++)
+    k |= ((x >> b) & 1u) << (2 * b) | ((y >> b) & 1u) << (2 * b + 1);
+  return k;
+}
+
+static int cmp_key(const void *a, const void *b) {
+  const unsigned long long *x = a, *y = b;
+  return *x < *y ? -1 : *x > *y ? 1 : 0;
+}
+
+/* Builds a permutation of [0,units) as (key,unit) pairs sorted by key, so
+   every order shares one code path and none can drop or repeat a unit. */
+static void build_order(const char *mode, int mb, int nb) {
+  int units = mb * nb;
+  static int cap;
+  if (units > cap) { free(g_order); g_order = malloc((size_t)units * 4);
+                     cap = units; }
+  g_order_n = units;
+  unsigned long long *k = malloc((size_t)units * 8);
+  int gstep = 1;
+  if (!strcmp(mode, "jump")) {                 /* smallest g coprime to units */
+    for (gstep = (int)(units * 0.618) | 1; gstep < units; gstep++) {
+      int a = gstep, b = units; while (b) { int t = a % b; a = b; b = t; }
+      if (a == 1) break;
+    }
+    if (gstep >= units) gstep = 1;
+  }
+  for (int u = 0; u < units; u++) {
+    int mi = u / nb, ni = u % nb;
+    unsigned long long key;
+    if      (!strcmp(mode, "col"))  key = (unsigned long long)ni * mb + mi;
+    else if (!strcmp(mode, "diag")) key = (unsigned long long)(mi + ni) * units
+                                        + mi;
+    else if (!strcmp(mode, "jump")) {
+      /* rank of u in the multiplicative walk: invert by walking once */
+      key = 0;                                  /* filled below */
+    }
+    else if (!strcmp(mode, "morton")) key = morton_key((unsigned)mi,
+                                                       (unsigned)ni);
+    else if (!strcmp(mode, "shell")) {
+      int dm = mi - mb / 2, dn = ni - nb / 2;
+      int am = dm < 0 ? -dm : dm, an = dn < 0 ? -dn : dn;
+      int r = am > an ? am : an;                /* Chebyshev ring index */
+      key = (unsigned long long)r * units + u;
+    }
+    else key = u;                               /* row */
+    k[u] = (key << 20) | (unsigned)u;           /* unit in the low bits */
+  }
+  if (!strcmp(mode, "jump")) {
+    int pos = 0;
+    for (int i = 0, u = 0; i < units; i++) { k[u] = ((unsigned long long)pos++ << 20)
+                                                    | (unsigned)u;
+                                             u = (int)(((long)u + gstep) % units); }
+  }
+  qsort(k, (size_t)units, 8, cmp_key);
+  for (int i = 0; i < units; i++) g_order[i] = (int)(k[i] & 0xfffff);
+  free(k);
+  /* permutation check -- an order that drops a unit is fast and wrong */
+  char *seen = calloc((size_t)units, 1);
+  for (int i = 0; i < units; i++) {
+    int u = g_order[i];
+    if (u < 0 || u >= units || seen[u]) {
+      fprintf(stderr, "ORDER=%s is not a permutation at %d\n", mode, i);
+      exit(2);
+    }
+    seen[u] = 1;
+  }
+  free(seen);
+}
+
 static struct {
   int eng, M, K, N, mb, nb, units;
   const void *A, *Q; void *C;
@@ -541,8 +643,9 @@ static struct {
 
 static void drain(void) {
   for (;;) {
-    int u = __atomic_fetch_add(&G.next, 1, __ATOMIC_RELAXED);
-    if (u >= G.units) break;
+    int q = __atomic_fetch_add(&G.next, 1, __ATOMIC_RELAXED);
+    if (q >= G.units) break;
+    int u = g_order[q];
     int mi = u / G.nb, ni = u % G.nb;
     int i0 = mi * MBLK, i1 = i0 + MBLK > G.M ? G.M : i0 + MBLK;
     int j0 = ni * NBLK, j1 = j0 + NBLK > G.N ? G.N : j0 + NBLK;
@@ -619,6 +722,8 @@ static void run_parallel(int eng, const void *A, const void *Q, void *C,
   G.eng = eng; G.A = A; G.Q = Q; G.C = C; G.M = M; G.K = K; G.N = N;
   G.mb = (M + MBLK - 1) / MBLK; G.nb = (N + NBLK - 1) / NBLK;
   G.units = G.mb * G.nb;
+  { const char *o = getenv("ORDER"); if (!o) o = "row";
+    if (g_order_n != G.units) build_order(o, G.mb, G.nb); }
   __atomic_store_n(&G.next, 0, __ATOMIC_RELAXED);
   __atomic_store_n(&g_done, 0, __ATOMIC_RELAXED);
   __atomic_add_fetch(&g_gen, 1, __ATOMIC_RELEASE);
