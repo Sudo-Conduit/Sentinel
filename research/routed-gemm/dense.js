@@ -33,10 +33,11 @@ const SHAPES = [
 ];
 
 const ENGINES = [
-  { id: 'amx',  label: `AMX-INT8 (${T}-core)`,           unit: 'GOPS' },
-  { id: 'vnni', label: `VNNI-only (AMX off, ${T}-core)`, unit: 'GOPS' },
-  { id: 'bf16', label: `AMX-BF16 (${T}-core, reference)`, unit: 'GFLOPS' },
-  { id: 'blas', label: `BLAS fp32 (${T}-core)`,          unit: 'GFLOPS' },
+  { id: 'amx',   label: `AMX-INT8 (${T}-core)`,           unit: 'GOPS' },
+  { id: 'vnnip', label: `VNNI panel-packed (${T}-core)`,  unit: 'GOPS' },
+  { id: 'vnni',  label: `VNNI row-packed (${T}-core)`,    unit: 'GOPS' },
+  { id: 'bf16',  label: `AMX-BF16 (${T}-core, reference)`, unit: 'GFLOPS' },
+  { id: 'blas',  label: `BLAS fp32 (${T}-core)`,          unit: 'GFLOPS' },
 ];
 
 function caps() {

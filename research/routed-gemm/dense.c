@@ -110,6 +110,42 @@ static void pack_i8(const int8_t *W, int8_t *Q, int K, int N) {
     for (int j = 0; j < N; j++)
       Q[((size_t)(k / 4) * N + j) * 4 + (k & 3)] = W[(size_t)k * N + j];
 }
+/* Panel-packed, and this is the whole finding of the N sweep.
+ *
+ * pack_i8 above folds 4 k into a dword so one 64-byte load carries 16
+ * columns -- but it leaves the k dimension strided by the FULL row, N*4
+ * bytes. Sweeping N at fixed M and K is not a gradient, it is a step:
+ *
+ *     N=576   stride 2304B  = 0.56 pages   2249 GOPS
+ *     N=1024  stride 4096B  = 1.00 page     957      <- cliff
+ *     N=2048  stride 8192B  = 2.00 pages   1032
+ *     N=4096  stride 16384B = 4.00 pages   1016
+ *
+ * It does not keep getting worse with more pages per step, because there is
+ * nothing worse than "every step lands on a new page": the hardware
+ * prefetcher does not cross page boundaries, so at one page per step it
+ * stops following and never starts again. 2.35x, at one threshold.
+ *
+ * This is the CORE 003 coverage argument with the page as the modulus. A
+ * jump vector whose stride is congruent to the grid's period visits a new
+ * cell every step and re-uses nothing; the Coverage Ratio of the walk over
+ * a page is 1/64 lines instead of 64/64. The fix is not a faster kernel, it
+ * is a different walk: pack per 64-column panel so that stepping k moves
+ * 256 contiguous bytes instead of N*4 strided ones. The panel then has one
+ * stream, in order, and the page boundary stops being an event.
+ *
+ * The inner loop does not change at all -- it already reads b, b+64, b+128,
+ * b+192, which is 256 contiguous bytes. Only the stride between k steps
+ * changes, and only the pack decides that. */
+static void pack_i8_panel(const int8_t *W, int8_t *Qp, int K, int N) {
+  int P = N / 64;
+  for (int p = 0; p < P; p++)
+    for (int k = 0; k < K; k++)
+      for (int jj = 0; jj < 64; jj++)
+        Qp[((size_t)p * (K / 4) + k / 4) * 256 + jj * 4 + (k & 3)]
+          = W[(size_t)k * N + p * 64 + jj];
+}
+
 static void pack_bf(const bf16 *W, bf16 *Q, int K, int N) {
   for (int k = 0; k < K; k++)
     for (int j = 0; j < N; j++)
@@ -154,6 +190,35 @@ static void vnni_##R(const uint8_t *A, const int8_t *Q, int32_t *C,           \
 }
 VNNI_KERN(1) VNNI_KERN(2) VNNI_KERN(4) VNNI_KERN(6)
 
+#define VNNI_PANEL(R)                                                         \
+static void vnnip_##R(const uint8_t *A, const int8_t *Qp, int32_t *C,         \
+                      int i0, int p0, int p1, int K, int N) {                 \
+  for (int p = p0; p < p1; p++) {                                             \
+    const int8_t *base = Qp + (size_t)p * (K / 4) * 256;                      \
+    int j = p * 64;                                                           \
+    __m512i acc[R][4];                                                        \
+    for (int t = 0; t < (R); t++)                                             \
+      for (int v = 0; v < 4; v++) acc[t][v] = _mm512_setzero_si512();         \
+    for (int k4 = 0; k4 < K / 4; k4++) {                                      \
+      const int8_t *b = base + (size_t)k4 * 256;      /* +256, not +N*4 */    \
+      __m512i bv[4];                                                          \
+      for (int v = 0; v < 4; v++)                                             \
+        bv[v] = _mm512_loadu_si512((const void *)(b + 64 * v));               \
+      for (int t = 0; t < (R); t++) {                                         \
+        __m512i av = _mm512_set1_epi32(                                       \
+            *(const int32_t *)(A + (size_t)(i0 + t) * K + k4 * 4));           \
+        for (int v = 0; v < 4; v++)                                           \
+          acc[t][v] = _mm512_dpbusd_epi32(acc[t][v], av, bv[v]);              \
+      }                                                                       \
+    }                                                                         \
+    for (int t = 0; t < (R); t++)                                             \
+      for (int v = 0; v < 4; v++)                                             \
+        _mm512_storeu_si512((void *)(C + (size_t)(i0 + t) * N + j + 16 * v),  \
+                            acc[t][v]);                                       \
+  }                                                                           \
+}
+VNNI_PANEL(1) VNNI_PANEL(2) VNNI_PANEL(4) VNNI_PANEL(6)
+
 /* Columns left over when (j1-j0) is not a multiple of 64. N=576 is 9x64 and
    every shape measured here divides, but a kernel that is only correct on
    the shapes it was demoed with is not a kernel. */
@@ -182,6 +247,20 @@ static void kern_vnni(const uint8_t *A, const int8_t *Q, int32_t *C,
     i += take;
   }
   if (jfull < j1) vnni_scalar(A, Q, C, i0, i1, jfull, j1, K, N);
+}
+
+static void kern_vnnip(const uint8_t *A, const int8_t *Qp, int32_t *C,
+                       int i0, int i1, int j0, int j1, int K, int N) {
+  int p0 = j0 / 64, p1 = j1 / 64;          /* callers pass 64-aligned ranges */
+  int i = i0;
+  while (i < i1) {
+    int left = i1 - i, take;
+    if      (left >= 6) { take = 6; vnnip_6(A, Qp, C, i, p0, p1, K, N); }
+    else if (left >= 4) { take = 4; vnnip_4(A, Qp, C, i, p0, p1, K, N); }
+    else if (left >= 2) { take = 2; vnnip_2(A, Qp, C, i, p0, p1, K, N); }
+    else                { take = 1; vnnip_1(A, Qp, C, i, p0, p1, K, N); }
+    i += take;
+  }
 }
 
 /* ---- AMX ---------------------------------------------------------------
@@ -293,9 +372,20 @@ static void ref_bf(const bf16 *A, const bf16 *W, float *C,
 }
 
 /* ---- the work queue ----------------------------------------------------- */
-#define MBLK 96      /* lcm(32, 6): divisible by the AMX row pair and the
-                        VNNI ladder's widest rung, so no unit starts ragged */
-#define NBLK 64
+/* The walk. CORE 003 is the reference: a fixed jump vector (stepX, stepY) on
+ * a torus covers only what its gcd with the grid dimensions allows, and the
+ * Coverage Ratio -- unique cells visited over 72 -- is the metric that says
+ * whether the walk is doing its job. The same arithmetic governs this loop.
+ * The grid is (M/MBLK) x (N/NBLK) work units, the jump vector is (MBLK,
+ * NBLK), and the residues M mod MBLK, N mod NBLK and units mod threads are
+ * the cells the walk fails to cover cleanly.
+ *
+ * MBLK 96 = lcm(32, 6), the AMX row pair and the VNNI ladder's widest rung,
+ * so no unit starts ragged in the row dimension. That is the static part and
+ * it is correct. What a static vector cannot do is stay inside the cache as
+ * the shape grows, which is the second axis of the same problem -- so both
+ * are knobs and the sweep decides, per CORE 003 rather than per intuition. */
+static int MBLK = 96, NBLK = 64;
 
 static struct {
   int eng, M, K, N, mb, nb, units;
@@ -312,6 +402,8 @@ static void drain(void) {
     int j0 = ni * NBLK, j1 = j0 + NBLK > G.N ? G.N : j0 + NBLK;
     if (G.eng == 0)
       kern_vnni(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
+    else if (G.eng == 3)
+      kern_vnnip(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
     else if (G.eng == 1)
       kern_amx_i8(G.A, G.Q, G.C, i0, i1, j0, j1, G.K, G.N);
     else
@@ -368,7 +460,7 @@ int main(int argc, char **argv) {
   if (argc < 2) { fprintf(stderr, "see header\n"); return 2; }
 
   if (!strcmp(argv[1], "caps")) {
-    printf("vnni 1\namx %d\nbf16 %d\n", amx_have(0), amx_have(1));
+    printf("vnni 1\nvnnip 1\namx %d\nbf16 %d\n", amx_have(0), amx_have(1));
     printf("blas %d\n", blas_init(1));
     printf("# blas: %s\n", blas_path ? blas_path : "not found");
     return 0;
@@ -377,13 +469,20 @@ int main(int argc, char **argv) {
   int verify = !strcmp(argv[1], "verify");
   const char *eng = argv[1];
   if (argc < (verify ? 6 : 7)) { fprintf(stderr, "see header\n"); return 2; }
+  { const char *e;
+    if ((e = getenv("MBLK"))) MBLK = atoi(e);
+    if ((e = getenv("NBLK"))) NBLK = atoi(e);
+    if (MBLK % 96 || NBLK % 64) {
+      fprintf(stderr, "MBLK must be a multiple of 96 and NBLK of 64\n");
+      return 2; } }
   int M = atoi(argv[2]), K = atoi(argv[3]), N = atoi(argv[4]);
   int T = atoi(argv[5]);
   int reps = verify ? 1 : atoi(argv[6]);
   if (K % 64 || N % 16) { fprintf(stderr, "K must be a multiple of 64 and "
                                   "N of 16 (tile geometry)\n"); return 2; }
 
-  int want_i8 = verify || !strcmp(eng, "vnni") || !strcmp(eng, "amx");
+  int want_i8 = verify || !strcmp(eng, "vnni") || !strcmp(eng, "vnnip")
+                     || !strcmp(eng, "amx");
   /* blas has no data of its own: it reads the bf16 operands widened to
      fp32, so the fp32 reference column is computing the same numbers the
      tile engine is, not a differently-generated matrix. */
@@ -391,9 +490,11 @@ int main(int argc, char **argv) {
   int want_bl = verify || !strcmp(eng, "blas");
 
   if (!strcmp(eng, "amx")  && !amx_have(0)) { printf("n/a\n"); return 0; }
+  if (!strcmp(eng, "vnnip") && N % 64) { printf("n/a\n"); return 0; }
   if (!strcmp(eng, "bf16") && !amx_have(1)) { printf("n/a\n"); return 0; }
 
-  uint8_t *A8 = NULL; int8_t *W8 = NULL, *Q8 = NULL; int32_t *C32 = NULL;
+  uint8_t *A8 = NULL; int8_t *W8 = NULL, *Q8 = NULL, *Qp8 = NULL;
+  int32_t *C32 = NULL;
   bf16 *Ab = NULL, *Wb = NULL, *Qb = NULL; float *Cf = NULL;
   float *Af32 = NULL, *Wf32 = NULL, *Cf32 = NULL;
 
@@ -407,6 +508,11 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < (size_t)M * K; i++) A8[i] = rand() & 0x1f;
     for (size_t i = 0; i < (size_t)K * N; i++) W8[i] = (rand() & 0x1f) - 16;
     pack_i8(W8, Q8, K, N);
+    if (N % 64 == 0) {
+      Qp8 = aligned_alloc(64, (size_t)K * N);
+      if (!Qp8) { fprintf(stderr, "alloc\n"); return 1; }
+      pack_i8_panel(W8, Qp8, K, N);
+    }
   }
   if (want_bf) {
     Ab = aligned_alloc(64, (size_t)M * K * 2);
@@ -442,11 +548,13 @@ int main(int argc, char **argv) {
   if (verify) {
     int32_t *ref = aligned_alloc(64, (size_t)M * N * 4);
     ref_i32(A8, W8, ref, M, K, N);
-    const char *names[] = { "vnni", "amx" };
-    for (int e = 0; e < 2; e++) {
-      if (e == 1 && !amx_have(0)) { printf("amx   skipped (no AMX-INT8)\n"); continue; }
+    const int ids[] = { 0, 3, 1 };
+    const char *names[] = { "vnni", "vnnip", "amx" };
+    for (int e = 0; e < 3; e++) {
+      if (ids[e] == 1 && !amx_have(0)) { printf("amx   skipped (no AMX-INT8)\n"); continue; }
+      if (ids[e] == 3 && !Qp8) { printf("vnnip skipped (N %% 64)\n"); continue; }
       memset(C32, 0, (size_t)M * N * 4);
-      run_parallel(e, A8, Q8, C32, M, K, N, T);
+      run_parallel(ids[e], A8, ids[e] == 3 ? Qp8 : Q8, C32, M, K, N, T);
       size_t bad = 0;
       for (size_t i = 0; i < (size_t)M * N; i++) if (C32[i] != ref[i]) bad++;
       printf("%-5s %s (%zu mismatches)\n", names[e], bad ? "FAIL" : "exact", bad);
@@ -480,6 +588,7 @@ int main(int argc, char **argv) {
   for (int r = 0; r < reps; r++) {
     double t0 = now();
     if      (!strcmp(eng, "vnni")) run_parallel(0, A8, Q8, C32, M, K, N, T);
+    else if (!strcmp(eng, "vnnip")) run_parallel(3, A8, Qp8, C32, M, K, N, T);
     else if (!strcmp(eng, "amx"))  run_parallel(1, A8, Q8, C32, M, K, N, T);
     else if (!strcmp(eng, "bf16")) run_parallel(2, Ab, Qb, Cf,  M, K, N, T);
     else if (!strcmp(eng, "blas")) {

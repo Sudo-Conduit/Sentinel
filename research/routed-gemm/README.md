@@ -169,6 +169,71 @@ staleness was invisible.) The `Makefile` is the fix; `make verify` rebuilds
 the three tracked `.wasm` and diffs them against what is committed, and they
 reproduce byte for byte.
 
+## The walk, not the kernel (CORE 003, with the page as the modulus)
+
+`research/CORE/9x8_Torus_003.html` generalises the series' fixed `+1` step to
+an **arbitrary jump vector** `(stepX, stepY)` on a torus, and its load-bearing
+metric is **Coverage Ratio**: unique cells visited over 72. The point of that
+release is that coverage is decided by the gcd of the step with the grid
+period, not by how fast you take steps. A vector that is congruent to the
+period revisits a subgroup and covers nothing else, however long you run it.
+
+Every block size in this directory is a jump vector, and the page is a
+modulus. Sweeping `N` at fixed `M` and `K` with `dense.c` is not a gradient,
+it is a step function at exactly one page:
+
+| N | k-step stride | pages per step | VNNI row-packed | VNNI panel-packed |
+|---|---|---|---|---|
+| 576 | 2304 B | 0.56 | 2080 / 2165 | 2213 / 2249 |
+| 1024 | 4096 B | **1.00** | **952 / 982** | 2286 / 2316 |
+| 1536 | 6144 B | 1.50 | 1057 / 1068 | 2303 / 2329 |
+| 2048 | 8192 B | 2.00 | 1032 / 1082 | 2281 / 2311 |
+| 3072 | 12288 B | 3.00 | 929 / 972 | 2254 / 2290 |
+| 4096 | 16384 B | 4.00 | 904 / 951 | 2106 / 2289 |
+
+`M=2048 K=4096`, 4 threads, median / best GOPS. It does not keep getting
+worse with more pages per step, because there is nothing worse than "every
+step lands on a new page": the hardware prefetcher does not cross page
+boundaries, so at one page per step it stops following and never starts
+again. **2.35x, at one threshold, and then flat.**
+
+The cause is the pack, not the kernel. `pack_i8` folds 4 k into a dword so
+one 64-byte load carries 16 columns — but it leaves the k dimension strided
+by the whole row, `N*4` bytes. `pack_i8_panel` stores each 64-column panel
+with all of K contiguous, so stepping k moves **256 contiguous bytes**
+instead of `N*4` strided ones. The inner loop is unchanged: it already reads
+`b`, `b+64`, `b+128`, `b+192`. Only the walk changed, and the cliff is gone
+at every N.
+
+Two things this got right that the earlier passes did not:
+
+- **The hypothesis that got measured first was wrong, and it cost nothing.**
+  The obvious story was weight re-streaming — too many row blocks, each
+  re-reading the packed weights. So `MBLK` and `NBLK` became knobs and got
+  swept, 96-1536 x 64-512 at 4096^3: every cell landed between 894 and 1014.
+  The walk *vector* was not the variable. Isolating K from N (`4096x4096x576`
+  = 2046 GOPS, `4096x576x4096` = 1495) pointed at N, and only then was there
+  a reason to write code.
+- **AMX does not have this problem, and the data said so before I wrote
+  anything.** Its recorded numbers are flat-to-rising in N (4237 at N=576,
+  4702 at N=4096) where VNNI falls off a cliff. A `TDPBSSD` does 16x16x64
+  MACs per 1024-byte tile load — 16 ops per byte against VNNI's 2 — so it
+  absorbs a stride VNNI cannot. Porting the panel pack to the tile kernels
+  *because it worked for VNNI* would have been the same pattern-match this
+  project keeps having to retract. It is worth testing on the next AMX box;
+  it is not indicated.
+
+**This invalidates a number in the engine table below.** That table's VNNI
+columns were measured through `pack_vnni`, which is row-packed, at
+`K=N=2048` — stride 8192 bytes, two pages, squarely past the threshold. Same
+shape through `dense.c` on one thread: row-packed **264 GOPS**, panel-packed
+**530**. So "VNNI 6x4 = 321 GOPS" is a property of the pack, not the ceiling,
+and blocked VNNI is roughly 2x better than that table shows. The table has
+not been re-measured because the container migrated to a CPU without AMX
+mid-session and the AMX columns cannot be reproduced right now; re-running it
+would silently replace an AMX row with `n/a`. Flagged rather than quietly
+left, and rather than quietly replaced.
+
 ## Which engine to route it through
 
 The routed op hands the backend E short dense matmuls instead of one tall one,
