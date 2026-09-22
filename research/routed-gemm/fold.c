@@ -95,12 +95,86 @@ static void block_rows(const float *X, const float *w, float *Y,
     }
 }
 
+/* Column panelling. Without it, each row-block walks the whole of w before
+ * the next block starts, so at 512 rows/expert w is streamed 256 times and
+ * evicted between every pass -- measured as throughput FLAT at ~21 real GF
+ * from 32 to 512 rows/expert, when more rows per expert should mean more
+ * reuse and more speed.
+ *
+ * With it, a panel of w (K * JPANEL * 4 bytes) is held while every row-block
+ * runs through it. At K=512, JPANEL=64 that is 128KB -- L2-resident -- so
+ * the second and later row-blocks hit cache instead of DRAM, and rows per
+ * expert finally buys something.
+ *
+ * -DJPANEL=n to set it; 0 means no panelling, which is the old behaviour. */
+#ifndef JPANEL
+#define JPANEL 0
+#endif
+
+/* Same register kernel as block_rows, restricted to columns [j0,j1). The
+ * caller sweeps panels outside the row loop so the panel stays resident. */
+static void block_panel(const float *X, const float *w, float *Y,
+                        const i32 *rows, int r0, int K, int N, int j0, int j1)
+{
+    const float *xp[ROWS];
+    float       *yp[ROWS];
+    for (int t = 0; t < ROWS; t++) {
+        xp[t] = X + (u32)rows[r0 + t] * (u32)K;
+        yp[t] = Y + (u32)rows[r0 + t] * (u32)N;
+    }
+    const int STEP = 4 * VEC;
+    int j = j0;
+    for (; j + STEP <= j1; j += STEP) {
+        v128_t acc[ROWS][VEC];
+        for (int t = 0; t < ROWS; t++)
+            for (int v = 0; v < VEC; v++) acc[t][v] = wasm_f32x4_splat(0.0f);
+        for (int k = 0; k < K; k++) {
+            const float *wk = w + (u32)k * (u32)N + j;
+            v128_t b[VEC];
+            for (int v = 0; v < VEC; v++) b[v] = wasm_v128_load(&wk[4 * v]);
+            for (int t = 0; t < ROWS; t++) {
+                v128_t a = wasm_f32x4_splat(xp[t][k]);
+                for (int v = 0; v < VEC; v++)
+                    acc[t][v] = wasm_f32x4_add(acc[t][v], wasm_f32x4_mul(a, b[v]));
+            }
+        }
+        for (int t = 0; t < ROWS; t++)
+            for (int v = 0; v < VEC; v++) wasm_v128_store(&yp[t][j + 4 * v], acc[t][v]);
+    }
+    for (; j < j1; j++) {
+        float s[ROWS];
+        for (int t = 0; t < ROWS; t++) s[t] = 0.0f;
+        for (int k = 0; k < K; k++) {
+            float bv = w[(u32)k * (u32)N + j];
+            for (int t = 0; t < ROWS; t++) s[t] += xp[t][k] * bv;
+        }
+        for (int t = 0; t < ROWS; t++) yp[t][j] = s[t];
+    }
+}
+
 static void block(const float *X, const float *w, float *Y,
                   const i32 *rows, int nrows, int K, int N)
 {
     int r = 0;
+#if JPANEL > 0
+    const int full = nrows - (nrows % ROWS);
+    if (full > 0) {
+        for (int jp = 0; jp < N; jp += JPANEL) {
+            int jend = jp + JPANEL < N ? jp + JPANEL : N;
+            for (int rb = 0; rb + ROWS <= full; rb += ROWS)
+                block_panel(X, w, Y, rows, rb, K, N, jp, jend);
+        }
+        r = full;
+    }
+#else
     for (; r + ROWS <= nrows; r += ROWS) block_rows(X, w, Y, rows, r, K, N);
-    for (; r < nrows; r++) {                       /* ragged tail, one row */
+#endif
+    /* Ragged tail. Was ROWS=1/VEC=1 -- the slowest kernel in this file, and
+     * at E=64 it runs on 1 row in every 11, dragging the shape to 52% of
+     * ceiling. Same VEC width as the main path now, so the tail costs
+     * bandwidth but not vector width. */
+#if OLDTAIL
+    for (; r < nrows; r++) {
         const float *xrow = X + (u32)rows[r] * (u32)K;
         float       *yrow = Y + (u32)rows[r] * (u32)N;
         int j = 0;
@@ -118,6 +192,30 @@ static void block(const float *X, const float *w, float *Y,
             yrow[j] = acc;
         }
     }
+#else
+    for (; r < nrows; r++) {
+        const float *xrow = X + (u32)rows[r] * (u32)K;
+        float       *yrow = Y + (u32)rows[r] * (u32)N;
+        const int STEP = 4 * VEC;
+        int j = 0;
+        for (; j + STEP <= N; j += STEP) {
+            v128_t acc[VEC];
+            for (int v = 0; v < VEC; v++) acc[v] = wasm_f32x4_splat(0.0f);
+            for (int k = 0; k < K; k++) {
+                const float *wk = w + (u32)k * (u32)N + j;
+                v128_t a = wasm_f32x4_splat(xrow[k]);
+                for (int v = 0; v < VEC; v++)
+                    acc[v] = wasm_f32x4_add(acc[v], wasm_f32x4_mul(a, wasm_v128_load(&wk[4*v])));
+            }
+            for (int v = 0; v < VEC; v++) wasm_v128_store(&yrow[j + 4*v], acc[v]);
+        }
+        for (; j < N; j++) {
+            float acc = 0.0f;
+            for (int k = 0; k < K; k++) acc += xrow[k] * w[(u32)k * (u32)N + j];
+            yrow[j] = acc;
+        }
+    }
+#endif
 }
 
 __attribute__((used)) __attribute__((visibility("default")))
