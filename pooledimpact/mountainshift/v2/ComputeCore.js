@@ -542,7 +542,6 @@
     // ─── Composition ────────────────────────────────────────────
 
     const DEFAULT_MIXINS = [RoutedMixin, BenchMixin];
-    const EXTRA_MIXINS = [];
 
     /**
      * Compose the core with the mixin set. Uses ExtendX when it is present,
@@ -581,23 +580,6 @@
         Core: ComputeCore,
         mixins: { routed: RoutedMixin, bench: BenchMixin },
 
-        /**
-         * Register an additional op layer. This is the seam Quantum goes
-         * through when it becomes mainline -- a mixin, not an edit here.
-         * @param {Object} mixin - needs a stable string mixinId
-         */
-        use(mixin)
-        {
-            if (!mixin || typeof mixin.mixinId !== 'string')
-            {
-                throw new Error('API.use(): a layer needs a stable string mixinId');
-            }
-            if (!EXTRA_MIXINS.some(m => m.mixinId === mixin.mixinId))
-            {
-                EXTRA_MIXINS.push(mixin);
-            }
-            return ComputeCore;
-        },
 
         /**
          * @param {Object} [opts] - { provider, libraries, mixins }
@@ -606,7 +588,7 @@
         create(opts)
         {
             opts = opts || {};
-            const mixins = (opts.mixins || DEFAULT_MIXINS).concat(EXTRA_MIXINS);
+            const mixins = opts.mixins || DEFAULT_MIXINS;
             const Composed = compose(mixins);
             return new Composed(opts);
         },

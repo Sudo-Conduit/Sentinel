@@ -139,20 +139,18 @@ function run() {
 
     // --- 4. ops are composition, not inheritance ---
     check('a new op arrives as a mixin, with no edit to ComputeCore.js', () => {
-        const before = ComputeCore.create().ops();
-        if (before.includes('echo')) throw new Error('test op already present');
+        const base = ComputeCore.create();
+        if (base.ops().includes('echo')) throw new Error('test op already present');
 
-        ComputeCore.use({ mixinId: 'cpe.test.echo', op_echo(cmd) { return cmd.value; } });
-
-        const e = ComputeCore.create();
+        const e = ComputeCore.create({
+            mixins: [ComputeCore.mixins.routed, ComputeCore.mixins.bench,
+                     { mixinId: 'cpe.test.echo', op_echo(cmd) { return cmd.value; } }]
+        });
         if (!e.ops().includes('echo')) throw new Error('mixin op did not compose');
         if (e.run({ op: 'echo', value: 42 }) !== 42) throw new Error('mixin op did not dispatch');
-    });
-
-    check('ComputeCore.use() rejects a layer with no stable id', () => {
-        let threw = false;
-        try { ComputeCore.use({ op_nope() {} }); } catch (e) { threw = true; }
-        if (!threw) throw new Error('accepted a mixin with no mixinId');
+        if (ComputeCore.create().ops().includes('echo')) {
+            throw new Error('a construction-time layer leaked into other engines');
+        }
     });
 
     check('an unknown op names the ops that do exist', () => {

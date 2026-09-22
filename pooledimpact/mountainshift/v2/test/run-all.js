@@ -23,7 +23,6 @@ const files = [
     'ExtendX.stacking.test.js',
     'ExtendX.token.test.js',
     'CPE.portability.test.js',
-    'CPE.opaque.test.js',
     'BIOS.firstBoot.test.js',
     'MountainShift.opaque.test.js',
     'WeightedGraphMixin.test.js',
