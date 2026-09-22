@@ -26,6 +26,16 @@ const arg = (n, d) => { const i = process.argv.indexOf('--' + n);
   return i === -1 ? d : Number(process.argv[i + 1]); };
 const T = arg('threads', os.cpus().length);
 const RUNS = arg('runs', 3);
+// Invocations discarded before any are kept. A freshly migrated container
+// ramps: five back-to-back invocations of ONE binary at one shape read
+// 2511, 2262, 3103, 3241, 3177 on a box three minutes old. The first two
+// are the machine arriving, not the kernel. Without this the whole table
+// gets measured during the ramp and looks like a 40% regression.
+const WARMUP = arg('warmup', 2);
+// A cell whose invocation medians disagree by more than this is not a
+// measurement. The run that forced this reported 2149% on one cell and
+// still printed a table.
+const MAXSPREAD = arg('maxspread', 25);
 
 const SHAPES = [
   [1, 576, 576], [32, 576, 576], [1024, 576, 576],
@@ -56,6 +66,8 @@ const reps = (M, K, N) => {
 
 function measure(eng, M, K, N) {
   const meds = [], bests = [];
+  for (let r = 0; r < WARMUP; r++)
+    execFileSync(BIN, [eng, M, K, N, T, reps(M, K, N)].map(String));
   for (let r = 0; r < RUNS; r++) {
     const out = execFileSync(BIN,
       [eng, M, K, N, T, reps(M, K, N)].map(String)).toString().trim();
@@ -88,7 +100,9 @@ for (const [M, K, N] of SHAPES) {
   process.stderr.write(`  measured ${M}x${K}x${N}\n`);
 }
 
-const cell = c => c ? `${c.med.toFixed(1)} / ${c.best.toFixed(1)}` : 'n/a';
+const bad = c => c && c.spread > MAXSPREAD;
+const cell = c => !c ? 'n/a'
+  : `${c.med.toFixed(1)} / ${c.best.toFixed(1)}${bad(c) ? ' !' : ''}`;
 const head = ['shape', ...use.map(e => e.label)];
 const body = rows.map(r =>
   [`${r.M}x${r.K}x${r.N}`, ...use.map(e => cell(r.cells[e.id]))]);
@@ -101,11 +115,25 @@ for (const r of body) console.log(fmt(r));
 console.log(`\nmedian / best, each over ${RUNS} processes x per-shape reps `
   + `(${rows.map(r => r.reps).join(', ')}).`);
 console.log('int8 columns are GOPS; bf16 and BLAS are GFLOPS. 2*M*K*N either way.');
+console.log(`${WARMUP} warmup invocation(s) discarded per cell.`);
 const worst = Math.max(...rows.flatMap(r =>
   use.map(e => r.cells[e.id] ? r.cells[e.id].spread : 0)));
 console.log(`worst spread across invocation medians: ${worst.toFixed(0)}%`);
+const suspect = rows.flatMap(r => use.filter(e => bad(r.cells[e.id]))
+  .map(e => `${r.M}x${r.K}x${r.N} ${e.id} +-${r.cells[e.id].spread.toFixed(0)}%`));
+if (suspect.length) {
+  console.log(`\nUNSTABLE (> ${MAXSPREAD}%), marked ! above -- not a measurement:`);
+  for (const t of suspect) console.log('  ' + t);
+}
 
-if (process.argv.includes('--record')) {
+// Refuse to write a contaminated result file. The whole point of results/
+// is that it outlives the container; a table taken during a ramp that gets
+// committed is worse than no table, because the next reader cannot tell.
+if (process.argv.includes('--record') && suspect.length
+    && !process.argv.includes('--force')) {
+  console.log('\nNOT recorded: ' + suspect.length + ' unstable cell(s). '
+    + 'Let the box settle and re-run, or pass --force.');
+} else if (process.argv.includes('--record')) {
   const ci = fs.readFileSync('/proc/cpuinfo', 'utf8');
   const model = (ci.match(/^model name\s*:\s*(.+)$/m) || [, 'unknown'])[1].trim();
   const flags = new Set(((ci.match(/^flags\s*:\s*(.+)$/m) || [, ''])[1]).split(/\s+/));
