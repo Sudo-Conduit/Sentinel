@@ -130,7 +130,12 @@ fastmath: fold.c dmm.c
 	$(WCC) $(WBASE) -ffast-math $(WRUN) $(WMEM) -DROWS=4 -o fm_av4.wasm autovec.c
 
 native: peak_native iso_scalar iso_auto engines dense amxprobe \
-        blasprobe blasbench libroutedgemm.so
+        blasprobe blasbench membw libroutedgemm.so
+
+# Memory bandwidth -- the half of a machine fingerprint nothing else measured,
+# and the axis that separated two hosts sharing one CPUID string.
+membw: membw.c
+	gcc -O2 -o $@ $< -lpthread
 
 # Ask the library what kernel it dispatched to before blaming it for a number.
 blasprobe: blasprobe.c
@@ -216,5 +221,5 @@ libroutedgemm.so: routed_gemm.c
 clean:
 	rm -f $(KERNELS) $(SWEEP) fm_*.wasm peak_*.wasm \
 	      peak_native iso_scalar iso_auto engines dense amxprobe \
-	      blasprobe blasbench \
+	      blasprobe blasbench membw \
 	      fk_*.o libroutedgemm.so

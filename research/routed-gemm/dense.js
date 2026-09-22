@@ -69,6 +69,27 @@ const ENGINES = [
   { id: 'cref',   label: `cref SSE2 (${T}c)`,     unit: 'GFLOPS', cap: 'cref' },
 ];
 
+// A MEASURED fingerprint, because the model string is not one. Two runs in
+// one session carried identical host records and disagreed 28-42% on every
+// large shape -- different physical hosts behind the same CPUID. Compute peak
+// reuses peak_native rather than reimplementing it (three attempts to do so
+// all spilled the accumulators and read a quarter of the true rate).
+function fingerprint() {
+  const pk = path.join(__dirname, 'peak_native');
+  const bw = path.join(__dirname, 'membw');
+  const num = s => { const v = Number(String(s).trim().split(/\s+/).pop());
+                     return Number.isFinite(v) ? v : null; };
+  const one = f => { try { return num(execFileSync(f[0], f.slice(1))); }
+                     catch { return null; } };
+  let fmaN = null;
+  try {                                  // N copies at once, summed
+    fmaN = num(execFileSync('/bin/sh', ['-c',
+      `for i in $(seq ${T}); do "${pk}" 20000 & done | `
+      + `awk '{s+=$1} END {printf "%.1f", s}'`]));
+  } catch {}
+  return { fma1: one([pk, '20000']), fmaN, bwGBs: one([bw, String(T)]) };
+}
+
 function caps() {
   const m = {};
   for (const line of execFileSync(BIN, ['caps']).toString().trim().split('\n')) {
@@ -177,7 +198,8 @@ if (process.argv.includes('--record') && tooMany
   const flags = new Set(((ci.match(/^flags\s*:\s*(.+)$/m) || [, ''])[1]).split(/\s+/));
   const host = { model, cores: os.cpus().length, threads: T,
     features: ['avx512f', 'avx512_vnni', 'amx_tile', 'amx_int8', 'amx_bf16']
-      .filter(f => flags.has(f)) };
+      .filter(f => flags.has(f)),
+    measured: fp };
   const slug = (model + '_' + host.features.join('-')).toLowerCase()
     .replace(/\(r\)|\(tm\)/g, '').replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '').slice(0, 80);

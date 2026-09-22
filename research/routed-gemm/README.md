@@ -347,6 +347,57 @@ stop inlining, and `target("avx,no-fma,...")` stops even
 silent: the kernel stays *correct* when its label is a lie, so no test
 catches it and only the disassembly does.
 
+## The BLAS column dropped 30% and it was not BLAS
+
+Two dense tables, twelve hours apart in one session, carried the **identical**
+host record:
+
+```json
+{"model":"Intel(R) Xeon(R) Processor @ 2.10GHz","cores":4,"threads":4,
+ "features":["avx512f","avx512_vnni","amx_tile","amx_int8","amx_bf16"]}
+```
+
+and disagreed by 28-42% on every large shape. Best-of, 07:36 run -> 19:24 run:
+
+| shape | AMX-INT8 | AMX-BF16 | BLAS fp32 | VNNI* |
+|---|---|---|---|---|
+| 1024x576x576 | 4554 -> 4003 (-12%) | 3205 -> 2623 (-18%) | 618 -> 455 (-26%) | 2951 -> 2214 (-25%) |
+| 2048x1024x1024 | 6938 -> 4293 (-38%) | 3242 -> 2069 (-36%) | 686 -> 479 (-30%) | 2757 -> 1932 (-30%) |
+| 4096x2048x2048 | 6230 -> 3601 (-42%) | 2562 -> 1497 (-42%) | 675 -> 489 (-28%) | 1449 -> 2022 (+40%) |
+| 4096x4096x4096 | 5141 -> 3024 (-41%) | 2081 -> 1381 (-34%) | 722 -> 514 (-29%) | 1255 -> 2168 (+73%) |
+
+\* the VNNI column is row-packed in the first run and panel-packed in the
+second — a different kernel, and the only column that went **up**. Its real
+gain is therefore larger than it looks, because it won on a slower box.
+
+**Three independent engines moved together**: two tile kernels of ours and a
+third-party library. That rules out any one of them being at fault, and it is
+what says the machine changed rather than the code. These containers land on
+different physical hosts behind the same CPUID string, and `results/` keyed
+on that string silently merged two machines — which is how "BLAS is horrible"
+and "BLAS is fine" were both true at once.
+
+The fix is a fingerprint you can compare. On this host:
+
+| | value | probe |
+|---|---|---|
+| single-core AVX-512 FMA | 182.5 GF | `peak_native` |
+| all-core AVX-512 FMA | 781.5 GF | 4 x `peak_native` concurrently |
+| memory bandwidth | ~43 GB/s | `membw`, STREAM triad all cores |
+
+`dense.js` now measures all three and embeds them in every recorded run, so
+two results on "the same" CPU can be compared or flagged as different
+machines. It is also the axis that explains the split above: the **small**
+shapes fell 12-23%, roughly the clock, and the **large** ones 28-42% — the
+difference between those two is memory, which nothing here had been measuring.
+
+`membw.c` deliberately does **not** reimplement the FLOP probe. Three attempts
+to do so all read ~45 GF/core against `peak_native`'s 185, with `objdump`
+showing 24 memory moves around 10 FMAs: the accumulator array spilled.
+Compile-time chain counts did not fix it and removing a `printf` from the body
+did not fix it. The lesson taken was not "debug harder" but "stop rewriting a
+verified probe".
+
 ## Is the BLAS column bad, and can the WASM ops fix it?
 
 Challenged on both. The answer is: the library is the right one, the number
