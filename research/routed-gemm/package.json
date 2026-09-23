@@ -1,0 +1,14 @@
+{
+  "name": "routed-gemm",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "description": "Routed-diagonal int8 GEMM: Y[b] = X[b]·W[route[b]], computing only the diagonal of the (token x expert) grid",
+  "scripts": {
+    "build": "gcc -O3 -march=native -mavx512vnni -shared -fPIC -pthread -o libroutedgemm.so routed_gemm.c",
+    "build:engines": "gcc -O3 -march=native -mavx512vnni -mamx-tile -mamx-int8 -o engines engines.c -ldl -lm",
+    "bench": "node bench.js",
+    "engines": "node engines.js"
+  },
+  "dependencies": { "koffi": "^2.8.0" }
+}

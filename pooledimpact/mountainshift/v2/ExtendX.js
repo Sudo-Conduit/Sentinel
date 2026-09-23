@@ -84,6 +84,29 @@
  *           checks proving the fix (own-Set identity, the outer layer's
  *           own dispatcher existing, the guard actually enforcing, and
  *           correct this.super delegation once armed).
+ *   v1.6.1  Ported back from research/lib/chain/ExtendX.js, where it was
+ *           released as v1.5.1 on a fork of this file. tokenFor() built the
+ *           binary literal as '0b' + <reversed bit string>, so the
+ *           just-disabled bit -- always the array's last/highest-index
+ *           element, since disableLayer() never appends past it -- became
+ *           the literal's FIRST character, where a zero is numerically
+ *           invisible: BigInt('0b0111') === BigInt('0b111'). Disabling the
+ *           currently-highest-bitIndex mixin therefore produced the SAME
+ *           token as the all-enabled case, and both PIPELINE_CACHE and
+ *           METHOD_CACHE are keyed by that token -- so a stale, all-enabled
+ *           chain silently served a genuinely-disabled configuration.
+ *           Reproduces deterministically whenever reindex() (global,
+ *           alphabetical, re-run on every extend()) lands an existing
+ *           class's mixin at the new highest bit position. Fixed by
+ *           prefixing a sentinel '1', fixing the literal's length in place.
+ *
+ *           Note on the fork this came from: that file's v1.5.2 and this
+ *           file's v1.6.0 are the SAME defect -- installWrappers() reading
+ *           Subclass._wrapped before checking ownership -- found and fixed
+ *           twice independently, both traced to a SecurityMixin report,
+ *           both landing on the identical hasOwnProperty check. Two version
+ *           numbers, one fix. v1.5.1 was the only change that had no
+ *           counterpart here, which is why this is the only port.
  *
  *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
  *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
@@ -137,7 +160,7 @@
 
     const AUTHOR = 'Wilbert Fobbs III';
     const COMPANY = 'Pooled Impact';
-    const VERSION = '1.6.0';
+    const VERSION = '1.6.1';
     const NAME = 'ExtendX';
     const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
     const DOCS = [];
@@ -331,7 +354,17 @@
         {
             return '1';
         }
-        return (((BigInt('0b' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
+        // The sentinel '1' (v1.6.1) fixes the literal's length in place. The
+        // bit array is REVERSED before parsing, so the just-disabled bit --
+        // always the array's last/highest-index element, since disableLayer()
+        // never appends past it -- becomes the FIRST character, and
+        // BigInt('0b0111') === BigInt('0b111'). A leading zero is numerically
+        // invisible, so disabling the currently-highest-bitIndex mixin
+        // produced the SAME token as all-enabled. Both PIPELINE_CACHE and
+        // METHOD_CACHE are keyed by this token, so a stale all-enabled chain
+        // silently served a genuinely-disabled configuration. With the
+        // sentinel that zero is an internal digit contributing to the value.
+        return (((BigInt('0b1' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
     }
 
     // Current implementation for a declared mixin: the registry's entry for its

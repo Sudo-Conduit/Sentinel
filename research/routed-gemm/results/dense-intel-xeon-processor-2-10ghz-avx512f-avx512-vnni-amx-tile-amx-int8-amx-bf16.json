@@ -1,0 +1,505 @@
+{
+  "host": {
+    "model": "Intel(R) Xeon(R) Processor @ 2.10GHz",
+    "cores": 4,
+    "threads": 4,
+    "features": [
+      "avx512f",
+      "avx512_vnni",
+      "amx_tile",
+      "amx_int8",
+      "amx_bf16"
+    ]
+  },
+  "recorded": "2026-09-22T19:24:23.557Z",
+  "blas": "blas: /usr/local/lib/python3.11/dist-packages/numpy.libs/libscipy_openblas64_-32a4b2a6.so",
+  "runs": 5,
+  "warmup": 2,
+  "maxspread": 25,
+  "unstableCells": 3,
+  "totalCells": 54,
+  "engines": [
+    {
+      "id": "amx",
+      "label": "AMX-INT8 (4c)",
+      "unit": "GOPS",
+      "cap": "amx"
+    },
+    {
+      "id": "vnnip",
+      "label": "VNNI panel (4c)",
+      "unit": "GOPS",
+      "cap": "vnnip"
+    },
+    {
+      "id": "bf16",
+      "label": "AMX-BF16 (4c)",
+      "unit": "GFLOPS",
+      "cap": "bf16"
+    },
+    {
+      "id": "f16c",
+      "label": "f16c (4c)",
+      "unit": "GFLOPS",
+      "cap": "f16c"
+    },
+    {
+      "id": "avx2",
+      "label": "avx2+fma (4c)",
+      "unit": "GFLOPS",
+      "cap": "avx2"
+    },
+    {
+      "id": "avxf16",
+      "label": "avx+f16c (4c)",
+      "unit": "GFLOPS",
+      "cap": "avxf16"
+    },
+    {
+      "id": "avx",
+      "label": "avx (4c)",
+      "unit": "GFLOPS",
+      "cap": "avx"
+    },
+    {
+      "id": "blas",
+      "label": "BLAS fp32 (4c)",
+      "unit": "GFLOPS",
+      "cap": "blas"
+    },
+    {
+      "id": "cref",
+      "label": "cref SSE2 (4c)",
+      "unit": "GFLOPS",
+      "cap": "cref"
+    }
+  ],
+  "rows": [
+    {
+      "M": 1,
+      "K": 576,
+      "N": 576,
+      "reps": 500,
+      "cells": {
+        "amx": {
+          "med": 173,
+          "best": 293.9,
+          "spread": 8.65746549560852,
+          "full": 97.08846584546473,
+          "unstable": false
+        },
+        "vnnip": {
+          "med": 250.9,
+          "best": 415.2,
+          "spread": 21.29496402877698,
+          "full": 39.22531369339879,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 123.6,
+          "best": 210.1,
+          "spread": 7.07892595606183,
+          "full": 65.31073446327684,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 129.7,
+          "best": 165.8,
+          "spread": 8.142292490118587,
+          "full": 19.703215169002466,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 139.9,
+          "best": 194.6,
+          "spread": 18.238021638330753,
+          "full": 26.588235294117652,
+          "unstable": false
+        },
+        "avxf16": {
+          "med": 113.9,
+          "best": 135,
+          "spread": 1.6843971631205725,
+          "full": 15.609756097560975,
+          "unstable": false
+        },
+        "avx": {
+          "med": 97.2,
+          "best": 130,
+          "spread": 20.04662004662005,
+          "full": 25.606796116504846,
+          "unstable": false
+        },
+        "blas": {
+          "med": 42.4,
+          "best": 49.9,
+          "spread": 10.687022900763367,
+          "full": 25.000000000000007,
+          "unstable": false
+        },
+        "cref": {
+          "med": 51.1,
+          "best": 65.4,
+          "spread": 17.849898580121714,
+          "full": 24.312896405919663,
+          "unstable": false
+        }
+      }
+    },
+    {
+      "M": 32,
+      "K": 576,
+      "N": 576,
+      "reps": 235,
+      "cells": {
+        "amx": {
+          "med": 1497.5,
+          "best": 6015.2,
+          "spread": 6.35332025777529,
+          "full": 24.90251130868819,
+          "unstable": false
+        },
+        "vnnip": {
+          "med": 1539.3,
+          "best": 2148.3,
+          "spread": 3.121106812668031,
+          "full": 6.722302536469968,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 1382.4,
+          "best": 3715.4,
+          "spread": 3.748326639892912,
+          "full": 14.531458644254183,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 237,
+          "best": 316.2,
+          "spread": 4.360711261642681,
+          "full": 20.491803278688522,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 263,
+          "best": 332.2,
+          "spread": 17.048929663608547,
+          "full": 28.394072887464972,
+          "unstable": false
+        },
+        "avxf16": {
+          "med": 190.4,
+          "best": 216.3,
+          "spread": 11.263881544156536,
+          "full": 17.163355408388533,
+          "unstable": false
+        },
+        "avx": {
+          "med": 171.9,
+          "best": 178.5,
+          "spread": 1.4637002341920373,
+          "full": 3.399765533411496,
+          "unstable": false
+        },
+        "blas": {
+          "med": 217.8,
+          "best": 277.7,
+          "spread": 9.267840593141797,
+          "full": 11.617100371747213,
+          "unstable": false
+        },
+        "cref": {
+          "med": 52.1,
+          "best": 65.2,
+          "spread": 13.229571984435808,
+          "full": 22.46520874751492,
+          "unstable": false
+        }
+      }
+    },
+    {
+      "M": 1024,
+      "K": 576,
+      "N": 576,
+      "reps": 7,
+      "cells": {
+        "amx": {
+          "med": 3498,
+          "best": 4002.6,
+          "spread": 40.371799368642584,
+          "full": 2214.6987951807228,
+          "unstable": true
+        },
+        "vnnip": {
+          "med": 1984,
+          "best": 2214.4,
+          "spread": 5.95652393201191,
+          "full": 32.81967419334547,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 2214.7,
+          "best": 2622.5,
+          "spread": 4.687792110674901,
+          "full": 15.882956878850106,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 310.1,
+          "best": 331.3,
+          "spread": 4.444444444444437,
+          "full": 31.8659127625202,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 264.4,
+          "best": 341.2,
+          "spread": 15.95615103532278,
+          "full": 26.916666666666675,
+          "unstable": false
+        },
+        "avxf16": {
+          "med": 229.9,
+          "best": 246.1,
+          "spread": 1.3117621337997376,
+          "full": 4.659340659340657,
+          "unstable": false
+        },
+        "avx": {
+          "med": 230,
+          "best": 244.2,
+          "spread": 2.337891486546101,
+          "full": 19.359679839919956,
+          "unstable": false
+        },
+        "blas": {
+          "med": 418.9,
+          "best": 455.3,
+          "spread": 3.7897310513447433,
+          "full": 5.919921395234577,
+          "unstable": false
+        },
+        "cref": {
+          "med": 69.7,
+          "best": 75.2,
+          "spread": 7.324364723467849,
+          "full": 11.9515885022693,
+          "unstable": false
+        }
+      }
+    },
+    {
+      "M": 2048,
+      "K": 1024,
+      "N": 1024,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 3133.8,
+          "best": 4292.9,
+          "spread": 23.047077082255573,
+          "full": 70.47757553011824,
+          "unstable": false
+        },
+        "vnnip": {
+          "med": 1733.6,
+          "best": 1932.1,
+          "spread": 6.5339705971323125,
+          "full": 15.666289165722914,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 1783.5,
+          "best": 2068.8,
+          "spread": 2.5756382859070945,
+          "full": 8.11619718309859,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 275.2,
+          "best": 334.6,
+          "spread": 23.82629107981221,
+          "full": 40.60246075519728,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 306,
+          "best": 347.5,
+          "spread": 27.463395330431357,
+          "full": 89.45868945868946,
+          "unstable": true
+        },
+        "avxf16": {
+          "med": 235.1,
+          "best": 249.8,
+          "spread": 21.658986175115196,
+          "full": 32.43392070484582,
+          "unstable": false
+        },
+        "avx": {
+          "med": 219.5,
+          "best": 245.9,
+          "spread": 12.939453125,
+          "full": 16.817269076305223,
+          "unstable": false
+        },
+        "blas": {
+          "med": 435.8,
+          "best": 479,
+          "spread": 9.356587320292244,
+          "full": 26.43337819650067,
+          "unstable": false
+        },
+        "cref": {
+          "med": 69.4,
+          "best": 80.5,
+          "spread": 6.240713224368504,
+          "full": 19.654088050314453,
+          "unstable": false
+        }
+      }
+    },
+    {
+      "M": 4096,
+      "K": 2048,
+      "N": 2048,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 3417,
+          "best": 3601.1,
+          "spread": 4.222957859890845,
+          "full": 52.20281543274244,
+          "unstable": false
+        },
+        "vnnip": {
+          "med": 1550.2,
+          "best": 2022.4,
+          "spread": 6.3415280630839606,
+          "full": 76.8917291840326,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 1410.1,
+          "best": 1496.6,
+          "spread": 4.33699633699634,
+          "full": 18.66516745642921,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 272.3,
+          "best": 312.1,
+          "spread": 9.890109890109887,
+          "full": 15.092073658927138,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 272,
+          "best": 334.9,
+          "spread": 12.081569834551766,
+          "full": 28.521889900303428,
+          "unstable": false
+        },
+        "avxf16": {
+          "med": 227.3,
+          "best": 244.4,
+          "spread": 6.156631960162968,
+          "full": 12.662942271880814,
+          "unstable": false
+        },
+        "avx": {
+          "med": 222.1,
+          "best": 237.7,
+          "spread": 5.250709555345314,
+          "full": 16.36636636636636,
+          "unstable": false
+        },
+        "blas": {
+          "med": 392,
+          "best": 488.5,
+          "spread": 9.07109779351674,
+          "full": 27.635562895678497,
+          "unstable": false
+        },
+        "cref": {
+          "med": 67,
+          "best": 73.1,
+          "spread": 2.4024024024024153,
+          "full": 2.552552552552557,
+          "unstable": false
+        }
+      }
+    },
+    {
+      "M": 4096,
+      "K": 4096,
+      "N": 4096,
+      "reps": 5,
+      "cells": {
+        "amx": {
+          "med": 2110.7,
+          "best": 3024.3,
+          "spread": 29.525500167922065,
+          "full": 38.228825570597735,
+          "unstable": true
+        },
+        "vnnip": {
+          "med": 1941.9,
+          "best": 2168,
+          "spread": 0.6162929203998064,
+          "full": 27.54404019613778,
+          "unstable": false
+        },
+        "bf16": {
+          "med": 1272.6,
+          "best": 1380.5,
+          "spread": 10.293488491486263,
+          "full": 29.193626267503618,
+          "unstable": false
+        },
+        "f16c": {
+          "med": 273,
+          "best": 317.7,
+          "spread": 2.1635496883021763,
+          "full": 11.255572065378905,
+          "unstable": false
+        },
+        "avx2": {
+          "med": 222.8,
+          "best": 259.1,
+          "spread": 5.813408345053904,
+          "full": 9.827420901246406,
+          "unstable": false
+        },
+        "avxf16": {
+          "med": 215.2,
+          "best": 234.2,
+          "spread": 2.7090144792153255,
+          "full": 10.16536964980545,
+          "unstable": false
+        },
+        "avx": {
+          "med": 171.8,
+          "best": 193.5,
+          "spread": 3.7371910789632237,
+          "full": 15.824710894704808,
+          "unstable": false
+        },
+        "blas": {
+          "med": 449.2,
+          "best": 514,
+          "spread": 7.985948477751762,
+          "full": 25.17833553500661,
+          "unstable": false
+        },
+        "cref": {
+          "med": 63,
+          "best": 68.9,
+          "spread": 2.066772655007956,
+          "full": 7.967479674796757,
+          "unstable": false
+        }
+      }
+    }
+  ]
+}
