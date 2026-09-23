@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RegX Coverage Matrix</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg: #f5f4f1; --surface: #ffffff; --surface-2: #ecebe6;
+    --ink: #1e2023; --ink-soft: #43474e; --muted: #6b6f76; --border: #dedcd4;
+    --accent: #b8551f; --accent-soft: #f0e2d4;
+    --verified: #2f7d5c; --verified-bg: #e2f0e9;
+    --partial: #a9740a; --partial-bg: #f6ecd6;
+    --pending: #8b8f98; --pending-bg: #eceae5;
+    --fail: #b23b3b; --fail-bg: #f7e1e1;
+    --na: #c7c5bd;
+    --code-bg: #eeece5;
+    --shadow: 0 1px 2px rgba(30,32,35,.06), 0 6px 20px rgba(30,32,35,.05);
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #15171a; --surface: #1d2024; --surface-2: #262a2f;
+      --ink: #ecebe6; --ink-soft: #c7c9cd; --muted: #9aa0aa; --border: #33373d;
+      --accent: #e2905a; --accent-soft: #3a2c22;
+      --verified: #5ec792; --verified-bg: #1c3229;
+      --partial: #e0b249; --partial-bg: #3a2f18;
+      --pending: #8d919a; --pending-bg: #24272c;
+      --fail: #e07070; --fail-bg: #3a2020;
+      --na: #3a3d43; --code-bg: #24272c;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #15171a; --surface: #1d2024; --surface-2: #262a2f;
+    --ink: #ecebe6; --ink-soft: #c7c9cd; --muted: #9aa0aa; --border: #33373d;
+    --accent: #e2905a; --accent-soft: #3a2c22;
+    --verified: #5ec792; --verified-bg: #1c3229;
+    --partial: #e0b249; --partial-bg: #3a2f18;
+    --pending: #8d919a; --pending-bg: #24272c;
+    --fail: #e07070; --fail-bg: #3a2020;
+    --na: #3a3d43; --code-bg: #24272c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: 'IBM Plex Sans', system-ui, sans-serif; line-height: 1.5; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 48px 32px 80px; }
+  header { margin-bottom: 40px; }
+  .eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 10px; }
+  h1 { font-family: 'JetBrains Mono', monospace; font-size: clamp(28px, 4vw, 40px); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; margin: 0 0 12px; }
+  .sub { font-size: 16px; color: var(--ink-soft); max-width: 62ch; }
+  .sub code { font-family: 'JetBrains Mono', monospace; font-size: 14px; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+
+  .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 32px 0 44px; box-shadow: var(--shadow); }
+  .stat { background: var(--surface); padding: 18px 16px; }
+  .stat .n { font-family: 'JetBrains Mono', monospace; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .stat .l { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .stat.verified .n { color: var(--verified); }
+  .stat.partial .n { color: var(--partial); }
+  .stat.pending .n { color: var(--pending); }
+  .stat.fail .n { color: var(--fail); }
+
+  h2 { font-family: 'JetBrains Mono', monospace; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; color: var(--muted); margin: 0 0 16px; display: flex; align-items: center; gap: 10px; }
+  h2::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin-bottom: 20px; font-size: 13px; color: var(--ink-soft); }
+  .legend .item { display: flex; align-items: center; gap: 7px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .dot.verified { background: var(--verified); }
+  .dot.partial { background: var(--partial); }
+  .dot.pending { background: var(--pending); border: 1px solid var(--border); }
+  .dot.fail { background: var(--fail); }
+  .dot.na { background: var(--na); }
+
+  .matrix-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 860px; background: var(--surface); }
+  thead th { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; text-align: center; padding: 14px 8px; background: var(--surface-2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  thead th:first-child { text-align: left; padding-left: 18px; }
+  thead .lang-js { color: var(--accent); }
+  tbody th { text-align: left; font-weight: 500; font-size: 13.5px; padding: 9px 14px 9px 18px; white-space: nowrap; border-bottom: 1px solid var(--border); position: sticky; left: 0; background: var(--surface); cursor: help; }
+  tbody tr:nth-child(even) th { background: var(--surface-2); }
+  tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--surface-2) 55%, var(--surface)); }
+  .group-row th { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); background: var(--surface-2) !important; padding-top: 14px; }
+  .group-row td { background: var(--surface-2) !important; border-bottom: 1px solid var(--border); }
+  td { text-align: center; padding: 7px; border-bottom: 1px solid var(--border); border-left: 1px solid var(--border); }
+  td:first-child, th:first-child { border-left: none; }
+
+  .cell { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 7px; font-size: 14px; cursor: help; }
+  .cell.verified { background: var(--verified-bg); color: var(--verified); }
+  .cell.partial  { background: var(--partial-bg); color: var(--partial); }
+  .cell.pending  { background: var(--pending-bg); color: var(--pending); }
+  .cell.fail     { background: var(--fail-bg); color: var(--fail); }
+  .cell.na       { background: transparent; color: var(--na); }
+
+  .filesbox { margin-top: 48px; }
+  .files-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; font-family: 'JetBrains Mono', monospace; font-size: 12.5px; }
+  .files-grid .f { display: flex; justify-content: space-between; gap: 10px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+  .files-grid .ok { color: var(--verified); }
+  .files-grid .bad { color: var(--fail); font-weight: 600; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12.5px; color: var(--muted); font-family: 'JetBrains Mono', monospace; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+
+  @media (max-width: 640px) { .wrap { padding: 32px 18px 60px; } .summary { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">RegX / Sentinel &middot; generated from real test execution</div>
+    <h1>Language &times; Feature Coverage</h1>
+    <p class="sub">Every cell below comes from actually running <code>test*.js</code> and reading its exit status &mdash; regenerate with <code>node generate_coverage.js</code> after any change. Nothing here is hand-typed.</p>
+  </header>
+
+  <div class="summary" id="summary"></div>
+
+  <section>
+    <h2>Coverage matrix</h2>
+    <div class="legend">
+      <div class="item"><span class="dot verified"></span>verified</div>
+      <div class="item"><span class="dot partial"></span>partial &mdash; scoped subset</div>
+      <div class="item"><span class="dot fail"></span>fail &mdash; test file did not pass</div>
+      <div class="item"><span class="dot pending"></span>not built</div>
+      <div class="item"><span class="dot na"></span>tabled / n/a</div>
+    </div>
+    <div class="matrix-scroll">
+      <table>
+        <thead><tr id="head-row"></tr></thead>
+        <tbody id="matrix-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="filesbox">
+    <h2>Test files this report ran</h2>
+    <div class="files-grid" id="files-grid"></div>
+  </section>
+
+  <footer>
+    <span id="foot-left"></span>
+    <span id="foot-right"></span>
+  </footer>
+</div>
+
+<script>
+  var DATA = /*__COVERAGE_DATA__*/;
+
+  var LANG_LABEL = { js: 'JS (core)', c: 'C', java: 'Java', php: 'PHP', python: 'Python', ts: 'TypeScript' };
+  var STATUS_GLYPH = { verified: '✓', partial: '◐', fail: '✕', pending: '·', na: '' };
+
+  var head = document.getElementById('head-row');
+  head.innerHTML = '<th>Feature</th>' + DATA.langs.map(function (l) {
+    return '<th' + (l === 'js' ? ' class="lang-js"' : '') + '>' + LANG_LABEL[l] + '</th>';
+  }).join('');
+
+  var body = document.getElementById('matrix-body');
+  DATA.rows.forEach(function (r) {
+    var tr = document.createElement('tr');
+    if (r.group) {
+      tr.className = 'group-row';
+      tr.innerHTML = '<th>' + r.group + '</th>' + DATA.langs.map(function () { return '<td></td>'; }).join('');
+      body.appendChild(tr);
+      return;
+    }
+    var th = document.createElement('th');
+    th.textContent = r.name;
+    tr.appendChild(th);
+    r.cells.forEach(function (c) {
+      var td = document.createElement('td');
+      var span = document.createElement('span');
+      span.className = 'cell ' + c.status;
+      span.textContent = STATUS_GLYPH[c.status];
+      var title = c.files ? c.files.join(', ') : (c.note || '');
+      if (c.note && c.files) title += ' — ' + c.note;
+      span.title = title;
+      td.appendChild(span);
+      tr.appendChild(td);
+    });
+    body.appendChild(tr);
+  });
+
+  var s = DATA.summary;
+  document.getElementById('summary').innerHTML =
+    '<div class="stat verified"><div class="n">' + s.verified + '</div><div class="l">verified</div></div>' +
+    '<div class="stat partial"><div class="n">' + s.partial + '</div><div class="l">partial</div></div>' +
+    '<div class="stat fail"><div class="n">' + s.fail + '</div><div class="l">fail</div></div>' +
+    '<div class="stat pending"><div class="n">' + s.pending + '</div><div class="l">not built</div></div>' +
+    '<div class="stat"><div class="n">' + s.na + '</div><div class="l">n/a</div></div>';
+
+  var fg = document.getElementById('files-grid');
+  DATA.testFiles.slice().sort(function (a, b) { return a.file.localeCompare(b.file); }).forEach(function (f) {
+    var div = document.createElement('div');
+    div.className = 'f';
+    div.innerHTML = '<span>' + f.file + '</span><span class="' + (f.ok ? 'ok">PASS' : 'bad">FAIL') + '</span>';
+    fg.appendChild(div);
+  });
+
+  document.getElementById('foot-left').textContent = DATA.branch + ' @ ' + DATA.commit;
+  document.getElementById('foot-right').textContent = 'generated ' + DATA.generatedAt;
+</script>
+</body>
+</html>
