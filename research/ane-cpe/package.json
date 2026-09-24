@@ -1,0 +1,9 @@
+{
+  "name": "ane-cpe",
+  "private": true,
+  "type": "module",
+  "description": "SME1/SME2/SDOT/BFDOT/ANE/GPU as CPE (ComputeCore) providers, and the real bugs found fixing them.",
+  "dependencies": {
+    "koffi": "^3.0.2"
+  }
+}
