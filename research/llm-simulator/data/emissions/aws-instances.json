@@ -1,0 +1,6221 @@
+{
+  "sourceUrl": "https://raw.githubusercontent.com/cloud-carbon-footprint/cloud-carbon-coefficients/main/data/aws-instances.csv",
+  "sourceProject": "cloud-carbon-footprint/cloud-carbon-coefficients (Teads methodology)",
+  "fetchedAt": "2026-09-24T11:23:14.250Z",
+  "pueGlobalDefault": 1.185,
+  "pueSource": "cloudcarbonfootprint.org methodology docs, citing Microsoft Sustainability team global average",
+  "formula": "Estimated Power (W) = Pidle + (CPU_Utilization/100) * (Pmax - Pidle)",
+  "rowCount": 621,
+  "instances": [
+    {
+      "instanceType": "a1.medium",
+      "vCPU": 1,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 0.29,
+      "pkgWatt100": 2.55,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "a1.large",
+      "vCPU": 2,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 0.58,
+      "pkgWatt100": 5.09,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "a1.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 1.16,
+      "pkgWatt100": 10.19,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "a1.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 2.32,
+      "pkgWatt100": 20.37,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "a1.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 4.65,
+      "pkgWatt100": 40.74,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "a1.metal",
+      "vCPU": 16,
+      "platformVCPU": 16,
+      "cpuName": "Graviton",
+      "pkgWattIdle": 4.65,
+      "pkgWatt100": 40.74,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c1.medium",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2651 v2",
+      "pkgWattIdle": 0.95,
+      "pkgWatt100": 7.67,
+      "ramWattIdle": 0.34,
+      "ramWatt100": 1.02
+    },
+    {
+      "instanceType": "c1.xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2651 v2",
+      "pkgWattIdle": 3.82,
+      "pkgWatt100": 30.7,
+      "ramWattIdle": 1.4,
+      "ramWatt100": 4.2
+    },
+    {
+      "instanceType": "cr1.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 27.74,
+      "pkgWatt100": 222.97,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "cc2.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 27.74,
+      "pkgWatt100": 222.97,
+      "ramWattIdle": 12.1,
+      "ramWatt100": 36.3
+    },
+    {
+      "instanceType": "c3.large",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2680 v2",
+      "pkgWattIdle": 1.39,
+      "pkgWatt100": 11.15,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "c3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2680 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "c3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2680 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "c3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2680 v2",
+      "pkgWattIdle": 11.1,
+      "pkgWatt100": 89.19,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "c3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2680 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 12,
+      "ramWatt100": 36
+    },
+    {
+      "instanceType": "c4.large",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 1.63,
+      "pkgWatt100": 13.09,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "c4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 3.26,
+      "pkgWatt100": 26.17,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "c4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 6.51,
+      "pkgWatt100": 52.35,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "c4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 13.03,
+      "pkgWatt100": 104.7,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "c4.8xlarge",
+      "vCPU": 36,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 29.31,
+      "pkgWatt100": 235.57,
+      "ramWattIdle": 12,
+      "ramWatt100": 36
+    },
+    {
+      "instanceType": "c5.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 1.41,
+      "pkgWatt100": 11.77,
+      "ramWattIdle": 0.78,
+      "ramWatt100": 3.53
+    },
+    {
+      "instanceType": "c5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 2.81,
+      "pkgWatt100": 23.54,
+      "ramWattIdle": 1.56,
+      "ramWatt100": 7.06
+    },
+    {
+      "instanceType": "c5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 5.63,
+      "pkgWatt100": 47.08,
+      "ramWattIdle": 3.11,
+      "ramWatt100": 14.12
+    },
+    {
+      "instanceType": "c5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 11.26,
+      "pkgWatt100": 94.15,
+      "ramWattIdle": 6.22,
+      "ramWatt100": 28.24
+    },
+    {
+      "instanceType": "c5.9xlarge",
+      "vCPU": 36,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 25.33,
+      "pkgWatt100": 211.84,
+      "ramWattIdle": 14,
+      "ramWatt100": 63.54
+    },
+    {
+      "instanceType": "c5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 28.97,
+      "pkgWatt100": 313.38,
+      "ramWattIdle": 18.28,
+      "ramWatt100": 105.24
+    },
+    {
+      "instanceType": "c5.18xlarge",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 50.66,
+      "pkgWatt100": 423.68,
+      "ramWattIdle": 28.01,
+      "ramWatt100": 127.07
+    },
+    {
+      "instanceType": "c5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 36.55,
+      "ramWatt100": 210.48
+    },
+    {
+      "instanceType": "c5.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 36.55,
+      "ramWatt100": 210.48
+    },
+    {
+      "instanceType": "c5a.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 0.68,
+      "pkgWatt100": 5.94,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c5a.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 1.35,
+      "pkgWatt100": 11.88,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c5a.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 2.71,
+      "pkgWatt100": 23.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c5a.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 5.42,
+      "pkgWatt100": 47.53,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c5a.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 10.84,
+      "pkgWatt100": 95.06,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c5a.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 16.26,
+      "pkgWatt100": 142.6,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "c5a.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 21.68,
+      "pkgWatt100": 190.13,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c5a.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 32.52,
+      "pkgWatt100": 285.19,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "c5ad.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 0.68,
+      "pkgWatt100": 5.94,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c5ad.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 1.35,
+      "pkgWatt100": 11.88,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c5ad.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 2.71,
+      "pkgWatt100": 23.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c5ad.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 5.42,
+      "pkgWatt100": 47.53,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c5ad.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 10.84,
+      "pkgWatt100": 95.06,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c5ad.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 16.26,
+      "pkgWatt100": 142.6,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "c5ad.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 21.68,
+      "pkgWatt100": 190.13,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c5ad.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 32.52,
+      "pkgWatt100": 285.19,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "c5d.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 1.41,
+      "pkgWatt100": 11.77,
+      "ramWattIdle": 0.78,
+      "ramWatt100": 3.53
+    },
+    {
+      "instanceType": "c5d.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 2.81,
+      "pkgWatt100": 23.54,
+      "ramWattIdle": 1.56,
+      "ramWatt100": 7.06
+    },
+    {
+      "instanceType": "c5d.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 5.63,
+      "pkgWatt100": 47.08,
+      "ramWattIdle": 3.11,
+      "ramWatt100": 14.12
+    },
+    {
+      "instanceType": "c5d.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 11.26,
+      "pkgWatt100": 94.15,
+      "ramWattIdle": 6.22,
+      "ramWatt100": 28.24
+    },
+    {
+      "instanceType": "c5d.9xlarge",
+      "vCPU": 36,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 25.33,
+      "pkgWatt100": 211.84,
+      "ramWattIdle": 14,
+      "ramWatt100": 63.54
+    },
+    {
+      "instanceType": "c5d.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 28.97,
+      "pkgWatt100": 313.38,
+      "ramWattIdle": 18.28,
+      "ramWatt100": 105.24
+    },
+    {
+      "instanceType": "c5d.18xlarge",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 50.66,
+      "pkgWatt100": 423.68,
+      "ramWattIdle": 28.01,
+      "ramWatt100": 127.07
+    },
+    {
+      "instanceType": "c5d.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 36.55,
+      "ramWatt100": 210.48
+    },
+    {
+      "instanceType": "c5d.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 36.55,
+      "ramWatt100": 210.48
+    },
+    {
+      "instanceType": "c5n.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 1.41,
+      "pkgWatt100": 11.77,
+      "ramWattIdle": 1.02,
+      "ramWatt100": 4.63
+    },
+    {
+      "instanceType": "c5n.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 2.81,
+      "pkgWatt100": 23.54,
+      "ramWattIdle": 2.04,
+      "ramWatt100": 9.27
+    },
+    {
+      "instanceType": "c5n.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 5.63,
+      "pkgWatt100": 47.08,
+      "ramWattIdle": 4.08,
+      "ramWatt100": 18.53
+    },
+    {
+      "instanceType": "c5n.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 11.26,
+      "pkgWatt100": 94.15,
+      "ramWattIdle": 8.17,
+      "ramWatt100": 37.06
+    },
+    {
+      "instanceType": "c5n.9xlarge",
+      "vCPU": 36,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 25.33,
+      "pkgWatt100": 211.84,
+      "ramWattIdle": 18.67,
+      "ramWatt100": 84.72
+    },
+    {
+      "instanceType": "c5n.18xlarge",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 50.66,
+      "pkgWatt100": 423.68,
+      "ramWattIdle": 37.34,
+      "ramWatt100": 169.43
+    },
+    {
+      "instanceType": "c5n.metal",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 50.66,
+      "pkgWatt100": 423.68,
+      "ramWattIdle": 37.34,
+      "ramWatt100": 169.43
+    },
+    {
+      "instanceType": "c6g.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "c6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "c6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c6g.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c6gd.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "c6gd.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c6gd.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c6gd.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c6gd.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c6gd.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c6gd.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "c6gd.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c6gd.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "c6gn.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "c6gn.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c6gn.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c6gn.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c6gn.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c6gn.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c6gn.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "c6gn.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "d2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.39,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "d2.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 38.78,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "d2.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 77.55,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "d2.8xlarge",
+      "vCPU": 36,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 21.71,
+      "pkgWatt100": 174.5,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "d3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "d3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "d3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "d3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "d3en.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "d3en.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "d3en.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "d3en.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 13.68,
+      "pkgWatt100": 111.35,
+      "ramWattIdle": 14.93,
+      "ramWatt100": 63.74
+    },
+    {
+      "instanceType": "d3en.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "d3en.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "dc2.large",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 1.39,
+      "pkgWatt100": 11.15,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "dc2.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "ds2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.39,
+      "ramWattIdle": 6.2,
+      "ramWatt100": 18.6
+    },
+    {
+      "instanceType": "ds2.8xlarge",
+      "vCPU": 36,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 21.71,
+      "pkgWatt100": 174.5,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "f1.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "f1.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "f1.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 195.2,
+      "ramWatt100": 585.6
+    },
+    {
+      "instanceType": "g2.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "g2.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 27.74,
+      "pkgWatt100": 222.97,
+      "ramWattIdle": 12,
+      "ramWatt100": 36
+    },
+    {
+      "instanceType": "g3s.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "g3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "g3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "g3.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "g4dn.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "g4dn.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "g4dn.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "g4dn.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "g4dn.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "g4dn.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "g4dn.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "g4ad.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 5.42,
+      "pkgWatt100": 47.53,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "g4ad.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 10.84,
+      "pkgWatt100": 95.06,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "g4ad.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7R32",
+      "pkgWattIdle": 21.68,
+      "pkgWatt100": 190.13,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "h1.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "h1.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "h1.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "h1.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "hs1.8xlarge",
+      "vCPU": 16,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 13.87,
+      "pkgWatt100": 111.48,
+      "ramWattIdle": 23.4,
+      "ramWatt100": 70.2
+    },
+    {
+      "instanceType": "i2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "i2.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "i2.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 11.1,
+      "pkgWatt100": 89.19,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "i2.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "i3.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "i3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "i3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "i3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "i3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "i3.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "i3.metal",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 34.98,
+      "pkgWatt100": 281.13,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "i3en.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "i3en.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "i3en.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "i3en.3xlarge",
+      "vCPU": 12,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 7.24,
+      "pkgWatt100": 59.75,
+      "ramWattIdle": 14.45,
+      "ramWatt100": 95.95
+    },
+    {
+      "instanceType": "i3en.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 14.47,
+      "pkgWatt100": 119.49,
+      "ramWattIdle": 28.91,
+      "ramWatt100": 191.91
+    },
+    {
+      "instanceType": "i3en.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "i3en.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "i3en.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "inf1.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 26.11,
+      "ramWattIdle": 1.52,
+      "ramWatt100": 8.77
+    },
+    {
+      "instanceType": "inf1.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 4.83,
+      "pkgWatt100": 52.23,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 17.54
+    },
+    {
+      "instanceType": "inf1.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 14.48,
+      "pkgWatt100": 156.69,
+      "ramWattIdle": 9.14,
+      "ramWatt100": 52.62
+    },
+    {
+      "instanceType": "inf1.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 36.55,
+      "ramWatt100": 210.48
+    },
+    {
+      "instanceType": "m1.small",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 0.72,
+      "pkgWatt100": 5.76,
+      "ramWattIdle": 0.34,
+      "ramWatt100": 1.02
+    },
+    {
+      "instanceType": "m1.medium",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 0.72,
+      "pkgWatt100": 5.76,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "m1.large",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 1.43,
+      "pkgWatt100": 11.51,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "m1.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 2.86,
+      "pkgWatt100": 23.02,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "m2.xlarge",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 1.73,
+      "pkgWatt100": 13.94,
+      "ramWattIdle": 3.42,
+      "ramWatt100": 10.26
+    },
+    {
+      "instanceType": "m2.2xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 3.47,
+      "pkgWatt100": 27.87,
+      "ramWattIdle": 6.84,
+      "ramWatt100": 20.52
+    },
+    {
+      "instanceType": "m2.4xlarge",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 13.68,
+      "ramWatt100": 41.04
+    },
+    {
+      "instanceType": "m3.medium",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 0.87,
+      "pkgWatt100": 6.97,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "m3.large",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 1.73,
+      "pkgWatt100": 13.94,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "m3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 3.47,
+      "pkgWatt100": 27.87,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "m3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "m4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m4.10xlarge",
+      "vCPU": 40,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 24.12,
+      "pkgWatt100": 193.88,
+      "ramWattIdle": 32,
+      "ramWatt100": 96
+    },
+    {
+      "instanceType": "m4.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 1.2,
+      "ramWatt100": 8
+    },
+    {
+      "instanceType": "m5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "m5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "m5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "m5.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 19.29,
+      "pkgWatt100": 159.33,
+      "ramWattIdle": 19.27,
+      "ramWatt100": 127.94
+    },
+    {
+      "instanceType": "m5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 28.91,
+      "ramWatt100": 191.91
+    },
+    {
+      "instanceType": "m5.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 38.59,
+      "pkgWatt100": 318.65,
+      "ramWattIdle": 38.54,
+      "ramWatt100": 255.87
+    },
+    {
+      "instanceType": "m5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "m5.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "m5a.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m5a.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 16.98,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m5a.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 3.87,
+      "pkgWatt100": 33.95,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m5a.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 7.74,
+      "pkgWatt100": 67.9,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m5a.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 15.48,
+      "pkgWatt100": 135.81,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m5a.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 23.23,
+      "pkgWatt100": 203.71,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "m5a.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 30.97,
+      "pkgWatt100": 271.61,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m5a.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 46.45,
+      "pkgWatt100": 407.42,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "m5ad.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m5ad.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 16.98,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m5ad.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 3.87,
+      "pkgWatt100": 33.95,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m5ad.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 7.74,
+      "pkgWatt100": 67.9,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m5ad.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 15.48,
+      "pkgWatt100": 135.81,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m5ad.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 23.23,
+      "pkgWatt100": 203.71,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "m5ad.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 30.97,
+      "pkgWatt100": 271.61,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m5ad.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 46.45,
+      "pkgWatt100": 407.42,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "m5d.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 1.2,
+      "ramWatt100": 8
+    },
+    {
+      "instanceType": "m5d.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "m5d.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "m5d.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "m5d.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 19.29,
+      "pkgWatt100": 159.33,
+      "ramWattIdle": 19.27,
+      "ramWatt100": 127.94
+    },
+    {
+      "instanceType": "m5d.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 28.91,
+      "ramWatt100": 191.91
+    },
+    {
+      "instanceType": "m5d.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 38.59,
+      "pkgWatt100": 318.65,
+      "ramWattIdle": 38.54,
+      "ramWatt100": 255.87
+    },
+    {
+      "instanceType": "m5d.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "m5d.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "m5dn.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 1.24,
+      "ramWatt100": 5.31
+    },
+    {
+      "instanceType": "m5dn.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "m5dn.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "m5dn.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "m5dn.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "m5dn.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "m5dn.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "m5dn.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "m5dn.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "m5n.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 1.24,
+      "ramWatt100": 5.31
+    },
+    {
+      "instanceType": "m5n.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "m5n.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "m5n.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "m5n.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "m5n.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "m5n.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "m5n.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "m5n.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "m5zn.large",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 2.38,
+      "pkgWatt100": 19.66,
+      "ramWattIdle": 2,
+      "ramWatt100": 7.67
+    },
+    {
+      "instanceType": "m5zn.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 4.75,
+      "pkgWatt100": 39.31,
+      "ramWattIdle": 4,
+      "ramWatt100": 15.33
+    },
+    {
+      "instanceType": "m5zn.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 9.5,
+      "pkgWatt100": 78.63,
+      "ramWattIdle": 8,
+      "ramWatt100": 30.67
+    },
+    {
+      "instanceType": "m5zn.3xlarge",
+      "vCPU": 12,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 14.25,
+      "pkgWatt100": 117.94,
+      "ramWattIdle": 12,
+      "ramWatt100": 46
+    },
+    {
+      "instanceType": "m5zn.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 28.5,
+      "pkgWatt100": 235.88,
+      "ramWattIdle": 24,
+      "ramWatt100": 92
+    },
+    {
+      "instanceType": "m5zn.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 57,
+      "pkgWatt100": 471.75,
+      "ramWattIdle": 48,
+      "ramWatt100": 184
+    },
+    {
+      "instanceType": "m5zn.metal",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8252C",
+      "pkgWattIdle": 57,
+      "pkgWatt100": 471.75,
+      "ramWattIdle": 48,
+      "ramWatt100": 184
+    },
+    {
+      "instanceType": "m6g.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "m6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "m6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m6g.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m6gd.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "m6gd.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m6gd.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m6gd.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m6gd.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m6gd.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m6gd.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "m6gd.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m6gd.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m6i.large",
+      "vCPU": 2,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m6i.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m6i.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m6i.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m6i.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m6i.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 26.13,
+      "pkgWatt100": 229.17,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "m6i.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 34.84,
+      "pkgWatt100": 305.56,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "m6i.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 52.26,
+      "pkgWatt100": 458.35,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "m6i.32xlarge",
+      "vCPU": 128,
+      "platformVCPU": 128,
+      "cpuName": "Xeon Platinum 8375C",
+      "pkgWattIdle": 69.68,
+      "pkgWatt100": 611.13,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "mac1.metal",
+      "vCPU": 12,
+      "platformVCPU": 12,
+      "cpuName": "Core i7-8700B",
+      "pkgWattIdle": 7.55,
+      "pkgWatt100": 66.21,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "p2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "p2.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "p2.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 146.4,
+      "ramWatt100": 439.2
+    },
+    {
+      "instanceType": "p3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "p3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "p3.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "p3dn.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "p4d.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8275CL",
+      "pkgWattIdle": 57.93,
+      "pkgWatt100": 626.76,
+      "ramWattIdle": 219.3,
+      "ramWatt100": 1262.88
+    },
+    {
+      "instanceType": "ra3.4xlarge",
+      "vCPU": 12,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 7.24,
+      "pkgWatt100": 58.17,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "ra3.16xlarge",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 28.95,
+      "pkgWatt100": 232.66,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r3.large",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 1.39,
+      "pkgWatt100": 11.15,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "r3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "r3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "r3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 11.1,
+      "pkgWatt100": 89.19,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "r3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "r4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "r4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "r4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "r4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "r4.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "r4.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "r5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "r5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "r5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "r5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 19.27,
+      "ramWatt100": 127.94
+    },
+    {
+      "instanceType": "r5.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 19.29,
+      "pkgWatt100": 159.33,
+      "ramWattIdle": 38.54,
+      "ramWatt100": 255.87
+    },
+    {
+      "instanceType": "r5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "r5.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 38.59,
+      "pkgWatt100": 318.65,
+      "ramWattIdle": 77.08,
+      "ramWatt100": 511.75
+    },
+    {
+      "instanceType": "r5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "r5.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "r5a.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r5a.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 16.98,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r5a.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 3.87,
+      "pkgWatt100": 33.95,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r5a.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 7.74,
+      "pkgWatt100": 67.9,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r5a.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 15.48,
+      "pkgWatt100": 135.81,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r5a.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 23.23,
+      "pkgWatt100": 203.71,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r5a.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 30.97,
+      "pkgWatt100": 271.61,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "r5a.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 46.45,
+      "pkgWatt100": 407.42,
+      "ramWattIdle": 153.6,
+      "ramWatt100": 460.8
+    },
+    {
+      "instanceType": "r5ad.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r5ad.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 16.98,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r5ad.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 3.87,
+      "pkgWatt100": 33.95,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r5ad.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 7.74,
+      "pkgWatt100": 67.9,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r5ad.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 15.48,
+      "pkgWatt100": 135.81,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r5ad.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 23.23,
+      "pkgWatt100": 203.71,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r5ad.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 30.97,
+      "pkgWatt100": 271.61,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "r5ad.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 46.45,
+      "pkgWatt100": 407.42,
+      "ramWattIdle": 153.6,
+      "ramWatt100": 460.8
+    },
+    {
+      "instanceType": "r5d.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "r5d.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "r5d.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "r5d.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "r5d.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "r5d.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "r5d.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 79.62,
+      "ramWatt100": 339.93
+    },
+    {
+      "instanceType": "r5d.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5d.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5dn.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "r5dn.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "r5dn.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "r5dn.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "r5dn.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "r5dn.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "r5dn.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 79.62,
+      "ramWatt100": 339.93
+    },
+    {
+      "instanceType": "r5dn.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5dn.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5n.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "r5n.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "r5n.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "r5n.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "r5n.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "r5n.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "r5n.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 79.62,
+      "ramWatt100": 339.93
+    },
+    {
+      "instanceType": "r5n.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5n.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5b.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "r5b.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "r5b.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "r5b.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "r5b.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "r5b.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "r5b.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 79.62,
+      "ramWatt100": 339.93
+    },
+    {
+      "instanceType": "r5b.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r5b.metal",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 119.43,
+      "ramWatt100": 509.9
+    },
+    {
+      "instanceType": "r6g.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "r6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "r6g.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "r6gd.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "r6gd.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r6gd.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r6gd.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r6gd.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r6gd.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r6gd.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r6gd.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "r6gd.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "t1.micro",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 0.87,
+      "pkgWatt100": 6.97,
+      "ramWattIdle": 0.12,
+      "ramWatt100": 0.37
+    },
+    {
+      "instanceType": "t2.nano",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.1,
+      "ramWatt100": 0.3
+    },
+    {
+      "instanceType": "t2.micro",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.2,
+      "ramWatt100": 0.6
+    },
+    {
+      "instanceType": "t2.small",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "t2.medium",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.69,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "t2.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "t2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "t2.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "t3.nano",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.08,
+      "ramWatt100": 0.5
+    },
+    {
+      "instanceType": "t3.micro",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.15,
+      "ramWatt100": 1
+    },
+    {
+      "instanceType": "t3.small",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.3,
+      "ramWatt100": 2
+    },
+    {
+      "instanceType": "t3.medium",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.6,
+      "ramWatt100": 4
+    },
+    {
+      "instanceType": "t3.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 1.2,
+      "ramWatt100": 8
+    },
+    {
+      "instanceType": "t3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "t3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "t3a.nano",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 0.1,
+      "ramWatt100": 0.3
+    },
+    {
+      "instanceType": "t3a.micro",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 0.2,
+      "ramWatt100": 0.6
+    },
+    {
+      "instanceType": "t3a.small",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "t3a.medium",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "t3a.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 8.49,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "t3a.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 16.98,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "t3a.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "EPYC 7571",
+      "pkgWattIdle": 3.87,
+      "pkgWatt100": 33.95,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "t4g.nano",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.1,
+      "ramWatt100": 0.3
+    },
+    {
+      "instanceType": "t4g.micro",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.2,
+      "ramWatt100": 0.6
+    },
+    {
+      "instanceType": "t4g.small",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "t4g.medium",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "t4g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "t4g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "t4g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "u-6tb1.metal",
+      "vCPU": 448,
+      "platformVCPU": 448,
+      "cpuName": "Xeon Platinum 8176M",
+      "pkgWattIdle": 159.17,
+      "pkgWatt100": 1314.43,
+      "ramWattIdle": 1228.8,
+      "ramWatt100": 3686.4
+    },
+    {
+      "instanceType": "u-9tb1.metal",
+      "vCPU": 448,
+      "platformVCPU": 448,
+      "cpuName": "Xeon Platinum 8176M",
+      "pkgWattIdle": 159.17,
+      "pkgWatt100": 1314.43,
+      "ramWattIdle": 1843.2,
+      "ramWatt100": 5529.6
+    },
+    {
+      "instanceType": "u-12tb1.metal",
+      "vCPU": 448,
+      "platformVCPU": 448,
+      "cpuName": "Xeon Platinum 8176M",
+      "pkgWattIdle": 159.17,
+      "pkgWatt100": 1314.43,
+      "ramWattIdle": 2457.6,
+      "ramWatt100": 7372.8
+    },
+    {
+      "instanceType": "u-18tb1.metal",
+      "vCPU": 448,
+      "platformVCPU": 448,
+      "cpuName": "Xeon Platinum 8176M",
+      "pkgWattIdle": 159.17,
+      "pkgWatt100": 1314.43,
+      "ramWattIdle": 3686.4,
+      "ramWatt100": 11059.2
+    },
+    {
+      "instanceType": "u-24tb1.metal",
+      "vCPU": 448,
+      "platformVCPU": 448,
+      "cpuName": "Xeon Platinum 8176M",
+      "pkgWattIdle": 159.17,
+      "pkgWatt100": 1314.43,
+      "ramWattIdle": 4915.2,
+      "ramWatt100": 14745.6
+    },
+    {
+      "instanceType": "x1.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 36.19,
+      "pkgWatt100": 290.83,
+      "ramWattIdle": 195.2,
+      "ramWatt100": 585.6
+    },
+    {
+      "instanceType": "x1.32xlarge",
+      "vCPU": 128,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 72.37,
+      "pkgWatt100": 581.65,
+      "ramWattIdle": 390.4,
+      "ramWatt100": 1171.2
+    },
+    {
+      "instanceType": "x1e.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 2.26,
+      "pkgWatt100": 18.18,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "x1e.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 4.52,
+      "pkgWatt100": 36.35,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "x1e.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 9.05,
+      "pkgWatt100": 72.71,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "x1e.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 18.09,
+      "pkgWatt100": 145.41,
+      "ramWattIdle": 195.2,
+      "ramWatt100": 585.6
+    },
+    {
+      "instanceType": "x1e.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 36.19,
+      "pkgWatt100": 290.83,
+      "ramWattIdle": 390.4,
+      "ramWatt100": 1171.2
+    },
+    {
+      "instanceType": "x1e.32xlarge",
+      "vCPU": 128,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 72.37,
+      "pkgWatt100": 581.65,
+      "ramWattIdle": 780.8,
+      "ramWatt100": 2342.4
+    },
+    {
+      "instanceType": "x2gd.medium",
+      "vCPU": 1,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.27,
+      "pkgWatt100": 2.39,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "x2gd.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "x2gd.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "x2gd.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "x2gd.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "x2gd.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "x2gd.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 153.6,
+      "ramWatt100": 460.8
+    },
+    {
+      "instanceType": "x2gd.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 204.8,
+      "ramWatt100": 614.4
+    },
+    {
+      "instanceType": "x2gd.metal",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 204.8,
+      "ramWatt100": 614.4
+    },
+    {
+      "instanceType": "z1d.large",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 2,
+      "pkgWatt100": 18.38,
+      "ramWattIdle": 2.08,
+      "ramWatt100": 10.67
+    },
+    {
+      "instanceType": "z1d.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 4,
+      "pkgWatt100": 36.75,
+      "ramWattIdle": 4.17,
+      "ramWatt100": 21.33
+    },
+    {
+      "instanceType": "z1d.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 8,
+      "pkgWatt100": 73.5,
+      "ramWattIdle": 8.33,
+      "ramWatt100": 42.67
+    },
+    {
+      "instanceType": "z1d.3xlarge",
+      "vCPU": 12,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 12,
+      "pkgWatt100": 110.25,
+      "ramWattIdle": 12.5,
+      "ramWatt100": 64
+    },
+    {
+      "instanceType": "z1d.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 24,
+      "pkgWatt100": 220.5,
+      "ramWattIdle": 25,
+      "ramWatt100": 128
+    },
+    {
+      "instanceType": "z1d.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 48,
+      "pkgWatt100": 441,
+      "ramWattIdle": 50,
+      "ramWatt100": 256
+    },
+    {
+      "instanceType": "z1d.metal",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 48,
+      "pkgWatt100": 441,
+      "ramWattIdle": 50,
+      "ramWatt100": 256
+    },
+    {
+      "instanceType": "cache.t2.micro",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.11,
+      "ramWatt100": 0.33
+    },
+    {
+      "instanceType": "cache.t2.small",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.31,
+      "ramWatt100": 0.93
+    },
+    {
+      "instanceType": "cache.t2.medium",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.69,
+      "ramWattIdle": 0.64,
+      "ramWatt100": 1.93
+    },
+    {
+      "instanceType": "cache.t3.micro",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.08,
+      "ramWatt100": 0.5
+    },
+    {
+      "instanceType": "cache.t3.small",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.21,
+      "ramWatt100": 1.37
+    },
+    {
+      "instanceType": "cache.t3.medium",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.47,
+      "ramWatt100": 3.09
+    },
+    {
+      "instanceType": "cache.m3.medium",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 0.87,
+      "pkgWatt100": 6.97,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "cache.m4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 1.28,
+      "ramWatt100": 3.85
+    },
+    {
+      "instanceType": "cache.m4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 2.86,
+      "ramWatt100": 8.57
+    },
+    {
+      "instanceType": "cache.m4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 5.94,
+      "ramWatt100": 17.82
+    },
+    {
+      "instanceType": "cache.m4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 12.16,
+      "ramWatt100": 36.47
+    },
+    {
+      "instanceType": "cache.m4.10xlarge",
+      "vCPU": 40,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 24.12,
+      "pkgWatt100": 193.88,
+      "ramWattIdle": 30.93,
+      "ramWatt100": 92.78
+    },
+    {
+      "instanceType": "cache.m5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 0.99,
+      "ramWatt100": 4.24
+    },
+    {
+      "instanceType": "cache.m5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.01,
+      "ramWatt100": 8.58
+    },
+    {
+      "instanceType": "cache.m5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.05,
+      "ramWatt100": 17.29
+    },
+    {
+      "instanceType": "cache.m5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 8.13,
+      "ramWatt100": 34.7
+    },
+    {
+      "instanceType": "cache.m5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 24.43,
+      "ramWatt100": 104.32
+    },
+    {
+      "instanceType": "cache.m5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 48.88,
+      "ramWatt100": 208.69
+    },
+    {
+      "instanceType": "cache.m6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "cache.m6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "cache.m6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "cache.m6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "cache.m6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "cache.m6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "cache.m6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "cache.r3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "cache.r4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 2.46,
+      "ramWatt100": 7.38
+    },
+    {
+      "instanceType": "cache.r4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 5.01,
+      "ramWatt100": 15.03
+    },
+    {
+      "instanceType": "cache.r4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 10.09,
+      "ramWatt100": 30.28
+    },
+    {
+      "instanceType": "cache.r4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 20.28,
+      "ramWatt100": 60.83
+    },
+    {
+      "instanceType": "cache.r4.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 40.65,
+      "ramWatt100": 121.96
+    },
+    {
+      "instanceType": "cache.r4.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 81.4,
+      "ramWatt100": 244.2
+    },
+    {
+      "instanceType": "cache.r5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 1.97,
+      "ramWatt100": 13.06
+    },
+    {
+      "instanceType": "cache.r5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 3.96,
+      "ramWatt100": 26.31
+    },
+    {
+      "instanceType": "cache.r5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 7.95,
+      "ramWatt100": 52.79
+    },
+    {
+      "instanceType": "cache.r5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 15.93,
+      "ramWatt100": 105.76
+    },
+    {
+      "instanceType": "cache.r5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 47.84,
+      "ramWatt100": 317.61
+    },
+    {
+      "instanceType": "cache.r5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 95.69,
+      "ramWatt100": 635.3
+    },
+    {
+      "instanceType": "cache.r6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "cache.r6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "cache.r6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "cache.r6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "cache.r6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "cache.r6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "cache.r6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "t3.small.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.3,
+      "ramWatt100": 2
+    },
+    {
+      "instanceType": "t3.medium.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.6,
+      "ramWatt100": 4
+    },
+    {
+      "instanceType": "t2.micro.elasticsearch",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.2,
+      "ramWatt100": 0.6
+    },
+    {
+      "instanceType": "t2.small.elasticsearch",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "t2.medium.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.69,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "m5.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 1.24,
+      "ramWatt100": 5.31
+    },
+    {
+      "instanceType": "m5.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "m5.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "m5.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "m5.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "m4.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m4.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m4.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m4.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m4.10xlarge.elasticsearch",
+      "vCPU": 40,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 24.12,
+      "pkgWatt100": 193.88,
+      "ramWattIdle": 32,
+      "ramWatt100": 96
+    },
+    {
+      "instanceType": "m3.medium.elasticsearch",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 0.87,
+      "pkgWatt100": 6.97,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "m3.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 1.73,
+      "pkgWatt100": 13.94,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "m3.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 3.47,
+      "pkgWatt100": 27.87,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "m3.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "c5.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 1.41,
+      "pkgWatt100": 11.77,
+      "ramWattIdle": 0.78,
+      "ramWatt100": 3.53
+    },
+    {
+      "instanceType": "c5.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 2.81,
+      "pkgWatt100": 23.54,
+      "ramWattIdle": 1.56,
+      "ramWatt100": 7.06
+    },
+    {
+      "instanceType": "c5.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 5.63,
+      "pkgWatt100": 47.08,
+      "ramWattIdle": 3.11,
+      "ramWatt100": 14.12
+    },
+    {
+      "instanceType": "c5.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 11.26,
+      "pkgWatt100": 94.15,
+      "ramWattIdle": 6.22,
+      "ramWatt100": 28.24
+    },
+    {
+      "instanceType": "c5.9xlarge.elasticsearch",
+      "vCPU": 36,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 25.33,
+      "pkgWatt100": 211.84,
+      "ramWattIdle": 14,
+      "ramWatt100": 63.54
+    },
+    {
+      "instanceType": "c5.18xlarge.elasticsearch",
+      "vCPU": 72,
+      "platformVCPU": 72,
+      "cpuName": "Xeon Platinum 8124M",
+      "pkgWattIdle": 50.66,
+      "pkgWatt100": 423.68,
+      "ramWattIdle": 28.01,
+      "ramWatt100": 127.07
+    },
+    {
+      "instanceType": "c4.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 1.63,
+      "pkgWatt100": 13.09,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "c4.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 3.26,
+      "pkgWatt100": 26.17,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "c4.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 6.51,
+      "pkgWatt100": 52.35,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "c4.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 13.03,
+      "pkgWatt100": 104.7,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "c4.8xlarge.elasticsearch",
+      "vCPU": 36,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2666 v3",
+      "pkgWattIdle": 29.31,
+      "pkgWatt100": 235.57,
+      "ramWattIdle": 12,
+      "ramWatt100": 36
+    },
+    {
+      "instanceType": "r5.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "r5.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "r5.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "r5.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 19.27,
+      "ramWatt100": 127.94
+    },
+    {
+      "instanceType": "r5.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "r4.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "r4.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "r4.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "r4.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "r4.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "r4.16xlarge.elasticsearch",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "r3.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 1.39,
+      "pkgWatt100": 11.15,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "r3.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "r3.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "r3.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 11.1,
+      "pkgWatt100": 89.19,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "r3.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "i3.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "i3.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "i3.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "i3.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "i3.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "i3.16xlarge.elasticsearch",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "i2.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "i2.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "m6g.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "m6g.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "m6g.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "m6g.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "m6g.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "m6g.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "c6g.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "c6g.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "c6g.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "c6g.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "c6g.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "c6g.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 19.2,
+      "ramWatt100": 57.6
+    },
+    {
+      "instanceType": "r6g.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r6g.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r6g.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r6g.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r6g.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r6g.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r6gd.large.elasticsearch",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "r6gd.xlarge.elasticsearch",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "r6gd.2xlarge.elasticsearch",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "r6gd.4xlarge.elasticsearch",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "r6gd.8xlarge.elasticsearch",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "r6gd.12xlarge.elasticsearch",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "r6gd.16xlarge.elasticsearch",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "db.m6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "db.m6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "db.m6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "db.m6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "db.m6g.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 8.71,
+      "pkgWatt100": 76.39,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "db.m6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 38.4,
+      "ramWatt100": 115.2
+    },
+    {
+      "instanceType": "db.m6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "db.m5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 1.14,
+      "pkgWatt100": 9.28,
+      "ramWattIdle": 1.24,
+      "ramWatt100": 5.31
+    },
+    {
+      "instanceType": "db.m5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 2.28,
+      "pkgWatt100": 18.56,
+      "ramWattIdle": 2.49,
+      "ramWatt100": 10.62
+    },
+    {
+      "instanceType": "db.m5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 4.56,
+      "pkgWatt100": 37.12,
+      "ramWattIdle": 4.98,
+      "ramWatt100": 21.25
+    },
+    {
+      "instanceType": "db.m5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 9.12,
+      "pkgWatt100": 74.23,
+      "ramWattIdle": 9.95,
+      "ramWatt100": 42.49
+    },
+    {
+      "instanceType": "db.m5.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 18.24,
+      "pkgWatt100": 148.46,
+      "ramWattIdle": 19.91,
+      "ramWatt100": 84.98
+    },
+    {
+      "instanceType": "db.m5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 27.36,
+      "pkgWatt100": 222.69,
+      "ramWattIdle": 29.86,
+      "ramWatt100": 127.48
+    },
+    {
+      "instanceType": "db.m5.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 36.47,
+      "pkgWatt100": 296.92,
+      "ramWattIdle": 39.81,
+      "ramWatt100": 169.97
+    },
+    {
+      "instanceType": "db.m5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8259CL",
+      "pkgWattIdle": 54.71,
+      "pkgWatt100": 445.38,
+      "ramWattIdle": 59.72,
+      "ramWatt100": 254.95
+    },
+    {
+      "instanceType": "db.m4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "db.m4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "db.m4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "db.m4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "db.m4.10xlarge",
+      "vCPU": 40,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 24.12,
+      "pkgWatt100": 193.88,
+      "ramWattIdle": 32,
+      "ramWatt100": 96
+    },
+    {
+      "instanceType": "db.m4.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 51.2,
+      "ramWatt100": 153.6
+    },
+    {
+      "instanceType": "db.m3.medium",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 0.87,
+      "pkgWatt100": 6.97,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "db.m3.large",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 1.73,
+      "pkgWatt100": 13.94,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "db.m3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 3.47,
+      "pkgWatt100": 27.87,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "db.m3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2670",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 6,
+      "ramWatt100": 18
+    },
+    {
+      "instanceType": "db.m1.small",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 0.72,
+      "pkgWatt100": 5.76,
+      "ramWattIdle": 0.34,
+      "ramWatt100": 1.02
+    },
+    {
+      "instanceType": "db.m1.medium",
+      "vCPU": 1,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 0.72,
+      "pkgWatt100": 5.76,
+      "ramWattIdle": 0.75,
+      "ramWatt100": 2.25
+    },
+    {
+      "instanceType": "db.m1.large",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 1.43,
+      "pkgWatt100": 11.51,
+      "ramWattIdle": 1.5,
+      "ramWatt100": 4.5
+    },
+    {
+      "instanceType": "db.m1.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2650",
+      "pkgWattIdle": 2.86,
+      "pkgWatt100": 23.02,
+      "ramWattIdle": 3,
+      "ramWatt100": 9
+    },
+    {
+      "instanceType": "db.z1d.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 48,
+      "pkgWatt100": 441,
+      "ramWattIdle": 50,
+      "ramWatt100": 256
+    },
+    {
+      "instanceType": "db.z1d.large",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 2,
+      "pkgWatt100": 18.38,
+      "ramWattIdle": 2.08,
+      "ramWatt100": 10.67
+    },
+    {
+      "instanceType": "db.z1d.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 4,
+      "pkgWatt100": 36.75,
+      "ramWattIdle": 4.17,
+      "ramWatt100": 21.33
+    },
+    {
+      "instanceType": "db.z1d.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 8,
+      "pkgWatt100": 73.5,
+      "ramWattIdle": 8.33,
+      "ramWatt100": 42.67
+    },
+    {
+      "instanceType": "db.z1d.3xlarge",
+      "vCPU": 12,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 12,
+      "pkgWatt100": 110.25,
+      "ramWattIdle": 12.5,
+      "ramWatt100": 64
+    },
+    {
+      "instanceType": "db.z1d.6xlarge",
+      "vCPU": 24,
+      "platformVCPU": 48,
+      "cpuName": "Xeon Platinum 8151",
+      "pkgWattIdle": 24,
+      "pkgWatt100": 220.5,
+      "ramWattIdle": 25,
+      "ramWatt100": 128
+    },
+    {
+      "instanceType": "db.x1e.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 2.26,
+      "pkgWatt100": 18.18,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "db.x1e.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 4.52,
+      "pkgWatt100": 36.35,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "db.x1e.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 9.05,
+      "pkgWatt100": 72.71,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "db.x1e.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 18.09,
+      "pkgWatt100": 145.41,
+      "ramWattIdle": 195.2,
+      "ramWatt100": 585.6
+    },
+    {
+      "instanceType": "db.x1e.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 36.19,
+      "pkgWatt100": 290.83,
+      "ramWattIdle": 390.4,
+      "ramWatt100": 1171.2
+    },
+    {
+      "instanceType": "db.x1e.32xlarge",
+      "vCPU": 128,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 72.37,
+      "pkgWatt100": 581.65,
+      "ramWattIdle": 780.8,
+      "ramWatt100": 2342.4
+    },
+    {
+      "instanceType": "db.x1.32xlarge",
+      "vCPU": 128,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 72.37,
+      "pkgWatt100": 581.65,
+      "ramWattIdle": 390.4,
+      "ramWatt100": 1171.2
+    },
+    {
+      "instanceType": "db.x1.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 128,
+      "cpuName": "Xeon E7-8880 v3",
+      "pkgWattIdle": 36.19,
+      "pkgWatt100": 290.83,
+      "ramWattIdle": 195.2,
+      "ramWatt100": 585.6
+    },
+    {
+      "instanceType": "db.r6g.large",
+      "vCPU": 2,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 0.54,
+      "pkgWatt100": 4.77,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "db.r6g.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 1.09,
+      "pkgWatt100": 9.55,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    },
+    {
+      "instanceType": "db.r6g.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 2.18,
+      "pkgWatt100": 19.1,
+      "ramWattIdle": 12.8,
+      "ramWatt100": 38.4
+    },
+    {
+      "instanceType": "db.r6g.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 4.35,
+      "pkgWatt100": 38.2,
+      "ramWattIdle": 25.6,
+      "ramWatt100": 76.8
+    },
+    {
+      "instanceType": "db.r6g.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 13.06,
+      "pkgWatt100": 114.59,
+      "ramWattIdle": 76.8,
+      "ramWatt100": 230.4
+    },
+    {
+      "instanceType": "db.r6g.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 64,
+      "cpuName": "Graviton2",
+      "pkgWattIdle": 17.42,
+      "pkgWatt100": 152.78,
+      "ramWattIdle": 102.4,
+      "ramWatt100": 307.2
+    },
+    {
+      "instanceType": "db.r5.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "db.r5.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "db.r5.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 9.64,
+      "ramWatt100": 63.97
+    },
+    {
+      "instanceType": "db.r5.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 9.65,
+      "pkgWatt100": 79.66,
+      "ramWattIdle": 19.27,
+      "ramWatt100": 127.94
+    },
+    {
+      "instanceType": "db.r5.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 19.29,
+      "pkgWatt100": 159.33,
+      "ramWattIdle": 38.54,
+      "ramWatt100": 255.87
+    },
+    {
+      "instanceType": "db.r5.12xlarge",
+      "vCPU": 48,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 28.94,
+      "pkgWatt100": 238.99,
+      "ramWattIdle": 57.81,
+      "ramWatt100": 383.81
+    },
+    {
+      "instanceType": "db.r5.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 38.59,
+      "pkgWatt100": 318.65,
+      "ramWattIdle": 77.08,
+      "ramWatt100": 511.75
+    },
+    {
+      "instanceType": "db.r5.24xlarge",
+      "vCPU": 96,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 57.88,
+      "pkgWatt100": 477.98,
+      "ramWattIdle": 115.62,
+      "ramWatt100": 767.62
+    },
+    {
+      "instanceType": "db.r4.large",
+      "vCPU": 2,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 0.97,
+      "pkgWatt100": 7.81,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "db.r4.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 1.94,
+      "pkgWatt100": 15.62,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "db.r4.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 3.89,
+      "pkgWatt100": 31.24,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "db.r4.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 7.77,
+      "pkgWatt100": 62.47,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "db.r4.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 15.55,
+      "pkgWatt100": 124.95,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "db.r4.16xlarge",
+      "vCPU": 64,
+      "platformVCPU": 72,
+      "cpuName": "Xeon E5-2686 v4",
+      "pkgWattIdle": 31.09,
+      "pkgWatt100": 249.9,
+      "ramWattIdle": 97.6,
+      "ramWatt100": 292.8
+    },
+    {
+      "instanceType": "db.r3.large",
+      "vCPU": 2,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 1.39,
+      "pkgWatt100": 11.15,
+      "ramWattIdle": 3.05,
+      "ramWatt100": 9.15
+    },
+    {
+      "instanceType": "db.r3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 2.77,
+      "pkgWatt100": 22.3,
+      "ramWattIdle": 6.1,
+      "ramWatt100": 18.3
+    },
+    {
+      "instanceType": "db.r3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 5.55,
+      "pkgWatt100": 44.59,
+      "ramWattIdle": 12.2,
+      "ramWatt100": 36.6
+    },
+    {
+      "instanceType": "db.r3.4xlarge",
+      "vCPU": 16,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 11.1,
+      "pkgWatt100": 89.19,
+      "ramWattIdle": 24.4,
+      "ramWatt100": 73.2
+    },
+    {
+      "instanceType": "db.r3.8xlarge",
+      "vCPU": 32,
+      "platformVCPU": 40,
+      "cpuName": "Xeon E5-2670 v2",
+      "pkgWattIdle": 22.19,
+      "pkgWatt100": 178.37,
+      "ramWattIdle": 48.8,
+      "ramWatt100": 146.4
+    },
+    {
+      "instanceType": "db.m2.xlarge",
+      "vCPU": 2,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 1.73,
+      "pkgWatt100": 13.94,
+      "ramWattIdle": 3.42,
+      "ramWatt100": 10.26
+    },
+    {
+      "instanceType": "db.m2.2xlarge",
+      "vCPU": 4,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 3.47,
+      "pkgWatt100": 27.87,
+      "ramWattIdle": 6.84,
+      "ramWatt100": 20.52
+    },
+    {
+      "instanceType": "db.m2.4xlarge",
+      "vCPU": 8,
+      "platformVCPU": 32,
+      "cpuName": "Xeon E5-2665",
+      "pkgWattIdle": 6.94,
+      "pkgWatt100": 55.74,
+      "ramWattIdle": 13.68,
+      "ramWatt100": 41.04
+    },
+    {
+      "instanceType": "db.t3.micro",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.15,
+      "ramWatt100": 1
+    },
+    {
+      "instanceType": "db.t3.small",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.3,
+      "ramWatt100": 2
+    },
+    {
+      "instanceType": "db.t3.medium",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 0.6,
+      "ramWatt100": 4
+    },
+    {
+      "instanceType": "db.t3.large",
+      "vCPU": 2,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.96,
+      "ramWattIdle": 1.2,
+      "ramWatt100": 8
+    },
+    {
+      "instanceType": "db.t3.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.92,
+      "ramWattIdle": 2.41,
+      "ramWatt100": 15.99
+    },
+    {
+      "instanceType": "db.t3.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 96,
+      "cpuName": "Xeon Platinum 8175M",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 39.83,
+      "ramWattIdle": 4.82,
+      "ramWatt100": 31.98
+    },
+    {
+      "instanceType": "db.t2.micro",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.2,
+      "ramWatt100": 0.6
+    },
+    {
+      "instanceType": "db.t2.small",
+      "vCPU": 1,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 0.6,
+      "pkgWatt100": 4.85,
+      "ramWattIdle": 0.4,
+      "ramWatt100": 1.2
+    },
+    {
+      "instanceType": "db.t2.medium",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.69,
+      "ramWattIdle": 0.8,
+      "ramWatt100": 2.4
+    },
+    {
+      "instanceType": "db.t2.large",
+      "vCPU": 2,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 1.21,
+      "pkgWatt100": 9.69,
+      "ramWattIdle": 1.6,
+      "ramWatt100": 4.8
+    },
+    {
+      "instanceType": "db.t2.xlarge",
+      "vCPU": 4,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 2.41,
+      "pkgWatt100": 19.39,
+      "ramWattIdle": 3.2,
+      "ramWatt100": 9.6
+    },
+    {
+      "instanceType": "db.t2.2xlarge",
+      "vCPU": 8,
+      "platformVCPU": 48,
+      "cpuName": "Xeon E5-2676 v3",
+      "pkgWattIdle": 4.82,
+      "pkgWatt100": 38.78,
+      "ramWattIdle": 6.4,
+      "ramWatt100": 19.2
+    }
+  ]
+}
