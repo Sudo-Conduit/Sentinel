@@ -1,0 +1,60 @@
+{
+  "_comment": "Real numbers reported this session from the user's own Mac Mini benchmarks + powermetrics, not fabricated placeholders. GPU/SME entries are Promise.all()-concurrent (2 simultaneous matmuls), NOT solo peak -- both backends converged on the same ~5.5 GFLOPS ceiling under concurrency, which is itself evidence the bottleneck may be shared/upstream (dispatch overhead, memory bandwidth) rather than either compute unit's real peak. Only ANE has a measured watts figure (via powermetrics); AMX/BLAS/VNNI/GPU/SME watts are not yet measured on this machine -- do not synthesize them.",
+  "machine": "Mac Mini (Apple Silicon)",
+  "priceUSD": 899,
+  "backends": {
+    "ANE": {
+      "precision": "fp16",
+      "measuredVia": "real matmul benchmark, validated against actual math outputs (not just timing) before trusting the numbers",
+      "wattsMeasuredVia": "powermetrics",
+      "shapes": [
+        { "m": 2048, "n": 1024, "k": 1024, "gflops": 7806, "gflopsPerWatt": 718.1, "impliedWatts": 10.87 },
+        { "m": 4096, "n": 2048, "k": 2048, "gflops": 10071, "gflopsPerWatt": 903.9, "impliedWatts": 11.14 },
+        { "m": 4096, "n": 4096, "k": 4096, "gflops": 7937, "gflopsPerWatt": 705.9, "impliedWatts": 11.24 }
+      ],
+      "note": "power draw is nearly flat (~11W) across all three shapes -- the GFLOPS/W swing is a utilization/shape-tiling curve, not a power curve. Not yet integrated into the user's CPE benchmark harness; VNNI (below) took significant optimization work to reach its measured ~40x-over-baseline figure, used as the expectation-setting reference for what ANE integration will likely need too, rather than a naive throughput-ratio extrapolation."
+    },
+    "AMX-BF16": {
+      "note": "Apple's own undocumented CPU-integrated matrix coprocessor (reverse-engineered instruction set, unrelated to Intel's AMX-TILE ISA extension of the same name), bf16 mode",
+      "shapes": [
+        { "m": 2048, "n": 1024, "k": 1024, "gflops": 2069 },
+        { "m": 4096, "n": 2048, "k": 2048, "gflops": 1497 },
+        { "m": 4096, "n": 4096, "k": 4096, "gflops": 1381 }
+      ]
+    },
+    "AMX-INT8": {
+      "note": "same Apple AMX coprocessor, int8 mode -- consistently ~2-2.2x AMX-BF16 at matching shapes, the expected ratio for double the elements/cycle at half the bit width",
+      "shapes": [
+        { "m": 2048, "n": 1024, "k": 1024, "gflops": 4293 },
+        { "m": 4096, "n": 2048, "k": 2048, "gflops": 3601 },
+        { "m": 4096, "n": 4096, "k": 4096, "gflops": 3024 }
+      ]
+    },
+    "BLAS-fp32": {
+      "note": "OpenBLAS-style fp32 path, no tile/dot-product acceleration",
+      "shapes": [
+        { "m": 2048, "n": 1024, "k": 1024, "gflops": 479 },
+        { "m": 4096, "n": 2048, "k": 2048, "gflops": 489 },
+        { "m": 4096, "n": 4096, "k": 4096, "gflops": 514 }
+      ]
+    },
+    "VNNI": {
+      "note": "user's shorthand for the ARM SDOT/NEON int8 dot-product path (no literal Intel VNNI silicon on Apple Silicon). Took substantial optimization work to reach these numbers from an initially slow baseline -- these are NOT naive/out-of-the-box figures.",
+      "shapes": [
+        { "m": 2048, "n": 1024, "k": 1024, "gflops": 1932 },
+        { "m": 4096, "n": 2048, "k": 2048, "gflops": 2022 },
+        { "m": 4096, "n": 4096, "k": 4096, "gflops": 2168 }
+      ]
+    },
+    "GPU": {
+      "note": "2 concurrent GPU matmuls via Promise.all() -- this is NOT solo-GPU peak throughput, it's the observed average under 2x concurrency",
+      "concurrency": 2,
+      "avgGflops": 5.5
+    },
+    "SME": {
+      "note": "machine has 2 SME units; 2 concurrent matmuls via Promise.all() landed on the exact same ~5.5 GFLOPS as the GPU entry above -- worth re-testing both at solo (non-concurrent) throughput before trusting either as a real per-unit peak, since two structurally different backends converging on an identical number under concurrency suggests a shared bottleneck (dispatch/scheduling overhead or memory bandwidth), not a coincidence in real per-unit capability.",
+      "concurrency": 2,
+      "avgGflops": 5.5
+    }
+  }
+}
