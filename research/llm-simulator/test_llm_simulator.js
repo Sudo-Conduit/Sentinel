@@ -33,7 +33,7 @@ check('shape.headDim = hiddenSize/numAttentionHeads', shape.headDim, 64);
 
 // prefill: 600 new tokens (Lite tier's sentTokens), kvLen == seqLen (no prior cache)
 var prefillMatmuls = Sim.deriveModelMatmuls(shape, 600, 600);
-checkTrue('prefill matmul count = 9 per layer x 24 layers', prefillMatmuls.length === 9 * 24);
+checkTrue('prefill matmul count = 9 per layer x 24 layers + 1 lm_head', prefillMatmuls.length === 9 * 24 + 1);
 
 var prefillFlops = prefillMatmuls.reduce(function(sum, mm) { return sum + Sim.matmulFlops(mm); }, 0);
 checkTrue('prefill total FLOPs is a real positive number', prefillFlops > 0);
@@ -61,11 +61,30 @@ check('100% utilization returns exactly Pmax', wattsFull, a1medium.pkgWatt100);
 var wattsHalf = Sim.estimateWatts(a1medium.pkgWattIdle, a1medium.pkgWatt100, 50);
 checkClose('50% utilization is the real midpoint', wattsHalf, (a1medium.pkgWattIdle + a1medium.pkgWatt100) / 2, 0.001);
 
-console.log('\n--- emissions formula (operational only -- embodied is a documented TODO) ---');
-var emissions = Sim.estimateEmissions(wattsHalf, 1, { gridIntensityGCO2PerKWh: 400 }); // 400 gCO2/kWh, a representative mixed-grid figure
+console.log('\n--- emissions formula: explicit region override ---');
+var emissions = Sim.estimateEmissions(wattsHalf, 1, { gridIntensityGCO2PerKWh: 400, vCPUsUsed: 1 }); // 400 gCO2/kWh, a representative mixed-grid figure
 checkTrue('operationalGramsCO2e is a real positive number', emissions.operationalGramsCO2e > 0);
-check('embodiedGramsCO2e explicitly null (not silently faked)', emissions.embodiedGramsCO2e, null);
-check('totalGramsCO2e explicitly null (not misreported as operational-only)', emissions.totalGramsCO2e, null);
+checkTrue('embodiedGramsCO2e is a real positive number (ballpark default, not null)', emissions.embodiedGramsCO2e > 0);
+check('totalGramsCO2e = operational + embodied', emissions.totalGramsCO2e, emissions.operationalGramsCO2e + emissions.embodiedGramsCO2e);
+check('gridIntensityIsDefault is false when caller supplies one', emissions.gridIntensityIsDefault, false);
+
+console.log('\n--- emissions formula: simulator ballpark defaults (no overrides) ---');
+var emissionsDefault = Sim.estimateEmissions(wattsHalf, 1);
+checkTrue('operationalGramsCO2e is a real positive number using the global-average default', emissionsDefault.operationalGramsCO2e > 0);
+checkTrue('embodiedGramsCO2e is a real positive number using the reference-server default', emissionsDefault.embodiedGramsCO2e > 0);
+check('gridIntensityUsedGCO2PerKWh falls back to the sourced global average', emissionsDefault.gridIntensityUsedGCO2PerKWh, 445);
+check('gridIntensityIsDefault is true with no override supplied', emissionsDefault.gridIntensityIsDefault, true);
+
+console.log('\n--- LM head matmul: now included in deriveModelMatmuls ---');
+var prefillWithHead = Sim.deriveModelMatmuls(shape, 600, 600);
+var lmHead = prefillWithHead.find(function(mm) { return mm.name === 'lm_head'; });
+checkTrue('lm_head matmul present', !!lmHead);
+if (lmHead) {
+  check('lm_head m=1 (last position only, standard inference-time behavior)', lmHead.m, 1);
+  check('lm_head k=hiddenSize', lmHead.k, shape.hiddenSize);
+  check('lm_head n=vocabSize', lmHead.n, shape.vocabSize);
+}
+checkTrue('deriveModelMatmuls now returns 9*layers + 1 lm_head', prefillWithHead.length === 9 * shape.numHiddenLayers + 1);
 
 console.log('\n' + (failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'));
 process.exit(failures === 0 ? 0 : 1);

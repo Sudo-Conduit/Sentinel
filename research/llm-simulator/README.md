@@ -61,22 +61,24 @@ means:
 
 ## Status
 
-Working end-to-end for one model (Qwen2.5-0.5B) and one real emissions
-data point: real config.json -> real per-layer matmul shape derivation
-(including GQA and the real 3-matrix SwiGLU gated FFN, not a naive
-uniform-heads/2-matrix-FFN assumption) -> real FLOP counts for both
-prefill and decode phases -> real Teads/CCF watts formula against real
-constants -> emissions formula (operational component real and working;
-embodied component is an explicit, honestly-reported `null` pending the
-CCF embodied-emissions dataset, not yet downloaded).
+Working end-to-end for one model (Qwen2.5-0.5B) and real emissions data:
+real config.json -> real per-layer matmul shape derivation (including GQA,
+the real 3-matrix SwiGLU gated FFN, and the LM head applied to the last
+position) -> real FLOP counts for both prefill and decode phases -> real
+Teads/CCF watts formula against real constants -> emissions formula,
+operational and embodied components both real and working, using sourced
+simulator-appropriate ballpark defaults (global-average grid intensity,
+~445 gCO2/kWh per IEA/Ember 2024; a real reference server's embodied
+footprint, ~744.5 kg CO2e amortized over a 4-year lifecycle) rather than
+blocking on a full per-region/per-instance-type dataset -- this is a
+simulator, not a carbon-accounting audit tool, so a sourced approximation
+that's usable by default beats requiring exact data that doesn't exist yet.
+Callers who have real per-region/per-server data can override every
+constant (`gridIntensityGCO2PerKWh`, `embodiedServerKgCO2e`,
+`embodiedLifetimeYears`, `embodiedVCPUsPerServer`, `vCPUsUsed`).
 
-Open, explicitly documented next steps (see inline `TODO`s in
-`llm-simulator.js`):
-- Embodied emissions (needs CCF's embodied-emissions dataset).
-- Grid carbon-intensity table (needs a real per-region source; the
-  emissions formula currently requires the caller to supply this rather
-  than defaulting it, since a hardcoded default would misrepresent real
-  deployments).
+Open, explicitly documented next steps (see inline comments in
+`llm-simulator.js`), none of them blocking:
 - Real Linux/AMX-equipped hardware throughput table (CPU flags confirm
   `amx_tile`/`amx_bf16`/`amx_int8`/`avx512_vnni` support, but no real GEMM
   benchmark has been run on it yet -- deliberately not faked).
@@ -84,6 +86,4 @@ Open, explicitly documented next steps (see inline `TODO`s in
   concurrency ceilings" selector (`suggestBackend` is a v1 placeholder
   that optimizes GFLOPS/W where known, without yet checking concurrency
   ceilings or per-user KV-cache RAM fit).
-- LM head matmul (hiddenSize x vocabSize) not yet included in
-  `deriveModelMatmuls`.
 - Prefill-weighted (non-50/50) prompt-tier splits.
