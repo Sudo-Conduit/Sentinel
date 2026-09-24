@@ -94,6 +94,7 @@ function getCompiled(m, k, n) {
         aBuf: new Uint16Array(m * k),
         bBuf: new Uint16Array(k * n),
         yBuf: new Uint16Array(m * n),
+        boundWeight: null,   // identity of the B array currently uploaded to this program's b-port
     };
     shapeCache.set(key, entry);
     return entry;
@@ -110,23 +111,34 @@ export const ANE_PROVIDER = {
         if (lda !== k || ldb !== n || ldc !== n) {
             throw new Error(`ane_provider: non-contiguous stride unsupported (lda=${lda},k=${k} ldb=${ldb},n=${n} ldc=${ldc})`);
         }
-        const { prog, aBuf, bBuf, yBuf } = getCompiled(m, k, n);
+        const entry = getCompiled(m, k, n);
+        const { prog, aBuf, bBuf, yBuf } = entry;
 
         f32arr_to_f16(A, aBuf, m * k);
-
-        let bConverted = weightCache.get(B);
-        if (bConverted && bConverted.length === k * n) {
-            weightCacheHits++;
-        } else {
-            bConverted = new Uint16Array(k * n);
-            f32arr_to_f16(B, bConverted, k * n);
-            weightCache.set(B, bConverted);
-            weightConversions++;
-        }
-        bBuf.set(bConverted);   // native, vectorized copy into this shape's dedicated buffer
-
         setInput(prog, 'a', aBuf, BigInt(m * k));
-        setInput(prog, 'b', bBuf, BigInt(k * n));
+
+        // If this exact weight is already the one bound into THIS program's
+        // b-port from a previous call, its bytes are still sitting there --
+        // e5rt's execute() just reads the port again. Re-copying (bBuf.set)
+        // and re-uploading (setInput) unchanged data was pure waste: ~2ms/
+        // call at 4096x4096x4096 (a 33.5MB copy + a 33.5MB FFI upload) that
+        // contributed nothing, since B never changes across a GFLOPS-bench
+        // loop or across reps of one MoE expert.
+        if (entry.boundWeight !== B) {
+            let bConverted = weightCache.get(B);
+            if (bConverted && bConverted.length === k * n) {
+                weightCacheHits++;
+            } else {
+                bConverted = new Uint16Array(k * n);
+                f32arr_to_f16(B, bConverted, k * n);
+                weightCache.set(B, bConverted);
+                weightConversions++;
+            }
+            bBuf.set(bConverted);   // native, vectorized copy into this shape's dedicated buffer
+            setInput(prog, 'b', bBuf, BigInt(k * n));
+            entry.boundWeight = B;
+        }
+
         if (execute(prog) !== 0) throw new Error(`ANE execute failed for shape ${m},${k},${n}`);
         getOutput(prog, 'y', yBuf, BigInt(m * n));
 
