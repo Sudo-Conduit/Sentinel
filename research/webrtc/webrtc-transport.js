@@ -3,7 +3,10 @@
   function WebRTCTransport(opts) {
     this.url = opts.url; this.room = opts.room; this.peer = opts.peer;
     this.initiator = !!opts.initiator;
-    this.iceServers = opts.iceServers || [];       // [] = host candidates; add STUN/TURN here
+    // iceServers: explicit array, OR iceAdapter: name ('public'/'selfHosted'/'none')
+    // or a function, resolved via IceAdapters when present.
+    this.iceServers = opts.iceServers
+      || (typeof IceAdapters !== 'undefined' ? IceAdapters.resolve(opts.iceAdapter || 'none', opts.iceArgs) : []);
     this.candidateTypes = {};                      // host/srflx/relay tally (honesty about ICE)
     this._onmsg = function () {};
   }
@@ -50,4 +53,4 @@
     });
   };
   root.WebRTCTransport = WebRTCTransport;
-})(typeof window !== 'undefined' ? window : this);
+})(typeof globalThis !== 'undefined' ? globalThis : (typeof window !== 'undefined' ? window : this));

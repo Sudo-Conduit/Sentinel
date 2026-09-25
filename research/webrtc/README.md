@@ -18,10 +18,16 @@ peer A ──[ PopcntUnicode.encode ]──▶ ciphertext ─▶ RTCPeerConnecti
   channel WebRTC requires (and the MITM surface that peer-identity pinning —
   Ed25519, future — will harden).
 - `webrtc-transport.js` — browser-side `WebRTCTransport`: real
-  `RTCPeerConnection` over the signaling channel, `iceServers` configurable for
-  STUN/TURN. `connect()` / `send()` / `onMessage()`; tallies ICE candidate types.
-- `ice-config.example.js` — STUN + TURN config, including **TURN over TCP/TLS on
-  443** for networks that allow only http(s).
+  `RTCPeerConnection` over the signaling channel. Takes `iceServers` (explicit
+  array) **or** `iceAdapter` (see below). `connect()` / `send()` / `onMessage()`;
+  tallies ICE candidate types.
+- `ice-adapters.js` — swappable ICE-server sources: `'public'` (public STUN
+  only — the simple default, since STUN is discovery-only and never sees
+  payload), `'selfHosted'(host, turn)` (your STUN + your TURN, including
+  TURN-over-443), `'none'` (host candidates). `IceAdapters.resolve(spec, args)`.
+  Pass `iceAdapter: 'public'` to the transport.
+- `ice-config.example.js` — raw STUN + TURN config reference, including **TURN
+  over TCP/TLS on 443** for networks that allow only http(s).
 - `test.mjs` — end-to-end test: two independent Chromium contexts (two real
   peers) connect through the real signaling server and exchange a POPCNT payload.
 

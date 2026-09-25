@@ -2,8 +2,12 @@
   "name": "mountainshift-webrtc",
   "private": true,
   "version": "0.0.0",
-  "type": "module",
   "description": "WebRTC data-channel transport for MSOS machine-to-machine, carrying POPCNT-encrypted payloads.",
-  "scripts": { "test": "node test.mjs" },
-  "devDependencies": { "ws": "^8", "playwright-core": "^1" }
+  "scripts": {
+    "test": "node test.mjs"
+  },
+  "devDependencies": {
+    "ws": "^8",
+    "playwright-core": "^1"
+  }
 }
