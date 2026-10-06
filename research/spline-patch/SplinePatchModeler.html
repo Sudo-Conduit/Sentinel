@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spline Patch Modeler</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root{
+    --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
+    --ink:#e7edf5; --ink-muted:#7c8ba0;
+    --accent:#00aaff; --accent-2:#ff2fb0;
+    --font-display:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0; overflow:hidden;}
+  .app{display:grid; grid-template-columns:320px 1fr; height:100vh;}
+  @media (max-width:760px){
+    body{overflow:auto;}
+    .app{grid-template-columns:1fr; grid-template-rows:60vh auto; height:auto;}
+    .panel{order:2; border-right:none; border-top:1px solid var(--line);}
+    .viewport{order:1;}
+    .ramp{top:12px; bottom:auto;}
+  }
+  .panel{background:var(--surface); border-right:1px solid var(--line); overflow-y:auto; padding:20px 18px 28px;}
+  .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 6px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:22px; line-height:1.1; margin:0 0 6px;}
+  .sub{font-size:13px; line-height:1.5; color:var(--ink-muted); margin:0 0 14px;}
+  section{border-top:1px solid var(--line); padding:14px 0 4px;}
+  h2{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:0 0 10px;}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 0 9px; font-size:13px;}
+  .row label, .k{color:var(--ink-muted); font-family:var(--font-mono); font-size:11.5px;}
+  .row .v{font-family:var(--font-mono); font-size:11.5px; color:var(--ink); min-width:42px; text-align:right;}
+  .slider{display:grid; grid-template-columns:86px 1fr 46px; align-items:center; gap:8px; margin:0 0 8px;}
+  .slider label{color:var(--ink-muted); font-family:var(--font-mono); font-size:11.5px;}
+  .slider output{font-family:var(--font-mono); font-size:11.5px; text-align:right;}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  input[type=checkbox]{accent-color:var(--accent);}
+  select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; flex:1;}
+  .btns{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px;}
+  button{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button.primary{border-color:var(--accent); color:var(--accent);}
+  button.small{font-size:11px; padding:3px 8px;}
+  .checks{display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin:0 0 10px; font-size:12.5px;}
+  .checks label{display:flex; align-items:center; gap:6px; color:var(--ink);}
+  .muted{color:var(--ink-muted); font-size:12px; line-height:1.55; margin:0 0 10px;}
+  .cand{display:flex; align-items:center; justify-content:space-between; gap:8px; font-family:var(--font-mono); font-size:11.5px; padding:5px 0; border-bottom:1px solid var(--line);}
+  .cand.on .ids{color:var(--accent);}
+  .stat-grid{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin:0 0 10px;}
+  .stat{background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:7px 8px;}
+  .stat .n{font-family:var(--font-display); font-size:17px; line-height:1;}
+  .stat .l{font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); letter-spacing:.06em; text-transform:uppercase; margin-top:4px;}
+  kbd{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11px; color:var(--ink);}
+  .viewport{position:relative; overflow:hidden; background:var(--bg); min-height:300px;}
+  .viewport canvas{display:block;}
+  .hud{position:absolute; left:14px; bottom:12px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); pointer-events:none; line-height:1.6;}
+  .hud b{color:var(--ink); font-weight:400;}
+  .ramp{position:absolute; right:14px; bottom:14px; width:160px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); display:none;}
+  .ramp .bar{height:8px; border-radius:4px; margin-bottom:4px; background:linear-gradient(90deg,#1b2a6b,#1f7fa8,#3fbf8f,#e8d34a,#ff6a3d);}
+  .ramp .ends{display:flex; justify-content:space-between;}
+  #selEmpty{margin:0 0 8px;}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <p class="eyebrow">Research · Geometry</p>
+    <h1>Spline Patch Modeler</h1>
+    <p class="sub">Animation:Master-style spline cages: loops of 3 and 4 splines surface automatically, and you flag 5-point patches yourself. Every CP is also a mass on springs, so the surface can move.</p>
+
+    <section>
+      <h2>Model</h2>
+      <div class="row"><select id="preset"></select><button id="btnLoad">Load</button></div>
+      <div class="stat-grid">
+        <div class="stat"><div class="n" id="stCps">0</div><div class="l">CPs</div></div>
+        <div class="stat"><div class="n" id="st3">0</div><div class="l">3-pt</div></div>
+        <div class="stat"><div class="n" id="st4">0</div><div class="l">4-pt</div></div>
+        <div class="stat"><div class="n" id="st5">0</div><div class="l">5-pt</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Display</h2>
+      <div class="checks">
+        <label><input type="checkbox" id="showSurface" checked> Surface</label>
+        <label><input type="checkbox" id="showSplines" checked> Splines</label>
+        <label><input type="checkbox" id="showCps" checked> CPs</label>
+        <label><input type="checkbox" id="showWire"> Wireframe</label>
+      </div>
+      <div class="slider"><label for="subdiv">Subdivision</label><input type="range" id="subdiv" min="2" max="20" step="1" value="10"><output id="subdivOut">10</output></div>
+      <div class="row"><label for="colorMode">Color by</label><select id="colorMode"><option value="none">Plain</option><option value="strain">Strain</option><option value="speed">Speed</option></select></div>
+    </section>
+
+    <section>
+      <h2>Selected CP</h2>
+      <p class="muted" id="selEmpty">Click a CP to select it, then drag the gizmo.</p>
+      <div id="selBody" hidden>
+        <div class="row"><span class="k">CP</span><span class="v" id="selId">–</span></div>
+        <div class="slider"><label for="bMag">Magnitude</label><input type="range" id="bMag" min="0" max="3" step="0.05" value="1"><output id="bMagOut">1.00</output></div>
+        <div class="slider"><label for="bAlpha">Alpha</label><input type="range" id="bAlpha" min="-90" max="90" step="1" value="0"><output id="bAlphaOut">0°</output></div>
+        <div class="slider"><label for="bGamma">Gamma</label><input type="range" id="bGamma" min="-90" max="90" step="1" value="0"><output id="bGammaOut">0°</output></div>
+        <div class="checks"><label><input type="checkbox" id="selPinned"> Pinned (driven)</label></div>
+      </div>
+    </section>
+
+    <section>
+      <h2>5-point patches</h2>
+      <p class="muted">Every chordless 5-loop in the cage. As in A:M, a 5-loop only becomes a surface when you add it.</p>
+      <div id="candList"></div>
+    </section>
+
+    <section>
+      <h2>Dynamics</h2>
+      <div class="btns">
+        <button id="btnPlay" class="primary">▶ Play</button>
+        <button id="btnReset">Reset pose</button>
+        <button id="btnPoke">Poke</button>
+      </div>
+      <div class="slider"><label for="pStiff">Stiffness</label><input type="range" id="pStiff" min="5" max="400" step="5"><output id="pStiffOut"></output></div>
+      <div class="slider"><label for="pDamp">Damping</label><input type="range" id="pDamp" min="0" max="5" step="0.1"><output id="pDampOut"></output></div>
+      <div class="slider"><label for="pGrav">Gravity</label><input type="range" id="pGrav" min="0" max="20" step="0.2"><output id="pGravOut"></output></div>
+      <div class="slider"><label for="pAmp">Drive amp</label><input type="range" id="pAmp" min="0" max="1" step="0.01"><output id="pAmpOut"></output></div>
+      <div class="slider"><label for="pFreq">Drive Hz</label><input type="range" id="pFreq" min="0.1" max="3" step="0.05"><output id="pFreqOut"></output></div>
+      <div class="checks"><label><input type="checkbox" id="pFloor"> Floor</label></div>
+      <p class="muted">Rest lengths come from the pose when you press Play. Pinned CPs follow the drive. Dragging a CP while the sim runs pulls the cage with it.</p>
+    </section>
+
+    <section>
+      <h2>File</h2>
+      <div class="btns">
+        <button id="btnExportJson">Export JSON</button>
+        <button id="btnExportObj">Export OBJ</button>
+        <button id="btnImport">Import JSON</button>
+        <input type="file" id="fileImport" accept=".json,application/json" hidden>
+      </div>
+      <p class="muted"><kbd>Space</kbd> play/pause · <kbd>P</kbd> pin · <kbd>Esc</kbd> deselect · drag to orbit, scroll to zoom</p>
+    </section>
+  </aside>
+
+  <main class="viewport" id="viewport">
+    <div class="hud" id="hud"></div>
+    <div class="ramp" id="ramp"><div class="bar"></div><div class="ends"><span>0</span><span id="rampMax"></span></div></div>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
+<script src="./SplinePatch.js"></script>
+<script>
+(function () {
+  'use strict';
+  const SP = window.SplinePatch;
+  const $ = id => document.getElementById(id);
+
+  // ── State ──
+  let model = null;
+  let sim = null;          // live simulation (null = springs rebuilt on next Play)
+  let restPose = null;     // model JSON captured when Play first pressed
+  let playing = false;
+  let selected = -1;
+  let dragging = false;
+  let lastTess = null;
+  const params = Object.assign({}, SP.SIM_DEFAULTS);
+  const view = { surface: true, splines: true, cps: true, wire: false, subdiv: 10, color: 'none' };
+
+  // ── Scene ──
+  const host = $('viewport');
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  host.appendChild(renderer.domElement);
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x05080c);
+  const camera = new THREE.PerspectiveCamera(40, 1, 0.05, 200);
+  camera.position.set(4.5, 3.2, 7);
+  const orbit = new THREE.OrbitControls(camera, renderer.domElement);
+  orbit.enableDamping = true;
+
+  scene.add(new THREE.HemisphereLight(0xcfe6ff, 0x1a1f2a, 0.75));
+  const key = new THREE.DirectionalLight(0xffffff, 0.85); key.position.set(4, 7, 5); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x66c6ff, 0.45); rim.position.set(-6, 2, -5); scene.add(rim);
+
+  const grid = new THREE.GridHelper(12, 24, 0x1d2733, 0x111a26);
+  scene.add(grid);
+
+  const surfGeo = new THREE.BufferGeometry();
+  const surfMat = new THREE.MeshStandardMaterial({ color: 0x8fb8de, roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide });
+  const surf = new THREE.Mesh(surfGeo, surfMat);
+  scene.add(surf);
+  const wire = new THREE.Mesh(surfGeo, new THREE.MeshBasicMaterial({ color: 0x00aaff, wireframe: true, transparent: true, opacity: 0.18 }));
+  scene.add(wire);
+
+  const splineGeo = new THREE.BufferGeometry();
+  const splines = new THREE.LineSegments(splineGeo, new THREE.LineBasicMaterial({ color: 0xffd36b }));
+  scene.add(splines);
+
+  const handleGeo = new THREE.BufferGeometry();
+  const handles = new THREE.LineSegments(handleGeo, new THREE.LineBasicMaterial({ color: 0xff2fb0 }));
+  scene.add(handles);
+
+  const cpGroup = new THREE.Group();
+  scene.add(cpGroup);
+  const cpGeo = new THREE.SphereGeometry(1, 16, 12);
+  const cpMats = {
+    free: new THREE.MeshBasicMaterial({ color: 0xe7edf5 }),
+    pinned: new THREE.MeshBasicMaterial({ color: 0xff2fb0 }),
+    selected: new THREE.MeshBasicMaterial({ color: 0x00aaff }),
+  };
+  let cpMeshes = [];
+
+  const gizmo = new THREE.TransformControls(camera, renderer.domElement);
+  gizmo.setSize(0.7);
+  scene.add(gizmo);
+  gizmo.addEventListener('dragging-changed', e => {
+    dragging = e.value;
+    orbit.enabled = !e.value;
+    if (!e.value && !playing) invalidateSim();
+  });
+  gizmo.addEventListener('objectChange', () => {
+    if (selected < 0) return;
+    const p = cpMeshes[selected].position, pos = [p.x, p.y, p.z];
+    model.cps[selected].pos = pos;
+    if (sim) { sim.anchor[selected] = pos.slice(); sim.vel[selected] = [0, 0, 0]; }
+    if (!playing) rebuild();
+  });
+
+  // ── Colour ramp (matches the CSS gradient) ──
+  const RAMP = [[0x1b, 0x2a, 0x6b], [0x1f, 0x7f, 0xa8], [0x3f, 0xbf, 0x8f], [0xe8, 0xd3, 0x4a], [0xff, 0x6a, 0x3d]];
+  function ramp(t) {
+    t = Math.min(1, Math.max(0, t)) * (RAMP.length - 1);
+    const i = Math.min(RAMP.length - 2, Math.floor(t)), f = t - i, a = RAMP[i], b = RAMP[i + 1];
+    return [0, 1, 2].map(c => (a[c] + (b[c] - a[c]) * f) / 255);
+  }
+  const RANGE = { strain: 0.15, speed: 3 };
+
+  // ── Build ──
+  function scalars() {
+    if (view.color === 'none') return null;
+    if (!sim) return model.cps.map(() => 0);
+    return view.color === 'strain' ? sim.strain : sim.speed;
+  }
+
+  function rebuild() {
+    const sc = scalars();
+    const t = SP.tessellate(model, { subdiv: view.subdiv, scalars: sc });
+    lastTess = t;
+    surfGeo.setAttribute('position', new THREE.BufferAttribute(t.positions, 3));
+    surfGeo.setAttribute('normal', new THREE.BufferAttribute(t.normals, 3));
+    surfGeo.setIndex(new THREE.BufferAttribute(t.indices, 1));
+    if (t.values) {
+      const cols = new Float32Array(t.values.length * 3), max = RANGE[view.color];
+      t.values.forEach((v, i) => cols.set(ramp(v / max), i * 3));
+      surfGeo.setAttribute('color', new THREE.BufferAttribute(cols, 3));
+    } else if (surfGeo.getAttribute('color')) {
+      surfGeo.deleteAttribute('color');
+    }
+    if (surfMat.vertexColors !== !!t.values) {
+      surfMat.vertexColors = !!t.values;
+      surfMat.color.set(t.values ? 0xffffff : 0x8fb8de);
+      surfMat.needsUpdate = true;
+    }
+    surfGeo.computeBoundingSphere();
+
+    splineGeo.setAttribute('position', new THREE.BufferAttribute(SP.edgeSamples(t.graph, 14), 3));
+    splineGeo.computeBoundingSphere();
+
+    syncCps();
+    drawHandles(t.graph);
+    updateStats(t);
+    $('ramp').style.display = t.values ? 'block' : 'none';
+    $('rampMax').textContent = view.color === 'strain' ? '15% stretch' : '3 u/s';
+  }
+
+  function cpRadius() {
+    const s = surfGeo.boundingSphere;
+    return s ? Math.max(0.035, s.radius * 0.022) : 0.06;
+  }
+
+  function syncCps() {
+    if (cpMeshes.length !== model.cps.length) {
+      cpMeshes.forEach(m => cpGroup.remove(m));
+      cpMeshes = model.cps.map((_, i) => { const m = new THREE.Mesh(cpGeo, cpMats.free); m.userData.cp = i; cpGroup.add(m); return m; });
+    }
+    const r = cpRadius();
+    model.cps.forEach((c, i) => {
+      const m = cpMeshes[i];
+      if (!(dragging && i === selected)) m.position.set(c.pos[0], c.pos[1], c.pos[2]);
+      m.scale.setScalar(i === selected ? r * 1.35 : r);
+      m.material = i === selected ? cpMats.selected : c.pinned ? cpMats.pinned : cpMats.free;
+    });
+  }
+
+  // Tangent handles of the selected CP, one per spline segment leaving it.
+  function drawHandles(g) {
+    const pts = [];
+    if (selected >= 0) {
+      const p = model.cps[selected].pos;
+      for (const o of g.adj[selected]) {
+        const h = SP.edgeBez(g, selected, o)[1];
+        pts.push(p[0], p[1], p[2], h[0], h[1], h[2]);
+      }
+    }
+    handleGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+    handleGeo.computeBoundingSphere();
+  }
+
+  function updateStats(t) {
+    const k = { 3: 0, 4: 0, 5: 0 };
+    t.patches.forEach(p => { k[p.ring.length] = (k[p.ring.length] || 0) + 1; });
+    $('stCps').textContent = model.cps.length;
+    $('st3').textContent = k[3];
+    $('st4').textContent = k[4];
+    $('st5').textContent = k[5];
+  }
+
+  function renderCandidates() {
+    const g = SP.buildGraph(model);
+    const flagged = new Set(model.fivePatches.map(SP.ringKey));
+    const list = $('candList');
+    list.innerHTML = '';
+    const cands = SP.fiveCandidates(model, g);
+    if (!cands.length) { list.innerHTML = '<p class="muted">No 5-loops in this cage.</p>'; return; }
+    cands.forEach(ring => {
+      const on = flagged.has(SP.ringKey(ring));
+      const row = document.createElement('div');
+      row.className = 'cand' + (on ? ' on' : '');
+      row.innerHTML = `<span class="ids">${ring.join(' · ')}</span>`;
+      const b = document.createElement('button');
+      b.className = 'small';
+      b.textContent = on ? 'Remove' : 'Add';
+      b.onclick = () => {
+        const key = SP.ringKey(ring);
+        if (on) model.fivePatches = model.fivePatches.filter(r => SP.ringKey(r) !== key);
+        else model.fivePatches.push(ring.slice());
+        invalidateSim();
+        renderCandidates();
+        rebuild();
+      };
+      row.appendChild(b);
+      list.appendChild(row);
+    });
+  }
+
+  // ── Selection panel ──
+  function select(i) {
+    selected = i;
+    if (i >= 0) gizmo.attach(cpMeshes[i]); else gizmo.detach();
+    $('selEmpty').hidden = i >= 0;
+    $('selBody').hidden = i < 0;
+    if (i >= 0) {
+      const b = model.cps[i].bias;
+      $('selId').textContent = '#' + i;
+      setSlider('bMag', b.mag, v => v.toFixed(2));
+      setSlider('bAlpha', b.alpha, v => v + '°');
+      setSlider('bGamma', b.gamma, v => v + '°');
+      $('selPinned').checked = model.cps[i].pinned;
+    }
+    rebuild();
+  }
+
+  function setSlider(id, v, fmt) { $(id).value = v; $(id + 'Out').textContent = fmt(+v); }
+  function bindSlider(id, fmt, apply) {
+    $(id).addEventListener('input', () => { const v = +$(id).value; $(id + 'Out').textContent = fmt(v); apply(v); });
+  }
+
+  bindSlider('bMag', v => v.toFixed(2), v => { if (selected >= 0) { model.cps[selected].bias.mag = v; rebuild(); } });
+  bindSlider('bAlpha', v => v + '°', v => { if (selected >= 0) { model.cps[selected].bias.alpha = v; rebuild(); } });
+  bindSlider('bGamma', v => v + '°', v => { if (selected >= 0) { model.cps[selected].bias.gamma = v; rebuild(); } });
+  $('selPinned').addEventListener('change', () => { if (selected >= 0) togglePin(selected, $('selPinned').checked); });
+
+  function togglePin(i, on) {
+    model.cps[i].pinned = on;
+    if (sim) { sim.anchor[i] = model.cps[i].pos.slice(); sim.vel[i] = [0, 0, 0]; }
+    if (i === selected) $('selPinned').checked = on;
+    rebuild();
+  }
+
+  // ── Dynamics controls ──
+  const simSliders = [
+    ['pStiff', 'stiffness', v => v.toFixed(0)],
+    ['pDamp', 'damping', v => v.toFixed(1)],
+    ['pGrav', 'gravity', v => v.toFixed(1)],
+    ['pAmp', 'driveAmp', v => v.toFixed(2)],
+    ['pFreq', 'driveFreq', v => v.toFixed(2)],
+  ];
+  simSliders.forEach(([id, key, fmt]) => bindSlider(id, fmt, v => { params[key] = v; if (sim) sim.params[key] = v; }));
+  $('pFloor').addEventListener('change', () => { params.floor = $('pFloor').checked ? floorY() : null; if (sim) sim.params.floor = params.floor; grid.position.y = floorY(); });
+
+  function syncSimControls() {
+    simSliders.forEach(([id, key, fmt]) => setSlider(id, params[key], fmt));
+    $('pFloor').checked = params.floor !== null && params.floor !== undefined;
+  }
+
+  function floorY() {
+    if (params.floor !== null && params.floor !== undefined) return params.floor;
+    return Math.min(...model.cps.map(c => c.pos[1])) - 0.6;
+  }
+
+  function invalidateSim() { sim = null; restPose = null; }
+
+  function setPlaying(on) {
+    if (on && !sim) {
+      restPose = SP.toJSON(model);
+      sim = SP.createSim(model, params);
+    }
+    playing = on;
+    $('btnPlay').textContent = on ? '❚❚ Pause' : '▶ Play';
+  }
+
+  $('btnPlay').onclick = () => setPlaying(!playing);
+  $('btnReset').onclick = () => {
+    if (restPose) { model = SP.createModel(restPose); }
+    sim = null; restPose = null;
+    setPlaying(false);
+    select(selected < model.cps.length ? selected : -1);
+  };
+  // Kick the free CPs with a random impulse.
+  $('btnPoke').onclick = () => {
+    if (!playing) setPlaying(true);
+    const targets = selected >= 0 ? [selected] : model.cps.map((_, i) => i).filter(i => !model.cps[i].pinned);
+    const n = selected >= 0 ? 1 : Math.max(1, Math.round(targets.length / 4));
+    for (let k = 0; k < n; k++) {
+      const i = targets[Math.floor(Math.random() * targets.length)];
+      const dir = [Math.random() - 0.5, Math.random() * 0.8 + 0.2, Math.random() - 0.5];
+      const s = 6 / Math.hypot(...dir);
+      sim.vel[i] = dir.map((d, c) => sim.vel[i][c] + d * s);
+    }
+  };
+
+  // ── Display controls ──
+  [['showSurface', 'surface'], ['showSplines', 'splines'], ['showCps', 'cps'], ['showWire', 'wire']].forEach(([id, key]) => {
+    $(id).addEventListener('change', () => { view[key] = $(id).checked; applyVisibility(); });
+  });
+  function applyVisibility() {
+    surf.visible = view.surface;
+    wire.visible = view.wire;
+    splines.visible = view.splines;
+    cpGroup.visible = view.cps;
+  }
+  bindSlider('subdiv', v => String(v), v => { view.subdiv = v; rebuild(); });
+  $('colorMode').addEventListener('change', () => { view.color = $('colorMode').value; rebuild(); });
+
+  // ── Presets / files ──
+  const presetNames = Object.keys(SP.presets);
+  presetNames.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = SP.presets[n]().name; $('preset').appendChild(o); });
+
+  function loadSpec(spec) {
+    model = SP.createModel(spec);
+    Object.assign(params, SP.SIM_DEFAULTS, spec.sim || {});
+    invalidateSim();
+    setPlaying(false);
+    selected = -1;
+    gizmo.detach();
+    syncSimControls();
+    grid.position.y = floorY();
+    renderCandidates();
+    select(-1);
+    frame();
+  }
+  $('btnLoad').onclick = () => loadSpec(SP.presets[$('preset').value]());
+  $('preset').addEventListener('change', () => loadSpec(SP.presets[$('preset').value]()));
+
+  function download(name, text, type) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([text], { type }));
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  $('btnExportJson').onclick = () => {
+    const out = Object.assign(SP.toJSON(model), { sim: pickSimParams() });
+    download('spline-patch-model.json', JSON.stringify(out, null, 2), 'application/json');
+  };
+  function pickSimParams() {
+    const { stiffness, damping, drag, gravity, floor, driveAmp, driveFreq, driveAxis } = params;
+    return { stiffness, damping, drag, gravity, floor, driveAmp, driveFreq, driveAxis };
+  }
+  $('btnExportObj').onclick = () => {
+    const t = SP.tessellate(model, { subdiv: view.subdiv }), lines = ['# Spline Patch Modeler export'];
+    for (let i = 0; i < t.positions.length; i += 3) lines.push(`v ${t.positions[i].toFixed(5)} ${t.positions[i + 1].toFixed(5)} ${t.positions[i + 2].toFixed(5)}`);
+    for (let i = 0; i < t.normals.length; i += 3) lines.push(`vn ${t.normals[i].toFixed(5)} ${t.normals[i + 1].toFixed(5)} ${t.normals[i + 2].toFixed(5)}`);
+    for (let i = 0; i < t.indices.length; i += 3) {
+      const [a, b, c] = [t.indices[i] + 1, t.indices[i + 1] + 1, t.indices[i + 2] + 1];
+      lines.push(`f ${a}//${a} ${b}//${b} ${c}//${c}`);
+    }
+    download('spline-patch-model.obj', lines.join('\n'), 'text/plain');
+  };
+  $('btnImport').onclick = () => $('fileImport').click();
+  $('fileImport').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const spec = JSON.parse(await f.text());
+      if (!Array.isArray(spec.cps) || !Array.isArray(spec.splines)) throw new Error('expected { cps: [...], splines: [...] }');
+      loadSpec(spec);
+    } catch (err) {
+      alert('Could not import: ' + err.message);
+    }
+    e.target.value = '';
+  });
+
+  // ── Picking ──
+  const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+  let downAt = null;
+  renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
+  renderer.domElement.addEventListener('pointerup', e => {
+    if (!downAt || dragging) return;
+    const moved = Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]);
+    downAt = null;
+    if (moved > 4 || gizmo.axis) return;
+    const r = renderer.domElement.getBoundingClientRect();
+    ndc.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    ray.setFromCamera(ndc, camera);
+    const hit = view.cps ? ray.intersectObjects(cpMeshes)[0] : null;
+    select(hit ? hit.object.userData.cp : -1);
+  });
+
+  // Hand focus back after clicking a control so the shortcuts below keep working.
+  document.addEventListener('click', e => {
+    const c = e.target.closest('button, input[type=checkbox]');
+    if (c) c.blur();
+  });
+  window.addEventListener('keydown', e => {
+    if (e.target.closest('select, input[type=range], input[type=file]')) return;
+    if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === 'Escape') select(-1);
+    else if ((e.key === 'p' || e.key === 'P') && selected >= 0) togglePin(selected, !model.cps[selected].pinned);
+  });
+
+  // ── Camera / loop ──
+  function frame() {
+    surfGeo.computeBoundingSphere();
+    const s = surfGeo.boundingSphere;
+    if (!s) return;
+    const d = s.radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
+    const dir = new THREE.Vector3(0.55, 0.42, 0.85).normalize();
+    orbit.target.copy(s.center);
+    camera.position.copy(s.center).addScaledVector(dir, d);
+    orbit.update();
+  }
+
+  function resize() {
+    const w = host.clientWidth, h = host.clientHeight;
+    renderer.setSize(w, h);
+    camera.aspect = w / Math.max(1, h);
+    camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(host);
+
+  const clock = new THREE.Clock();
+  function tick() {
+    const dt = Math.min(clock.getDelta(), 1 / 30);
+    if (playing && sim) {
+      SP.stepSim(model, sim, dt, dragging && selected >= 0 ? new Set([selected]) : null);
+      rebuild();
+    }
+    orbit.update();
+    renderer.render(scene, camera);
+    $('hud').innerHTML = sim
+      ? `t <b>${sim.t.toFixed(2)}s</b> · kinetic <b>${SP.kineticEnergy(model, sim).toFixed(3)}</b> · springs <b>${sim.springs.length}</b>`
+      : `<b>${lastTess ? lastTess.patches.length : 0}</b> patches · edit, then <b>Play</b>`;
+    requestAnimationFrame(tick);
+  }
+
+  applyVisibility();
+  resize();
+  $('preset').value = 'pebble';
+  loadSpec(SP.presets.pebble());
+  tick();
+})();
+</script>
+</body>
+</html>
