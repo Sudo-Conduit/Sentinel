@@ -61,6 +61,12 @@
 
   const edgeKey = (a, b) => (a < b ? a + '|' + b : b + '|' + a);
 
+  // How "straight" a patch corner is, from the cosine of the angle between its two edge
+  // handles: 0 up to ~145°, ramping to 1 by ~170°. Only near-straight corners (a smooth
+  // spline running through, like a 5-point cap's rim) need the inward-direction fix-up;
+  // switching it on earlier makes ordinary obtuse/acute neighbours disagree at their seam.
+  const straightness = cos => Math.min(1, Math.max(0, (-cos - 0.82) / 0.16));
+
   function centroid(model, ids) {
     let c = [0, 0, 0];
     for (const id of ids) c = add(c, model.cps[id].pos);
@@ -196,12 +202,28 @@
   function findPatches(model, g) {
     const patches = [], keys = new Set();
     for (const ring of findCycles(g.adj, 3, 4)) {
-      if (isChordless(g.adj, ring)) { patches.push({ ring }); keys.add(ringKey(ring)); }
+      if (isChordless(g.adj, ring)) { patches.push({ ring, auto: true }); keys.add(ringKey(ring)); }
     }
     for (const ring of model.fivePatches) {
       if (ringIsClosed(g, ring) && !keys.has(ringKey(ring))) { patches.push({ ring: ring.slice() }); keys.add(ringKey(ring)); }
     }
-    return orientPatches(model, patches);
+    dropMembranes(patches);
+    return orientPatches(model, patches.map(p => ({ ring: p.ring })));
+  }
+
+  // A 3- or 4-CP ring inside a tube (a ring of an extrusion, the profile rings of a lathed
+  // torus) closes into a loop too, but it is a membrane across the inside: every one of its
+  // edges already borders two other patches. Drop those, one at a time, until the surface
+  // is manifold again. Flagged 5-point patches are the user's call and always stay.
+  function dropMembranes(patches) {
+    const edgesOf = ring => ring.map((a, k) => edgeKey(a, ring[(k + 1) % ring.length]));
+    for (;;) {
+      const count = new Map();
+      for (const p of patches) for (const k of edgesOf(p.ring)) count.set(k, (count.get(k) || 0) + 1);
+      const i = patches.findIndex(p => p.auto && edgesOf(p.ring).every(k => count.get(k) >= 3));
+      if (i < 0) return;
+      patches.splice(i, 1);
+    }
   }
 
   // Chordless 5-loops that could be flagged as 5-point patches.
@@ -319,7 +341,7 @@
     const xterm = E.map((e, j) => {
       const q = e[0], a = sub(e[1], q), h = sub(E[(j + 3) % 4][2], q), la = len(a), lh = len(h);
       if (!X || !X[j] || la < 1e-12 || lh < 1e-12) return [0, 0, 0];
-      return scale(X[j], Math.max(0, -dot(a, h) / (la * lh)) * (la + lh));
+      return scale(X[j], straightness(dot(a, h) / (la * lh)) * (la + lh));
     });
     // Interior pair [near start, near end] for each edge.
     const inner = E.map((e, j) => {
@@ -411,7 +433,7 @@
     const endCross = (corner, other, k) => {
       const pa = P(ring[corner]), h = sub(edgeBez(g, ring[corner], ring[other])[1], pa);
       const e = sub(E[k][corner === k ? 1 : 2], pa);
-      const f = Math.max(0, -dot(norm(h), norm(e)));
+      const f = straightness(dot(norm(h), norm(e)));
       return add(scale(norm(reject(h, norm(e))), 1 - f), scale(X[corner], f));
     };
     const xs = m.map((mk, k) => {

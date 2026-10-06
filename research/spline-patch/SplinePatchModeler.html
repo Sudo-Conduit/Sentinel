@@ -9,7 +9,7 @@
   :root{
     --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
     --ink:#e7edf5; --ink-muted:#7c8ba0;
-    --accent:#00aaff; --accent-2:#ff2fb0;
+    --accent:#00aaff; --accent-2:#ff2fb0; --spline:#ffd36b;
     --font-display:'Space Mono', ui-monospace, SFMono-Regular, monospace;
     --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono:'Space Mono', ui-monospace, SFMono-Regular, monospace;
@@ -18,13 +18,6 @@
   html,body{height:100%;}
   body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0; overflow:hidden;}
   .app{display:grid; grid-template-columns:320px 1fr; height:100vh;}
-  @media (max-width:760px){
-    body{overflow:auto;}
-    .app{grid-template-columns:1fr; grid-template-rows:60vh auto; height:auto;}
-    .panel{order:2; border-right:none; border-top:1px solid var(--line);}
-    .viewport{order:1;}
-    .ramp{top:12px; bottom:auto;}
-  }
   .panel{background:var(--surface); border-right:1px solid var(--line); overflow-y:auto; padding:20px 18px 28px;}
   .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 6px;}
   h1{font-family:var(--font-display); font-weight:700; font-size:22px; line-height:1.1; margin:0 0 6px;}
@@ -37,12 +30,15 @@
   .slider{display:grid; grid-template-columns:86px 1fr 46px; align-items:center; gap:8px; margin:0 0 8px;}
   .slider label{color:var(--ink-muted); font-family:var(--font-mono); font-size:11.5px;}
   .slider output{font-family:var(--font-mono); font-size:11.5px; text-align:right;}
+  .lift{display:grid; grid-template-columns:1fr 46px 78px; align-items:center; gap:8px; margin:0 0 8px;}
+  .lift output{font-family:var(--font-mono); font-size:11.5px; text-align:right;}
   input[type=range]{width:100%; accent-color:var(--accent);}
   input[type=checkbox]{accent-color:var(--accent);}
   select{font-family:var(--font-mono); font-size:12.5px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 8px; flex:1;}
   .btns{display:flex; flex-wrap:wrap; gap:6px; margin:0 0 10px;}
   button{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
-  button:hover{border-color:var(--accent); color:var(--accent);}
+  button:hover:not(:disabled){border-color:var(--accent); color:var(--accent);}
+  button:disabled{opacity:.4; cursor:default;}
   button.primary{border-color:var(--accent); color:var(--accent);}
   button.small{font-size:11px; padding:3px 8px;}
   .checks{display:grid; grid-template-columns:1fr 1fr; gap:6px 10px; margin:0 0 10px; font-size:12.5px;}
@@ -55,14 +51,59 @@
   .stat .n{font-family:var(--font-display); font-size:17px; line-height:1;}
   .stat .l{font-family:var(--font-mono); font-size:10px; color:var(--ink-muted); letter-spacing:.06em; text-transform:uppercase; margin-top:4px;}
   kbd{font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--line); border-radius:4px; padding:0 5px; font-size:11px; color:var(--ink);}
-  .viewport{position:relative; overflow:hidden; background:var(--bg); min-height:300px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden;}
+  .seg button{border:none; border-radius:0; background:transparent; padding:5px 9px; font-size:11.5px;}
+  .seg button + button{border-left:1px solid var(--line);}
+  .seg button.on{background:rgba(0,170,255,.14); color:var(--accent);}
+  #selEmpty{margin:0 0 8px;}
+
+  /* Stage: 2D drawing pane + 3D view */
+  .stage{display:grid; grid-template-columns:1fr 1fr; min-width:0; min-height:0;}
+  .stage[data-layout="3d"]{grid-template-columns:1fr;}
+  .stage[data-layout="3d"] .pane2d{display:none;}
+  .stage[data-layout="2d"]{grid-template-columns:1fr;}
+  .stage[data-layout="2d"] .viewport{display:none;}
+  .pane2d{position:relative; display:flex; flex-direction:column; min-width:0; min-height:0; background:#070b10; border-right:1px solid var(--line);}
+  .bar2d{display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:8px 10px; border-bottom:1px solid var(--line); background:var(--surface);}
+  .bar2d .spacer{flex:1;}
+  .bar2d label{display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted);}
+  #svg2d{flex:1; width:100%; min-height:0; display:block; touch-action:none; user-select:none;}
+  #svg2d.draw{cursor:crosshair;}
+  #svg2d.pan{cursor:grabbing;}
+  .hint2d{position:absolute; left:12px; bottom:10px; right:12px; font-family:var(--font-mono); font-size:11px; color:var(--ink-muted); pointer-events:none; line-height:1.5;}
+  .hint2d b{color:var(--ink); font-weight:400;}
+  #svg2d .gminor{stroke:#0f1620; stroke-width:1;}
+  #svg2d .gmajor{stroke:#16202c; stroke-width:1;}
+  #svg2d .axis{stroke:#24435c; stroke-width:1.2;}
+  #svg2d .patch{fill:var(--accent); fill-opacity:.07; stroke:none;}
+  #svg2d .edge{fill:none; stroke:var(--spline); stroke-width:1.6; stroke-opacity:.85;}
+  #svg2d .edge.sel{stroke:var(--accent); stroke-width:3; stroke-opacity:1;}
+  #svg2d .preview{fill:none; stroke:var(--accent); stroke-width:1.3; stroke-dasharray:5 4;}
+  #svg2d .cp{fill:var(--ink); stroke:#05080c; stroke-width:1.5;}
+  #svg2d .cp.pin{fill:var(--accent-2);}
+  #svg2d .cp.sel{fill:var(--accent);}
+  #svg2d .cp.start{stroke:var(--accent); stroke-width:2.5;}
+  #svg2d .cp.lifted{fill-opacity:.55;}
+  #svg2d .hot{fill:none; stroke:var(--accent); stroke-width:1.5;}
+
+  .viewport{position:relative; overflow:hidden; background:var(--bg); min-height:0; min-width:0;}
   .viewport canvas{display:block;}
   .hud{position:absolute; left:14px; bottom:12px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); pointer-events:none; line-height:1.6;}
   .hud b{color:var(--ink); font-weight:400;}
   .ramp{position:absolute; right:14px; bottom:14px; width:160px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); display:none;}
   .ramp .bar{height:8px; border-radius:4px; margin-bottom:4px; background:linear-gradient(90deg,#1b2a6b,#1f7fa8,#3fbf8f,#e8d34a,#ff6a3d);}
   .ramp .ends{display:flex; justify-content:space-between;}
-  #selEmpty{margin:0 0 8px;}
+
+  @media (max-width:760px){
+    body{overflow:auto;}
+    .app{grid-template-columns:1fr; grid-template-rows:auto auto; height:auto;}
+    .panel{order:2; border-right:none; border-top:1px solid var(--line);}
+    .stage{order:1; height:80vh; grid-template-columns:1fr; grid-template-rows:1fr 1fr;}
+    .stage[data-layout="3d"], .stage[data-layout="2d"]{grid-template-rows:1fr;}
+    .pane2d{border-right:none; border-bottom:1px solid var(--line);}
+    .ramp{top:12px; bottom:auto;}
+    .hint2d{display:none;}
+  }
 </style>
 </head>
 <body>
@@ -70,7 +111,7 @@
   <aside class="panel">
     <p class="eyebrow">Research · Geometry</p>
     <h1>Spline Patch Modeler</h1>
-    <p class="sub">Animation:Master-style spline cages: loops of 3 and 4 splines surface automatically, and you flag 5-point patches yourself. Every CP is also a mass on springs, so the surface can move.</p>
+    <p class="sub">Draw a spline cage flat, then lift it into 3D. As in Animation:Master, loops of 3 and 4 splines surface automatically and you flag 5-point patches yourself. Every CP is also a mass on springs, so the surface can move.</p>
 
     <section>
       <h2>Model</h2>
@@ -81,10 +122,26 @@
         <div class="stat"><div class="n" id="st4">0</div><div class="l">4-pt</div></div>
         <div class="stat"><div class="n" id="st5">0</div><div class="l">5-pt</div></div>
       </div>
+      <div class="btns">
+        <button id="btnUndo" title="Undo (Ctrl+Z)">↶ Undo</button>
+        <button id="btnRedo" title="Redo (Ctrl+Shift+Z)">↷ Redo</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Lift to 3D</h2>
+      <p class="muted">Works in the current 2D plane (<span id="planeName">Front</span>). Extrude and lathe act on the selected spline: switch to <kbd>V</kbd> Select and click a spline in the 2D view.</p>
+      <div class="lift"><input type="range" id="liftInflate" min="-3" max="3" step="0.05" value="1" aria-label="Inflate height"><output id="liftInflateOut">1.00</output><button id="btnInflate">Inflate</button></div>
+      <div class="lift"><input type="range" id="liftExtrude" min="-3" max="3" step="0.05" value="1" aria-label="Extrude depth"><output id="liftExtrudeOut">1.00</output><button id="btnExtrude">Extrude</button></div>
+      <div class="lift"><input type="range" id="liftLathe" min="3" max="16" step="1" value="8" aria-label="Lathe segments"><output id="liftLatheOut">8</output><button id="btnLathe">Lathe</button></div>
+      <p class="muted" id="liftNote">Inflate raises everything inside the outline. Lathe spins the spline around the vertical axis of the 2D view.</p>
     </section>
 
     <section>
       <h2>Display</h2>
+      <div class="row"><label>Layout</label>
+        <div class="seg" id="layoutSeg"><button data-layout="2d">2D</button><button data-layout="split" class="on">Split</button><button data-layout="3d">3D</button></div>
+      </div>
       <div class="checks">
         <label><input type="checkbox" id="showSurface" checked> Surface</label>
         <label><input type="checkbox" id="showSplines" checked> Splines</label>
@@ -97,13 +154,15 @@
 
     <section>
       <h2>Selected CP</h2>
-      <p class="muted" id="selEmpty">Click a CP to select it, then drag the gizmo.</p>
+      <p class="muted" id="selEmpty">Click a CP to select it, then drag it in 2D or with the 3D gizmo.</p>
       <div id="selBody" hidden>
         <div class="row"><span class="k">CP</span><span class="v" id="selId">–</span></div>
+        <div class="slider"><label for="bDepth" id="bDepthLabel">Depth</label><input type="range" id="bDepth" min="-4" max="4" step="0.05" value="0"><output id="bDepthOut">0.00</output></div>
         <div class="slider"><label for="bMag">Magnitude</label><input type="range" id="bMag" min="0" max="3" step="0.05" value="1"><output id="bMagOut">1.00</output></div>
         <div class="slider"><label for="bAlpha">Alpha</label><input type="range" id="bAlpha" min="-90" max="90" step="1" value="0"><output id="bAlphaOut">0°</output></div>
         <div class="slider"><label for="bGamma">Gamma</label><input type="range" id="bGamma" min="-90" max="90" step="1" value="0"><output id="bGammaOut">0°</output></div>
         <div class="checks"><label><input type="checkbox" id="selPinned"> Pinned (driven)</label></div>
+        <div class="btns"><button id="btnPeak" title="Peak / smooth (K)">Peak</button><button id="btnDeleteCp">Delete CP</button></div>
       </div>
     </section>
 
@@ -126,24 +185,41 @@
       <div class="slider"><label for="pAmp">Drive amp</label><input type="range" id="pAmp" min="0" max="1" step="0.01"><output id="pAmpOut"></output></div>
       <div class="slider"><label for="pFreq">Drive Hz</label><input type="range" id="pFreq" min="0.1" max="3" step="0.05"><output id="pFreqOut"></output></div>
       <div class="checks"><label><input type="checkbox" id="pFloor"> Floor</label></div>
-      <p class="muted">Rest lengths come from the pose when you press Play. Pinned CPs follow the drive. Dragging a CP while the sim runs pulls the cage with it.</p>
+      <p class="muted">Rest lengths come from the pose when you press Play. Pinned CPs follow the drive. Dragging a CP while the sim runs pulls the cage with it. Editing the cage stops the sim.</p>
     </section>
 
     <section>
       <h2>File</h2>
       <div class="btns">
         <button id="btnExportJson">Export JSON</button>
-        <button id="btnExportObj">Export OBJ</button>
         <button id="btnImport">Import JSON</button>
+        <button id="btnExportSvg">Export SVG</button>
+        <button id="btnImportSvg">Import SVG</button>
+        <button id="btnExportObj">Export OBJ</button>
         <input type="file" id="fileImport" accept=".json,application/json" hidden>
+        <input type="file" id="fileSvg" accept=".svg,image/svg+xml" hidden>
       </div>
-      <p class="muted"><kbd>Space</kbd> play/pause · <kbd>P</kbd> pin · <kbd>Esc</kbd> deselect · drag to orbit, scroll to zoom</p>
+      <p class="muted">SVG import adds paths and shapes to the current plane: anchor points become CPs, with one extra CP along each curve. Transforms are ignored. SVG export draws the cage as seen in the 2D view.</p>
+      <p class="muted"><kbd>V</kbd> select · <kbd>D</kbd> draw · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> front/top/side · <kbd>Enter</kbd> finish stroke · <kbd>Del</kbd> delete CP · <kbd>Ctrl Z</kbd> undo · <kbd>Space</kbd> play · <kbd>P</kbd> pin · <kbd>K</kbd> peak · <kbd>Esc</kbd> deselect</p>
     </section>
   </aside>
 
-  <main class="viewport" id="viewport">
-    <div class="hud" id="hud"></div>
-    <div class="ramp" id="ramp"><div class="bar"></div><div class="ends"><span>0</span><span id="rampMax"></span></div></div>
+  <main class="stage" id="stage" data-layout="split">
+    <div class="pane2d" id="pane2d">
+      <div class="bar2d">
+        <div class="seg" id="toolSeg"><button data-tool="select" class="on" title="Select / move (V)">Select</button><button data-tool="draw" title="Draw splines (D)">Draw</button></div>
+        <div class="seg" id="planeSeg"><button data-plane="front" class="on" title="Front (1)">Front</button><button data-plane="top" title="Top (2)">Top</button><button data-plane="side" title="Side (3)">Side</button></div>
+        <span class="spacer"></span>
+        <label><input type="checkbox" id="snap2d" checked> Snap</label>
+        <button class="small" id="btnFit2d">Fit</button>
+      </div>
+      <svg id="svg2d" aria-label="2D drawing view"></svg>
+      <div class="hint2d" id="hint2d"></div>
+    </div>
+    <div class="viewport" id="viewport">
+      <div class="hud" id="hud"></div>
+      <div class="ramp" id="ramp"><div class="bar"></div><div class="ends"><span>0</span><span id="rampMax"></span></div></div>
+    </div>
   </main>
 </div>
 
@@ -151,10 +227,11 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/TransformControls.js"></script>
 <script src="./SplinePatch.js"></script>
+<script src="./SplineDraw.js"></script>
 <script>
 (function () {
   'use strict';
-  const SP = window.SplinePatch;
+  const SP = window.SplinePatch, SD = window.SplineDraw;
   const $ = id => document.getElementById(id);
 
   // ── State ──
@@ -162,13 +239,25 @@
   let sim = null;          // live simulation (null = springs rebuilt on next Play)
   let restPose = null;     // model JSON captured when Play first pressed
   let playing = false;
-  let selected = -1;
-  let dragging = false;
+  let selected = -1;       // selected CP
+  let selSpline = -1;      // selected spline (2D view)
+  let dragging = false;    // 3D gizmo drag in progress
   let lastTess = null;
   const params = Object.assign({}, SP.SIM_DEFAULTS);
-  const view = { surface: true, splines: true, cps: true, wire: false, subdiv: 10, color: 'none' };
+  const view = { surface: true, splines: true, cps: true, wire: false, subdiv: 10, color: 'none', layout: 'split' };
 
-  // ── Scene ──
+  // 2D drawing view
+  let plane = SD.PLANES.front;
+  let tool = 'select';
+  let snap = true;
+  const SNAP = 0.25;
+  const cam2d = { cx: 0, cy: 0, scale: 70 };   // world units at the centre, pixels per unit
+  let stroke = null;        // { si } while drawing a spline
+  let cursor2d = null;      // world [a, b] under the pointer
+  let hot = null;           // what the pointer would hit
+  const undoStack = [], redoStack = [];
+
+  // ── 3D scene ──
   const host = $('viewport');
   const renderer = new THREE.WebGLRenderer({ antialias: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -186,6 +275,11 @@
 
   const grid = new THREE.GridHelper(12, 24, 0x1d2733, 0x111a26);
   scene.add(grid);
+  // The 2D view's drawing plane, shown in 3D while drawing.
+  const planeGrid = new THREE.GridHelper(8, 32, 0x1f5f8a, 0x123247);
+  planeGrid.material.transparent = true;
+  planeGrid.material.opacity = 0.5;
+  scene.add(planeGrid);
 
   const surfGeo = new THREE.BufferGeometry();
   const surfMat = new THREE.MeshStandardMaterial({ color: 0x8fb8de, roughness: 0.42, metalness: 0.08, side: THREE.DoubleSide });
@@ -197,6 +291,9 @@
   const splineGeo = new THREE.BufferGeometry();
   const splines = new THREE.LineSegments(splineGeo, new THREE.LineBasicMaterial({ color: 0xffd36b }));
   scene.add(splines);
+  const selSplineGeo = new THREE.BufferGeometry();
+  const selSplineLine = new THREE.LineSegments(selSplineGeo, new THREE.LineBasicMaterial({ color: 0x00aaff }));
+  scene.add(selSplineLine);
 
   const handleGeo = new THREE.BufferGeometry();
   const handles = new THREE.LineSegments(handleGeo, new THREE.LineBasicMaterial({ color: 0xff2fb0 }));
@@ -218,14 +315,13 @@
   gizmo.addEventListener('dragging-changed', e => {
     dragging = e.value;
     orbit.enabled = !e.value;
-    if (!e.value && !playing) invalidateSim();
+    if (e.value) pushUndo();
+    else if (!playing) invalidateSim();
   });
   gizmo.addEventListener('objectChange', () => {
     if (selected < 0) return;
-    const p = cpMeshes[selected].position, pos = [p.x, p.y, p.z];
-    model.cps[selected].pos = pos;
-    if (sim) { sim.anchor[selected] = pos.slice(); sim.vel[selected] = [0, 0, 0]; }
-    if (!playing) rebuild();
+    const p = cpMeshes[selected].position;
+    moveCP(selected, [p.x, p.y, p.z]);
   });
 
   // ── Colour ramp (matches the CSS gradient) ──
@@ -267,17 +363,29 @@
 
     splineGeo.setAttribute('position', new THREE.BufferAttribute(SP.edgeSamples(t.graph, 14), 3));
     splineGeo.computeBoundingSphere();
+    selSplineGeo.setAttribute('position', new THREE.Float32BufferAttribute(selectedSplineSamples(t.graph), 3));
+    selSplineGeo.computeBoundingSphere();
 
     syncCps();
     drawHandles(t.graph);
     updateStats(t);
     $('ramp').style.display = t.values ? 'block' : 'none';
     $('rampMax').textContent = view.color === 'strain' ? '15% stretch' : '3 u/s';
+    draw2D();
   }
 
   function cpRadius() {
     const s = surfGeo.boundingSphere;
-    return s ? Math.max(0.035, s.radius * 0.022) : 0.06;
+    if (s && Number.isFinite(s.radius) && s.radius > 0) return Math.max(0.035, s.radius * 0.022);
+    const ext = modelExtent();
+    return Math.max(0.035, ext * 0.022);
+  }
+
+  function modelExtent() {
+    if (!model.cps.length) return 2;
+    let r = 0;
+    for (const c of model.cps) r = Math.max(r, Math.hypot(...c.pos));
+    return Math.max(1, r);
   }
 
   function syncCps() {
@@ -294,10 +402,30 @@
     });
   }
 
+  // Segment pairs (as consecutive CP ids) of the selected spline.
+  function selectedPairs() {
+    const s = model.splines[selSpline];
+    if (!s) return [];
+    const n = s.cps.length, out = [];
+    for (let k = 0; k < (s.closed ? n : n - 1); k++) out.push([s.cps[k], s.cps[(k + 1) % n]]);
+    return out;
+  }
+
+  function selectedSplineSamples(g) {
+    const pts = [];
+    for (const [a, b] of selectedPairs()) {
+      const bez = SP.edgeBez(g, a, b);
+      if (!bez) continue;
+      let prev = bez[0];
+      for (let i = 1; i <= 14; i++) { const p = SP.evalBez(bez, i / 14); pts.push(...prev, ...p); prev = p; }
+    }
+    return pts;
+  }
+
   // Tangent handles of the selected CP, one per spline segment leaving it.
   function drawHandles(g) {
     const pts = [];
-    if (selected >= 0) {
+    if (selected >= 0 && selected < model.cps.length) {
       const p = model.cps[selected].pos;
       for (const o of g.adj[selected]) {
         const h = SP.edgeBez(g, selected, o)[1];
@@ -332,22 +460,75 @@
       const b = document.createElement('button');
       b.className = 'small';
       b.textContent = on ? 'Remove' : 'Add';
-      b.onclick = () => {
+      b.onclick = () => edit(() => {
         const key = SP.ringKey(ring);
         if (on) model.fivePatches = model.fivePatches.filter(r => SP.ringKey(r) !== key);
         else model.fivePatches.push(ring.slice());
-        invalidateSim();
-        renderCandidates();
-        rebuild();
-      };
+      });
       row.appendChild(b);
       list.appendChild(row);
     });
   }
 
+  // ── Editing: undo, and one entry point for every change to the cage ──
+  function snapshot() { return JSON.stringify(SP.toJSON(model)); }
+  function pushUndo() {
+    undoStack.push(snapshot());
+    if (undoStack.length > 200) undoStack.shift();
+    redoStack.length = 0;
+    syncUndoButtons();
+  }
+  function syncUndoButtons() {
+    $('btnUndo').disabled = !undoStack.length;
+    $('btnRedo').disabled = !redoStack.length;
+  }
+  function restore(json) {
+    model = SP.createModel(JSON.parse(json));
+    stroke = null;
+    afterEdit();
+  }
+  function undo() {
+    if (stroke) finishStroke();
+    if (!undoStack.length) return;
+    redoStack.push(snapshot());
+    restore(undoStack.pop());
+    syncUndoButtons();
+  }
+  function redo() {
+    if (!redoStack.length) return;
+    undoStack.push(snapshot());
+    restore(redoStack.pop());
+    syncUndoButtons();
+  }
+
+  // Topology or rest pose changed: stop the sim and refresh everything.
+  function afterEdit() {
+    if (playing) setPlaying(false);
+    invalidateSim();
+    if (selected >= model.cps.length) selected = -1;
+    if (selSpline >= model.splines.length) selSpline = -1;
+    renderCandidates();
+    select(selected);
+  }
+
+  function edit(fn) {
+    pushUndo();
+    fn();
+    afterEdit();
+  }
+
+  // Move a CP without changing topology (2D drag, 3D gizmo, depth slider).
+  function moveCP(id, pos) {
+    model.cps[id].pos = pos;
+    if (sim) { sim.anchor[id] = pos.slice(); sim.vel[id] = [0, 0, 0]; }
+    if (!playing) rebuild();
+    if (id === selected) syncDepthSlider();
+  }
+
   // ── Selection panel ──
   function select(i) {
     selected = i;
+    rebuild();
     if (i >= 0) gizmo.attach(cpMeshes[i]); else gizmo.detach();
     $('selEmpty').hidden = i >= 0;
     $('selBody').hidden = i < 0;
@@ -358,26 +539,96 @@
       setSlider('bAlpha', b.alpha, v => v + '°');
       setSlider('bGamma', b.gamma, v => v + '°');
       $('selPinned').checked = model.cps[i].pinned;
+      $('btnPeak').textContent = b.mag === 0 ? 'Smooth' : 'Peak';
+      syncDepthSlider();
     }
-    rebuild();
+    syncLiftButtons();
+  }
+
+  function syncDepthSlider() {
+    if (selected < 0) return;
+    const axis = { front: 'Depth z', top: 'Height y', side: 'Depth x' }[plane.key];
+    $('bDepthLabel').textContent = axis;
+    setSlider('bDepth', SD.depthOf(model.cps[selected].pos, plane), v => v.toFixed(2));
   }
 
   function setSlider(id, v, fmt) { $(id).value = v; $(id + 'Out').textContent = fmt(+v); }
   function bindSlider(id, fmt, apply) {
     $(id).addEventListener('input', () => { const v = +$(id).value; $(id + 'Out').textContent = fmt(v); apply(v); });
   }
+  // One undo entry per slider gesture.
+  function undoOnGrab(id) {
+    $(id).addEventListener('pointerdown', pushUndo);
+    $(id).addEventListener('keydown', e => { if (!e.repeat) pushUndo(); });
+  }
 
   bindSlider('bMag', v => v.toFixed(2), v => { if (selected >= 0) { model.cps[selected].bias.mag = v; rebuild(); } });
   bindSlider('bAlpha', v => v + '°', v => { if (selected >= 0) { model.cps[selected].bias.alpha = v; rebuild(); } });
   bindSlider('bGamma', v => v + '°', v => { if (selected >= 0) { model.cps[selected].bias.gamma = v; rebuild(); } });
+  bindSlider('bDepth', v => v.toFixed(2), v => {
+    if (selected < 0) return;
+    const [a, b] = SD.to2D(model.cps[selected].pos, plane);
+    moveCP(selected, SD.from2D(a, b, v, plane));
+  });
+  ['bMag', 'bAlpha', 'bGamma', 'bDepth'].forEach(undoOnGrab);
+  $('bDepth').addEventListener('change', () => { if (!playing) invalidateSim(); });
   $('selPinned').addEventListener('change', () => { if (selected >= 0) togglePin(selected, $('selPinned').checked); });
+  $('btnDeleteCp').onclick = () => deleteSelected();
+  $('btnPeak').onclick = () => togglePeak();
+
+  // A:M's peaked CP: zero tangent magnitude gives a sharp corner; smooth restores it.
+  function togglePeak() {
+    if (selected < 0) return;
+    pushUndo();
+    const b = model.cps[selected].bias;
+    b.mag = b.mag === 0 ? 1 : 0;
+    setSlider('bMag', b.mag, v => v.toFixed(2));
+    $('btnPeak').textContent = b.mag === 0 ? 'Smooth' : 'Peak';
+    rebuild();
+  }
 
   function togglePin(i, on) {
+    pushUndo();
     model.cps[i].pinned = on;
     if (sim) { sim.anchor[i] = model.cps[i].pos.slice(); sim.vel[i] = [0, 0, 0]; }
     if (i === selected) $('selPinned').checked = on;
     rebuild();
   }
+
+  function deleteSelected() {
+    if (selected < 0) return;
+    if (stroke) finishStroke();
+    const id = selected;
+    selected = -1;
+    edit(() => SD.removeCP(model, id));
+  }
+
+  // ── Lift to 3D ──
+  bindSlider('liftInflate', v => v.toFixed(2), () => {});
+  bindSlider('liftExtrude', v => v.toFixed(2), () => {});
+  bindSlider('liftLathe', v => String(v), () => {});
+  function syncLiftButtons() {
+    const hasSpline = selSpline >= 0 && selSpline < model.splines.length;
+    $('btnExtrude').disabled = !hasSpline;
+    $('btnLathe').disabled = !hasSpline;
+    $('liftNote').textContent = hasSpline
+      ? `Spline #${selSpline} selected (${model.splines[selSpline].cps.length} CPs${model.splines[selSpline].closed ? ', closed' : ''}).`
+      : 'Inflate raises everything inside the outline. Lathe spins the spline around the vertical axis of the 2D view.';
+  }
+  $('btnInflate').onclick = () => {
+    if (stroke) finishStroke();
+    edit(() => SD.inflate(model, plane, +$('liftInflate').value));
+  };
+  $('btnExtrude').onclick = () => {
+    if (selSpline < 0) return;
+    if (stroke) finishStroke();
+    edit(() => { selSpline = SD.extrude(model, selSpline, SP.vec.scale(plane.n, +$('liftExtrude').value)); });
+  };
+  $('btnLathe').onclick = () => {
+    if (selSpline < 0) return;
+    if (stroke) finishStroke();
+    edit(() => { SD.lathe(model, selSpline, plane, +$('liftLathe').value, 0); });
+  };
 
   // ── Dynamics controls ──
   const simSliders = [
@@ -397,12 +648,14 @@
 
   function floorY() {
     if (params.floor !== null && params.floor !== undefined) return params.floor;
+    if (!model.cps.length) return -2;
     return Math.min(...model.cps.map(c => c.pos[1])) - 0.6;
   }
 
   function invalidateSim() { sim = null; restPose = null; }
 
   function setPlaying(on) {
+    if (on && stroke) finishStroke();
     if (on && !sim) {
       restPose = SP.toJSON(model);
       sim = SP.createSim(model, params);
@@ -420,8 +673,10 @@
   };
   // Kick the free CPs with a random impulse.
   $('btnPoke').onclick = () => {
+    if (!model.cps.length) return;
     if (!playing) setPlaying(true);
     const targets = selected >= 0 ? [selected] : model.cps.map((_, i) => i).filter(i => !model.cps[i].pinned);
+    if (!targets.length) return;
     const n = selected >= 0 ? 1 : Math.max(1, Math.round(targets.length / 4));
     for (let k = 0; k < n; k++) {
       const i = targets[Math.floor(Math.random() * targets.length)];
@@ -440,29 +695,43 @@
     wire.visible = view.wire;
     splines.visible = view.splines;
     cpGroup.visible = view.cps;
+    planeGrid.visible = tool === 'draw' && view.layout !== '3d';
   }
   bindSlider('subdiv', v => String(v), v => { view.subdiv = v; rebuild(); });
   $('colorMode').addEventListener('change', () => { view.color = $('colorMode').value; rebuild(); });
 
-  // ── Presets / files ──
-  const presetNames = Object.keys(SP.presets);
-  presetNames.forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = SP.presets[n]().name; $('preset').appendChild(o); });
+  function setLayout(l) {
+    view.layout = l;
+    $('stage').dataset.layout = l;
+    $('layoutSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.layout === l));
+    applyVisibility();
+    requestAnimationFrame(() => { resize3D(); draw2D(); });
+  }
+  $('layoutSeg').querySelectorAll('button').forEach(b => { b.onclick = () => setLayout(b.dataset.layout); });
 
-  function loadSpec(spec) {
+  // ── Presets / files ──
+  const PRESETS = Object.assign({ blank: () => ({ name: 'Blank — draw from scratch', cps: [], splines: [] }) }, SP.presets);
+  Object.keys(PRESETS).forEach(n => { const o = document.createElement('option'); o.value = n; o.textContent = PRESETS[n]().name; $('preset').appendChild(o); });
+
+  function loadSpec(spec, keepUndo) {
+    if (!keepUndo && model) pushUndo();
     model = SP.createModel(spec);
     Object.assign(params, SP.SIM_DEFAULTS, spec.sim || {});
     invalidateSim();
     setPlaying(false);
+    stroke = null;
     selected = -1;
+    selSpline = -1;
     gizmo.detach();
     syncSimControls();
     grid.position.y = floorY();
     renderCandidates();
     select(-1);
     frame();
+    fit2D();
   }
-  $('btnLoad').onclick = () => loadSpec(SP.presets[$('preset').value]());
-  $('preset').addEventListener('change', () => loadSpec(SP.presets[$('preset').value]()));
+  $('btnLoad').onclick = () => loadSpec(PRESETS[$('preset').value]());
+  $('preset').addEventListener('change', () => loadSpec(PRESETS[$('preset').value]()));
 
   function download(name, text, type) {
     const a = document.createElement('a');
@@ -489,6 +758,7 @@
     }
     download('spline-patch-model.obj', lines.join('\n'), 'text/plain');
   };
+  $('btnExportSvg').onclick = () => download(`spline-patch-${plane.key}.svg`, SD.exportSvg(model, plane), 'image/svg+xml');
   $('btnImport').onclick = () => $('fileImport').click();
   $('fileImport').addEventListener('change', async e => {
     const f = e.target.files[0];
@@ -503,7 +773,291 @@
     e.target.value = '';
   });
 
-  // ── Picking ──
+  // SVG shapes → path data, so one parser handles everything.
+  function svgShapesToPaths(text) {
+    const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
+    if (doc.querySelector('parsererror')) throw new Error('not valid SVG');
+    const n = (el, a) => parseFloat(el.getAttribute(a)) || 0;
+    const poly = (pts, close) => 'M' + pts.map(p => p.join(' ')).join(' L') + (close ? ' Z' : '');
+    const ellipse = (cx, cy, rx, ry) => poly(Array.from({ length: 8 }, (_, k) => {
+      const a = (k / 8) * 2 * Math.PI;
+      return [cx + rx * Math.cos(a), cy + ry * Math.sin(a)];
+    }), true);
+    const out = [];
+    doc.querySelectorAll('path, polyline, polygon, rect, circle, ellipse, line').forEach(el => {
+      const tag = el.tagName.toLowerCase();
+      if (tag === 'path') out.push(...SD.parseSvgPath(el.getAttribute('d') || '', 2));
+      else if (tag === 'polyline' || tag === 'polygon') {
+        const nums = (el.getAttribute('points') || '').trim().split(/[\s,]+/).map(Number);
+        const pts = [];
+        for (let i = 0; i + 1 < nums.length; i += 2) pts.push([nums[i], nums[i + 1]]);
+        if (pts.length >= 2) out.push(...SD.parseSvgPath(poly(pts, tag === 'polygon')));
+      } else if (tag === 'rect') {
+        const x = n(el, 'x'), y = n(el, 'y'), w = n(el, 'width'), h = n(el, 'height');
+        out.push(...SD.parseSvgPath(poly([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], true)));
+      } else if (tag === 'circle') {
+        out.push(...SD.parseSvgPath(ellipse(n(el, 'cx'), n(el, 'cy'), n(el, 'r'), n(el, 'r'))));
+      } else if (tag === 'ellipse') {
+        out.push(...SD.parseSvgPath(ellipse(n(el, 'cx'), n(el, 'cy'), n(el, 'rx'), n(el, 'ry'))));
+      } else if (tag === 'line') {
+        out.push(...SD.parseSvgPath(poly([[n(el, 'x1'), n(el, 'y1')], [n(el, 'x2'), n(el, 'y2')]], false)));
+      }
+    });
+    return out;
+  }
+  $('btnImportSvg').onclick = () => $('fileSvg').click();
+  $('fileSvg').addEventListener('change', async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    try {
+      const paths = svgShapesToPaths(await f.text());
+      if (!paths.length) throw new Error('no paths or shapes found');
+      if (stroke) finishStroke();
+      edit(() => SD.importSvgPaths(model, paths, plane, 4));
+      frame();
+      fit2D();
+    } catch (err) {
+      alert('Could not import SVG: ' + err.message);
+    }
+    e.target.value = '';
+  });
+
+  // ── 2D drawing view ──
+  const svg = $('svg2d');
+  const svgSize = () => [svg.clientWidth || 1, svg.clientHeight || 1];
+  function toScreen([a, b]) {
+    const [W, H] = svgSize();
+    return [(a - cam2d.cx) * cam2d.scale + W / 2, H / 2 - (b - cam2d.cy) * cam2d.scale];
+  }
+  function toWorld(sx, sy) {
+    const [W, H] = svgSize();
+    return [(sx - W / 2) / cam2d.scale + cam2d.cx, (H / 2 - sy) / cam2d.scale + cam2d.cy];
+  }
+  const snapped = p => (snap ? p.map(x => Math.round(x / SNAP) * SNAP) : p);
+  const f1 = x => x.toFixed(1);
+
+  function fit2D() {
+    if (!model) return;
+    const pts = model.cps.map(c => SD.to2D(c.pos, plane));
+    const [W, H] = svgSize();
+    if (!pts.length) { cam2d.cx = 0; cam2d.cy = 0; cam2d.scale = Math.min(W, H) / 8; draw2D(); return; }
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    cam2d.cx = (minX + maxX) / 2;
+    cam2d.cy = (minY + maxY) / 2;
+    cam2d.scale = Math.max(8, Math.min(400, Math.min(W / Math.max(1, maxX - minX), H / Math.max(1, maxY - minY)) * 0.72));
+    draw2D();
+  }
+
+  function setPlane(key) {
+    plane = SD.PLANES[key];
+    $('planeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.plane === key));
+    $('planeName').textContent = plane.name;
+    // GridHelper lies in XZ (normal +y); turn it to face the plane's normal.
+    planeGrid.rotation.set(0, 0, 0);
+    if (key === 'front') planeGrid.rotation.x = Math.PI / 2;
+    if (key === 'side') planeGrid.rotation.z = Math.PI / 2;
+    syncDepthSlider();
+    fit2D();
+  }
+  $('planeSeg').querySelectorAll('button').forEach(b => { b.onclick = () => setPlane(b.dataset.plane); });
+
+  function setTool(t) {
+    if (t !== 'draw' && stroke) finishStroke();
+    tool = t;
+    $('toolSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+    svg.classList.toggle('draw', t === 'draw');
+    applyVisibility();
+    draw2D();
+  }
+  $('toolSeg').querySelectorAll('button').forEach(b => { b.onclick = () => setTool(b.dataset.tool); });
+  $('snap2d').addEventListener('change', () => { snap = $('snap2d').checked; });
+  $('btnFit2d').onclick = fit2D;
+
+  function draw2D() {
+    if (view.layout === '3d' || !lastTess) return;
+    const [W, H] = svgSize(), parts = [];
+    // Grid: SNAP-spaced minor lines while they are at least 10px apart, unit major lines.
+    const [x0, y1] = toWorld(0, 0), [x1, y0] = toWorld(W, H);
+    const minor = cam2d.scale * SNAP >= 10 ? SNAP : cam2d.scale >= 10 ? 1 : 5;
+    for (let x = Math.ceil(x0 / minor) * minor; x <= x1; x += minor) {
+      const sx = toScreen([x, 0])[0], major = Math.abs(x - Math.round(x)) < 1e-9;
+      parts.push(`<line class="${Math.abs(x) < 1e-9 ? 'axis' : major ? 'gmajor' : 'gminor'}" x1="${f1(sx)}" y1="0" x2="${f1(sx)}" y2="${H}"/>`);
+    }
+    for (let y = Math.ceil(y0 / minor) * minor; y <= y1; y += minor) {
+      const sy = toScreen([0, y])[1], major = Math.abs(y - Math.round(y)) < 1e-9;
+      parts.push(`<line class="${Math.abs(y) < 1e-9 ? 'axis' : major ? 'gmajor' : 'gminor'}" x1="0" y1="${f1(sy)}" x2="${W}" y2="${f1(sy)}"/>`);
+    }
+    const g = lastTess.graph;
+    const P = p => toScreen(SD.to2D(p, plane));
+    const seg = bez => { const [, b, c, d] = bez.map(P); return `C${f1(b[0])} ${f1(b[1])} ${f1(c[0])} ${f1(c[1])} ${f1(d[0])} ${f1(d[1])}`; };
+    for (const p of lastTess.patches) {
+      const s = P(model.cps[p.ring[0]].pos);
+      const body = p.ring.map((a, k) => seg(SP.edgeBez(g, a, p.ring[(k + 1) % p.ring.length]))).join(' ');
+      parts.push(`<path class="patch" d="M${f1(s[0])} ${f1(s[1])} ${body} Z"/>`);
+    }
+    const selKeys = new Set(selectedPairs().map(([a, b]) => SP.edgeKey(a, b)));
+    for (const e of g.edges.values()) {
+      const s = P(e.bez[0]);
+      parts.push(`<path class="edge${selKeys.has(SP.edgeKey(e.a, e.b)) ? ' sel' : ''}" d="M${f1(s[0])} ${f1(s[1])} ${seg(e.bez)}"/>`);
+    }
+    // Stroke preview: last CP of the stroke to the pointer.
+    if (stroke && cursor2d && model.splines[stroke.si]) {
+      const ids = model.splines[stroke.si].cps, a = P(model.cps[ids[ids.length - 1]].pos);
+      const b = hot && hot.type === 'cp' ? P(model.cps[hot.id].pos) : toScreen(hot && hot.type === 'edge' ? hot.at : snapped(cursor2d));
+      parts.push(`<line class="preview" x1="${f1(a[0])}" y1="${f1(a[1])}" x2="${f1(b[0])}" y2="${f1(b[1])}"/>`);
+    }
+    if (tool === 'draw' && hot && hot.type === 'edge') {
+      const h = toScreen(hot.at);
+      parts.push(`<circle class="hot" cx="${f1(h[0])}" cy="${f1(h[1])}" r="6"/>`);
+    }
+    const startId = stroke && model.splines[stroke.si] ? model.splines[stroke.si].cps[0] : -1;
+    if (view.cps) {
+      // Nearer CPs (toward the viewer) drawn last; CPs off the plane drawn faded.
+      const order = model.cps.map((c, i) => i).sort((i, j) => SD.depthOf(model.cps[i].pos, plane) - SD.depthOf(model.cps[j].pos, plane));
+      for (const i of order) {
+        const c = model.cps[i], s = P(c.pos);
+        const cls = ['cp', c.pinned ? 'pin' : '', i === selected ? 'sel' : '', i === startId ? 'start' : '', Math.abs(SD.depthOf(c.pos, plane)) > 1e-6 ? 'lifted' : ''].join(' ');
+        const r = i === selected || (hot && hot.type === 'cp' && hot.id === i) ? 6.5 : 4.8;
+        parts.push(`<circle class="${cls}" cx="${f1(s[0])}" cy="${f1(s[1])}" r="${r}"/>`);
+      }
+    }
+    svg.innerHTML = parts.join('');
+    $('hint2d').innerHTML = tool === 'draw'
+      ? (stroke ? 'Click to add CPs · click the <b>first CP</b> to close · <b>Enter</b> or double-click to finish' : 'Click to place CPs · click a CP to start from it · click a spline to insert a CP there')
+      : 'Click a CP to select · drag to move it in the plane · click a spline to select it · drag empty space to pan · scroll to zoom';
+  }
+
+  // What is under the pointer: a CP (within 9px) or a spline segment (within 6px).
+  function pick2D(sx, sy) {
+    let best = null, bestD = 9;
+    model.cps.forEach((c, i) => {
+      const s = toScreen(SD.to2D(c.pos, plane)), d = Math.hypot(s[0] - sx, s[1] - sy);
+      if (d < bestD || (best && d === bestD && SD.depthOf(c.pos, plane) > SD.depthOf(model.cps[best.id].pos, plane))) { bestD = d; best = { type: 'cp', id: i }; }
+    });
+    if (best || !lastTess) return best;
+    let edge = null, edgeD = 6;
+    const STEPS = 24;
+    for (const e of lastTess.graph.edges.values()) {
+      let prev = toScreen(SD.to2D(e.bez[0], plane));
+      for (let i = 1; i <= STEPS; i++) {
+        const cur = toScreen(SD.to2D(SP.evalBez(e.bez, i / STEPS), plane));
+        const { d, t } = SD.distToSeg2([sx, sy], prev, cur);
+        if (d < edgeD) {
+          edgeD = d;
+          const u = (i - 1 + t) / STEPS;
+          edge = { type: 'edge', a: e.a, b: e.b, spline: e.spline, t: u, at: SD.to2D(SP.evalBez(e.bez, u), plane) };
+        }
+        prev = cur;
+      }
+    }
+    return edge;
+  }
+
+  function pointerXY(e) {
+    const r = svg.getBoundingClientRect();
+    return [e.clientX - r.left, e.clientY - r.top];
+  }
+
+  let gesture = null;   // { kind: 'pan' | 'move', ... }
+  svg.addEventListener('contextmenu', e => e.preventDefault());
+  svg.addEventListener('pointerdown', e => {
+    const [sx, sy] = pointerXY(e);
+    svg.setPointerCapture(e.pointerId);
+    if (e.button === 1 || e.button === 2) { gesture = { kind: 'pan', sx, sy }; svg.classList.add('pan'); return; }
+    if (e.button !== 0) return;
+    const hit = pick2D(sx, sy);
+    if (tool === 'draw') { drawClick(hit, snapped(toWorld(sx, sy))); return; }
+    if (hit && hit.type === 'cp') {
+      selSpline = -1;
+      select(hit.id);
+      gesture = { kind: 'move', id: hit.id, pushed: false };
+    } else if (hit && hit.type === 'edge') {
+      selSpline = hit.spline;
+      select(-1);
+    } else {
+      gesture = { kind: 'pan', sx, sy, clear: true };
+      svg.classList.add('pan');
+    }
+  });
+  svg.addEventListener('pointermove', e => {
+    const [sx, sy] = pointerXY(e);
+    cursor2d = toWorld(sx, sy);
+    if (gesture && gesture.kind === 'pan') {
+      cam2d.cx -= (sx - gesture.sx) / cam2d.scale;
+      cam2d.cy += (sy - gesture.sy) / cam2d.scale;
+      if (Math.hypot(sx - gesture.sx, sy - gesture.sy) > 0) gesture.moved = true;
+      gesture.sx = sx; gesture.sy = sy;
+      draw2D();
+      return;
+    }
+    if (gesture && gesture.kind === 'move') {
+      if (!gesture.pushed) { pushUndo(); gesture.pushed = true; }
+      const c = model.cps[gesture.id], [a, b] = snapped(cursor2d);
+      moveCP(gesture.id, SD.from2D(a, b, SD.depthOf(c.pos, plane), plane));
+      if (playing) draw2D();
+      return;
+    }
+    const h = pick2D(sx, sy);
+    const changed = JSON.stringify(h) !== JSON.stringify(hot);
+    hot = h;
+    if (changed || stroke) draw2D();
+  });
+  svg.addEventListener('pointerup', () => {
+    if (gesture && gesture.kind === 'pan' && gesture.clear && !gesture.moved) { selSpline = -1; select(-1); }
+    if (gesture && gesture.kind === 'move' && gesture.pushed && !playing) invalidateSim();
+    gesture = null;
+    svg.classList.remove('pan');
+  });
+  svg.addEventListener('pointerleave', () => { cursor2d = null; hot = null; draw2D(); });
+  svg.addEventListener('wheel', e => {
+    e.preventDefault();
+    const [sx, sy] = pointerXY(e), before = toWorld(sx, sy);
+    cam2d.scale = Math.max(8, Math.min(600, cam2d.scale * Math.exp(-e.deltaY * 0.0015)));
+    const after = toWorld(sx, sy);
+    cam2d.cx += before[0] - after[0];
+    cam2d.cy += before[1] - after[1];
+    draw2D();
+  }, { passive: false });
+  svg.addEventListener('dblclick', () => { if (stroke) finishStroke(); });
+
+  // Draw tool: each click is one undo step. New CPs go at the depth of the stroke's last CP
+  // (so you can keep drawing on a lifted cage), or on the plane at depth 0.
+  function drawClick(hit, world) {
+    pushUndo();
+    let id;
+    if (hit && hit.type === 'cp') id = hit.id;
+    else if (hit && hit.type === 'edge') id = SD.insertCP(model, hit.a, hit.b, hit.t);
+    else {
+      const prev = stroke && model.splines[stroke.si] ? model.splines[stroke.si].cps.slice(-1)[0] : -1;
+      const depth = prev >= 0 ? SD.depthOf(model.cps[prev].pos, plane) : 0;
+      id = SD.addCP(model, SD.from2D(world[0], world[1], depth, plane));
+    }
+    if (!stroke) {
+      stroke = { si: SD.addSpline(model, [id]) };
+    } else if (SD.appendToSpline(model, stroke.si, id) === 'closed') {
+      finishStroke();
+      return;
+    }
+    selected = id;
+    hot = null;
+    afterEdit();
+  }
+
+  function finishStroke() {
+    if (!stroke) return;
+    const s = model.splines[stroke.si];
+    stroke = null;
+    if (s && s.cps.length < 2) {
+      model.splines.splice(model.splines.indexOf(s), 1);
+      SD.removeOrphans(model);
+      selected = -1;
+      selSpline = -1;
+    }
+    afterEdit();
+  }
+
+  // ── 3D picking ──
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   let downAt = null;
   renderer.domElement.addEventListener('pointerdown', e => { downAt = [e.clientX, e.clientY]; });
@@ -519,6 +1073,7 @@
     select(hit ? hit.object.userData.cp : -1);
   });
 
+  // ── Keyboard ──
   // Hand focus back after clicking a control so the shortcuts below keep working.
   document.addEventListener('click', e => {
     const c = e.target.closest('button, input[type=checkbox]');
@@ -526,40 +1081,57 @@
   });
   window.addEventListener('keydown', e => {
     if (e.target.closest('select, input[type=range], input[type=file]')) return;
+    const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (mod && k === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
+    if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (mod) return;
     if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
-    else if (e.key === 'Escape') select(-1);
-    else if ((e.key === 'p' || e.key === 'P') && selected >= 0) togglePin(selected, !model.cps[selected].pinned);
+    else if (e.key === 'Escape') { if (stroke) finishStroke(); else { selSpline = -1; select(-1); } }
+    else if (e.key === 'Enter') { if (stroke) finishStroke(); }
+    else if (e.key === 'Delete' || e.key === 'Backspace') { e.preventDefault(); deleteSelected(); }
+    else if (k === 'v') setTool('select');
+    else if (k === 'd') setTool('draw');
+    else if (k === '1') setPlane('front');
+    else if (k === '2') setPlane('top');
+    else if (k === '3') setPlane('side');
+    else if (k === 'p' && selected >= 0) togglePin(selected, !model.cps[selected].pinned);
+    else if (k === 'k') togglePeak();
   });
 
   // ── Camera / loop ──
   function frame() {
     surfGeo.computeBoundingSphere();
     const s = surfGeo.boundingSphere;
-    if (!s) return;
-    const d = s.radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
+    const center = s && Number.isFinite(s.radius) && s.radius > 0 ? s.center : new THREE.Vector3();
+    const radius = s && Number.isFinite(s.radius) && s.radius > 0 ? s.radius : modelExtent() * 1.5;
+    const d = radius / Math.sin((camera.fov * Math.PI / 180) / 2) * 1.15;
     const dir = new THREE.Vector3(0.55, 0.42, 0.85).normalize();
-    orbit.target.copy(s.center);
-    camera.position.copy(s.center).addScaledVector(dir, d);
+    orbit.target.copy(center);
+    camera.position.copy(center).addScaledVector(dir, d);
     orbit.update();
   }
 
-  function resize() {
+  function resize3D() {
     const w = host.clientWidth, h = host.clientHeight;
+    if (!w || !h) return;
     renderer.setSize(w, h);
-    camera.aspect = w / Math.max(1, h);
+    camera.aspect = w / h;
     camera.updateProjectionMatrix();
   }
-  new ResizeObserver(resize).observe(host);
+  new ResizeObserver(resize3D).observe(host);
+  new ResizeObserver(() => draw2D()).observe(svg);
 
   const clock = new THREE.Clock();
   function tick() {
     const dt = Math.min(clock.getDelta(), 1 / 30);
     if (playing && sim) {
-      SP.stepSim(model, sim, dt, dragging && selected >= 0 ? new Set([selected]) : null);
+      SP.stepSim(model, sim, dt, dragging && selected >= 0 ? new Set([selected]) : gesture && gesture.kind === 'move' ? new Set([gesture.id]) : null);
       rebuild();
     }
-    orbit.update();
-    renderer.render(scene, camera);
+    if (view.layout !== '2d') {
+      orbit.update();
+      renderer.render(scene, camera);
+    }
     $('hud').innerHTML = sim
       ? `t <b>${sim.t.toFixed(2)}s</b> · kinetic <b>${SP.kineticEnergy(model, sim).toFixed(3)}</b> · springs <b>${sim.springs.length}</b>`
       : `<b>${lastTess ? lastTess.patches.length : 0}</b> patches · edit, then <b>Play</b>`;
@@ -567,9 +1139,11 @@
   }
 
   applyVisibility();
-  resize();
+  resize3D();
+  setPlane('front');
   $('preset').value = 'pebble';
-  loadSpec(SP.presets.pebble());
+  loadSpec(PRESETS.pebble(), true);
+  syncUndoButtons();
   tick();
 })();
 </script>
