@@ -1,0 +1,266 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{conjecture}[theorem]{Target}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\T}{\mathbb{T}}
+\renewcommand{\Re}{\mathrm{Re}}
+
+\title{Navier--Stokes Smoothness as a Balance of Two Relationships:\\
+Framework, Reduction, and the Open Estimate}
+\author{Wilbert Fobbs}
+\date{Working draft}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We formulate the three-dimensional incompressible Navier--Stokes regularity
+problem as a competition between two relationships: the self-interaction of
+the flow, which moves energy across scales, and viscosity, which couples
+neighbouring parcels and drains energy at small scales. Both are made exact
+through a Littlewood--Paley energy budget. We define a scale-dependent
+coupling, the local Reynolds number $\Re_N(t)$, which plays the role the
+running coupling $g$ plays in Yang--Mills, and record the known theorem that
+reduces global regularity to a uniform-in-time bound on the scale beyond
+which viscosity dominates. Every statement in Sections~1--4 is either a
+definition or a cited theorem. Section~5 states the single estimate that is
+not yet proved and that would settle the Clay problem in the regularity
+direction, and Section~6 lists the obstructions any proof of it must pass.
+\end{abstract}
+
+\paragraph{Status convention.}
+Each result is marked \textbf{[Cited]} (a published theorem, with
+reference), \textbf{[Elementary]} (follows in a few lines, proof given), or
+\textbf{[Open]} (not proved). Nothing marked [Open] may be used as a step
+in a proof.
+
+%-----------------------------------------------------------------------
+\section{The problem}
+
+We work on $\T^3 = \R^3/\mathbb{Z}^3$ (Fefferman's statements (B)/(D)) or on
+$\R^3$ (statements (A)/(C)). The equations, with viscosity $\nu>0$, are
+\begin{equation}\label{eq:ns}
+\partial_t u + (u\cdot\nabla)u = -\nabla p + \nu\Delta u,
+\qquad \nabla\cdot u = 0, \qquad u(\cdot,0)=u_0,
+\end{equation}
+with no external force. Statement (A) asks: for every smooth divergence-free
+$u_0$ on $\R^3$ with $|\partial_x^\alpha u_0(x)| \le C_{\alpha K}(1+|x|)^{-K}$,
+there exist smooth $p,u$ on $\R^3\times[0,\infty)$ solving~\eqref{eq:ns}
+with $\int_{\R^3}|u(x,t)|^2\,dx < C$ for all $t\ge 0$. Statement (B) is the
+same on $\T^3$. Statements (C)/(D) ask for a counterexample.
+
+%-----------------------------------------------------------------------
+\section{Scaling: why the problem is hard}
+
+\begin{lemma}[Scaling, Elementary]\label{lem:scaling}
+If $(u,p)$ solves~\eqref{eq:ns} on $\R^3$, so does
+$u_\lambda(x,t)=\lambda u(\lambda x,\lambda^2 t)$,
+$p_\lambda(x,t)=\lambda^2 p(\lambda x,\lambda^2 t)$, for every $\lambda>0$.
+Moreover
+\[
+E(u_\lambda(t)) := \tfrac12\|u_\lambda(t)\|_{L^2}^2
+= \lambda^{-1} E(u(\lambda^2 t)), \qquad
+\|u_\lambda(t)\|_{L^3} = \|u(\lambda^2 t)\|_{L^3}.
+\]
+\end{lemma}
+\begin{proof}
+Each term of~\eqref{eq:ns} acquires the factor $\lambda^3$. For the norms,
+substitute $y=\lambda x$: $\int|\lambda u(\lambda x)|^2dx=\lambda^{2-3}\int|u|^2$,
+and $\int|\lambda u(\lambda x)|^3dx=\lambda^{3-3}\int|u|^3$.
+\end{proof}
+
+A quantity unchanged by the rescaling is called \emph{critical}. The energy
+is \emph{supercritical}: zooming in by $\lambda\to\infty$ makes it small, so
+the energy bound alone cannot prevent concentration at small scales. By
+contrast, the Yang--Mills action in four dimensions is critical. This is the
+structural difference between the two problems.
+
+%-----------------------------------------------------------------------
+\section{What is known}
+
+\begin{theorem}[Leray 1934, Hopf 1951; Cited]
+For every divergence-free $u_0\in L^2$ there is a global weak solution
+satisfying, for all $t\ge0$,
+\[
+\tfrac12\|u(t)\|_{L^2}^2 + \nu\int_0^t\|\nabla u(s)\|_{L^2}^2\,ds
+\le \tfrac12\|u_0\|_{L^2}^2 .
+\]
+\end{theorem}
+
+\begin{theorem}[Fujita--Kato 1964; Cited]
+For $u_0\in\dot H^{1/2}$ there is a unique smooth solution on some
+$[0,T^*)$, and $T^*=\infty$ if $\|u_0\|_{\dot H^{1/2}}\le c\,\nu$ for a
+universal $c>0$.
+\end{theorem}
+
+\begin{theorem}[Beale--Kato--Majda 1984; Cited]
+A smooth solution on $[0,T)$ extends past $T$ if and only if
+$\int_0^T\|\omega(t)\|_{L^\infty}\,dt<\infty$, where $\omega=\nabla\times u$.
+\end{theorem}
+
+\begin{theorem}[Ladyzhenskaya--Prodi--Serrin; Cited]
+If a Leray--Hopf solution satisfies $u\in L^p(0,T;L^q)$ with
+$2/p+3/q=1$, $3<q\le\infty$, it is smooth on $(0,T]$.
+\end{theorem}
+
+\begin{theorem}[Escauriaza--Seregin--\v{S}ver\'ak 2003; Cited]
+If $u\in L^\infty(0,T;L^3(\R^3))$, the solution is smooth on $(0,T]$.
+\end{theorem}
+
+\begin{theorem}[Caffarelli--Kohn--Nirenberg 1982; Cited]
+Suitable weak solutions have a singular set of one-dimensional parabolic
+Hausdorff measure zero.
+\end{theorem}
+
+\begin{theorem}[Constantin--Fefferman 1993; Cited]
+If the vorticity direction $\xi=\omega/|\omega|$ is Lipschitz in space,
+uniformly in time, on the region where $|\omega|$ is large, no blow-up
+occurs.
+\end{theorem}
+
+%-----------------------------------------------------------------------
+\section{The two relationships, made exact}
+
+Fix a Littlewood--Paley decomposition: smooth Fourier multipliers $P_N$
+localising to $|\xi|\sim N$ for dyadic $N=2^k$, and $P_{\le N}=\sum_{M\le N}P_M$.
+
+\begin{proposition}[Scale-by-scale energy budget; Elementary]\label{prop:budget}
+For a smooth solution and each dyadic $N$,
+\begin{equation}\label{eq:budget}
+\frac{d}{dt}\,\tfrac12\|P_{\le N}u\|_{L^2}^2
+\;=\; -\,\Pi_N(t)\;-\;\nu\,\|\nabla P_{\le N}u\|_{L^2}^2,
+\qquad
+\Pi_N := \big\langle P_{\le N}\big((u\cdot\nabla)u\big),\,P_{\le N}u\big\rangle .
+\end{equation}
+\end{proposition}
+\begin{proof}
+Apply $P_{\le N}$ to~\eqref{eq:ns} and pair with $P_{\le N}u$. The pressure
+term vanishes because $P_{\le N}u$ is divergence-free; the viscous term
+gives $-\nu\|\nabla P_{\le N}u\|^2$ after integration by parts.
+\end{proof}
+
+The two terms on the right are the two relationships:
+\begin{itemize}
+\item \textbf{Self-interaction} $\Pi_N$: the flux of energy from scales
+larger than $1/N$ into scales smaller than $1/N$. It is produced only by
+the nonlinear term and conserves total energy
+($\Pi_N\to0$ as $N\to\infty$ for smooth $u$).
+\item \textbf{Viscosity} $\nu\|\nabla P_{\le N}u\|^2$: the coupling between
+neighbouring parcels, which removes energy, and does so most strongly at
+small scales.
+\end{itemize}
+
+\begin{definition}[Local Reynolds number: the running coupling]
+\[
+\Re_N(t) := \frac{\|P_N u(t)\|_{L^\infty}}{\nu N}.
+\]
+\end{definition}
+
+\begin{lemma}[$\Re_N$ is scale-covariant; Elementary]
+With $u_\lambda$ as in Lemma~\ref{lem:scaling},
+$\Re_N[u_\lambda](t)=\Re_{N/\lambda}[u](\lambda^2t)$.
+\end{lemma}
+\begin{proof}
+$\widehat{u_\lambda}(\xi)=\lambda^{-2}\hat u(\xi/\lambda)$, so
+$P_N u_\lambda(x)=\lambda\,(P_{N/\lambda}u)(\lambda x)$ and
+$\|P_Nu_\lambda\|_\infty=\lambda\|P_{N/\lambda}u\|_\infty$; divide by $\nu N$.
+\end{proof}
+
+So $\Re_N$ is the Navier--Stokes analogue of the running coupling $g(\mu)$:
+a dimensionless strength of the self-interaction at scale $1/N$, which
+transforms only by a shift of scale. When $\Re_N\ll1$, viscosity wins at
+that scale; when $\Re_N\gtrsim1$, self-interaction can move energy further
+down.
+
+\begin{definition}[Dissipation wavenumber]
+For a fixed small universal constant $c_0>0$,
+\[
+\Lambda(t) := \min\{N : \Re_{M}(t) < c_0 \text{ for all dyadic } M > N\}.
+\]
+Above $\Lambda(t)$, viscosity dominates every scale.
+\end{definition}
+
+\begin{theorem}[Cheskidov--Shvydkoy; Cited\protect\footnote{Statement to be
+checked line by line against the published version before submission.}]
+\label{thm:cs}
+A Leray--Hopf solution on $[0,T]$ with $\Lambda\in L^\infty(0,T)$ is regular
+on $(0,T]$.
+\end{theorem}
+
+\begin{remark}[Strong and weak coupling]
+Small data (Fujita--Kato) is the regime where $\Re_N<c_0$ at every scale
+from the start; it corresponds to the strong-coupling regime of lattice
+Yang--Mills, where a gap is classical. The open regime is large $\Re_N$ at
+large scales, where one must show the cascade still stops at a finite,
+time-uniform $\Lambda$.
+\end{remark}
+
+%-----------------------------------------------------------------------
+\section{The reduction and the open estimate}
+
+By Theorem~\ref{thm:cs}, statement (B) follows from:
+
+\begin{conjecture}[The open estimate; Open]\label{conj:main}
+For every smooth divergence-free $u_0$ on $\T^3$ and every $T<\infty$ there
+is $N_*<\infty$, depending only on $u_0,\nu,T$, such that $\Lambda(t)\le N_*$
+for all $t\in[0,T]$ along the smooth solution.
+\end{conjecture}
+
+Equivalently: the self-interaction cannot keep $\Re_N\ge c_0$ at
+arbitrarily small scales in finite time. This is the precise form of
+``viscosity wins at small scales.'' Proving it is the whole problem. Any
+argument for it must use information beyond the energy inequality, by
+Lemma~\ref{lem:scaling} and Section~\ref{sec:barriers}.
+
+%-----------------------------------------------------------------------
+\section{Barriers any proof must pass}\label{sec:barriers}
+
+\begin{enumerate}
+\item \textbf{Supercriticality.} Every globally controlled quantity
+(energy, $\int_0^\infty\|\nabla u\|^2$) is supercritical; a proof must
+produce control of a critical or subcritical quantity.
+\item \textbf{Averaged Navier--Stokes (Tao 2016, Cited).} There is a
+modified bilinear term with the same energy identity and the same harmonic
+analysis estimates for which finite-time blow-up occurs. A proof must
+therefore use a property of $(u\cdot\nabla)u$ that the averaged
+nonlinearity does not have: its exact geometric structure (for instance,
+vortex stretching $\omega\cdot\nabla u$ and the alignment of $\omega$ with
+the strain), not only its size and its energy conservation.
+\item \textbf{No variational structure.} Navier--Stokes is not a gradient
+flow $u_t=-\nabla S(u)$, so there is no Gibbs measure $e^{-S}$ and no
+Bakry--\'Emery curvature argument of the kind used for lattice Yang--Mills.
+A ``fifth-time'' lift must first supply the missing structure, for example
+through the Kolmogorov operator of stochastically forced Navier--Stokes,
+whose invariant measures in three dimensions are known only in weak form
+(Flandoli--Gatarek 1995; Da Prato--Debussche 2003).
+\end{enumerate}
+
+%-----------------------------------------------------------------------
+\section*{References}
+\begin{itemize}
+\item J.~T.~Beale, T.~Kato, A.~Majda, Comm. Math. Phys. 94 (1984) 61--66.
+\item L.~Caffarelli, R.~Kohn, L.~Nirenberg, Comm. Pure Appl. Math. 35 (1982) 771--831.
+\item A.~Cheskidov, R.~Shvydkoy, J. Math. Fluid Mech. 16 (2014) 263--273.
+\item P.~Constantin, C.~Fefferman, Indiana Univ. Math. J. 42 (1993) 775--789.
+\item G.~Da Prato, A.~Debussche, J. Math. Pures Appl. 82 (2003) 877--947.
+\item L.~Escauriaza, G.~Seregin, V.~\v{S}ver\'ak, Russian Math. Surveys 58 (2003) 211--250.
+\item C.~Fefferman, \emph{Existence and Smoothness of the Navier--Stokes Equation}, Clay Mathematics Institute.
+\item F.~Flandoli, D.~Gatarek, Probab. Theory Related Fields 102 (1995) 367--391.
+\item H.~Fujita, T.~Kato, Arch. Rational Mech. Anal. 16 (1964) 269--315.
+\item E.~Hopf, Math. Nachr. 4 (1951) 213--231.
+\item J.~Leray, Acta Math. 63 (1934) 193--248.
+\item T.~Tao, J. Amer. Math. Soc. 29 (2016) 601--674.
+\end{itemize}
+
+\end{document}
