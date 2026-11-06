@@ -10,6 +10,7 @@ Versions are archived side by side. A new version never overwrites an old one.
 | v4 | `v4/` | https://claude.ai/artifact/L9kLLUMGoz4RgoaJj3YbXe | WebGL depth-buffer renderer (no libraries): what is in front never depends on the camera. Collision shapes for every part; placing, dragging and editing are refused when parts would collide; weights and racks stop against parts in their way. ExtendX 1.6.3 adds `ExtendX.unwrap()` (a WeakMap from layer frame to instance), replacing the `self` workaround. |
 | v5 | `v5/` | https://claude.ai/artifact/35qTyLbHsJYeVmQG9niVSu | Bevel gears (12 and 20 double-bevels: right-angle meshes where axles cross, spur meshes on parallel axles) and worm gears (1 tooth per turn, friction at the thread: about 1/3 efficient and self-locking). The hand calculation accounts for worm losses and reports a worm driven from its gear side as locked. |
 | v6 | `v6/` | https://claude.ai/artifact/56yL4BBnrPpngaSLFqFk94 | Planetary gear sets (sun / planet: 8/16, 12/12, 16/8, 20/8, 24/8; ring = sun + 2·planet, same tooth size as every gear). Sun on the centre axle, carrier on the next axle along the line, ring held in a pinned housing or free with 48 outside teeth. Willis relation z_s·ω_s + z_r·ω_r = (z_s + z_r)·ω_c in both solver and hand calculation. |
+| v7 | `v7/` | https://claude.ai/artifact/4uDQvoAf9QcJqCPafmaUKC | Differential (case with a 24 or 28 tooth gear outside, two output axles on its line): ω_left + ω_right = 2·ω_case. The hand calculation is rewritten to propagate linear relations from every motor at once, report shafts an open differential leaves to the loads, and give total power when several motors share a train. The animation loop can no longer be stopped by one failed frame. |
 
 ## v2 layout
 
@@ -34,3 +35,7 @@ As v4. `Technic.js` adds `bevel` and `worm` parts, `bevelMesh()` / `wormMesh()` 
 ## v6 layout
 
 As v5. `Technic.js` adds the `planetary` part, its analysis (sun, carrier and ring shafts; housing pinning), the three-term Willis joint, outside-ring meshing, and hand-calculation propagation through three-shaft joints. The page draws each set as moving pieces (ring, sun, carrier, three orbiting planets).
+
+## v7 layout
+
+As v6. `Technic.js` adds the `differential` part, `diffMesh()`, the three-term differential joint, and a rewritten `predict()` (linear propagation over all joints from all motors; `undetermined` shafts; total `power`).
