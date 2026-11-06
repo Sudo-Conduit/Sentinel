@@ -9,6 +9,7 @@ Versions are archived side by side. A new version never overwrites an old one.
 | v3 | `v3/` | https://claude.ai/artifact/VN75FjtxyZJ8RQhcSLyqu2 | Parts point along any axis; Side, Front, Top, Iso and a free orbit camera; a work plane that faces the camera. Parts join the Technic way (pins through lined-up holes, axles through holes, studs between stacked bricks and into the baseplate) and only fixed parts can hold a bearing or a motor. |
 | v4 | `v4/` | https://claude.ai/artifact/L9kLLUMGoz4RgoaJj3YbXe | WebGL depth-buffer renderer (no libraries): what is in front never depends on the camera. Collision shapes for every part; placing, dragging and editing are refused when parts would collide; weights and racks stop against parts in their way. ExtendX 1.6.3 adds `ExtendX.unwrap()` (a WeakMap from layer frame to instance), replacing the `self` workaround. |
 | v5 | `v5/` | https://claude.ai/artifact/35qTyLbHsJYeVmQG9niVSu | Bevel gears (12 and 20 double-bevels: right-angle meshes where axles cross, spur meshes on parallel axles) and worm gears (1 tooth per turn, friction at the thread: about 1/3 efficient and self-locking). The hand calculation accounts for worm losses and reports a worm driven from its gear side as locked. |
+| v6 | `v6/` | https://claude.ai/artifact/56yL4BBnrPpngaSLFqFk94 | Planetary gear sets (sun / planet: 8/16, 12/12, 16/8, 20/8, 24/8; ring = sun + 2·planet, same tooth size as every gear). Sun on the centre axle, carrier on the next axle along the line, ring held in a pinned housing or free with 48 outside teeth. Willis relation z_s·ω_s + z_r·ω_r = (z_s + z_r)·ω_c in both solver and hand calculation. |
 
 ## v2 layout
 
@@ -29,3 +30,7 @@ As v3. `Technic.js` adds `solids()`, `clash()`, `collisionsWith()`, `allCollisio
 ## v5 layout
 
 As v4. `Technic.js` adds `bevel` and `worm` parts, `bevelMesh()` / `wormMesh()` geometry rules, the `WormMesh` mixin (rigid link plus Coulomb friction bounded by the thread force), and two examples. The page adds an Angles row to the parts drawer.
+
+## v6 layout
+
+As v5. `Technic.js` adds the `planetary` part, its analysis (sun, carrier and ring shafts; housing pinning), the three-term Willis joint, outside-ring meshing, and hand-calculation propagation through three-shaft joints. The page draws each set as moving pieces (ring, sun, carrier, three orbiting planets).
