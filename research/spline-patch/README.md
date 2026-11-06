@@ -8,6 +8,7 @@ Versions are archived side by side. A new version never overwrites an old one.
 | v2 | `v2/` | https://claude.ai/artifact/2Mn1J4CxQJaVcdAWHdWfQP | Builder. Beams, bricks, weights, axles, motors, gears (8/16/24/40), racks, pulleys, belts and ropes on a 3D Technic hole grid. Side and isometric are two cameras on one model. |
 | v3 | `v3/` | https://claude.ai/artifact/VN75FjtxyZJ8RQhcSLyqu2 | Parts point along any axis; Side, Front, Top, Iso and a free orbit camera; a work plane that faces the camera. Parts join the Technic way (pins through lined-up holes, axles through holes, studs between stacked bricks and into the baseplate) and only fixed parts can hold a bearing or a motor. |
 | v4 | `v4/` | https://claude.ai/artifact/L9kLLUMGoz4RgoaJj3YbXe | WebGL depth-buffer renderer (no libraries): what is in front never depends on the camera. Collision shapes for every part; placing, dragging and editing are refused when parts would collide; weights and racks stop against parts in their way. ExtendX 1.6.3 adds `ExtendX.unwrap()` (a WeakMap from layer frame to instance), replacing the `self` workaround. |
+| v5 | `v5/` | https://claude.ai/artifact/35qTyLbHsJYeVmQG9niVSu | Bevel gears (12 and 20 double-bevels: right-angle meshes where axles cross, spur meshes on parallel axles) and worm gears (1 tooth per turn, friction at the thread: about 1/3 efficient and self-locking). The hand calculation accounts for worm losses and reports a worm driven from its gear side as locked. |
 
 ## v2 layout
 
@@ -24,3 +25,7 @@ Same shape as v2 (`Technic.js`, `MechanismLab_v3.html`, `ExtendX.js`, `build.js`
 ## v4 layout
 
 As v3. `Technic.js` adds `solids()`, `clash()`, `collisionsWith()`, `allCollisions()` and `freeTravel()`. `ExtendX.js` here is 1.6.3: layer frames are recorded in a WeakMap and `ExtendX.unwrap(frame)` returns the real instance, so code that compares by identity can be handed a layer's `this`.
+
+## v5 layout
+
+As v4. `Technic.js` adds `bevel` and `worm` parts, `bevelMesh()` / `wormMesh()` geometry rules, the `WormMesh` mixin (rigid link plus Coulomb friction bounded by the thread force), and two examples. The page adds an Angles row to the parts drawer.
