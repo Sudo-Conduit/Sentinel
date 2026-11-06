@@ -330,8 +330,22 @@
     }
     if (p.x === undefined) return [];
     const e = extent(p);
-    return [{ k: 'box', lo: [e.x0 + SKIN, e.y0 + SKIN, e.z0 + SKIN], hi: [e.x1 - SKIN, e.y1 - SKIN, e.z1 - SKIN] }];
+    const out = [{ k: 'box', lo: [e.x0 + SKIN, e.y0 + SKIN, e.z0 + SKIN], hi: [e.x1 - SKIN, e.y1 - SKIN, e.z1 - SKIN] }];
+    // Studs are solid too: nothing may sit in them except a part with a hollow underside.
+    for (const c of studs(p)) out.push({ k: 'cyl', c, axis: 'y', r: 0.24, h: 0.09, stud: true });
+    return out;
   }
+  // Stud centres on a brick's top (plates with upward holes carry them between the holes).
+  function studs(p) {
+    if (p.type !== 'brick' || p.free) return [];
+    const top = p.y + p.h - 1 + 0.59, out = [];
+    if (p.holes === 'y') { for (let i = 0; i < p.w - 1; i++) for (let k = 0; k < p.d - 1; k++) out.push([p.x + i + 0.5, top, p.z + k + 0.5]); }
+    else for (let i = 0; i < p.w; i++) for (let k = 0; k < p.d; k++) out.push([p.x + i, top, p.z + k]);
+    return out;
+  }
+  // Bricks, weights and motor housings have hollow undersides that take studs.
+  const takesStuds = p => p.type === 'brick' || p.type === 'motor';
+  const solidsAgainst = (p, other) => solids(p).filter(sd => !(sd.stud && takesStuds(other)));
   function boxOf(sd) {
     if (sd.k === 'box') return sd;
     const lo = [], hi = [];
@@ -419,7 +433,7 @@
       const L = VEC[a.dir], Tn = cross3(VEC[a.axis], L), d = sub3(P3(b), P3(a)), off = Math.abs(dot3(d, Tn)), al = dot3(d, L);
       if (Math.abs(off - (radiusOf(b) + 0.5)) < MESH_TOL && al >= -0.01 && al <= a.len - 0.99) return '';
     }
-    for (const sa of solids(a)) for (const sb of solids(b)) if (shapesHit(sa, sb)) return 'occupy the same space';
+    for (const sa of solidsAgainst(a, b)) for (const sb of solidsAgainst(b, a)) if (shapesHit(sa, sb)) return sa.stud || sb.stud ? 'rub on the studs' : 'occupy the same space';
     return '';
   }
   // Every part that `part` collides with: [{ part, why }].
@@ -464,7 +478,7 @@
     let best = Infinity;
     for (const q of model.parts) {
       if (q === part || (ignore && ignore.has(q))) continue;
-      for (const sd of solids(q)) best = Math.min(best, sweep(b, IDX[axis], sgn, sd));
+      for (const sd of solidsAgainst(q, part)) best = Math.min(best, sweep(b, IDX[axis], sgn, sd));
     }
     return best;
   }
@@ -1192,15 +1206,17 @@
     },
     'worm': {
       title: 'Worm drive',
-      note: 'A worm on the motor’s axle drives a 24-tooth gear lying flat: one turn of the worm moves the gear one tooth (1:24). Friction at the thread costs about two thirds of the power, and the gear cannot turn the worm back.',
+      note: 'A worm on the motor’s axle drives a 24-tooth gear lying flat: one turn of the worm moves the gear one tooth (1:24). Both sit two levels up, clear of the plate’s studs; the worm’s axle runs in the upper brick row, the gear’s down into a hole in the plate. Friction at the thread costs about two thirds of the power, and the gear cannot turn the worm back.',
       model: () => build(add => {
         add({ type: 'brick', x: 0, y: 0, z: 0, w: 9, h: 1, d: 5, holes: 'y' });
         add({ type: 'brick', x: 0, y: 1, z: 0, w: 9, h: 1, d: 1, holes: 'z' });
-        add({ type: 'axle', x: 2, y: 1, z: -1, len: 5, axis: 'z' });
-        add({ type: 'motor', x: 2, y: 1, z: -1, axis: 'z', rpm: 120, torque: 0.1 });
-        add({ type: 'worm', x: 2, y: 1, z: 3, axis: 'z' });
+        // A second row lifts the worm's axle so the worm clears the plate's studs.
+        add({ type: 'brick', x: 0, y: 2, z: 0, w: 9, h: 1, d: 1, holes: 'z' });
+        add({ type: 'axle', x: 2, y: 2, z: -1, len: 5, axis: 'z' });
+        add({ type: 'motor', x: 2, y: 2, z: -1, axis: 'z', rpm: 120, torque: 0.1 });
+        add({ type: 'worm', x: 2, y: 2, z: 3, axis: 'z' });
         add({ type: 'axle', x: 4, y: 0, z: 3, len: 3, axis: 'y' });
-        add({ type: 'gear', x: 4, y: 1, z: 3, axis: 'y', teeth: 24 });
+        add({ type: 'gear', x: 4, y: 2, z: 3, axis: 'y', teeth: 24 });
       }),
     },
     'jam': {
@@ -1228,6 +1244,6 @@
     emptyModel, addPart, removePart, byId, axleAt, normalize, migrate,
     radiusOf, extent, cells, holes, label, isWheel, isWeight, isStructure, isConnector, lineKey, planeAngle,
     connections, autoPins, analyze, solids, clash, collisionsWith, allCollisions, freeTravel, compile, predict, record, measure, solveRows,
-    PRESETS, BEVELS, WORM, WORM_EFF, bevelMesh, wormMesh, isToothed, isDisc,
+    PRESETS, studs, BEVELS, WORM, WORM_EFF, bevelMesh, wormMesh, isToothed, isDisc,
   };
 }));

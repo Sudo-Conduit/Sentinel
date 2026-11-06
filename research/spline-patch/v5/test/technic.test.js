@@ -111,6 +111,15 @@ for (const [key, P] of Object.entries(T.PRESETS)) {
   const mc = T.compile(m), r = mc.dofs.find(d => d.kind === 'slider');
   ok(Math.abs(r.qmin / T.U + 1) < 0.05, `a brick in the rack's path limits its travel (qmin ${(r.qmin / T.U).toFixed(3)} holes)`);
 }
+// Studs are solid: a worm sitting on the plate rubs on them; a brick stacked on them does not.
+{
+  const m = T.emptyModel();
+  const plate = T.addPart(m, { type: 'brick', x: 0, y: 0, z: 0, w: 9, h: 1, d: 5, holes: 'y' });
+  const w = T.addPart(m, { type: 'worm', x: 2, y: 1, z: 3, axis: 'z' });
+  ok(T.collisionsWith(m, w).some(c => c.part === plate && /stud/.test(c.why)), 'a worm one level above the plate rubs on its studs');
+  const b = T.addPart(m, { type: 'brick', x: 0, y: 1, z: 0, w: 4, h: 1, d: 1, holes: 'z' });
+  ok(!T.collisionsWith(m, b).length, 'a brick on the plate sits over its studs');
+}
 // Bevel and worm (v5).
 {
   const m = T.PRESETS.bevel.model(), c = T.compile(m);
