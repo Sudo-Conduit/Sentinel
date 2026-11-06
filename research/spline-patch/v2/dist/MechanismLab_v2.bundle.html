@@ -1,0 +1,3946 @@
+<title>Mechanism Lab v2</title>
+<!-- Mechanism Lab v2, bundled from research/spline-patch/v2/MechanismLab_v2.html (sha256 82573175c740c7462f8ecd8e807c34fcdebab43d087e75e55f3123ca3aebdb31).
+     2 files inlined, listed with their sha256 below; scripts load from nothing outside this file.
+     5f4c2835308774ed7581d8549a8a57b9d52139262e27c3e669cd6d32cd52ed0c  research/spline-patch/v2/ExtendX.js
+     02665186297872d412a4a0ea2f14d7981f973c37dab216ea426b9beb1ee8a82d  research/spline-patch/v2/Technic.js
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: a workbench. The parts drawer, the selected part and the checks sit in a left
+     rail; the build plate fills the rest, with run and camera controls along its top edge. */
+  :root{
+    --bg:#e9edf1; --surface:#f8fafb; --surface-2:#eef2f5; --line:#d3dae1;
+    --ink:#18212b; --ink-muted:#5b6876; --accent:#0b6bcb; --accent-ink:#ffffff;
+    --ok:#1d8656; --warn:#a86a12; --bad:#c2352a;
+    --plate:#dfe5ea; --grid:#b4bfc9;
+    --beam:#a3acb4; --beam-edge:#6d7780; --hole:#4b545c;
+    --gear:#c3c8cc; --gear-edge:#79828a; --axle:#2b3036;
+    --pulley:#d4d8db; --motor:#3b4249; --motor-hub:#e07b2e;
+    --weight:#f0c02f; --weight-edge:#9b7a12; --brick:#8f9aa4;
+    --belt:#b2382c; --rope:#9a8a64; --rack:#868f97;
+    --font-display:'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+    --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1318; --surface:#141b22; --surface-2:#1a232c; --line:#283440;
+      --ink:#e4eaf0; --ink-muted:#8d9aa8; --accent:#4ea3f5; --accent-ink:#06121e;
+      --ok:#45c08a; --warn:#e2a54a; --bad:#f06a5e;
+      --plate:#121920; --grid:#2c3946;
+      --beam:#8f99a2; --beam-edge:#5a636b; --hole:#2d343a;
+      --gear:#aab1b7; --gear-edge:#646d75; --axle:#0b0e11;
+      --pulley:#bcc3c8; --motor:#4a535c; --motor-hub:#ef8a3b;
+      --weight:#e8b81f; --weight-edge:#8a6b0b; --brick:#76818b;
+      --belt:#d2493b; --rope:#c2b083; --rack:#77818a;
+      color-scheme:dark;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1318; --surface:#141b22; --surface-2:#1a232c; --line:#283440;
+    --ink:#e4eaf0; --ink-muted:#8d9aa8; --accent:#4ea3f5; --accent-ink:#06121e;
+    --ok:#45c08a; --warn:#e2a54a; --bad:#f06a5e;
+    --plate:#121920; --grid:#2c3946;
+    --beam:#8f99a2; --beam-edge:#5a636b; --hole:#2d343a;
+    --gear:#aab1b7; --gear-edge:#646d75; --axle:#0b0e11;
+    --pulley:#bcc3c8; --motor:#4a535c; --motor-hub:#ef8a3b;
+    --weight:#e8b81f; --weight-edge:#8a6b0b; --brick:#76818b;
+    --belt:#d2493b; --rope:#c2b083; --rack:#77818a;
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:var(--font-body); font-size:14px; overflow:hidden;}
+  .app{display:grid; grid-template-columns:348px minmax(0,1fr); height:100%;}
+
+  /* Rail */
+  .rail{background:var(--surface); border-right:1px solid var(--line); overflow-y:auto; padding-block:18px 28px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:16px; display:flex; flex-direction:column; gap:14px;}
+  .brand .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 4px;}
+  .brand h1{font-family:var(--font-display); font-weight:600; font-size:24px; line-height:1.05; margin:0 0 6px; text-wrap:balance;}
+  .brand h1 span{font-family:var(--font-mono); font-weight:500; font-size:13px; color:var(--ink-muted); vertical-align:3px; margin-left:4px;}
+  .brand p{font-size:13px; line-height:1.5; color:var(--ink-muted); margin:0;}
+  section{border-top:1px solid var(--line); padding-top:12px; display:flex; flex-direction:column; gap:8px; min-width:0;}
+  h2{font-family:var(--font-mono); font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-muted); margin:0; display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
+  h2 small{font-size:11px; letter-spacing:0; text-transform:none; color:var(--ink-muted);}
+  .muted{color:var(--ink-muted); font-size:12px; line-height:1.5; margin:0;}
+
+  button, select, input{font:inherit;}
+  button{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:6px 9px; cursor:pointer; line-height:1.2;}
+  button:hover{border-color:var(--accent);}
+  button:focus-visible, select:focus-visible, input:focus-visible{outline:2px solid var(--accent); outline-offset:1px;}
+  button.on{background:var(--accent); border-color:var(--accent); color:var(--accent-ink);}
+  button.primary{border-color:var(--accent); color:var(--accent);}
+  select, input[type=number], input[type=text]{font-family:var(--font-mono); font-size:12px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:5px; padding:5px 6px; min-width:0;}
+  input[type=checkbox]{accent-color:var(--accent);}
+  .row{display:flex; flex-wrap:wrap; gap:6px; align-items:center;}
+
+  /* Parts drawer */
+  .drawer{display:grid; grid-template-columns:64px minmax(0,1fr); gap:6px 8px; align-items:center;}
+  .drawer .g{font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); text-transform:uppercase; letter-spacing:.08em;}
+  .drawer .row button{min-width:40px;}
+  .opts{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); gap:6px 10px; background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:8px 10px;}
+  .opts:empty{display:none;}
+  .field{display:grid; grid-template-columns:auto minmax(0,1fr); gap:6px; align-items:center; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted);}
+  .field input, .field select{width:100%;}
+  .field.check{grid-template-columns:auto 1fr;}
+
+  /* Inspector */
+  .insp{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:6px 10px;}
+  .insp .wide{grid-column:1 / -1;}
+
+  /* Check */
+  .tablewrap{overflow-x:auto;}
+  table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11.5px; font-variant-numeric:tabular-nums;}
+  th{color:var(--ink-muted); font-weight:400; text-align:right; padding:4px 0 4px 6px; border-bottom:1px solid var(--line); white-space:nowrap;}
+  td{padding:5px 0 5px 6px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap;}
+  th:first-child, td:first-child{text-align:left; padding-left:0; white-space:normal;}
+  td small{color:var(--ink-muted);}
+  td.good{color:var(--ok);} td.bad{color:var(--bad);}
+  tr.sel td{background:color-mix(in srgb, var(--accent) 10%, transparent);}
+  .chips{display:flex; flex-direction:column; gap:6px;}
+  .chip{display:flex; gap:8px; align-items:flex-start; font-size:12px; line-height:1.45; padding:6px 8px; border-radius:6px; border:1px solid var(--line); background:var(--surface-2);}
+  .chip b{font-family:var(--font-mono); font-weight:500; font-size:11px; letter-spacing:.06em; text-transform:uppercase; padding:1px 6px; border-radius:4px; flex:none; margin-top:1px;}
+  .chip.ok b{background:color-mix(in srgb, var(--ok) 18%, transparent); color:var(--ok);}
+  .chip.warn b{background:color-mix(in srgb, var(--warn) 20%, transparent); color:var(--warn);}
+  .chip.bad b{background:color-mix(in srgb, var(--bad) 18%, transparent); color:var(--bad);}
+  .chip.issue{cursor:pointer;}
+  .formula{font-family:var(--font-mono); font-size:11px; line-height:1.6; color:var(--ink-muted); margin:0;}
+  .power{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); display:grid; grid-template-columns:1fr auto; gap:2px 10px; font-variant-numeric:tabular-nums;}
+  .power span:nth-child(even){color:var(--ink); text-align:right;}
+
+  /* Composition */
+  details.obj{border:1px solid var(--line); border-radius:6px; background:var(--surface-2);}
+  details.obj summary{cursor:pointer; padding:6px 9px; font-family:var(--font-mono); font-size:12px; display:flex; justify-content:space-between; gap:8px; list-style:none;}
+  details.obj summary::-webkit-details-marker{display:none;}
+  details.obj summary span:last-child{color:var(--ink-muted);}
+  details.obj[open] summary{border-bottom:1px solid var(--line);}
+  details.obj .body{padding:6px 9px 8px; display:flex; flex-direction:column; gap:6px;}
+  details.obj label{display:inline-flex; gap:5px; align-items:center; font-family:var(--font-mono); font-size:11.5px; margin-right:12px;}
+  details.obj pre{margin:0; font-family:var(--font-mono); font-size:10.5px; line-height:1.5; color:var(--ink-muted); white-space:pre-wrap; word-break:break-word;}
+  .complist{display:flex; flex-direction:column; gap:6px;}
+  textarea{width:100%; min-height:90px; font-family:var(--font-mono); font-size:11px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:5px; padding:6px;}
+
+  /* Stage */
+  .stage{position:relative; min-width:0; min-height:0; background:var(--plate);}
+  canvas{display:block; width:100%; height:100%; touch-action:none;}
+  .bar{position:absolute; top:10px; left:12px; right:12px; display:flex; flex-wrap:wrap; gap:8px; align-items:center; pointer-events:none;}
+  .bar > *{pointer-events:auto;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:6px; overflow:hidden; background:var(--surface);}
+  .seg button{border:none; border-radius:0; background:transparent;}
+  .seg button + button{border-left:1px solid var(--line);}
+  .seg button.on{background:var(--accent); color:var(--accent-ink);}
+  .seg .lbl{font-family:var(--font-mono); font-size:12px; padding:6px 9px; color:var(--ink-muted); border-left:1px solid var(--line); border-right:1px solid var(--line); min-width:74px; text-align:center; font-variant-numeric:tabular-nums;}
+  .seg select{border:none; border-left:1px solid var(--line); border-radius:0; background:transparent;}
+  .hud{position:absolute; left:12px; bottom:10px; right:12px; display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 16px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); pointer-events:none; font-variant-numeric:tabular-nums;}
+  .hud b{color:var(--ink); font-weight:500;}
+  .toast{position:absolute; left:50%; top:54px; transform:translateX(-50%); background:var(--surface); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font-size:12.5px; max-width:min(90%, 460px); text-align:center; pointer-events:none;}
+
+  @media (max-width:780px){
+    body{overflow:auto;}
+    .app{grid-template-columns:1fr; grid-template-rows:62vh auto; height:auto;}
+    .stage{order:1; height:62vh;}
+    .rail{order:2; border-right:none; border-top:1px solid var(--line); padding-right:max(16px, env(safe-area-inset-right, 0px));}
+  }
+  @media (prefers-reduced-motion: reduce){ *{scroll-behavior:auto;} }
+</style>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <p class="eyebrow">Research · Mechanisms</p>
+      <h1>Mechanism Lab <span>v2</span></h1>
+      <p>Build a machine from beams, axles, gears, pulleys, belts and ropes on a Technic hole grid, run it, and check it against the hand calculation. Side and isometric are two views of the same 3D build.</p>
+    </div>
+
+    <section>
+      <h2>Examples</h2>
+      <div class="row">
+        <select id="preset" aria-label="Example machine"></select>
+        <button id="btnLoadPreset" class="primary">Load</button>
+        <button id="btnClear">Clear</button>
+      </div>
+      <p class="muted" id="presetNote"></p>
+    </section>
+
+    <section>
+      <h2>Parts <small id="toolHint"></small></h2>
+      <div class="drawer" id="drawer"></div>
+      <div class="opts" id="toolOpts"></div>
+    </section>
+
+    <section id="inspSection">
+      <h2>Selected <small id="inspTitle">nothing</small></h2>
+      <div class="insp" id="insp"><p class="muted wide">Click a part with Select to edit it. Delete removes it.</p></div>
+    </section>
+
+    <section>
+      <h2>Hand calculation vs simulation</h2>
+      <div class="chips" id="motors"></div>
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>part</th><th>by hand</th><th>simulated</th><th>error</th></tr></thead>
+          <tbody id="results"></tbody>
+        </table>
+      </div>
+      <div class="power" id="power"></div>
+      <p class="formula">mesh ω₂ = −(z₁/z₂)·ω₁ · belt ω₂ = ±(r₁/r₂)·ω₁ · rack and rope v = r·ω · motor torque from τ·ω = Σ m·g·v + Σ τf·|ω|</p>
+      <div class="chips" id="issues"></div>
+    </section>
+
+    <section>
+      <h2>Composition</h2>
+      <p class="muted">Each moving part is a base class composed with ExtendX layers. Untick a layer to switch it off on the live machine. The chains show what runs for each hook.</p>
+      <div class="complist" id="comp"></div>
+    </section>
+
+    <section>
+      <h2>Model file</h2>
+      <p class="muted">Your build is saved in this browser. Copy the JSON to keep it elsewhere, or paste one in and load it.</p>
+      <textarea id="json" spellcheck="false" aria-label="Model JSON"></textarea>
+      <div class="row">
+        <button id="btnCopy">Copy JSON</button>
+        <button id="btnImport">Load from text</button>
+      </div>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="cv" aria-label="Build plate"></canvas>
+    <div class="bar">
+      <div class="seg">
+        <button id="btnPlay" class="primary" title="Space">▶ Run</button>
+        <button id="btnReset" title="R">Reset</button>
+        <select id="speed" aria-label="Simulation speed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+      </div>
+      <div class="seg" role="group" aria-label="View">
+        <button id="viewSide" class="on" title="V">Side</button>
+        <button id="viewIso" title="V">Isometric</button>
+      </div>
+      <div class="seg" role="group" aria-label="Layer">
+        <button id="layerBack" title="[">−</button>
+        <span class="lbl" id="layerLbl">layer 2</span>
+        <button id="layerFwd" title="]">+</button>
+      </div>
+      <div class="seg"><button id="btnFit" title="F">Fit</button></div>
+    </div>
+    <div class="toast" id="toast" hidden></div>
+    <div class="hud"><span id="hudL"></span><span id="hudR"></span></div>
+  </main>
+</div>
+
+<script>/* research/spline-patch/v2/ExtendX.js · sha256 5f4c2835308774ed7581d8549a8a57b9d52139262e27c3e669cd6d32cd52ed0c */
+/**
+ * @file ExtendX.js
+ * @author Wilbert Fobbs III
+ * @company Pooled Impact
+ * @version 1.6.2
+ * @license Proprietary — All Rights Reserved
+ * @description MountainShift OS Runtime Composition Engine.
+ *
+ *   v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
+ *   v1.2.0  mixin.locked (composition-time toggle refusal, fixing the
+ *           enableLayer/disableLayer self-lockout deadlock), the
+ *           _resolvePipeline locked-survives-global-override fix (a
+ *           disposed instance's locked mixins keep enforcing instead of
+ *           silently falling through), and always-wrapped dispose()/
+ *           disposeAsync() (previously conditional in a way that made
+ *           mixin dispose hooks dead for every BaseClassX subclass).
+ *   v1.3.0  Docblock/static-metadata retrofit: static get name/description/
+ *           docs/tests alongside the existing author/company/version
+ *           getters, full Allman brace style, JSDoc on every method --
+ *           no behavior change, but a real additive surface (the new
+ *           getters), not a no-op worth reusing v1.2.0's number for.
+ *   v1.4.0  Stacking fix (found ahead of E.1's closure factory, no current
+ *           production call site hits this shape yet): ExtendX.extend()
+ *           called on top of an ALREADY-composed class used to silently
+ *           drop the OUTER layer entirely -- the Subclass constructor
+ *           called Reflect.construct(BaseClass, args, Subclass) with its
+ *           own closed-over Subclass instead of new.target, so a nested
+ *           Reflect.construct(Inner, args, Outer) never actually reached
+ *           Outer.prototype; confirmed live (instance.world === undefined,
+ *           instance instanceof Outer === false) before the fix. Now
+ *           forwards new.target (falling back to Subclass for an
+ *           ordinary, non-nested construction, where they're the same
+ *           value anyway). A SEPARATE, related dispose()-chain gap was
+ *           found alongside this one and is NOT fixed here -- stacked
+ *           dispose() only runs the outermost layer's mixin hooks, since
+ *           every layer's wrapper calls the same shared
+ *           ExtendX.prototype.dispose(), which always reads
+ *           this.constructor._rawMixins (always the outermost class) and
+ *           short-circuits on its own idempotency guard before an inner
+ *           layer's chained call can do anything. Documented and proven
+ *           as a known gap in test/ExtendX.stacking.test.js pending a
+ *           deliberate fix design (splitting the once-only bookkeeping
+ *           from each layer's own mixin-hook run, tracked per-mixinId
+ *           rather than by a single global disposed flag).
+ *   v1.5.0  Fixed the v1.4.0 dispose-chain gap: split the single conflated
+ *           ExtendX.prototype.dispose()/disposeAsync() into
+ *           finalizeDisposeBookkeeping() (the once-only DISPOSED-flag/
+ *           loop-teardown/mask-collapse/finalizer-unregister state, safe
+ *           to call from every stacked layer's wrapper) and
+ *           runLayerDisposeHooks()/runLayerDisposeHooksAsync() (each
+ *           layer's OWN closed-over mixins list, deduped per mixinId in a
+ *           new RAN_DISPOSE_HOOKS side table rather than gated by the
+ *           single whole-instance DISPOSED flag). The Subclass
+ *           constructor's dispose/disposeAsync wrappers now call these
+ *           helpers directly with THIS extend() call's own `mixins`
+ *           array, instead of the shared this.constructor._rawMixins
+ *           lookup that could only ever see the outermost stacked layer.
+ *           Confirmed live at two and three layers deep, sync and async,
+ *           plus repeat-call idempotency (a second top-level dispose()
+ *           does not re-run any hook) -- test/ExtendX.stacking.test.js
+ *           updated from documenting the known gap to asserting the fix.
+ *   v1.6.0  Third stacking bug, found by direct code review (not testing):
+ *           installWrappers()'s `Subclass._wrapped || (Subclass._wrapped =
+ *           new Set())` did not check for an OWN property. extend() sets
+ *           Object.setPrototypeOf(Subclass, BaseClass), so a stacked
+ *           Outer's `_wrapped` lookup silently resolved up the STATIC
+ *           prototype chain to Inner's already-populated Set the first
+ *           time installWrappers(Outer) ran. Any method name Inner already
+ *           wrapped was then treated as "already installed" for Outer too
+ *           -- Outer never got its OWN dispatcher for that name on
+ *           Outer.prototype, so a call fell straight through the
+ *           prototype chain to INNER's dispatcher, running ONLY Inner's
+ *           chain. Confirmed live and security-relevant: a SecurityMixin
+ *           composed as the OUTER layer over an inner layer sharing a
+ *           guarded method name never actually enforced -- the guarded
+ *           call reached the inner, unguarded implementation directly --
+ *           while mixins()/activeMixins() (reading _rawMixins/
+ *           _resolvePipeline, not _wrapped) still reported the security
+ *           mixin as active, since the two mechanisms don't agree with
+ *           each other at all. Fixed by checking
+ *           Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+ *           instead of bare truthiness, so every Subclass gets its own
+ *           independent Set. test/ExtendX.stacking.test.js gained four
+ *           checks proving the fix (own-Set identity, the outer layer's
+ *           own dispatcher existing, the guard actually enforcing, and
+ *           correct this.super delegation once armed).
+ *   v1.6.1  Ported back from research/lib/chain/ExtendX.js, where it was
+ *           released as v1.5.1 on a fork of this file. tokenFor() built the
+ *           binary literal as '0b' + <reversed bit string>, so the
+ *           just-disabled bit -- always the array's last/highest-index
+ *           element, since disableLayer() never appends past it -- became
+ *           the literal's FIRST character, where a zero is numerically
+ *           invisible: BigInt('0b0111') === BigInt('0b111'). Disabling the
+ *           currently-highest-bitIndex mixin therefore produced the SAME
+ *           token as the all-enabled case, and both PIPELINE_CACHE and
+ *           METHOD_CACHE are keyed by that token -- so a stale, all-enabled
+ *           chain silently served a genuinely-disabled configuration.
+ *           Reproduces deterministically whenever reindex() (global,
+ *           alphabetical, re-run on every extend()) lands an existing
+ *           class's mixin at the new highest bit position. Fixed by
+ *           prefixing a sentinel '1', fixing the literal's length in place.
+ *
+ *           Note on the fork this came from: that file's v1.5.2 and this
+ *           file's v1.6.0 are the SAME defect -- installWrappers() reading
+ *           Subclass._wrapped before checking ownership -- found and fixed
+ *           twice independently, both traced to a SecurityMixin report,
+ *           both landing on the identical hasOwnProperty check. Two version
+ *           numbers, one fix. v1.5.1 was the only change that had no
+ *           counterpart here, which is why this is the only port.
+ *   v1.6.2  Nested composition made whole (test/ExtendX.nesting-defects.test.js,
+ *           red since a83a2fd, now green; test/ExtendX.nesting.test.js adds
+ *           depth, provider-tier and reindex cases):
+ *           D1  extend() over a composed class dropped the inner class's
+ *               last layer. The outer chain called the inner dispatcher
+ *               like a plain method, appending its own `next`; the inner
+ *               layers read that trailing argument as THEIR next, which led
+ *               back out of the inner chain. Dispatchers are now marked
+ *               (IS_DISPATCHER) and called on the real instance with the
+ *               arguments only.
+ *           D2  _defaultMaskState set every bit up to the registry's end, so
+ *               a class claimed mixins it never had and evaluateSetRelation()
+ *               called disjoint compositions SUBSET. A class mask now sets
+ *               only the bits it owns (its mixins plus its base's), and
+ *               evaluateSetRelation() reads owned layers that are on.
+ *               Owning-only masks are safe only if bits stay put, so
+ *               reindex() now remaps every live mask (classes and
+ *               instances) when it moves positions. That also fixes a
+ *               latent defect: a disabled bit used to become the bit of
+ *               whichever mixin slid into its position.
+ *           D3  removeMixin() deregistered without invalidating either memo,
+ *               so the removed layer kept dispatching until unrelated
+ *               registry activity happened to move the key. It now bumps
+ *               REGISTRY_GENERATION and drops the class's ownership bit.
+ *           Also: bitOf() reads a mixin's bit through the registry by id,
+ *           so the object a class was composed with keeps toggling the
+ *           right bit after override() and a later reindex().
+ *
+ *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
+ *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
+ *   top of any constructor -- a plain ES class, a function, a third-party base --
+ *   so composition is available in contexts where BaseClassX is not an option.
+ *
+ *   Provides:
+ *   - extend(): ordered, runtime-toggleable mixin composition over any base
+ *   - async-capable middleware chain dispatch (this.super.m() / next())
+ *   - per-instance bitmask layer toggling (enableLayer / disableLayer)
+ *   - deliberate mixinId override as a hot-swap across composed classes
+ *   - chain discovery (mixins(prop) / activeMixins() / explain(prop))
+ *   - Von Neumann relational set inspection over layer masks
+ *   - Base36 cache-token generation for a pipeline configuration
+ *
+ *   Chain dispatch notes:
+ *     * each layer runs on a frame-local `this` (own `super`), so awaiting
+ *       layers cannot clobber each other's super binding;
+ *     * the cursor is an index passed down, never a destructive pop, so a layer
+ *       may call down more than once (parallel fan-out);
+ *     * adaptive -- sync chains stay sync, a thenable anywhere makes the chain
+ *       thenable from that point outward;
+ *     * `next` is passed as a trailing argument for (req, res, next) middleware.
+ *
+ *   ExtendX carries the composition surface only. BaseClassX keeps trace, schema,
+ *   events, graph linking, and disposal; where both are present BaseClassX may
+ *   delegate composition here rather than reimplementing it.
+ * @tests test/run-all.js
+ */
+(function(root, factory)
+{
+    if (typeof define === 'function' && define.amd)
+    {
+        define([], factory);
+    }
+    else if (typeof module === 'object' && module.exports)
+    {
+        module.exports = factory();
+    }
+    else
+    {
+        root.ExtendX = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function()
+{
+
+    'use strict';
+
+    // ─── Private State ──────────────────────────────────────────
+    // Not exposed. Lives in the closure.
+
+    const AUTHOR = 'Wilbert Fobbs III';
+    const COMPANY = 'Pooled Impact';
+    const VERSION = '1.6.2';
+    const NAME = 'ExtendX';
+    const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
+    const DOCS = [];
+    const TESTS = ['test/run-all.js'];
+
+    // Mask/loop/dispose/pending-init state is keyed by a small internal id,
+    // NOT by object identity.
+    //
+    // Writing _maskState (or `super`) onto the instance makes ExtendX invasive,
+    // and a strict base's Proxy `set` trap (`if (prop in target || schemaApproved)`)
+    // rejects plain assignment of anything new. Object.defineProperty bypasses
+    // that trap (proven elsewhere in this file -- enableLayer/mixins/etc. are
+    // attached the same way), so each instance gets ONE small non-enumerable
+    // `_extId` string via defineProperty; every side table below is a plain
+    // string-keyed Map on that id, not an object-keyed WeakMap. Cheaper (plain
+    // hash lookup, no ephemeron bookkeeping) and fully TS/PHP-portable -- the
+    // cost is no automatic GC-driven cleanup, which FINALIZER (below) exists
+    // to backstop.
+    const MASKS = new Map();
+
+    let __idCounter = 0;
+    // Timestamp-prefixed: shrinks the collision surface versus a bare random
+    // suffix, AND gives every id a natural chronological sort order for free
+    // (useful anywhere ids double as a trace/replay correlation key). No
+    // crypto dependency.
+    function genId()
+    {
+        return 'node_' + Date.now().toString(36) + '_' + (__idCounter++).toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+    }
+
+    // Backstop for a forgotten dispose(): a string-keyed Map does not
+    // self-clean like a WeakMap, so if an instance is GC'd without ever being
+    // disposed its side-table entries would otherwise leak forever. Timing is
+    // nondeterministic (that is what FinalizationRegistry is), so this is a
+    // safety net, not a substitute for calling dispose().
+    const FINALIZER = typeof FinalizationRegistry === 'function'
+        ? new FinalizationRegistry((id) =>
+        {
+            MASKS.delete(id);
+            LOOPS.delete(id);
+            PENDING_INIT.delete(id);
+            DISPOSED.delete(id);
+            RAN_DISPOSE_HOOKS.delete(id);
+        })
+        : null;
+
+    /**
+     * Return this instance's internal id, minting and attaching one via
+     * defineProperty on first use.
+     * @param {Object} obj - any composed instance
+     * @returns {string} the instance's stable `_extId`
+     */
+    function getExtId(obj)
+    {
+        if (typeof obj._extId === 'string')
+        {
+            return obj._extId;
+        }
+        const id = genId();
+        try
+        {
+            Object.defineProperty(obj, '_extId', { value: id, enumerable: false, configurable: false, writable: false });
+        }
+        catch (e) { /* falls through; id still usable for this call */ }
+        if (FINALIZER && typeof obj._extId === 'string')
+        {
+            FINALIZER.register(obj, obj._extId, obj);
+        }
+        return typeof obj._extId === 'string' ? obj._extId : id;
+    }
+
+    // mixinId -> mixin object.
+    //
+    // The registry is the SOURCE OF TRUTH for what an id currently means.
+    // Composed classes keep their declared mixin objects in _rawMixins, but
+    // dispatch resolves each one through here by id -- so replacing an id's
+    // implementation reaches every class already composed with it, with no
+    // bookkeeping and no rebuild. That is what makes override a hot-swap
+    // rather than a re-compose.
+    const REGISTERED = new Map();
+
+    // cacheToken -> resolved pipeline, per composed class. _resolvePipeline
+    // copies, sorts and filters on EVERY method call, which for a request
+    // pipeline is several allocations before the handler runs. The token
+    // already identifies a mask exactly, so it is the correct memo key.
+    // Keyed by the composed CLASS (not an instance), and composed classes are
+    // application-lifetime objects -- same reasoning as USERS below, a plain
+    // Map is fine here, no leak risk in practice.
+    const PIPELINE_CACHE = new Map();
+
+    // Second memo level: composed class -> ("prop|token|generation" -> resolved
+    // function array). Saves the per-call filter/map on hot methods.
+    const METHOD_CACHE = new Map();
+
+    // mixinId -> composed classes using it. override() needs this to install
+    // wrappers for method names a replacement introduces; without it a
+    // late-added method sits on the mixin, is reachable by hand, and is
+    // silently never dispatched. Composed classes are application-lifetime
+    // objects, so a strong Set is acceptable here.
+    const USERS = new Map();
+    function trackUser(mixinId, Subclass)
+    {
+        let s = USERS.get(mixinId);
+        if (!s)
+        {
+            s = new Set(); USERS.set(mixinId, s);
+        }
+        s.add(Subclass);
+    }
+
+    // Bumped whenever an id's implementation is replaced. Folded into the memo
+    // key so a swap cannot serve a stale resolved chain -- cacheToken itself
+    // stays a pure function of the mask, since the mask is what it describes.
+    let REGISTRY_GENERATION = 0;
+
+    // Every composed class's default mask array, so reindex() can move their
+    // bits along with the instance masks in MASKS (v1.6.2, D2).
+    const CLASS_MASKS = new Set();
+
+    // A mixin's CURRENT bit, read through the registry by id (v1.6.2). The
+    // object a class was composed with keeps its own _bitIndex, but only the
+    // registered implementation is reindexed -- after an override(), the
+    // original object's index goes stale the next time reindex() moves it.
+    function bitOf(mixin)
+    {
+        const r = mixin && REGISTERED.get(mixin.mixinId);
+        return r && r._bitIndex !== undefined ? r._bitIndex : (mixin ? mixin._bitIndex : undefined);
+    }
+
+    // Marks a function as an ExtendX dispatcher, so a stacked class calling
+    // down into its base's dispatcher can tell it from a plain method (D1).
+    const IS_DISPATCHER = Symbol('ExtendX.dispatcher');
+
+    // Symbol.dispose / Symbol.asyncDispose are recent; fall back to the
+    // well-known registry so `using` semantics still work on older engines
+    // once a polyfill installs the real symbols.
+    const DISPOSE = typeof Symbol.dispose === 'symbol' ? Symbol.dispose : Symbol.for('Symbol.dispose');
+    const ASYNC_DISPOSE = typeof Symbol.asyncDispose === 'symbol' ? Symbol.asyncDispose : Symbol.for('Symbol.asyncDispose');
+
+    // Disposal is idempotent and must be observable; keyed by id like MASKS.
+    const DISPOSED = new Set();
+
+    // id -> Set<mixinId> already disposed. Deliberately SEPARATE from
+    // DISPOSED above -- DISPOSED gates the once-only bookkeeping (loop
+    // teardown, mask collapse, finalizer unregister), while this gates
+    // each individual mixin's dispose HOOK, one Set entry per mixinId
+    // rather than one flag for the whole instance. That split is what
+    // makes stacked composition's dispose chain work: see
+    // runLayerDisposeHooks()/runLayerDisposeHooksAsync() below.
+    const RAN_DISPOSE_HOOKS = new Map();
+
+    // Compute-loop timer and deferred task queue, per instance. Keyed by id.
+    const LOOPS = new Map();
+
+    // Pending async init promises, per instance id: mixinId -> promise.
+    //
+    // The constructor cannot await, so an async init hook is invoked and its
+    // promise recorded here. initParallel then AWAITS those recorded promises
+    // rather than calling init again -- without this the hook runs twice, once
+    // fire-and-forget at construction and once more on the explicit call.
+    const PENDING_INIT = new Map();
+    function loopState(obj)
+    {
+        const id = getExtId(obj);
+        let s = LOOPS.get(id);
+        if (!s)
+        {
+            s = { timer: null, queue: [] }; LOOPS.set(id, s);
+        }
+        return s;
+    }
+
+    // ─── Private Helpers ───────────────────────────────────────
+
+    function getMask(obj)
+    {
+        const id = getExtId(obj);
+        let m = MASKS.get(id);
+        if (!m)
+        {
+            const d = obj && obj.constructor && obj.constructor._defaultMaskState;
+            m = d ? [d[0], [...d[1]]] : [1, []];
+            MASKS.set(id, m);
+        }
+        return m;
+    }
+
+    function setMask(obj, mask)
+    {
+        MASKS.set(getExtId(obj), mask);
+        return mask;
+    }
+
+    // Base36 scalar identity for a mask. Shared by the cacheToken getter and
+    // the pipeline memo, so a configuration and its cached resolved pipeline
+    // can never disagree about which mask they describe.
+    function tokenFor(mask)
+    {
+        const [globalOverride, bitArray] = mask;
+        if (globalOverride === 0)
+        {
+            return '0';
+        }
+        // Normalize holes to 1 (implicitly-on) so a mask that was never grown
+        // and one explicitly filled with 1s produce the SAME token -- otherwise
+        // 'undefined' would stringify into the binary literal and throw.
+        const binary = Array.from(bitArray, b => (b === 0 ? 0 : 1)).reverse().join('');
+        if (!binary)
+        {
+            return '1';
+        }
+        // The sentinel '1' (v1.6.1) fixes the literal's length in place. The
+        // bit array is REVERSED before parsing, so the just-disabled bit --
+        // always the array's last/highest-index element, since disableLayer()
+        // never appends past it -- becomes the FIRST character, and
+        // BigInt('0b0111') === BigInt('0b111'). A leading zero is numerically
+        // invisible, so disabling the currently-highest-bitIndex mixin
+        // produced the SAME token as all-enabled. Both PIPELINE_CACHE and
+        // METHOD_CACHE are keyed by this token, so a stale all-enabled chain
+        // silently served a genuinely-disabled configuration. With the
+        // sentinel that zero is an internal digit contributing to the value.
+        return (((BigInt('0b1' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
+    }
+
+    // Current implementation for a declared mixin: the registry's entry for its
+    // id, falling back to the object itself if it was never registered.
+    function current(m)
+    {
+        return REGISTERED.get(m.mixinId) || m;
+    }
+
+    // ─── Dispose helpers (stacking fix, v1.4.0) ──────────────────
+    //
+    // Split from one conflated ExtendX.prototype.dispose() into two
+    // independent concerns, because stacked composition (ExtendX.extend()
+    // called on top of an already-composed class) needs them to run on
+    // DIFFERENT schedules:
+    //
+    //   finalizeDisposeBookkeeping -- the once-only, whole-instance state
+    //     (DISPOSED flag, loop teardown, mask collapse, finalizer
+    //     unregister). Must run exactly once no matter how many stacked
+    //     layers call in.
+    //
+    //   runLayerDisposeHooks(Async) -- each mixin's OWN dispose hook, keyed
+    //     by mixinId rather than gated by the single instance-wide DISPOSED
+    //     flag. A stacked instance has ONE shared _extId but MULTIPLE
+    //     layers, each with its OWN distinct declared mixin list (closed
+    //     over per extend() call, not read from this.constructor._rawMixins
+    //     -- that always resolves to the OUTERMOST class via prototype
+    //     shadowing, so it could never reach an inner layer's mixins at
+    //     all). Before this split, every layer's dispose wrapper called the
+    //     same conflated method, whose OWN idempotency guard (`if
+    //     (DISPOSED.has(id)) return;`) short-circuited every layer below
+    //     the outermost the instant the outermost had run -- confirmed
+    //     live: an inner layer's mixin dispose hook silently never ran at
+    //     all. Deduping per mixinId (not per whole-instance flag) instead
+    //     means: every distinct layer's mixins get their turn once each,
+    //     AND a caller invoking dispose() twice at the top level still
+    //     never re-runs the same hook twice.
+    function finalizeDisposeBookkeeping(instance)
+    {
+        const id = getExtId(instance);
+        if (DISPOSED.has(id))
+        {
+            return;
+        }
+        DISPOSED.add(id);
+        const st = LOOPS.get(id);
+        if (st && st.timer)
+        {
+            clearInterval(st.timer);
+        }
+        LOOPS.delete(id);
+        PENDING_INIT.delete(id);
+        // Collapse, don't delete: getMask() regenerates a fresh, fully-
+        // enabled default mask for a MISSING entry, which would silently
+        // re-enable every mixin's dispatch after "dispose" -- setting
+        // [0,[]] is what actually makes the pipeline resolve to nothing.
+        setMask(instance, [0, []]);
+        if (FINALIZER)
+        {
+            FINALIZER.unregister(instance);
+        }
+    }
+
+    function runLayerDisposeHooks(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        (mixinsList || []).forEach(m =>
+        {
+            if (ran.has(m.mixinId))
+            {
+                return;
+            }
+            ran.add(m.mixinId);
+            // Through current(), so an overridden id disposes with its
+            // replacement's hook rather than the original's.
+            const impl = current(m);
+            if (typeof impl.dispose === 'function')
+            {
+                try
+                {
+                    impl.dispose.call(instance);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e);
+                }
+            }
+        });
+    }
+
+    async function runLayerDisposeHooksAsync(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        const pending = (mixinsList || [])
+            .filter(m => !ran.has(m.mixinId))
+            .map(m =>
+            {
+                ran.add(m.mixinId);
+                const impl = current(m);
+                if (typeof impl.dispose !== 'function')
+                {
+                    return null;
+                }
+                try
+                {
+                    return Promise.resolve(impl.dispose.call(instance));
+                }
+                catch (e)
+                {
+                    return Promise.reject(e);
+                }
+            })
+            .filter(p => p !== null);
+        const settled = await Promise.allSettled(pending);
+        settled.forEach(r =>
+        {
+            if (r.status === 'rejected')
+            {
+                console.error('[ExtendX asyncDispose] hook failed:', r.reason);
+            }
+        });
+    }
+
+    // Reindex every known mixin. A new id inserted alphabetically before an
+    // existing one shifts the positions after it, so previously assigned
+    // indices must move too or old and new classes disagree about bit meaning.
+    //
+    // v1.6.2: and every mask already built moves with them. A mask is
+    // positional, so before this a disabled bit silently became the bit of
+    // whichever mixin slid into its position (disableLayer(x) turning into
+    // "y is off"), and a class mask that sets only its own bits (D2) would
+    // have dropped its own layers the first time a new id sorted ahead of
+    // them. Positions no old mask knew about stay holes: implicitly on for
+    // dispatch, absent for set relations.
+    function reindex()
+    {
+        const ids = Array.from(REGISTERED.keys()).sort();
+        const moved = new Map();
+        ids.forEach((id, i) =>
+        {
+            const m = REGISTERED.get(id);
+            if (m._bitIndex !== undefined && m._bitIndex !== i)
+            {
+                moved.set(m._bitIndex, i);
+            }
+            m._bitIndex = i;
+        });
+        if (moved.size)
+        {
+            const remap = (bits) =>
+            {
+                const old = bits.slice();
+                bits.length = 0;
+                for (let j = 0; j < old.length; j++)
+                {
+                    if (old[j] === undefined)
+                    {
+                        continue;
+                    }
+                    const to = moved.has(j) ? moved.get(j) : j;
+                    bits[to] = old[j];
+                }
+            };
+            CLASS_MASKS.forEach(mask => remap(mask[1]));
+            MASKS.forEach(mask => remap(mask[1]));
+            REGISTRY_GENERATION++;
+        }
+        return ids;
+    }
+
+    // ─── Dispatch wrapper factory ───────────────────────────────
+    //
+    // Fast dispatch: a real function installed on Subclass.prototype, so there
+    // is no proxy get-trap on every property access and methods are enumerable
+    // and introspectable. The cost is that the set of wrapped names is decided
+    // when the wrapper is installed -- see installWrappers, which override()
+    // calls again so a replacement introducing a NEW method name still gets
+    // one. Without that top-up, a late-added method is present on the mixin,
+    // reachable by hand, and silently never dispatched.
+    function makeDispatcher(Subclass, BaseClass, prop)
+    {
+        const dispatcher = function(...methodArgs)
+        {
+            const receiver = this;
+            const mask = getMask(receiver);
+
+            // Two-level memo. _resolvePipeline caches the active mixin list per
+            // mask; this caches the resolved FUNCTION array per method per mask,
+            // so a hot method skips the filter/map/unshift entirely. The key
+            // carries the registry generation, so an override invalidates it.
+            const mKey = String(prop) + '|' + tokenFor(mask) + '|' + REGISTRY_GENERATION;
+            let methodCache = METHOD_CACHE.get(Subclass);
+            if (!methodCache)
+            {
+                methodCache = new Map(); METHOD_CACHE.set(Subclass, methodCache);
+            }
+
+            let chain = methodCache.get(mKey);
+            if (!chain)
+            {
+                chain = Subclass._resolvePipeline(mask)
+                    .filter(mixin => typeof mixin[prop] === 'function')
+                    .map(mixin => mixin[prop]);
+                const baseMethod = BaseClass.prototype[prop];
+                if (typeof baseMethod === 'function')
+                {
+                    chain.unshift(baseMethod);
+                }
+                methodCache.set(mKey, chain);
+            }
+
+            // Index cursor, NOT a destructive pop. Popping consumes the chain,
+            // so two calls to this.super.m() from the SAME layer -- a parallel
+            // fan-out, Promise.all([this.super.m(), this.super.m()]) -- eat the
+            // same array: the first drains it and the second returns undefined,
+            // silently.
+            const invokeNext = (cursor, ...args) =>
+            {
+                if (cursor < 0)
+                {
+                    return undefined;
+                }
+                const currentMethod = chain[cursor];
+
+                // Stacked composition (D1, v1.6.2): the bottom of this chain is
+                // the base class's OWN dispatcher. Call it as the caller would
+                // -- on the real instance, with the arguments only. Appending
+                // this chain's `next` hands the inner layers a trailing
+                // argument they read as their own `next`, which points back
+                // out of the inner chain: its last layer never runs.
+                if (currentMethod[IS_DISPATCHER])
+                {
+                    return currentMethod.apply(receiver, args);
+                }
+
+                // Frame-local view of the instance.
+                //
+                // Object.create(receiver) is wrong here: reads resolve up the
+                // prototype chain, but a WRITE (this._hits++) creates an own
+                // property on the throwaway frame and vanishes when the layer
+                // returns -- a plugin holding state silently never persists it.
+                // A forwarding proxy instead: every get and set reaches the real
+                // instance, with `super` the single frame-local exception. That
+                // keeps concurrent layers from clobbering each other's super
+                // binding without detaching them from the instance.
+                const layerSuper = Object.create(receiver.super || null);
+                const below = cursor - 1;
+                const frame = new Proxy(receiver, {
+                    get(t, p) { return p === 'super' ? layerSuper : t[p]; },
+                    set(t, p, v) { if (p === 'super') return true; t[p] = v; return true; },
+                    has(t, p) { return p === 'super' ? true : (p in t); }
+                });
+
+                // A synchronous layer cannot await, so if the layer below
+                // returns a promise the sync layer has no way to unwrap it --
+                // `return this.super.m() + 'x'` yields "[object Promise]x". No
+                // dispatch strategy can fix that; what dispatch CAN do is refuse
+                // to let it pass silently.
+                let downstreamAsync = false;
+                const observe = (v) =>
+                {
+                    if (v && typeof v.then === 'function')
+                    {
+                        downstreamAsync = true;
+                    }
+                    return v;
+                };
+                const next = (...nextArgs) =>
+                    observe(invokeNext(below, ...(nextArgs.length ? nextArgs : args)));
+                layerSuper[prop] = (...superArgs) => observe(invokeNext(below, ...superArgs));
+
+                const result = currentMethod.apply(frame, args.concat(next));
+
+                if (downstreamAsync && !(result && typeof result.then === 'function'))
+                {
+                    throw new Error(
+                        'ExtendX chain: a synchronous layer of "' + String(prop) + '" received a ' +
+                        'promise from the layer below and returned a non-promise (' + typeof result + '). ' +
+                        'A sync function cannot await, so the downstream result was discarded or ' +
+                        'stringified. Make this layer async and await this.super.' + String(prop) + '(), ' +
+                        'or return the promise unmodified.'
+                    );
+                }
+                return result;
+            };
+
+            return invokeNext(chain.length - 1, ...methodArgs);
+        };
+        dispatcher[IS_DISPATCHER] = true;
+        return dispatcher;
+    }
+
+    // Names a mixin contributes to dispatch. init/dispose are lifecycle hooks
+    // invoked directly, not chained; the rest is bookkeeping.
+    const NON_DISPATCH = new Set(['init', 'dispose', 'mixinId', '_bitIndex', 'overrides']);
+
+    function dispatchKeys(mixin)
+    {
+        return Object.keys(mixin).filter(k =>
+            !NON_DISPATCH.has(k) && typeof mixin[k] === 'function');
+    }
+
+    /**
+     * Install (or top up) dispatch wrappers on a composed class.
+     *
+     * Idempotent and additive: called once at extend(), and again by override()
+     * for any method name the replacement introduces.
+     */
+    function installWrappers(Subclass)
+    {
+        const BaseClass = Subclass._extendXBase;
+        // Object.prototype.hasOwnProperty, NOT a bare `Subclass._wrapped ||
+        // ...` truthiness check -- extend() sets Object.setPrototypeOf(
+        // Subclass, BaseClass), so a stacked Outer's `_wrapped` lookup
+        // silently resolves up the STATIC prototype chain to Inner's
+        // already-populated Set when Outer has none of its own yet. That
+        // means (a) any method name Inner already wrapped is treated as
+        // "already installed" for Outer too, even when Outer's own mixin
+        // has a MEANINGFULLY DIFFERENT implementation of the same name --
+        // Outer.prototype never gets its own dispatcher for that name at
+        // all, so calls fall through the prototype chain straight to
+        // Inner's dispatcher, silently running ONLY Inner's chain -- and
+        // (b) `installed.add(key)` would MUTATE Inner's own Set in place.
+        // Confirmed live and security-relevant: a SecurityMixin composed
+        // as the OUTER layer over an inner layer sharing a guarded method
+        // name never actually enforced -- the guarded call reached
+        // Inner's unguarded implementation directly, while mixins()/
+        // activeMixins() (which read _rawMixins/_resolvePipeline, not
+        // _wrapped) still reported the security mixin as active. Each
+        // Subclass needs its OWN independent Set, never one inherited
+        // from the class it's stacked on top of.
+        const installed = Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+            ? Subclass._wrapped
+            : (Subclass._wrapped = new Set());
+        (Subclass._rawMixins || []).forEach(m =>
+        {
+            dispatchKeys(current(m)).forEach(key =>
+            {
+                if (installed.has(key))
+                {
+                    return;
+                }
+                installed.add(key);
+                Object.defineProperty(Subclass.prototype, key, {
+                    value: makeDispatcher(Subclass, BaseClass, key),
+                    enumerable: false, configurable: true, writable: true
+                });
+            });
+        });
+        return Subclass;
+    }
+
+    // ─── ExtendX Class ──────────────────────────────────────────
+
+    class ExtendX
+    {
+        constructor(options = {})
+        {
+            this.id = options.id || genId();
+            this.state = options.state || 'initialized';
+            getMask(this);
+        }
+
+        // ─── Authorship Info ────────────────────────────────────
+
+        static get author() { return AUTHOR; }
+        static get company() { return COMPANY; }
+        static get version() { return VERSION; }
+        static get name() { return NAME; }
+        static get description() { return DESCRIPTION; }
+        static get docs() { return DOCS; }
+        static get tests() { return TESTS; }
+
+        get author() { return AUTHOR; }
+        get company() { return COMPANY; }
+        get version() { return VERSION; }
+
+        // ─── Read-only view for callers that reference `_maskState` ──
+
+        get _maskState() { return getMask(this); }
+        set _maskState(v) { setMask(this, v); }
+
+        // ─── Introspection API ──────────────────────────────────
+
+        /**
+         * Chain discovery.
+         *
+         *   mixins()        -> every declared mixin, in declaration order
+         *   mixins(prop)    -> the chain that WILL run for prop, dispatch order
+         *                      first to last, with '<base>' where the base
+         *                      method sits
+         *
+         * The second form is the answer to "why isn't my layer running". Two
+         * bugs found while hardening this were invisible without it: a mixin
+         * dropped because its bit index fell outside the mask array, and
+         * disableLayer being swallowed by chain dispatch. Either would have
+         * shown instantly as a missing entry here.
+         *
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @returns {Array} declared mixins, or the resolved dispatch chain for prop
+         */
+        mixins(prop)
+        {
+            const C = this.constructor;
+            if (prop === undefined)
+            {
+                return C._rawMixins ? [...C._rawMixins] : [];
+            }
+            return ExtendX.mixins(C, prop, getMask(this));
+        }
+
+        /**
+         * Active layers only, honouring this instance's mask.
+         * @returns {Array} the currently active mixin objects, dispatch order
+         */
+        activeMixins()
+        {
+            const C = this.constructor;
+            if (typeof C._resolvePipeline !== 'function')
+            {
+                return [];
+            }
+            return [...C._resolvePipeline(getMask(this))].reverse();
+        }
+
+        /**
+         * One-line human-readable chain, e.g. "handle: Log -> Auth -> <base>".
+         * @param {string} prop - method name to explain
+         * @returns {string} the human-readable chain description
+         */
+        explain(prop)
+        {
+            const chain = this.mixins(prop);
+            return String(prop) + ': ' + (chain.length ? chain.join(' -> ') : '(nothing dispatches)');
+        }
+
+        /**
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if this instance's class was composed with mixin
+         */
+        hasMixin(mixin)
+        {
+            if (!this.constructor._rawMixins)
+            {
+                return false;
+            }
+            return this.constructor._rawMixins.includes(mixin);
+        }
+
+        // ─── Instance Bitmask Control ───────────────────────────
+        //
+        // mixin.locked (v1.2.0): a mixin declaring `locked: true` on itself
+        // opts OUT of ever being toggled through enableLayer/disableLayer,
+        // for every instance, permanently, from construction onward -- not
+        // a per-instance seal, a property of the mixin's identity. Default
+        // is unset/false, so every existing mixin's behavior is unchanged;
+        // this is opt-in, for mixins where "toggle it off at runtime" is
+        // categorically the wrong operation to expose at all (a security
+        // mixin's presence should be a composition-time decision -- whether
+        // extend() is called with it in the first place -- not something
+        // togglable while the instance is already live). This also closes
+        // a real deadlock a naive per-instance lock discovered: a mixin
+        // that gates its OWN enableLayer/disableLayer through its OWN bit
+        // can disable itself and then can never re-enable itself, because
+        // the call that would flip the bit back on is itself excluded from
+        // dispatch once the bit is off. Locking at the mixin-identity level
+        // sidesteps that entirely -- the bit for a locked mixin never moves
+        // through this API in the first place.
+
+        /**
+         * Turn a mixin's bit on for this instance.
+         * @param {Object} mixin - the mixin to enable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        enableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
+                throw new Error('ExtendX.enableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
+            const bit = bitOf(mixin);
+            if (bit === undefined)
+            {
+                return this;
+            }
+            const bits = getMask(this)[1];
+            for (let i = bits.length; i < bit; i++)
+            {
+                bits[i] = undefined;   // a hole: implicitly on, not claimed
+            }
+            bits[bit] = 1;
+            return this;
+        }
+
+        /**
+         * Turn a mixin's bit off for this instance.
+         * @param {Object} mixin - the mixin to disable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        disableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
+                throw new Error('ExtendX.disableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
+            const bit = bitOf(mixin);
+            if (bit === undefined)
+            {
+                return this;
+            }
+            const bits = getMask(this)[1];
+            // Assigning past the end extends the array; the holes it creates
+            // read as implicitly-on, which is the correct default for a layer
+            // registered after this instance's class was composed.
+            for (let i = bits.length; i < bit; i++)
+            {
+                bits[i] = undefined;
+            }
+            bits[bit] = 0;
+            return this;
+        }
+
+        /**
+         * @param {boolean} enabled - global on/off override for every layer
+         * @returns {ExtendX} this, for chaining
+         */
+        toggleAllLayers(enabled)
+        {
+            getMask(this)[0] = enabled ? 1 : 0;
+            return this;
+        }
+
+        get cacheToken()
+        {
+            if (DISPOSED.has(getExtId(this)))
+            {
+                return '0';
+            }
+            return tokenFor(getMask(this));
+        }
+
+        get disposed() { return DISPOSED.has(getExtId(this)); }
+
+        // ─── Compute loop ───────────────────────────────────────
+        //
+        // Drives continuous recalculation and rendering. Returns a lifecycle
+        // handle rather than starting immediately, so a caller decides when.
+        // main() and render() are plain hooks -- a mixin that defines either
+        // one joins the dispatch chain for it like any other method.
+        /**
+         * @param {string} [mode='canvas'] - 'canvas' or 'console'
+         * @param {string|CanvasRenderingContext2D|null} [canvasIdOrContext=null] - canvas id or context, for 'canvas' mode
+         * @param {number} [fps=60] - target frames per second
+         * @returns {{start: Function, stop: Function, running: boolean, schedule: Function, rescue: Function}} a lifecycle handle
+         */
+        compute(mode = 'canvas', canvasIdOrContext = null, fps = 60)
+        {
+            const intervalMs = Math.max(1, Math.floor(1000 / fps));
+            const self = this;
+            let ctx = null;
+
+            if (mode === 'canvas' && canvasIdOrContext)
+            {
+                ctx = typeof canvasIdOrContext === 'string'
+                    ? (typeof document !== 'undefined' ? document.getElementById(canvasIdOrContext)?.getContext('2d') : null)
+                    : canvasIdOrContext;
+            }
+
+            const lifecycle = {
+                start: () =>
+                {
+                    const st = loopState(self);
+                    if (st.timer)
+                    {
+                        return lifecycle;
+                    }
+                    if (DISPOSED.has(getExtId(self)))
+                    {
+                        throw new Error('ExtendX.compute(): instance is disposed');
+                    }
+                    st.timer = setInterval(() =>
+                    {
+                        try
+                        {
+                            self.flushQueue();
+                            self.main();
+                            if (mode === 'canvas' && ctx)
+                            {
+                                self.render(mode, ctx);
+                            }
+                            else
+                            {
+                                if (mode === 'console' && typeof console.clear === 'function')
+                                {
+                                    console.clear();
+                                }
+                                self.render(mode);
+                            }
+                        }
+                        catch (err)
+                        {
+                            lifecycle.rescue(err);
+                        }
+                    }, intervalMs);
+                    return lifecycle;
+                },
+                stop: () =>
+                {
+                    const st = loopState(self);
+                    if (st.timer)
+                    {
+                        clearInterval(st.timer); st.timer = null;
+                    }
+                    return lifecycle;
+                },
+                get running() { return !!loopState(self).timer; },
+                schedule: (task) => { loopState(self).queue.push(task); return lifecycle; },
+                rescue: (error) =>
+                {
+                    console.error('[ExtendX compute loop] halted:', error);
+                    lifecycle.stop();
+                }
+            };
+            return lifecycle;
+        }
+
+        /** Dispatch hook -- a mixin defining main() joins this instance's compute loop chain. @returns {void} */
+        main() { /* dispatch hook */ }
+
+        /**
+         * Dispatch hook -- a mixin defining render() joins this instance's compute loop chain.
+         * @param {string} mode - 'canvas' or 'console'
+         * @param {CanvasRenderingContext2D} [ctx] - the canvas context, for 'canvas' mode
+         * @returns {void}
+         */
+        render(mode, ctx) { /* dispatch hook */ }
+
+        /**
+         * Run and clear every queued task. Errors do not stop the queue.
+         * @returns {ExtendX} this, for chaining
+         */
+        flushQueue()
+        {
+            const st = loopState(this);
+            while (st.queue.length > 0)
+            {
+                const task = st.queue.shift();
+                if (typeof task !== 'function')
+                {
+                    continue;
+                }
+                try
+                {
+                    task.call(this);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX queue] task failed:', e);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * @param {Function} task - queued to run on the next compute loop tick
+         * @returns {ExtendX} this, for chaining
+         */
+        schedule(task) { loopState(this).queue.push(task); return this; }
+
+        // ─── Explicit resource disposal ─────────────────────────
+        //
+        // Fires when an instance leaves a `using` block. Stops the loop, drops
+        // queued work, runs each active mixin's dispose hook, and collapses the
+        // mask to the empty set -- so cacheToken becomes "0" and the pipeline
+        // resolves to nothing, which is what a disposed composition should mean.
+        //
+        // Idempotent: `using` can dispose an instance that a caller already
+        // disposed by hand, and a mixin's dispose must not run twice.
+        // Pure, portable name -- not because ExtendX's own interface required
+        // Symbol.dispose, but because it was added to hook `using`'s block-scope
+        // GC timing. That hook now lives on [DISPOSE] as a thin alias below, so
+        // the primary method stays free of a JS-only well-known-symbol
+        // dependency (PHP, or any host without Symbol, calls this directly).
+        /**
+         * @returns {void}
+         */
+        dispose()
+        {
+            // Delegates to the shared helpers above -- see their header
+            // comment for why the once-only bookkeeping and each mixin's
+            // own hook are deliberately split. this.constructor._rawMixins
+            // is only correct here because a DIRECT ExtendX subclass (one
+            // never wrapped by extend()) has exactly one layer; extend()'s
+            // own Subclass constructor wraps dispose() differently below,
+            // closing over its OWN mixins list instead of reading this.
+            finalizeDisposeBookkeeping(this);
+            runLayerDisposeHooks(this, this.constructor._rawMixins || []);
+        }
+
+        /**
+         * Async counterpart. Awaits any mixin dispose hook that returns a
+         * thenable, then performs the synchronous teardown.
+         * @returns {Promise<void>}
+         */
+        async disposeAsync()
+        {
+            // See dispose() above and the shared helpers' header comment.
+            await runLayerDisposeHooksAsync(this, this.constructor._rawMixins || []);
+            finalizeDisposeBookkeeping(this);
+        }
+
+        /** Thin alias so `using` still triggers cleanup -- see dispose() above. @returns {void} */
+        [DISPOSE]() { return this.dispose(); }
+
+        /** Thin alias so `await using` still triggers cleanup -- see disposeAsync() above. @returns {Promise<void>} */
+        async [ASYNC_DISPOSE]() { return this.disposeAsync(); }
+
+        // ─── Static Methods ─────────────────────────────────────
+
+        /**
+         * Compose BaseClass with one or more mixins into a new, runtime-toggleable Subclass.
+         * @param {Function} BaseClass - the constructor/class to compose on top of
+         * @param {...Object} args - mixin objects, optionally followed by a trailing
+         *   `{ order, custommap, array }` configuration object
+         * @returns {Function} the composed Subclass constructor
+         * @throws {Error} if a mixin lacks a stable string mixinId, or reuses one
+         *   already registered to a different mixin without `overrides: true`
+         */
+        static extend(BaseClass, ...args)
+        {
+            let options = { order: 'left-right' };
+            let mixins = args;
+
+            // Isolate configuration block from structural mixins
+            if (args.length > 0 &&
+                typeof args[args.length - 1] === 'object' &&
+                !args[args.length - 1].prototype &&
+                !('init' in args[args.length - 1]))
+            {
+                const lastArg = args[args.length - 1];
+                if ('order' in lastArg || 'custommap' in lastArg || 'array' in lastArg)
+                {
+                    options = { ...options, ...args.pop() };
+                    mixins = args;
+                }
+            }
+
+            // ─── Deterministic bit assignment ──────────────────
+            //
+            // Load order is NOT usable: a mixin's bit position decides its
+            // place in the cacheToken, so two processes loading the same mixins
+            // in different order would produce different tokens for an
+            // identical configuration -- destroying the token's main use as a
+            // portable cache key. Position is the mixin's index in the
+            // ALPHABETICALLY SORTED list of every mixinId ever registered.
+            const overriddenIds = [];
+            mixins.forEach(m =>
+            {
+                if (!m.mixinId || typeof m.mixinId !== 'string')
+                {
+                    throw new Error('ExtendX.extend(): every mixin needs a stable string mixinId for deterministic bit assignment');
+                }
+                const owner = REGISTERED.get(m.mixinId);
+                if (owner && owner !== m)
+                {
+                    // Two intents share this shape, and only the caller knows
+                    // which:
+                    //   accidental collision -- two unrelated mixins that
+                    //     happen to pick the same id. They would share a bit,
+                    //     so disableLayer on either toggles both. Silently
+                    //     allowing it is the bug the guard exists for.
+                    //   deliberate override -- a replacement implementation for
+                    //     an id that already exists (a patched layer, a test
+                    //     double, a v2). Here sharing the bit is the POINT:
+                    //     same identity, same toggle, new behaviour.
+                    // So the guard stays and `overrides: true` declares the
+                    // second case.
+                    if (m.overrides !== true)
+                    {
+                        throw new Error('ExtendX.extend(): mixinId "' + m.mixinId + '" is already registered to a different mixin. ' +
+                            'Ids map to bit positions, so two mixins sharing one id share one bit -- disableLayer on either would toggle both. ' +
+                            'If the replacement is intentional, set overrides: true on the new mixin (or call ExtendX.override(mixin)).');
+                    }
+                    m._bitIndex = owner._bitIndex;   // same identity keeps the same bit
+                    REGISTRY_GENERATION++;
+                    // Top up AFTER the registry is updated below -- installWrappers
+                    // reads current(), so running it here would still see the old
+                    // implementation and find no new method names.
+                    overriddenIds.push(m.mixinId);
+                }
+                REGISTERED.set(m.mixinId, m);
+            });
+
+            const sortedIds = reindex();
+
+            // Now that REGISTERED holds the replacements, top up wrappers on any
+            // class already composed with an overridden id.
+            overriddenIds.forEach(id =>
+            {
+                const users = USERS.get(id);
+                if (users)
+                {
+                    users.forEach(Sub => installWrappers(Sub));
+                }
+            });
+
+            // ─── Build mask array sized to global registry ─────
+            //
+            // Sized to the registry, NOT mixins.length. _bitIndex is a global
+            // position, so a mixins.length-sized array leaves later mixins
+            // reading undefined in _resolvePipeline's
+            // `bitArray[mixin._bitIndex] === 1` check -- and being silently
+            // dropped from the pipeline. Symptom is a middleware that registers
+            // without error and never runs.
+            //
+            // v1.6.2 (D2): a 1 only at the bits this class OWNS -- its own
+            // mixins plus everything the class it stacks on owns -- and 0
+            // elsewhere. Every bit up to the registry's end used to be 1, so a
+            // class claimed mixins it never had and evaluateSetRelation()
+            // called disjoint compositions SUBSET. Dispatch is unaffected: it
+            // only ever looks up bits of mixins in a class's own pipeline,
+            // which are all set here, and reindex() keeps them in place.
+            const owned = [];
+            (BaseClass._ownedMixins || []).concat(mixins).forEach(m =>
+            {
+                if (!owned.some(o => o.mixinId === m.mixinId))
+                {
+                    owned.push(m);
+                }
+            });
+            const initialBits = new Array(sortedIds.length).fill(0);
+            owned.forEach(m => { initialBits[bitOf(m)] = 1; });
+            const classDefaultMaskState = [1, initialBits];
+            CLASS_MASKS.add(classDefaultMaskState);
+
+            // ─── Subclass constructor ──────────────────────────
+            function Subclass(...args)
+            {
+                // new.target, NOT the bare closed-over `Subclass` -- stacking a
+                // SECOND ExtendX.extend() on top of an already-composed class
+                // (Outer = ExtendX.extend(Inner, mixinB) where Inner is itself
+                // ExtendX.extend(Raw, mixinA)) used to silently drop the outer
+                // layer entirely. Outer's own constructor calls
+                // Reflect.construct(Inner, args, Outer), which sets new.target
+                // to Outer for the duration of Inner's function body -- but
+                // Inner's body ignored that and called
+                // Reflect.construct(BaseClass, args, Subclass) with ITS OWN
+                // closed-over `Subclass` (Inner itself), hardcoding newTarget
+                // back to Inner. Because Inner's body explicitly returns an
+                // object (the fully-set-up `proxied`), that returned object
+                // OVERRIDES whatever `this` the engine would have created from
+                // Outer.prototype -- so the final instance's real prototype
+                // chain stopped at Inner.prototype, never reaching
+                // Outer.prototype at all. Every mixinB method Outer's own
+                // installWrappers() had put on Outer.prototype became
+                // permanently unreachable: `instance.world` was undefined,
+                // `instance instanceof Outer` was false, proven live before
+                // this fix. Forwarding new.target (falling back to the
+                // closed-over Subclass for an ordinary, non-nested `new
+                // Inner()` call, where new.target === Subclass already) lets
+                // each layer's own newTarget propagate all the way down the
+                // Reflect.construct chain, so the final object's prototype
+                // correctly extends from the OUTERMOST composed class.
+                const instance = Reflect.construct(BaseClass, args, new.target || Subclass);
+
+                // A base that is not an ExtendX subclass has none of these, so
+                // attach them here. Own properties via defineProperty, because
+                // a `prop in target`-style set trap on a strict base rejects
+                // plain assignment of anything new.
+                const methods = ['enableLayer', 'disableLayer', 'toggleAllLayers',
+                    'mixins', 'activeMixins', 'explain', 'hasMixin',
+                    'compute', 'main', 'render', 'flushQueue', 'schedule'];
+                methods.forEach(fn =>
+                {
+                    if (typeof instance[fn] !== 'function')
+                    {
+                        Object.defineProperty(instance, fn, {
+                            value: ExtendX.prototype[fn],
+                            enumerable: false,
+                            configurable: true,
+                            writable: true
+                        });
+                    }
+                });
+
+                // dispose/disposeAsync: ALWAYS wrapped, never conditional on
+                // "does the base already have one" the way the methods above
+                // are. That conditional is exactly what made mixin dispose
+                // hooks silently dead for every BaseClassX subclass: BaseClassX
+                // already defines dispose(), so `typeof instance.dispose !==
+                // 'function'` was always false, and ExtendX's own hook-running
+                // dispose() (the one that calls each mixin's own dispose, per
+                // current() so an override() replacement still fires) never
+                // got attached at all. The fix preserves whatever the base
+                // already provided (BaseClassX's real schema/trace disposal,
+                // or nothing for a plain class) by capturing it BEFORE
+                // overriding, then always running ExtendX's own mixin-hook
+                // logic first and chaining to the original afterward -- so a
+                // BaseClassX subclass gets both: its own real disposal AND
+                // every composed mixin's dispose hook actually running.
+                //
+                // Calls the shared runLayerDisposeHooks(Async) helpers directly
+                // with THIS extend() call's own closed-over `mixins` array --
+                // NOT ExtendX.prototype.dispose.call(this) (which reads
+                // this.constructor._rawMixins, always the OUTERMOST stacked
+                // layer via prototype shadowing, and would never reach an
+                // inner layer's own mixins at all). finalizeDisposeBookkeeping
+                // is idempotent and safe to call from every stacked layer's
+                // wrapper; runLayerDisposeHooks/Async dedupes per mixinId, so
+                // a stacked instance's OUTER layer running first does not
+                // prevent an INNER layer's chained call (via originalDispose
+                // below) from still running its own distinct mixins' hooks --
+                // the bug this fixes: before this split, the inner layer's
+                // chained call hit ExtendX.prototype.dispose's OWN idempotency
+                // guard and returned immediately, so its mixin's dispose hook
+                // silently never ran at all.
+                const originalDispose = typeof instance.dispose === 'function' ? instance.dispose.bind(instance) : null;
+                const originalDisposeAsync = typeof instance.disposeAsync === 'function' ? instance.disposeAsync.bind(instance) : null;
+                Object.defineProperty(instance, 'dispose', {
+                    value: function()
+                    {
+                        finalizeDisposeBookkeeping(this);
+                        runLayerDisposeHooks(this, mixins);
+                        if (originalDispose)
+                        {
+                            originalDispose();
+                        }
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
+                });
+                Object.defineProperty(instance, 'disposeAsync', {
+                    value: async function()
+                    {
+                        await runLayerDisposeHooksAsync(this, mixins);
+                        finalizeDisposeBookkeeping(this);
+                        if (originalDisposeAsync)
+                        {
+                            await originalDisposeAsync();
+                        }
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
+                });
+
+                // Authorship getters live on ExtendX.prototype, so an instance
+                // whose base is NOT an ExtendX subclass never sees them.
+                ['author', 'company', 'version'].forEach(p =>
+                {
+                    if (!(p in instance))
+                    {
+                        Object.defineProperty(instance, p, {
+                            get: Object.getOwnPropertyDescriptor(ExtendX.prototype, p).get,
+                            enumerable: false,
+                            configurable: true
+                        });
+                    }
+                });
+
+                // Disposal symbols: a foreign base has no ExtendX.prototype, so
+                // `using` would find no [Symbol.dispose] and silently not clean up.
+                [DISPOSE, ASYNC_DISPOSE].forEach(sym =>
+                {
+                    if (typeof instance[sym] !== 'function')
+                    {
+                        Object.defineProperty(instance, sym, {
+                            value: ExtendX.prototype[sym],
+                            enumerable: false, configurable: true, writable: true
+                        });
+                    }
+                });
+                if (!('disposed' in instance))
+                {
+                    Object.defineProperty(instance, 'disposed', {
+                        get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'disposed').get,
+                        enumerable: false, configurable: true
+                    });
+                }
+
+                if (!('cacheToken' in instance))
+                {
+                    Object.defineProperty(instance, 'cacheToken', {
+                        get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'cacheToken').get,
+                        enumerable: false,
+                        configurable: true
+                    });
+                }
+
+                if (!('_maskState' in instance))
+                {
+                    Object.defineProperty(instance, '_maskState', {
+                        get() { return getMask(this); },
+                        set(v) { setMask(this, v); },
+                        enumerable: false,
+                        configurable: true
+                    });
+                }
+
+                // No outer proxy: dispatch wrappers live on Subclass.prototype,
+                // so `instance` is the object callers hold and every side table
+                // keys on it directly. This also removes the raw-vs-proxy
+                // identity hazard that previously made PENDING_INIT lookups miss.
+                const proxied = instance;
+                setMask(proxied, [
+                    Subclass._defaultMaskState[0],
+                    [...Subclass._defaultMaskState[1]]
+                ]);
+
+                // Run init lifecycles -- through current(), so an overridden id
+                // constructs with its replacement's init, not the original's.
+                // A hook that returns a thenable is recorded, not re-run later:
+                // ExtendX.initParallel() awaits these same promises.
+                mixins.forEach(mixin =>
+                {
+                    const impl = current(mixin);
+                    if (typeof impl.init !== 'function')
+                    {
+                        return;
+                    }
+                    const im = getMask(proxied);
+                    if (im[0] !== 1 || im[1][bitOf(mixin)] === 0)
+                    {
+                        return;
+                    }
+                    const record = (p) =>
+                    {
+                        const pid = getExtId(proxied);
+                        let map = PENDING_INIT.get(pid);
+                        if (!map)
+                        {
+                            map = new Map(); PENDING_INIT.set(pid, map);
+                        }
+                        map.set(mixin.mixinId, p);
+                    };
+                    let r;
+                    try
+                    {
+                        r = impl.init.call(proxied, ...args);
+                    }
+                    catch (e)
+                    {
+                        const p = Promise.reject(e);
+                        p.catch(() => {});   // defuse; initParallel re-raises
+                        record(p);
+                        return;
+                    }
+                    if (r && typeof r.then === 'function')
+                    {
+                        r.catch(() => {});   // same: the real report is initParallel's
+                        record(r);
+                    }
+                });
+
+                return proxied;
+            }
+
+            // ─── Prototype chain ───────────────────────────────
+            Subclass.prototype = Object.create(BaseClass.prototype);
+            Subclass.prototype.constructor = Subclass;
+            Object.setPrototypeOf(Subclass, BaseClass);
+
+            // ─── Metadata ──────────────────────────────────────
+            Subclass._rawMixins = [...mixins];
+            Subclass._orderStrategy = options.order;
+            Subclass._customMap = options.custommap || null;
+            Subclass._explicitArray = options.array || null;
+            Subclass._defaultMaskState = classDefaultMaskState;
+            Subclass._ownedMixins = owned;
+
+            // ─── Pipeline Resolution ───────────────────────────
+            //
+            // All four strategies resolve by mixinId as well as by object
+            // reference: a custommap or explicit array written with ids is the
+            // readable form, and was previously broken -- `map[a]` used the
+            // mixin OBJECT as a plain-object key, which stringifies to
+            // "[object Object]", so every weight read 0 and the sort was a
+            // no-op that silently fell back to declaration order.
+            Subclass._resolvePipeline = function(currentMask)
+            {
+                const mask = currentMask || classDefaultMaskState;
+                const [globalOverride, bitArray] = mask;
+
+                // A locked mixin (see enableLayer/disableLayer above) is
+                // refused at the per-bit level, but the global override is
+                // a SEPARATE kill switch -- dispose()'s own setMask(this,
+                // [0,[]]) sets exactly this to 0, and toggleAllLayers(false)
+                // does too. Without this check, disposing (or globally
+                // toggling off) an instance would silently exclude a locked
+                // mixin from every future call's chain despite it never
+                // having agreed to be individually disabled -- the same
+                // "turned off by a door it never consented to" gap
+                // mixin.locked exists to close, just reached through the
+                // global bit instead of the per-mixin one. Locked mixins are
+                // therefore immune to the global override entirely, not
+                // just to their own bit.
+                if (globalOverride === 0)
+                {
+                    const locked = Subclass._rawMixins.filter(function(m) { return !!m.locked; });
+                    return locked.length ? locked.map(current) : [];
+                }
+
+                const token = tokenFor(mask) + ':' + REGISTRY_GENERATION;
+                let cache = PIPELINE_CACHE.get(Subclass);
+                if (!cache)
+                {
+                    cache = new Map();
+                    PIPELINE_CACHE.set(Subclass, cache);
+                }
+                const hit = cache.get(token);
+                if (hit)
+                {
+                    return hit;
+                }
+
+                let pipeline = [...Subclass._rawMixins];
+
+                const rank = (list, m) =>
+                {
+                    let i = list.indexOf(m);
+                    if (i === -1)
+                    {
+                        i = list.indexOf(m.mixinId);
+                    }
+                    return i;
+                };
+
+                // Strategy A: Explicit Array Order (mixins or mixinIds)
+                if (Subclass._explicitArray && Array.isArray(Subclass._explicitArray))
+                {
+                    const list = Subclass._explicitArray;
+                    pipeline.sort((a, b) =>
+                    {
+                        const ia = rank(list, a);
+                        const ib = rank(list, b);
+                        return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) -
+                               (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+                    });
+                    pipeline.reverse();
+                }
+                // Strategy B: Custom Map Weight (Map by mixin, object by mixinId)
+                else if (Subclass._customMap && typeof Subclass._customMap === 'object')
+                {
+                    const map = Subclass._customMap;
+                    const weight = (m) =>
+                    {
+                        if (typeof map.get === 'function')
+                        {
+                            return map.get(m) ?? map.get(m.mixinId) ?? 0;
+                        }
+                        return map[m.mixinId] ?? 0;
+                    };
+                    pipeline.sort((a, b) => weight(a) - weight(b));
+                    pipeline.reverse();
+                }
+                // Strategy C: Right-to-Left
+                else if (Subclass._orderStrategy === 'right-left')
+                {
+                    // keep order as-is
+                }
+                // Strategy D: Left-to-Right (default)
+                else
+                {
+                    pipeline.reverse();
+                }
+
+                // Missing bits mean ENABLED, not disabled.
+                //
+                // initialBits is sized to the registry at extend() time, but the
+                // registry keeps growing: any mixin registered later gets an
+                // index past the end of an earlier class's mask array. Testing
+                // `=== 1` then reads undefined and silently drops the layer --
+                // the same failure as the original mixins.length sizing bug, but
+                // temporal, so it appears only once a second composition has
+                // happened. A short array means "not yet configured", and the
+                // default for an unconfigured layer is on.
+                const resolved = pipeline
+                    .filter(mixin => bitArray[bitOf(mixin)] !== 0)
+                    .map(current);   // an overridden id dispatches its replacement
+                cache.set(token, resolved);
+                return resolved;
+            };
+
+            // ─── Dispatch wrappers ─────────────────────────────
+            Subclass._extendXBase = BaseClass;
+            installWrappers(Subclass);
+            mixins.forEach(m => trackUser(m.mixinId, Subclass));
+
+            return Subclass;
+        }
+
+        // ─── Override ──────────────────────────────────────────
+
+        /**
+         * Deliberately replace the implementation behind an existing mixinId.
+         *
+         * Hot-swap, not re-compose: every class already composed with that id
+         * picks the replacement up on its next dispatch, because dispatch
+         * resolves ids through the registry rather than holding the object. The
+         * bit position is unchanged, so enableLayer/disableLayer and cacheToken
+         * keep working and an instance that had the layer off still has it off.
+         *
+         * Returns the previous implementation so a caller can restore it -- the
+         * shape a test double or a temporary patch needs.
+         *
+         * @param {Object} mixin - the replacement mixin, sharing mixinId with the original
+         * @returns {Object|null} the previous implementation registered for that id
+         * @throws {Error} if mixin lacks a string mixinId
+         */
+        static override(mixin)
+        {
+            if (!mixin || typeof mixin.mixinId !== 'string')
+            {
+                throw new Error('ExtendX.override(): needs a mixin with a string mixinId');
+            }
+            const prev = REGISTERED.get(mixin.mixinId) || null;
+            if (prev === mixin)
+            {
+                return prev;
+            }
+            if (prev)
+            {
+                mixin._bitIndex = prev._bitIndex;
+            }
+            REGISTERED.set(mixin.mixinId, mixin);
+            if (!prev)
+            {
+                reindex();
+            }
+            REGISTRY_GENERATION++;
+
+            // Top up dispatch wrappers on every class already composed with this
+            // id. A replacement may define a method the original never had; with
+            // fast prototype dispatch the wrapped-name set is decided at install
+            // time, so without this the new method sits on the mixin, is
+            // reachable by hand, and is silently never dispatched.
+            const users = USERS.get(mixin.mixinId);
+            if (users)
+            {
+                users.forEach(Sub => installWrappers(Sub));
+            }
+            return prev;
+        }
+
+        /**
+         * Concurrently resolve asynchronous mixin init hooks.
+         *
+         * The synchronous init in the Subclass constructor cannot await, so a
+         * mixin needing async setup declares init as async and the caller runs
+         * this once after construction. Resolves through current(), so an
+         * overridden id initialises with its replacement.
+         *
+         * Honours the instance mask: a layer that is off does not initialise.
+         *
+         * @param {Object} instance - a composed instance
+         * @param {...*} args - arguments to re-invoke async init hooks with
+         * @returns {Promise<Object>} instance, once every pending/invoked hook settles
+         * @throws {Error} if one or more mixin init hooks reject
+         */
+        static async initParallel(instance, ...args)
+        {
+            const declared = (instance.constructor && instance.constructor._rawMixins) || [];
+            const mask = getMask(instance);
+            const pending = PENDING_INIT.get(getExtId(instance));
+            const tasks = [];
+
+            declared.forEach(m =>
+            {
+                if (mask[0] !== 1 || mask[1][bitOf(m)] === 0)
+                {
+                    return;
+                }
+                // Already in flight from the constructor: await THAT promise.
+                // Re-invoking would run the hook a second time.
+                if (pending && pending.has(m.mixinId))
+                {
+                    tasks.push(pending.get(m.mixinId)); return;
+                }
+                const impl = current(m);
+                if (typeof impl.init === 'function' && args.length)
+                {
+                    // Only re-invoke when the caller supplies different args than
+                    // construction did; otherwise the constructor already ran it.
+                    tasks.push(Promise.resolve().then(() => impl.init.apply(instance, args)));
+                }
+            });
+
+            const settled = await Promise.allSettled(tasks);
+            const failed = settled.filter(r => r.status === 'rejected');
+            if (pending)
+            {
+                pending.clear();
+            }
+            if (failed.length)
+            {
+                throw new Error('ExtendX.initParallel(): ' + failed.length + ' mixin init hook(s) failed: ' +
+                    failed.map(f => (f.reason && f.reason.message) || String(f.reason)).join('; '));
+            }
+            return instance;
+        }
+
+        /**
+         * @param {string} mixinId - a mixin's stable string id
+         * @returns {Object|null} the current implementation registered for that id
+         */
+        static registered(mixinId) { return REGISTERED.get(mixinId) || null; }
+
+        /**
+         * @returns {string[]} every registered id, alphabetical -- the order that defines bits
+         */
+        static registry() { return Array.from(REGISTERED.keys()).sort(); }
+
+        // ─── Static Introspection ──────────────────────────────
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @param {Array} [mask] - a specific instance mask to resolve against
+         * @returns {Array} declared mixins, or the resolved dispatch chain (names) for prop
+         */
+        static mixins(TargetClass, prop, mask)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return [];
+            }
+            if (prop === undefined)
+            {
+                return [...TargetClass._rawMixins];
+            }
+
+            const pipeline = typeof TargetClass._resolvePipeline === 'function'
+                ? TargetClass._resolvePipeline(mask || TargetClass._defaultMaskState)
+                : [];
+
+            // Dispatch pops from the end, so reverse to read in execution
+            // order. An id whose implementation has been overridden is flagged,
+            // because "the layer is running but not the code you're reading" is
+            // otherwise invisible -- exactly the case override introduces.
+            const declared = new Map(TargetClass._rawMixins.map(m => [m.mixinId, m]));
+            const names = [...pipeline]
+                .filter(m => typeof m[prop] === 'function')
+                .map(m =>
+                {
+                    const d = declared.get(m.mixinId);
+                    return (d && d !== m) ? m.mixinId + ' (overridden)' : m.mixinId;
+                })
+                .reverse();
+
+            const Base = Object.getPrototypeOf(TargetClass.prototype);
+            if (Base && typeof Base[prop] === 'function')
+            {
+                names.push('<base>');
+            }
+            return names;
+        }
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if TargetClass was composed with mixin
+         */
+        static hasMixin(TargetClass, mixin)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return false;
+            }
+            return TargetClass._rawMixins.includes(mixin);
+        }
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixinToRemove - the mixin object to remove from TargetClass._rawMixins
+         * @returns {void}
+         */
+        static removeMixin(TargetClass, mixinToRemove)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return;
+            }
+            const before = TargetClass._rawMixins.length;
+            TargetClass._rawMixins = TargetClass._rawMixins.filter(m => m !== mixinToRemove);
+            if (TargetClass._rawMixins.length === before)
+            {
+                return;
+            }
+            // v1.6.2 (D3): removal must take effect at once, not whenever
+            // something else happens to move the memo key. Both memo levels
+            // key on REGISTRY_GENERATION, so bumping it drops every cached
+            // chain that still holds the removed layer.
+            REGISTRY_GENERATION++;
+            if (Array.isArray(TargetClass._ownedMixins))
+            {
+                const inherited = Object.getPrototypeOf(TargetClass)._ownedMixins || [];
+                const stillInherited = inherited.some(m => m.mixinId === mixinToRemove.mixinId);
+                if (!stillInherited)
+                {
+                    TargetClass._ownedMixins = TargetClass._ownedMixins.filter(m => m.mixinId !== mixinToRemove.mixinId);
+                    const bit = bitOf(mixinToRemove);
+                    if (bit !== undefined && TargetClass._defaultMaskState)
+                    {
+                        TargetClass._defaultMaskState[1][bit] = 0;
+                    }
+                }
+            }
+            const users = USERS.get(mixinToRemove.mixinId);
+            if (users && !TargetClass._rawMixins.some(m => m.mixinId === mixinToRemove.mixinId))
+            {
+                users.delete(TargetClass);
+            }
+        }
+
+        /**
+         * @param {Object} nodeA - a composed instance
+         * @param {Object} nodeB - a composed instance
+         * @returns {string} one of 'EQUIVALENT_EMPTY_SETS', 'NODE_A_IS_EMPTY_SUBSET_OF_B',
+         *   'NODE_B_IS_EMPTY_SUBSET_OF_A', 'IDENTITY_EQUIVALENT_SETS', 'SUBSET', 'SUPERSET',
+         *   or 'DISJOINT_OR_INTERSECTING_SETS'
+         */
+        static evaluateSetRelation(nodeA, nodeB)
+        {
+            // The set a node IS: the layers its class owns that are on for it
+            // (v1.6.2). Bits of mixins the class never had, or a hole past the
+            // end of its mask, are not members -- a mask records toggles, not
+            // ownership, so ownership comes from the class.
+            const members = (node) =>
+            {
+                const mask = getMask(node);
+                const out = [];
+                if (mask[0] === 0)
+                {
+                    return [mask, out];
+                }
+                const C = node && node.constructor;
+                const owned = (C && C._ownedMixins) || [];
+                owned.forEach(m =>
+                {
+                    const bit = bitOf(m);
+                    if (bit !== undefined && mask[1][bit] !== 0)
+                    {
+                        out[bit] = 1;
+                    }
+                });
+                return [[out.length ? 1 : 0, out], out];
+            };
+            const [mA, bitsA] = members(nodeA);
+            const [mB, bitsB] = members(nodeB);
+            if (mA[0] === 0 && mB[0] === 0)
+            {
+                return 'EQUIVALENT_EMPTY_SETS';
+            }
+            if (mA[0] === 0)
+            {
+                return 'NODE_A_IS_EMPTY_SUBSET_OF_B';
+            }
+            if (mB[0] === 0)
+            {
+                return 'NODE_B_IS_EMPTY_SUBSET_OF_A';
+            }
+
+            let isSubset = true;
+            let isSuperset = true;
+
+            for (let i = 0; i < Math.max(bitsA.length, bitsB.length); i++)
+            {
+                const bA = bitsA[i] ?? 0;
+                const bB = bitsB[i] ?? 0;
+                if (bA === 1 && bB !== 1)
+                {
+                    isSubset = false;
+                }
+                if (bB === 1 && bA !== 1)
+                {
+                    isSuperset = false;
+                }
+            }
+
+            if (isSubset && isSuperset)
+            {
+                return 'IDENTITY_EQUIVALENT_SETS';
+            }
+            if (isSubset)
+            {
+                return 'SUBSET';
+            }
+            if (isSuperset)
+            {
+                return 'SUPERSET';
+            }
+            return 'DISJOINT_OR_INTERSECTING_SETS';
+        }
+    }
+
+    // ─── Return ─────────────────────────────────────────────────
+
+    return ExtendX;
+
+}));
+
+
+</script>
+<script>/* research/spline-patch/v2/Technic.js · sha256 02665186297872d412a4a0ea2f14d7981f973c37dab216ea426b9beb1ee8a82d */
+// ─── Technic — build machines from beams, axles, gears, pulleys, belts and ropes ───
+// Author: Will Fobbs
+// Company: Pooled Impact
+// Confidential & Proprietary — Not for distribution
+//
+// Mechanism Lab v2. v1 (research/spline-patch/v1/Mechanism.js) proved the method on one
+// fixed scene: plain bases that expose a few dispatch hooks, every physical effect an
+// ExtendX mixin that joins them, and a hand calculation checked against the simulation.
+// v2 keeps the method and opens the scene up: the user builds the machine.
+//
+// Two layers, kept apart on purpose:
+//
+//   MODEL    what was built. A flat list of parts on a 3D hole grid (x, y, z in Technic
+//            units: 1 = one hole pitch = 8 mm; y is up, z runs toward the viewer). Plain
+//            data, serialisable, the same for every view. Side and isometric are two
+//            cameras on it, nothing more.
+//
+//   MACHINE  what moves. compile(model) reads the model, works out which parts are
+//            joined (gears on a shared axle turn together, gears whose pitch circles
+//            touch on one layer mesh, a belt ties two pulleys, a rope ties a drum to a
+//            load) and builds the simulation from ExtendX-composed objects:
+//
+//              Dof    one degree of freedom: an axle assembly (angle), a rack (slide), a
+//                     free brick (height). Mixins: Bearing (friction where the axle runs
+//                     in a beam), Motor (speed servo with a torque limit), Weight (gravity
+//                     on a load), Contact (a load rests on what is below it), Guide (a
+//                     rack's travel stops).
+//              Joint  a relation between Dofs. Mixins: Mesh (gear–gear, gear–rack), Belt
+//                     (pulley–pulley, open or crossed, optional slip), Rope (drum–load,
+//                     pulls only, jams at the drum).
+//              Machine  Gravity (a uniform field) and the solver.
+//
+// Every constraint is linear in the Dof velocities, so each substep is one small linear
+// complementarity problem: rows J·v = b with bounds on each row's impulse. It is solved
+// directly (active set over dense Gaussian elimination), not by iterating, so a long gear
+// train with a heavy load on the end converges exactly instead of sagging. Over-
+// constrained trains (a loop whose ratios disagree) are regularised and simply lock,
+// which is what a jammed gearbox does.
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define(['./ExtendX'], factory);
+  } else if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('./ExtendX.js'));
+  } else {
+    root.Technic = factory(root.ExtendX);
+  }
+}(typeof self !== 'undefined' ? self : this, function (ExtendX) {
+
+  'use strict';
+
+  const U = 0.008;                 // metres per hole pitch
+  const G = 9.81;
+  const TAU = Math.PI * 2;
+
+  // ── Catalogue ────────────────────────────────────────────────────────
+  // Gear pitch radius = teeth / 16 holes, so every standard pair meshes at a distance the
+  // hole grid can reach (8+24 = 2 holes, 8+40 = 3, 24+24 = 3, 16+16 = 2 ...).
+  const GEARS = { 8: { mass: 0.0006 }, 16: { mass: 0.0015 }, 24: { mass: 0.0025 }, 40: { mass: 0.006 } };
+  const PULLEYS = { s: { r: 0.5, mass: 0.0008, label: 'small' }, m: { r: 1, mass: 0.0015, label: 'medium' }, l: { r: 1.5, mass: 0.003, label: 'large' } };
+  const MESH_TOL = 0.06;           // holes
+  const DEFAULTS = {
+    motor: { rpm: 60, torque: 0.1 },        // N·m stall torque
+    bearingFriction: 0.0002,                // N·m per axle held in a beam
+    rackMass: 0.01,
+    axleMass: 0.001,
+  };
+
+  function radiusOf(p) {
+    if (p.type === 'gear') return p.teeth / 16;
+    if (p.type === 'pulley') return PULLEYS[p.size].r;
+    return 0;
+  }
+  const isWheel = p => p.type === 'gear' || p.type === 'pulley' || p.type === 'motor';
+
+  // Cells a part occupies on its own layer (axis-aligned, in holes, centre-based).
+  function extent(p) {
+    switch (p.type) {
+      case 'beam': return p.dir === 'y'
+        ? { x0: p.x - 0.45, x1: p.x + 0.45, y0: p.y - 0.5, y1: p.y + p.len - 0.5, z0: p.z - 0.45, z1: p.z + 0.45 }
+        : { x0: p.x - 0.5, x1: p.x + p.len - 0.5, y0: p.y - 0.45, y1: p.y + 0.45, z0: p.z - 0.45, z1: p.z + 0.45 };
+      case 'brick': return { x0: p.x - 0.5, x1: p.x + p.w - 0.5, y0: p.y - 0.5, y1: p.y + p.h - 0.5, z0: p.z - 0.5, z1: p.z + (p.d || 1) - 0.5 };
+      case 'rack': return { x0: p.x - 0.5, x1: p.x + p.len - 0.5, y0: p.y - 0.5, y1: p.y + 0.5, z0: p.z - 0.3, z1: p.z + 0.3 };
+      case 'motor': return { x0: p.x - 1, x1: p.x + 1, y0: p.y - 1, y1: p.y + 1, z0: p.z - 0.45, z1: p.z + 0.45 };
+      default: return null;
+    }
+  }
+
+  // Holes a structural part offers to an axle running along z.
+  function holes(p) {
+    const out = [];
+    if (p.type === 'beam') {
+      for (let i = 0; i < p.len; i++) out.push(p.dir === 'y' ? [p.x, p.y + i, p.z] : [p.x + i, p.y, p.z]);
+    } else if (p.type === 'brick' && p.anchored !== false) {
+      for (let i = 0; i < p.w; i++) for (let j = 0; j < p.h; j++) for (let k = 0; k < (p.d || 1); k++) out.push([p.x + i, p.y + j, p.z + k]);
+    }
+    return out;
+  }
+
+  // ── Model helpers ────────────────────────────────────────────────────
+
+  function emptyModel() { return { version: 2, parts: [], nextId: 1 }; }
+
+  function addPart(model, part) {
+    const p = Object.assign({ id: model.nextId++ }, part);
+    model.parts.push(p);
+    return p;
+  }
+
+  function byId(model, id) { return model.parts.find(p => p.id === id) || null; }
+
+  function removePart(model, id) {
+    const doomed = new Set([id]);
+    // Anything that hangs off a removed part goes with it.
+    let grew = true;
+    while (grew) {
+      grew = false;
+      for (const p of model.parts) {
+        if (doomed.has(p.id)) continue;
+        if ((p.type === 'belt' && (doomed.has(p.a) || doomed.has(p.b))) || (p.type === 'rope' && (doomed.has(p.drum) || doomed.has(p.load)))) {
+          doomed.add(p.id); grew = true;
+        }
+      }
+    }
+    model.parts = model.parts.filter(p => !doomed.has(p.id));
+    return doomed;
+  }
+
+  function axleAt(model, x, y, z) {
+    return model.parts.find(p => p.type === 'axle' && p.x === x && p.y === y && z >= p.z && z < p.z + p.len) || null;
+  }
+
+  // ── Analysis: model → structure (shared by compile, the hand calculation and drawing) ──
+
+  function analyze(model) {
+    const parts = model.parts, issues = [];
+    const anchored = parts.filter(p => p.type === 'beam' || (p.type === 'brick' && p.anchored !== false));
+    const holeSet = new Set();
+    for (const s of anchored) for (const h of holes(s)) holeSet.add(h.join(','));
+
+    // Axle assemblies.
+    const axles = parts.filter(p => p.type === 'axle').map(a => {
+      let held = 0;
+      for (let k = a.z; k < a.z + a.len; k++) if (holeSet.has([a.x, a.y, k].join(','))) held++;
+      return { axle: a, members: [], held, supported: held > 0 };
+    });
+    const assemblyOf = new Map();
+    for (const w of parts.filter(isWheel)) {
+      const as = axles.find(A => A.axle.x === w.x && A.axle.y === w.y && w.z >= A.axle.z && w.z < A.axle.z + A.axle.len);
+      if (!as) { issues.push({ id: w.id, level: 'warn', text: `${label(w)} has no axle through it` }); continue; }
+      as.members.push(w); assemblyOf.set(w.id, as);
+    }
+    for (const as of axles) {
+      if (!as.supported && as.members.length) issues.push({ id: as.axle.id, level: 'warn', text: `${label(as.axle)} is not held by a beam or brick, so it cannot turn` });
+      const seen = new Map();
+      for (const m of as.members) {
+        if (seen.has(m.z)) issues.push({ id: m.id, level: 'error', text: `${label(m)} and ${label(seen.get(m.z))} sit on the same spot` });
+        seen.set(m.z, m);
+      }
+    }
+
+    // Gear meshes and wheel collisions on each layer.
+    const meshes = [];
+    const wheels = parts.filter(p => (p.type === 'gear' || p.type === 'pulley') && assemblyOf.has(p.id));
+    for (let i = 0; i < wheels.length; i++) for (let j = i + 1; j < wheels.length; j++) {
+      const a = wheels[i], b = wheels[j];
+      if (a.z !== b.z || assemblyOf.get(a.id) === assemblyOf.get(b.id)) continue;
+      const d = Math.hypot(b.x - a.x, b.y - a.y), sum = radiusOf(a) + radiusOf(b);
+      const both = a.type === 'gear' && b.type === 'gear';
+      if (both && Math.abs(d - sum) < MESH_TOL) meshes.push({ kind: 'gear', a, b, d });
+      else if (d < sum + (both ? 0.12 : 0) - MESH_TOL) issues.push({ id: b.id, level: 'error', text: `${label(a)} and ${label(b)} overlap without meshing` });
+    }
+
+    // Racks: a gear meshes when its pitch circle touches the rack's pitch line.
+    const racks = parts.filter(p => p.type === 'rack').map(r => ({ rack: r, meshes: [] }));
+    for (const R of racks) {
+      const r = R.rack;
+      for (const g of wheels) {
+        if (g.type !== 'gear' || g.z !== r.z) continue;
+        const rg = radiusOf(g), within = g.x >= r.x - 0.01 && g.x <= r.x + r.len - 0.99;
+        if (!within) continue;
+        if (Math.abs(g.y - rg - (r.y + 0.5)) < MESH_TOL) R.meshes.push({ gear: g, side: -1 });      // rack below the gear
+        else if (Math.abs(g.y + rg - (r.y - 0.5)) < MESH_TOL) R.meshes.push({ gear: g, side: 1 });  // rack above
+      }
+      if (R.meshes.length) meshes.push(...R.meshes.map(m => ({ kind: 'rack', a: m.gear, rack: r, side: m.side })));
+    }
+
+    // Belts.
+    const belts = parts.filter(p => p.type === 'belt').map(b => {
+      const a = byId(model, b.a), c = byId(model, b.b);
+      const ok = a && c && a.type === 'pulley' && c.type === 'pulley' && a.z === c.z && assemblyOf.has(a.id) && assemblyOf.has(c.id) && assemblyOf.get(a.id) !== assemblyOf.get(c.id);
+      if (!ok) issues.push({ id: b.id, level: 'warn', text: 'Belt needs two pulleys on different axles, on the same layer' });
+      return { belt: b, a, b: c, ok };
+    });
+
+    // Free bricks: loads. Each rests on the highest anchored top beneath it, or the ground.
+    const loads = parts.filter(p => p.type === 'brick' && p.anchored === false).map(L => {
+      const e = extent(L);
+      let floor = -0.5;
+      for (const s of anchored) {
+        const f = extent(s);
+        if (f.x1 <= e.x0 + 1e-6 || f.x0 >= e.x1 - 1e-6 || f.z1 <= e.z0 + 1e-6 || f.z0 >= e.z1 - 1e-6) continue;
+        if (f.y1 <= e.y0 + 1e-6 && f.y1 > floor) floor = f.y1;
+      }
+      for (const R of racks) {
+        const f = extent(R.rack);
+        if (f.x1 <= e.x0 || f.x0 >= e.x1 || f.z1 <= e.z0 || f.z0 >= e.z1) continue;
+        if (f.y1 <= e.y0 + 1e-6 && f.y1 > floor) floor = f.y1;
+      }
+      return { load: L, floor };
+    });
+
+    // Ropes.
+    const ropes = parts.filter(p => p.type === 'rope').map(r => {
+      const drum = byId(model, r.drum), load = byId(model, r.load);
+      const ok = drum && load && (drum.type === 'pulley' || drum.type === 'gear') && assemblyOf.has(drum.id) && load.type === 'brick' && load.anchored === false;
+      if (!ok) { issues.push({ id: r.id, level: 'warn', text: 'Rope needs a pulley on an axle and a free brick' }); return { rope: r, ok: false }; }
+      const cx = load.x + (load.w - 1) / 2, side = cx >= drum.x ? 1 : -1;
+      const top = load.y + load.h - 0.5;
+      return { rope: r, drum, load, side, ok: true, attachX: drum.x + side * radiusOf(drum), top };
+    });
+
+    return { axles, assemblyOf, meshes, racks, belts, loads, ropes, issues };
+  }
+
+  function label(p) {
+    if (!p) return '?';
+    switch (p.type) {
+      case 'gear': return `${p.teeth}t gear #${p.id}`;
+      case 'pulley': return `${PULLEYS[p.size].label} pulley #${p.id}`;
+      case 'axle': return `axle #${p.id}`;
+      case 'beam': return `beam ${p.len} #${p.id}`;
+      case 'brick': return p.anchored === false ? `weight ${p.mass} kg #${p.id}` : `brick #${p.id}`;
+      case 'motor': return `motor #${p.id}`;
+      case 'rack': return `rack ${p.len} #${p.id}`;
+      case 'belt': return `${p.crossed ? 'crossed ' : ''}belt #${p.id}`;
+      case 'rope': return `rope #${p.id}`;
+      default: return `${p.type} #${p.id}`;
+    }
+  }
+
+  // ── Bases ────────────────────────────────────────────────────────────
+
+  class MachineBase {
+    constructor(opts = {}) {
+      this.name = 'machine';
+      this.dofs = [];
+      this.joints = [];
+      this.t = 0;
+      this.substep = opts.substep || 1 / 600;
+      this.lastRows = [];
+    }
+
+    // Dispatch hook: field acceleration (m/s²), Gravity adds to it.
+    fieldAt() { return [0, 0, 0]; }
+
+    step(dt) {
+      const n = Math.max(1, Math.ceil(dt / this.substep - 1e-9)), h = dt / n;
+      for (let i = 0; i < n; i++) this.substepOnce(h);
+      return this;
+    }
+
+    substepOnce(h) {
+      const dofs = this.dofs;
+      dofs.forEach((d, i) => { d.index = i; });
+      for (const d of dofs) {
+        const f = d.forces(this) || 0;
+        if (d.inertia > 0) d.v += h * f / d.inertia;
+      }
+      const rows = [];
+      for (const d of dofs) d.rows(this, h, rows);
+      for (const j of this.joints) j.rows(this, h, rows);
+      solveRows(rows, dofs, this.warm || (this.warm = new Map()));
+      for (const row of rows) {
+        for (const [d, c] of row.terms) if (d.inertia > 0) d.v += c * row.lambda / d.inertia;
+        if (row.owner) row.owner.lastImpulse[row.tag] = row.lambda / h;
+      }
+      for (const d of dofs) d.q += h * d.v;
+      this.lastRows = rows;
+      this.t += h;
+    }
+
+    // Kinetic, gravity and total energy, each term through the layers present.
+    energy() {
+      let kinetic = 0, potential = 0;
+      for (const d of this.dofs) {
+        kinetic += 0.5 * d.inertia * d.v * d.v;
+        potential += d.potential(this) || 0;
+      }
+      return { kinetic, potential, total: kinetic + potential };
+    }
+
+    find(name) { return this.dofs.concat(this.joints).find(x => x.name === name) || null; }
+  }
+
+  class Dof {
+    constructor(opts = {}) {
+      this.name = opts.name;
+      this.kind = opts.kind;            // 'rotor' | 'slider' | 'load'
+      this.q = 0;                        // rad or m, from the model's rest state
+      this.v = 0;
+      this.inertia = opts.inertia;       // kg·m² or kg
+      this.dir = opts.dir || [0, 0, 0];  // for sliders and loads: unit direction of +q
+      this.partIds = opts.partIds || [];
+      this.lastImpulse = {};
+      // Inside an ExtendX layer `this` is a forwarding proxy, so rows must name the real
+      // instance: the solver couples rows by identity (===) on their dofs.
+      this.self = this;
+    }
+    forces(machine) { return 0; }
+    rows(machine, h, out) {}
+    potential(machine) { return 0; }
+  }
+
+  class Joint {
+    constructor(opts = {}) {
+      this.name = opts.name;
+      this.kind = opts.kind;
+      this.terms = opts.terms || [];     // [[dof, coefficient]], C = Σ c·q − C0
+      this.C0 = opts.C0 || 0;
+      this.partIds = opts.partIds || [];
+      this.lastImpulse = {};
+      this.self = this;
+    }
+    C() { let s = -this.C0; for (const [d, c] of this.terms) s += c * d.q; return s; }
+    rows(machine, h, out) {}
+  }
+
+  const BETA = 0.2, INF = Infinity;
+
+  // ── Machine mixins ───────────────────────────────────────────────────
+
+  const Gravity = {
+    mixinId: 'technic.Gravity',
+    init(opts = {}) { this.g = opts.g === undefined ? G : opts.g; },
+    fieldAt(next) {
+      const below = next();
+      return [below[0], below[1] - this.g, below[2]];
+    },
+  };
+
+  // ── Dof mixins ───────────────────────────────────────────────────────
+
+  // Gravity on a load or a vertical rack: F = m·(g·dir), U = −m·(g·dir)·q.
+  const Weight = {
+    mixinId: 'technic.Weight',
+    forces(machine, next) {
+      const g = machine.fieldAt();
+      return this.inertia * (g[0] * this.dir[0] + g[1] * this.dir[1] + g[2] * this.dir[2]) + next();
+    },
+    potential(machine, next) {
+      const g = machine.fieldAt();
+      return -this.inertia * (g[0] * this.dir[0] + g[1] * this.dir[1] + g[2] * this.dir[2]) * this.q + next();
+    },
+  };
+
+  // A load rests on whatever is beneath it: q ≥ floor (pushes only).
+  const Contact = {
+    mixinId: 'technic.Contact',
+    rows(machine, h, out, next) {
+      const gap = this.q - this.floor;
+      if (gap < 0.002) out.push({ owner: this.self, tag: 'contact', terms: [[this.self, 1]], b: gap < 0 ? -BETA * gap / h : -gap / h, lo: 0, hi: INF, key: this.name + ':contact' });
+      return next();
+    },
+  };
+
+  // Friction where an axle runs in a beam: a torque up to τf opposing the spin.
+  const Bearing = {
+    mixinId: 'technic.Bearing',
+    rows(machine, h, out, next) {
+      if (this.friction > 0) out.push({ owner: this.self, tag: 'friction', terms: [[this.self, 1]], b: 0, lo: -this.friction * h, hi: this.friction * h, key: this.name + ':friction' });
+      return next();
+    },
+  };
+
+  // Speed servo with a torque limit: drives ω toward the set speed with at most ±τmax.
+  const Motor = {
+    mixinId: 'technic.Motor',
+    rows(machine, h, out, next) {
+      if (this.motor) {
+        const w = this.motor.rpm * TAU / 60, t = this.motor.torque;
+        out.push({ owner: this.self, tag: 'motor', terms: [[this.self, 1]], b: w, lo: -t * h, hi: t * h, key: this.name + ':motor' });
+      }
+      return next();
+    },
+  };
+
+  // A rack's travel: it stops where the gear would run off its teeth.
+  const Guide = {
+    mixinId: 'technic.Guide',
+    rows(machine, h, out, next) {
+      const lo = this.q - this.qmin, hi = this.qmax - this.q;
+      if (lo < 0.002) out.push({ owner: this.self, tag: 'stop', terms: [[this.self, 1]], b: lo < 0 ? -BETA * lo / h : -lo / h, lo: 0, hi: INF, key: this.name + ':stopLo' });
+      if (hi < 0.002) out.push({ owner: this.self, tag: 'stop', terms: [[this.self, -1]], b: hi < 0 ? -BETA * hi / h : -hi / h, lo: 0, hi: INF, key: this.name + ':stopHi' });
+      return next();
+    },
+  };
+
+  // ── Joint mixins ─────────────────────────────────────────────────────
+
+  // Gears: pitch-line speeds match. C = Σ c·q is held at its starting value.
+  const Mesh = {
+    mixinId: 'technic.Mesh',
+    rows(machine, h, out, next) {
+      out.push({ owner: this.self, tag: 'mesh', terms: this.terms, b: -BETA * this.C() / h, lo: -INF, hi: INF, key: this.name });
+      return next();
+    },
+  };
+
+  // Belt: like a mesh, same direction (crossed: opposite). With slip > 0 the belt can
+  // carry at most that much force before it slips.
+  const Belt = {
+    mixinId: 'technic.Belt',
+    rows(machine, h, out, next) {
+      const s = this.slip > 0 ? this.slip * h : INF;
+      // A slipping belt has no fixed phase to return to, so no position correction.
+      out.push({ owner: this.self, tag: 'belt', terms: this.terms, b: s === INF ? -BETA * this.C() / h : 0, lo: -s, hi: s, key: this.name });
+      return next();
+    },
+  };
+
+  // Rope from a drum down to a load: it pulls only, and the load jams against the drum
+  // when the rope is wound all the way in. C = length violation (> 0: over-stretched).
+  const Rope = {
+    mixinId: 'technic.Rope',
+    rows(machine, h, out, next) {
+      const C = this.C();
+      if (C > -0.002) out.push({ owner: this.self, tag: 'tension', terms: this.terms, b: C > 0 ? -BETA * C / h : -C / h, lo: -INF, hi: 0, key: this.name + ':taut' });
+      // Wound in: rope length = L0 − side·r·θ must stay ≥ minLength.
+      const len = this.length(), room = len - this.minLength;
+      if (room < 0.002) out.push({ owner: this.self, tag: 'jam', terms: [[this.drum, -this.side * this.r]], b: room < 0 ? -BETA * room / h : -room / h, lo: 0, hi: INF, key: this.name + ':jam' });
+      return next();
+    },
+  };
+
+  const MIXINS = { Gravity, Weight, Contact, Bearing, Motor, Guide, Mesh, Belt, Rope };
+
+  // ── Solver: bounded rows, active set over a dense direct solve ─────────
+
+  function solveRows(rows, dofs, warm) {
+    const n = rows.length;
+    if (!n) return;
+    const invM = d => (d.inertia > 0 ? 1 / d.inertia : 0);
+    const A = Array.from({ length: n }, () => new Float64Array(n));
+    const r = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      let jv = 0;
+      for (const [d, c] of rows[i].terms) jv += c * d.v;
+      r[i] = rows[i].b - jv;
+      for (let j = i; j < n; j++) {
+        let s = 0;
+        for (const [di, ci] of rows[i].terms) for (const [dj, cj] of rows[j].terms) if (di === dj) s += ci * cj * invM(di);
+        A[i][j] = A[j][i] = s;
+      }
+    }
+    let scale = 0;
+    for (let i = 0; i < n; i++) scale = Math.max(scale, A[i][i]);
+    for (let i = 0; i < n; i++) A[i][i] += 1e-9 * scale + 1e-14;
+
+    // state: 0 free, -1 at lo, +1 at hi. Warm-started by row key.
+    const state = new Int8Array(n), lam = new Float64Array(n);
+    for (let i = 0; i < n; i++) {
+      const w = warm.get(rows[i].key);
+      state[i] = w === undefined ? 0 : w;
+      if (state[i] === -1 && !Number.isFinite(rows[i].lo)) state[i] = 0;
+      if (state[i] === 1 && !Number.isFinite(rows[i].hi)) state[i] = 0;
+    }
+    // Principal pivoting, one row at a time: solve with the current free set, then move
+    // the single worst offender (a free row past its bound, else a clamped row whose
+    // residual says it wants back in). Changing several at once can cycle.
+    const solveFree = () => {
+      const free = [];
+      for (let i = 0; i < n; i++) {
+        if (state[i] === -1) lam[i] = rows[i].lo; else if (state[i] === 1) lam[i] = rows[i].hi; else free.push(i);
+      }
+      if (!free.length) return free;
+      const m = free.length, M = Array.from({ length: m }, () => new Float64Array(m + 1));
+      for (let a = 0; a < m; a++) {
+        const i = free[a];
+        let rhs = r[i];
+        for (let j = 0; j < n; j++) if (state[j] !== 0) rhs -= A[i][j] * lam[j];
+        for (let b = 0; b < m; b++) M[a][b] = A[i][free[b]];
+        M[a][m] = rhs;
+      }
+      const x = gauss(M, m);
+      free.forEach((i, a) => { lam[i] = x[a]; });
+      return free;
+    };
+    for (let iter = 0; iter < 4 * n + 10; iter++) {
+      const free = solveFree();
+      let worst = -1, worstBy = 0, to = 0;
+      for (const i of free) {
+        const over = (lam[i] - rows[i].hi) / Math.sqrt(A[i][i]), under = (rows[i].lo - lam[i]) / Math.sqrt(A[i][i]);
+        if (over > worstBy) { worst = i; worstBy = over; to = 1; }
+        if (under > worstBy) { worst = i; worstBy = under; to = -1; }
+      }
+      if (worst < 0) {
+        for (let i = 0; i < n; i++) {
+          if (state[i] === 0) continue;
+          let w = -r[i];
+          for (let j = 0; j < n; j++) w += A[i][j] * lam[j];
+          const bad = (state[i] === -1 ? -w : w) / Math.sqrt(A[i][i]);
+          if (bad > Math.max(worstBy, 1e-12 * (Math.abs(r[i]) + 1e-9) / Math.sqrt(A[i][i]))) { worst = i; worstBy = bad; to = 0; }
+        }
+      }
+      if (worst < 0) break;
+      state[worst] = to;
+    }
+    solveFree();
+    warm.clear();
+    for (let i = 0; i < n; i++) { rows[i].lambda = lam[i]; warm.set(rows[i].key, state[i]); }
+  }
+
+  function gauss(M, m) {
+    for (let c = 0; c < m; c++) {
+      let p = c;
+      for (let i = c + 1; i < m; i++) if (Math.abs(M[i][c]) > Math.abs(M[p][c])) p = i;
+      if (p !== c) { const t = M[p]; M[p] = M[c]; M[c] = t; }
+      const piv = M[c][c];
+      if (Math.abs(piv) < 1e-300) continue;
+      for (let i = c + 1; i < m; i++) {
+        const f = M[i][c] / piv;
+        if (!f) continue;
+        for (let k = c; k <= m; k++) M[i][k] -= f * M[c][k];
+      }
+    }
+    const x = new Float64Array(m);
+    for (let i = m - 1; i >= 0; i--) {
+      let s = M[i][m];
+      for (let k = i + 1; k < m; k++) s -= M[i][k] * x[k];
+      x[i] = Math.abs(M[i][i]) < 1e-300 ? 0 : s / M[i][i];
+    }
+    return x;
+  }
+
+  // ── Compile: model → machine ──────────────────────────────────────────
+
+  const Machine = ExtendX.extend(MachineBase, Gravity);
+  const Rotor = ExtendX.extend(Dof, Bearing, Motor);
+  const Load = ExtendX.extend(Dof, Weight, Contact);
+  const Slider = ExtendX.extend(Dof, Weight, Guide);
+  const GearMesh = ExtendX.extend(Joint, Mesh);
+  const BeltDrive = ExtendX.extend(Joint, Belt);
+  const RopeLine = ExtendX.extend(Joint, Rope);
+
+  function compile(model, opts = {}) {
+    const an = analyze(model);
+    const machine = new Machine({ g: opts.g === undefined ? G : opts.g, substep: opts.substep });
+    const dofOf = new Map();           // part id → dof (axle members map to their axle's dof)
+    const phase = new Map();           // gear id → tooth phase (cosmetic)
+
+    for (const as of an.axles) {
+      if (!as.supported) continue;
+      let I = DEFAULTS.axleMass * (0.0024 * 0.0024) / 2;
+      let motor = null;
+      for (const m of as.members) {
+        if (m.type === 'motor') { motor = { rpm: m.rpm, torque: m.torque, id: m.id }; I += 4e-6; continue; }
+        const r = radiusOf(m) * U, mass = m.type === 'gear' ? GEARS[m.teeth].mass : PULLEYS[m.size].mass;
+        I += 0.5 * mass * r * r;
+      }
+      const d = new Rotor({ name: `axle#${as.axle.id}`, kind: 'rotor', inertia: I, partIds: [as.axle.id, ...as.members.map(m => m.id)] });
+      d.friction = DEFAULTS.bearingFriction * Math.min(2, as.held);
+      d.motor = motor;
+      d.axle = as.axle;
+      machine.dofs.push(d);
+      dofOf.set(as.axle.id, d);
+      for (const m of as.members) dofOf.set(m.id, d);
+    }
+
+    for (const L of an.loads) {
+      const p = L.load;
+      const d = new Load({ name: `weight#${p.id}`, kind: 'load', inertia: p.mass, dir: [0, 1, 0], partIds: [p.id] });
+      d.base = (p.y - 0.5) * U;   // model bottom, m; q is the rise above it
+      d.floor = (L.floor - (p.y - 0.5)) * U;
+      d.part = p;
+      machine.dofs.push(d);
+      dofOf.set(p.id, d);
+    }
+
+    for (const R of an.racks) {
+      const p = R.rack;
+      const d = new Slider({ name: `rack#${p.id}`, kind: 'slider', inertia: DEFAULTS.rackMass * p.len / 8, dir: [1, 0, 0], partIds: [p.id] });
+      // Travel keeps every meshing gear on the teeth: x ≤ gear.x ≤ x + len − 1.
+      let qmin = -INF, qmax = INF;
+      for (const m of R.meshes) {
+        qmin = Math.max(qmin, (m.gear.x - (p.x + p.len - 1)) * U);
+        qmax = Math.min(qmax, (m.gear.x - p.x) * U);
+      }
+      if (!R.meshes.length) { qmin = 0; qmax = 0; }
+      d.qmin = qmin; d.qmax = qmax; d.part = p;
+      machine.dofs.push(d);
+      dofOf.set(p.id, d);
+    }
+
+    for (const m of an.meshes) {
+      const da = dofOf.get(m.a.id);
+      if (m.kind === 'gear') {
+        const db = dofOf.get(m.b.id);
+        if (!da || !db) continue;
+        machine.joints.push(new GearMesh({ name: `mesh#${m.a.id}-${m.b.id}`, kind: 'gear', terms: [[da, radiusOf(m.a) * U], [db, radiusOf(m.b) * U]], partIds: [m.a.id, m.b.id] }));
+      } else {
+        const dr = dofOf.get(m.rack.id);
+        if (!da || !dr) continue;
+        // Contact below the gear (side −1): pitch speed +r·ω along +x; above: −r·ω.
+        const coef = m.side === -1 ? -radiusOf(m.a) * U : radiusOf(m.a) * U;
+        machine.joints.push(new GearMesh({ name: `mesh#${m.a.id}-${m.rack.id}`, kind: 'rack', terms: [[dr, 1], [da, coef]], partIds: [m.a.id, m.rack.id] }));
+      }
+    }
+
+    for (const B of an.belts) {
+      if (!B.ok) continue;
+      const da = dofOf.get(B.a.id), db = dofOf.get(B.b.id);
+      if (!da || !db) continue;
+      const j = new BeltDrive({ name: `belt#${B.belt.id}`, kind: 'belt', terms: [[da, radiusOf(B.a) * U], [db, (B.belt.crossed ? 1 : -1) * radiusOf(B.b) * U]], partIds: [B.belt.id, B.a.id, B.b.id] });
+      j.slip = B.belt.slip || 0;
+      machine.joints.push(j);
+    }
+
+    for (const Rp of an.ropes) {
+      if (!Rp.ok) continue;
+      const dd = dofOf.get(Rp.drum.id), dl = dofOf.get(Rp.load.id);
+      if (!dd || !dl) continue;
+      const r = radiusOf(Rp.drum) * U, L0 = (Rp.drum.y - Rp.top) * U;
+      // length = L0 − side·r·θ ; distance = L0 − q_load ; C = distance − length = side·r·θ − q_load.
+      const j = new RopeLine({ name: `rope#${Rp.rope.id}`, kind: 'rope', terms: [[dd, Rp.side * r], [dl, -1]], C0: 0, partIds: [Rp.rope.id, Rp.drum.id, Rp.load.id] });
+      j.drum = dd; j.side = Rp.side; j.r = r; j.L0 = L0; j.minLength = Math.max(0.5 * U, 0);
+      j.length = function () { return this.L0 - this.side * this.r * this.drum.q; };
+      machine.joints.push(j);
+    }
+
+    // Tooth phases so meshing teeth interleave (cosmetic only).
+    const gears = model.parts.filter(p => p.type === 'gear');
+    const adj = new Map(gears.map(g => [g.id, []]));
+    for (const m of an.meshes) if (m.kind === 'gear') { adj.get(m.a.id).push(m.b); adj.get(m.b.id).push(m.a); }
+    for (const g of gears) {
+      if (phase.has(g.id)) continue;
+      phase.set(g.id, 0);
+      const queue = [g];
+      while (queue.length) {
+        const a = queue.shift(), pa = phase.get(a.id), ra = radiusOf(a);
+        for (const b of adj.get(a.id)) {
+          if (phase.has(b.id)) continue;
+          const rb = radiusOf(b), phi = Math.atan2(b.y - a.y, b.x - a.x), pitch = TAU / 16;
+          phase.set(b.id, phi + Math.PI - (pitch / 2 - ra * (phi - pa)) / rb);
+          queue.push(b);
+        }
+      }
+    }
+
+    machine.analysis = an;
+    machine.dofOf = dofOf;
+    machine.phase = phase;
+    machine.history = [];
+    return machine;
+  }
+
+  // ── Hand calculation ─────────────────────────────────────────────────
+  //
+  // Speeds follow from the ratios alone: a mesh reverses direction and scales by r_a/r_b,
+  // an open belt keeps it, a rack turns r·ω into a slide, a rope lifts at r·ω. The motor
+  // torque needed is the power balance τ·ω_m = Σ m·g·v (loads) + Σ τf·|ω| (bearings). If
+  // that exceeds the motor's limit it stalls. A loop whose ratios disagree jams.
+
+  function predict(model, machine) {
+    const an = machine.analysis;
+    const dofs = machine.dofs, dofOf = machine.dofOf;
+    const edges = new Map(dofs.map(d => [d, []]));
+    const link = (a, b, k) => { edges.get(a).push([b, k]); edges.get(b).push([a, 1 / k]); };
+    for (const j of machine.joints) {
+      if (j.kind === 'rope') continue;
+      const [[a, ca], [b, cb]] = j.terms;
+      if (ca === 0 || cb === 0) continue;
+      link(a, b, -ca / cb);      // ca·va + cb·vb = 0 ⇒ vb = −(ca/cb)·va
+    }
+    const ropes = machine.joints.filter(j => j.kind === 'rope');
+    const motors = dofs.filter(d => d.motor);
+    const result = { components: [], byDof: new Map() };
+    const done = new Set();
+
+    for (const m of motors) {
+      if (done.has(m)) continue;
+      const k = new Map([[m, 1]]), queue = [m];
+      let jam = false;
+      while (queue.length) {
+        const a = queue.shift();
+        for (const [b, r] of edges.get(a)) {
+          const kb = k.get(a) * r;
+          if (!k.has(b)) { k.set(b, kb); queue.push(b); }
+          else if (Math.abs(k.get(b) - kb) > 1e-6 * (Math.abs(kb) + 1e-9)) jam = true;
+        }
+      }
+      const otherMotors = [...k.keys()].filter(d => d !== m && d.motor);
+      const w = m.motor.rpm * TAU / 60;
+      for (const o of otherMotors) if (Math.abs(o.motor.rpm * TAU / 60 - w * k.get(o)) > 1e-6) jam = true;
+
+      // Loads lifted through ropes: v = side·r·ω_drum (only while that is upward).
+      let torque = 0, liftNote = [];
+      for (const rp of ropes) {
+        const drum = rp.drum, load = rp.terms[1][0];
+        if (!k.has(drum)) continue;
+        const kl = rp.side * rp.r * k.get(drum) * Math.sign(w || 1);
+        if (kl > 0) {
+          k.set(load, rp.side * rp.r * k.get(drum));
+          torque += load.inertia * G * Math.abs(rp.r * k.get(drum));
+          liftNote.push(load);
+        } else {
+          k.set(load, 0);
+        }
+      }
+      for (const [d, kd] of k) if (d.kind === 'rotor' && d.friction > 0) torque += d.friction * Math.abs(kd);
+      const stall = torque > m.motor.torque + 1e-12;
+      const comp = { motor: m, ratios: k, jam, stall, torqueNeeded: torque, torqueMax: m.motor.torque, speed: w };
+      result.components.push(comp);
+      for (const [d, kd] of k) {
+        done.add(d);
+        const v = jam || stall ? 0 : w * kd;
+        result.byDof.set(d, { v, ratio: kd, comp });
+      }
+    }
+    for (const d of dofs) if (!result.byDof.has(d)) result.byDof.set(d, { v: 0, ratio: 0, comp: null });
+    return result;
+  }
+
+  // Simulated speed per dof over the last `window` seconds.
+  function record(machine) {
+    machine.history.push({ t: machine.t, q: machine.dofs.map(d => d.q) });
+    while (machine.history.length > 2 && machine.t - machine.history[0].t > 1.5) machine.history.shift();
+  }
+  function measure(machine, window = 0.5) {
+    const h = machine.history;
+    if (h.length < 2) return machine.dofs.map(d => d.v);
+    const last = h[h.length - 1];
+    let first = h[0];
+    for (let i = h.length - 1; i >= 0; i--) { if (last.t - h[i].t >= window) { first = h[i]; break; } }
+    const dt = last.t - first.t;
+    return machine.dofs.map((d, i) => (dt > 1e-6 ? (last.q[i] - first.q[i]) / dt : d.v));
+  }
+
+  // ── Presets ──────────────────────────────────────────────────────────
+
+  function build(fn) { const m = emptyModel(); fn((part) => addPart(m, part)); return m; }
+
+  const PRESETS = {
+    'gear-train': {
+      title: 'Gear train 1:15',
+      note: 'An 8-tooth gear drives a 40 (1:5), then an 8 on the same axle drives a 24 (1:3). Two meshes: the output turns the same way as the motor, 15 times slower and 15 times stronger.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 4, z: 1, len: 11, dir: 'x' });
+        add({ type: 'axle', x: 1, y: 4, z: 0, len: 4 });
+        add({ type: 'axle', x: 4, y: 4, z: 1, len: 3 });
+        add({ type: 'axle', x: 6, y: 4, z: 1, len: 3 });
+        add({ type: 'motor', x: 1, y: 4, z: 0, rpm: 60, torque: 0.1 });
+        add({ type: 'gear', x: 1, y: 4, z: 2, teeth: 8 });
+        add({ type: 'gear', x: 4, y: 4, z: 2, teeth: 40 });
+        add({ type: 'gear', x: 4, y: 4, z: 3, teeth: 8 });
+        add({ type: 'gear', x: 6, y: 4, z: 3, teeth: 24 });
+        add({ type: 'brick', x: 0, y: 0, z: 1, w: 11, h: 1, anchored: true });
+        add({ type: 'beam', x: 0, y: 1, z: 1, len: 3, dir: 'y' });
+        add({ type: 'beam', x: 10, y: 1, z: 1, len: 3, dir: 'y' });
+      }),
+    },
+    'winch': {
+      title: 'Winch',
+      note: 'The motor turns an 8-tooth gear into a 40 (1:5). A large pulley on the 40’s axle winds a rope and lifts a 0.5 kg weight off the ground until it reaches the drum.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 9, z: 1, len: 9, dir: 'x' });
+        add({ type: 'beam', x: 0, y: 1, z: 1, len: 8, dir: 'y' });
+        add({ type: 'beam', x: 8, y: 1, z: 1, len: 8, dir: 'y' });
+        add({ type: 'axle', x: 1, y: 9, z: 0, len: 3 });
+        add({ type: 'axle', x: 4, y: 9, z: 1, len: 3 });
+        add({ type: 'motor', x: 1, y: 9, z: 0, rpm: -60, torque: 0.1 });
+        add({ type: 'gear', x: 1, y: 9, z: 2, teeth: 8 });
+        add({ type: 'gear', x: 4, y: 9, z: 2, teeth: 40 });
+        const drum = add({ type: 'pulley', x: 4, y: 9, z: 3, size: 'l' });
+        const load = add({ type: 'brick', x: 5, y: 0, z: 3, w: 2, h: 2, anchored: false, mass: 0.5 });
+        add({ type: 'rope', drum: drum.id, load: load.id });
+      }),
+    },
+    'stalled-winch': {
+      title: 'Winch without reduction',
+      note: 'The same winch with the motor driving the drum directly and a 1 kg weight. Lifting it needs 0.118 N·m at the drum, more than the motor’s 0.1 N·m, so it stalls. Add gearing and it lifts.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 9, z: 1, len: 9, dir: 'x' });
+        add({ type: 'beam', x: 0, y: 1, z: 1, len: 8, dir: 'y' });
+        add({ type: 'beam', x: 8, y: 1, z: 1, len: 8, dir: 'y' });
+        add({ type: 'axle', x: 4, y: 9, z: 0, len: 4 });
+        add({ type: 'motor', x: 4, y: 9, z: 0, rpm: 60, torque: 0.1 });
+        const drum = add({ type: 'pulley', x: 4, y: 9, z: 3, size: 'l' });
+        const load = add({ type: 'brick', x: 5, y: 0, z: 3, w: 2, h: 2, anchored: false, mass: 1 });
+        add({ type: 'rope', drum: drum.id, load: load.id });
+      }),
+    },
+    'belts': {
+      title: 'Belt drive',
+      note: 'An open belt keeps the direction and steps a small pulley up to a large one (1:3). A crossed belt reverses it.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 5, z: 1, len: 13, dir: 'x' });
+        add({ type: 'axle', x: 1, y: 5, z: 0, len: 3 });
+        add({ type: 'axle', x: 6, y: 5, z: 1, len: 3 });
+        add({ type: 'axle', x: 11, y: 5, z: 1, len: 3 });
+        add({ type: 'motor', x: 1, y: 5, z: 0, rpm: 90, torque: 0.1 });
+        const a = add({ type: 'pulley', x: 1, y: 5, z: 2, size: 's' });
+        const b = add({ type: 'pulley', x: 6, y: 5, z: 2, size: 'l' });
+        const c = add({ type: 'pulley', x: 6, y: 5, z: 3, size: 'm' });
+        const d = add({ type: 'pulley', x: 11, y: 5, z: 3, size: 'm' });
+        add({ type: 'belt', a: a.id, b: b.id, crossed: false });
+        add({ type: 'belt', a: c.id, b: d.id, crossed: true });
+      }),
+    },
+    'rack': {
+      title: 'Rack and pinion',
+      note: 'An 8-tooth pinion drives a 10-long rack. Each turn moves it 2π × 0.5 holes ≈ 25 mm. It stops when the pinion reaches the rack’s end.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 4, z: 1, len: 13, dir: 'x' });
+        add({ type: 'axle', x: 6, y: 4, z: 0, len: 3 });
+        add({ type: 'motor', x: 6, y: 4, z: 0, rpm: -20, torque: 0.1 });
+        add({ type: 'gear', x: 6, y: 4, z: 2, teeth: 8 });
+        add({ type: 'rack', x: 2, y: 3, z: 2, len: 10 });
+      }),
+    },
+    'idlers': {
+      title: 'Idler gears',
+      note: 'Three 24-tooth gears in a row. The middle one only carries the motion: the output turns at the same speed as the input, in the same direction.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 4, z: 1, len: 11, dir: 'x' });
+        for (const x of [1, 4, 7]) add({ type: 'axle', x, y: 4, z: x === 1 ? 0 : 1, len: x === 1 ? 3 : 2 });
+        add({ type: 'motor', x: 1, y: 4, z: 0, rpm: 45, torque: 0.1 });
+        for (const x of [1, 4, 7]) add({ type: 'gear', x, y: 4, z: 2, teeth: 24 });
+      }),
+    },
+    'jam': {
+      title: 'Belt against gears',
+      note: 'Three 16-tooth gears tie the outer axles in the same direction at 1:1. A belt from a small to a large pulley tries to make the outer axle turn three times slower. Both cannot hold, so the train locks.',
+      model: () => build(add => {
+        add({ type: 'beam', x: 0, y: 4, z: 1, len: 9, dir: 'x' });
+        add({ type: 'axle', x: 1, y: 4, z: 0, len: 4 });
+        add({ type: 'axle', x: 3, y: 4, z: 1, len: 2 });
+        add({ type: 'axle', x: 5, y: 4, z: 1, len: 3 });
+        add({ type: 'motor', x: 1, y: 4, z: 0, rpm: 30, torque: 0.1 });
+        for (const x of [1, 3, 5]) add({ type: 'gear', x, y: 4, z: 2, teeth: 16 });
+        const a = add({ type: 'pulley', x: 1, y: 4, z: 3, size: 's' });
+        const b = add({ type: 'pulley', x: 5, y: 4, z: 3, size: 'l' });
+        add({ type: 'belt', a: a.id, b: b.id, crossed: false });
+      }),
+    },
+  };
+
+  return {
+    ExtendX, U, G, GEARS, PULLEYS, DEFAULTS, MIXINS,
+    MachineBase, Dof, Joint,
+    classes: { Machine, Rotor, Load, Slider, GearMesh, BeltDrive, RopeLine },
+    emptyModel, addPart, removePart, byId, axleAt, radiusOf, extent, holes, label, isWheel,
+    analyze, compile, predict, record, measure, solveRows,
+    PRESETS,
+  };
+}));
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const T = window.Technic, U = T.U, TAU = Math.PI * 2;
+  const $ = id => document.getElementById(id);
+  const LAYERS = 8, STORE = 'mechlab-v2:model';
+
+  // ── State ──
+  let model, machine, pred;
+  let playing = false, view = 'side', layer = 2, tool = 'select', selected = null, pending = null;
+  let hover = null, frame = 0;
+  const toggles = {};
+  const cam = { s: 30, ox: 0, oy: 0 };
+  const opt = { beamLen: 7, beamDir: 'x', brickW: 4, brickH: 1, weightW: 2, weightH: 2, mass: 0.5, axleLen: 3, rpm: 60, torque: 0.1, rackLen: 8, crossed: false };
+
+  const TOOLS = [
+    { g: 'Edit', items: [['select', 'Select'], ['erase', 'Erase']] },
+    { g: 'Frame', items: [['beam', 'Beam'], ['brick', 'Brick'], ['weight', 'Weight']] },
+    { g: 'Drive', items: [['axle', 'Axle'], ['motor', 'Motor']] },
+    { g: 'Gears', items: [['gear8', '8'], ['gear16', '16'], ['gear24', '24'], ['gear40', '40'], ['rack', 'Rack']] },
+    { g: 'Pulleys', items: [['pulleys', 'S'], ['pulleym', 'M'], ['pulleyl', 'L'], ['belt', 'Belt'], ['rope', 'Rope']] },
+  ];
+  const HINTS = {
+    select: 'Click a part to edit it, drag to move it. Drag empty space to pan, scroll to zoom.',
+    erase: 'Click a part to remove it.',
+    beam: 'Click a hole to place a beam on this layer. R turns it.',
+    brick: 'Click to place an anchored brick. Its holes hold axles.',
+    weight: 'Click to place a free brick. It rests on whatever is below.',
+    axle: 'Click a hole. The axle runs from this layer toward you.',
+    motor: 'Click a hole. The motor drives the axle there.',
+    gear: 'Click a hole. An axle is added through the nearest beam if needed.',
+    rack: 'Click to place a rack. A gear meshes when its teeth touch the rack’s top or bottom edge.',
+    pulley: 'Click a hole to place a pulley.',
+    belt: 'Click one pulley, then another on the same layer.',
+    rope: 'Click a pulley (the drum), then a weight. The weight moves under the drum.',
+  };
+  const toolKind = t => t.startsWith('gear') ? 'gear' : t.startsWith('pulley') ? 'pulley' : t;
+
+  // ── Model persistence ──
+  function save() {
+    try { localStorage.setItem(STORE, JSON.stringify(model)); } catch (e) { /* storage unavailable */ }
+    $('json').value = JSON.stringify(model);
+  }
+  function loadSaved() {
+    try {
+      const m = JSON.parse(localStorage.getItem(STORE) || 'null');
+      if (m && m.version === 2 && Array.isArray(m.parts)) return m;
+    } catch (e) { /* fall through */ }
+    return null;
+  }
+
+  // ── Compile and check ──
+  function rebuild() {
+    machine = T.compile(model);
+    for (const obj of objects()) {
+      const t = toggles[obj.name];
+      if (!t) continue;
+      for (const m of obj.mixins()) if (t[m.mixinId] === false) obj.disableLayer(m);
+    }
+    pred = T.predict(model, machine);
+    setPlaying(false);
+    renderInspector(); renderCheck(); renderComposition();
+  }
+  function commit() { save(); rebuild(); }
+  function objects() { return machine ? [machine, ...machine.dofs, ...machine.joints] : []; }
+
+  // ── Toast ──
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('toast');
+    el.textContent = text; el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.hidden = true; }, 2600);
+  }
+
+  // ── Drawer ──
+  function renderDrawer() {
+    const host = $('drawer');
+    host.innerHTML = '';
+    for (const grp of TOOLS) {
+      const g = document.createElement('span'); g.className = 'g'; g.textContent = grp.g;
+      const row = document.createElement('div'); row.className = 'row';
+      for (const [id, text] of grp.items) {
+        const b = document.createElement('button');
+        b.textContent = text; b.id = 'tool_' + id; b.className = tool === id ? 'on' : '';
+        b.title = id.startsWith('gear') ? `${text}-tooth gear` : id.startsWith('pulley') ? `${T.PULLEYS[id.slice(6)].label} pulley` : text;
+        b.addEventListener('click', () => setTool(id));
+        row.appendChild(b);
+      }
+      host.append(g, row);
+    }
+    $('toolHint').textContent = '';
+    renderToolOpts();
+  }
+  function setTool(id) {
+    tool = id; pending = null;
+    document.querySelectorAll('#drawer button').forEach(b => b.classList.toggle('on', b.id === 'tool_' + id));
+    renderToolOpts();
+  }
+  function field(label, html) { return `<label class="field"><span>${label}</span>${html}</label>`; }
+  function num(id, v, min, max, step) { return `<input type="number" id="${id}" value="${v}" min="${min}" max="${max}" step="${step}">`; }
+  function renderToolOpts() {
+    const k = toolKind(tool), host = $('toolOpts');
+    let h = '';
+    if (k === 'beam') h = field('length', num('o_beamLen', opt.beamLen, 2, 15, 1)) + field('runs', `<select id="o_beamDir"><option value="x"${opt.beamDir === 'x' ? ' selected' : ''}>across</option><option value="y"${opt.beamDir === 'y' ? ' selected' : ''}>up</option></select>`);
+    if (k === 'brick') h = field('width', num('o_brickW', opt.brickW, 1, 16, 1)) + field('height', num('o_brickH', opt.brickH, 1, 8, 1));
+    if (k === 'weight') h = field('mass kg', num('o_mass', opt.mass, 0.01, 20, 0.05)) + field('width', num('o_weightW', opt.weightW, 1, 6, 1)) + field('height', num('o_weightH', opt.weightH, 1, 6, 1));
+    if (k === 'axle') h = field('length', num('o_axleLen', opt.axleLen, 1, LAYERS, 1));
+    if (k === 'motor') h = field('rpm', num('o_rpm', opt.rpm, -400, 400, 5)) + field('torque N·m', num('o_torque', opt.torque, 0.001, 2, 0.01));
+    if (k === 'rack') h = field('length', num('o_rackLen', opt.rackLen, 3, 20, 1));
+    if (k === 'belt') h = `<label class="field check"><input type="checkbox" id="o_crossed"${opt.crossed ? ' checked' : ''}><span>crossed (reverses direction)</span></label>`;
+    host.innerHTML = h;
+    host.querySelectorAll('input, select').forEach(el => el.addEventListener('change', () => {
+      const key = el.id.slice(2);
+      opt[key] = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' ? el.value : +el.value;
+    }));
+    $('toolHint').textContent = '';
+    hudHint();
+  }
+
+  // ── Placement ──
+  function structuralAt(x, y, z) {
+    return model.parts.find(p => (p.type === 'beam' || p.type === 'brick') && T.holes(Object.assign({}, p, { anchored: true })).some(h => h[0] === x && h[1] === y && h[2] === z)) || null;
+  }
+  function wheelAt(x, y, z) { return model.parts.find(p => T.isWheel(p) && p.x === x && p.y === y && p.z === z) || null; }
+  function holeLayersAt(x, y) {
+    const zs = [];
+    for (const p of model.parts) if (p.type === 'beam' || (p.type === 'brick' && p.anchored !== false)) for (const h of T.holes(p)) if (h[0] === x && h[1] === y) zs.push(h[2]);
+    return zs;
+  }
+  function ensureAxle(x, y, z) {
+    const have = T.axleAt(model, x, y, z);
+    if (have) return have;
+    const same = model.parts.find(p => p.type === 'axle' && p.x === x && p.y === y);
+    if (same) {
+      const z0 = Math.min(same.z, z), z1 = Math.max(same.z + same.len - 1, z);
+      same.z = z0; same.len = z1 - z0 + 1;
+      return same;
+    }
+    const zs = holeLayersAt(x, y);
+    let z0 = z, z1 = z;
+    if (zs.length) {
+      const hz = zs.reduce((a, b) => (Math.abs(b - z) < Math.abs(a - z) ? b : a));
+      z0 = Math.min(z, hz); z1 = Math.max(z, hz);
+    }
+    return T.addPart(model, { type: 'axle', x, y, z: z0, len: z1 - z0 + 1 });
+  }
+  function draftPart(cx, cy) {
+    const k = toolKind(tool), z = layer;
+    switch (k) {
+      case 'beam': return { type: 'beam', x: cx, y: cy, z, len: opt.beamLen, dir: opt.beamDir };
+      case 'brick': return { type: 'brick', x: cx, y: cy, z, w: opt.brickW, h: opt.brickH, anchored: true };
+      case 'weight': return { type: 'brick', x: cx, y: cy, z, w: opt.weightW, h: opt.weightH, anchored: false, mass: opt.mass };
+      case 'axle': return { type: 'axle', x: cx, y: cy, z, len: Math.min(opt.axleLen, LAYERS - z) };
+      case 'motor': return { type: 'motor', x: cx, y: cy, z, rpm: opt.rpm, torque: opt.torque };
+      case 'gear': return { type: 'gear', x: cx, y: cy, z, teeth: +tool.slice(4) };
+      case 'pulley': return { type: 'pulley', x: cx, y: cy, z, size: tool.slice(6) };
+      case 'rack': return { type: 'rack', x: cx, y: cy, z, len: opt.rackLen };
+      default: return null;
+    }
+  }
+  function cellsOf(p) {
+    const out = [];
+    if (p.type === 'beam') for (let i = 0; i < p.len; i++) out.push(p.dir === 'y' ? [p.x, p.y + i, p.z] : [p.x + i, p.y, p.z]);
+    if (p.type === 'brick' || p.type === 'rack') for (let i = 0; i < (p.w || p.len); i++) for (let j = 0; j < (p.h || 1); j++) out.push([p.x + i, p.y + j, p.z]);
+    return out;
+  }
+  function blockedCells(except) {
+    const s = new Set();
+    for (const p of model.parts) if (p !== except && (p.type === 'beam' || p.type === 'brick' || p.type === 'rack')) for (const c of cellsOf(p)) s.add(c.map(Math.round).join(','));
+    return s;
+  }
+  // Returns '' if the draft can go there, else the reason it cannot.
+  function whyNot(d) {
+    if (!d) return '';
+    if (d.z < 0 || d.z >= LAYERS) return 'That layer is outside the build';
+    const blocked = blockedCells();
+    if (d.type === 'beam' || d.type === 'brick' || d.type === 'rack') {
+      for (const c of cellsOf(d)) if (blocked.has(c.join(','))) return 'Something already fills those holes on this layer';
+      for (const p of model.parts) if (T.isWheel(p) && p.z === d.z && cellsOf(d).some(c => c[0] === p.x && c[1] === p.y)) return 'A gear or pulley is in the way on this layer';
+      return '';
+    }
+    if (d.type === 'axle') {
+      for (const p of model.parts) if (p.type === 'axle' && p.x === d.x && p.y === d.y && !(d.z + d.len - 1 < p.z || d.z > p.z + p.len - 1)) return 'There is already an axle there';
+      return '';
+    }
+    if (T.isWheel(d)) {
+      if (wheelAt(d.x, d.y, d.z)) return 'Something already sits on that axle on this layer';
+      if (blocked.has([d.x, d.y, d.z].join(','))) return 'A beam or brick fills that hole on this layer. Move to the layer in front of it';
+      if (d.type !== 'motor') {
+        const rd = T.radiusOf(d);
+        for (const q of model.parts) {
+          if ((q.type !== 'gear' && q.type !== 'pulley') || q.z !== d.z) continue;
+          const dist = Math.hypot(q.x - d.x, q.y - d.y), sum = rd + T.radiusOf(q);
+          const meshes = d.type === 'gear' && q.type === 'gear' && Math.abs(dist - sum) < 0.06;
+          if (!meshes && dist < sum + (d.type === 'gear' && q.type === 'gear' ? 0.12 : 0) - 0.06) return `It would overlap ${T.label(q)}. Gears mesh when their centres are (teeth₁ + teeth₂) / 16 holes apart`;
+        }
+      }
+      if (d.type === 'motor' && model.parts.some(p => p.type === 'motor' && p.z === d.z && Math.abs(p.x - d.x) < 2 && Math.abs(p.y - d.y) < 2)) return 'Another motor is in the way';
+    }
+    return '';
+  }
+  function place(cx, cy) {
+    const d = draftPart(cx, cy);
+    if (!d) return;
+    const why = whyNot(d);
+    if (why) { toast(why); return; }
+    if (T.isWheel(d)) ensureAxle(d.x, d.y, d.z);
+    const p = T.addPart(model, d);
+    selected = p.id;
+    commit();
+  }
+  function pickTwo(hit) {
+    const k = toolKind(tool);
+    if (!hit) { pending = null; return; }
+    if (!pending) {
+      if (hit.type !== 'pulley' && !(k === 'rope' && hit.type === 'gear')) { toast(k === 'belt' ? 'Click a pulley to start the belt' : 'Click a pulley to use as the drum'); return; }
+      pending = hit.id; toast(k === 'belt' ? 'Now click the second pulley' : 'Now click the weight to hang'); return;
+    }
+    const a = T.byId(model, pending);
+    if (k === 'belt') {
+      if (hit.type !== 'pulley' || hit.id === a.id) { toast('Click a second pulley'); return; }
+      if (hit.z !== a.z) { toast('Both pulleys must be on the same layer'); return; }
+      if (hit.x === a.x && hit.y === a.y) { toast('Those pulleys share an axle'); return; }
+      T.addPart(model, { type: 'belt', a: a.id, b: hit.id, crossed: !!opt.crossed });
+    } else {
+      if (!(hit.type === 'brick' && hit.anchored === false)) { toast('Click a weight (a free brick)'); return; }
+      const r = T.radiusOf(a), cx = hit.x + (hit.w - 1) / 2, side = cx >= a.x ? 1 : -1;
+      hit.x = a.x + side * r - (hit.w - 1) / 2;
+      hit.z = a.z;
+      if (hit.y + hit.h - 0.5 >= a.y) { toast('Hang the weight below the drum'); return; }
+      model.parts = model.parts.filter(p => !(p.type === 'rope' && p.load === hit.id));
+      T.addPart(model, { type: 'rope', drum: a.id, load: hit.id });
+    }
+    pending = null;
+    commit();
+  }
+
+  // ── Camera ──
+  const ISO = Math.cos(Math.PI / 6);
+  function P(x, y, z) {
+    return view === 'side'
+      ? [cam.ox + x * cam.s, cam.oy - y * cam.s]
+      : [cam.ox + (x - z) * ISO * cam.s, cam.oy + (-y + (x + z) * 0.5) * cam.s];
+  }
+  function unproject(sx, sy, z) {
+    if (view === 'side') return [(sx - cam.ox) / cam.s, (cam.oy - sy) / cam.s];
+    const x = (sx - cam.ox) / (ISO * cam.s) + z;
+    return [x, (x + z) * 0.5 - (sy - cam.oy) / cam.s];
+  }
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let W = 0, H = 0;
+  function resize() {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    W = r.width; H = r.height;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function fit() {
+    let pts = [];
+    for (const p of model.parts) {
+      const e = T.extent(p), r = T.radiusOf(p) + 0.2;
+      if (e) pts.push([e.x0, e.y0, e.z0], [e.x1, e.y1, e.z1], [e.x0, e.y1, e.z1], [e.x1, e.y0, e.z0]);
+      else if (p.x !== undefined) pts.push([p.x - r, p.y - r, p.z], [p.x + r, p.y + r, (p.z || 0) + (p.len || 1)]);
+    }
+    if (!pts.length) pts = [[-1, -1, 0], [14, 11, LAYERS - 1]];
+    pts.push([-1, -0.6, 0], [-1, -0.6, LAYERS - 1]);
+    const save = { s: cam.s, ox: cam.ox, oy: cam.oy };
+    cam.s = 1; cam.ox = 0; cam.oy = 0;
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (const q of pts) { const [sx, sy] = P(q[0], q[1], q[2]); x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy); }
+    const top = 56, bottom = 34, side = 24;
+    const s = Math.min((W - 2 * side) / Math.max(1, x1 - x0), (H - top - bottom) / Math.max(1, y1 - y0));
+    if (!Number.isFinite(s) || s <= 0) { Object.assign(cam, save); return; }
+    cam.s = Math.min(70, s);
+    cam.ox = side + (W - 2 * side - (x1 - x0) * cam.s) / 2 - x0 * cam.s;
+    cam.oy = top + (H - top - bottom - (y1 - y0) * cam.s) / 2 - y0 * cam.s;
+  }
+
+  // ── Colours ──
+  let C = {};
+  function readColors() {
+    const cs = getComputedStyle(document.documentElement);
+    for (const k of ['bg', 'surface', 'line', 'ink', 'ink-muted', 'accent', 'ok', 'warn', 'bad', 'plate', 'grid', 'beam', 'beam-edge', 'hole', 'gear', 'gear-edge', 'axle', 'pulley', 'motor', 'motor-hub', 'weight', 'weight-edge', 'brick', 'belt', 'rope', 'rack', 'font-mono', 'font-body'])
+      C[k] = cs.getPropertyValue('--' + k).trim();
+  }
+  function shade(hex, f) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex);
+    if (!m) return hex;
+    const n = parseInt(m[1], 16);
+    let r = n >> 16, g = (n >> 8) & 255, b = n & 255;
+    const t = f > 0 ? 255 : 0, a = Math.abs(f);
+    r = Math.round(r + (t - r) * a); g = Math.round(g + (t - g) * a); b = Math.round(b + (t - b) * a);
+    return `rgb(${r},${g},${b})`;
+  }
+
+  // ── Live state of a part ──
+  const dofFor = id => (machine ? machine.dofOf.get(id) : null);
+  function angleOf(p) { const d = dofFor(p.id); return (d && d.kind === 'rotor' ? d.q : 0) + (p.type === 'gear' && machine ? machine.phase.get(p.id) || 0 : 0); }
+  function offsetOf(p) {
+    const d = dofFor(p.id);
+    if (!d) return [0, 0];
+    if (d.kind === 'load') return [0, d.q / U];
+    if (d.kind === 'slider') return [d.q / U, 0];
+    return [0, 0];
+  }
+
+  // ── Drawing primitives (everything goes through P, so both views share them) ──
+  function path(pts3, close) {
+    ctx.beginPath();
+    pts3.forEach((q, i) => { const [x, y] = P(q[0], q[1], q[2]); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); });
+    if (close) ctx.closePath();
+  }
+  function fillPath(pts3, fill, stroke, lw = 1) {
+    path(pts3, true);
+    if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+    if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.stroke(); }
+  }
+  function ring(cx, cy, z, r, n = 36) { const pts = []; for (let i = 0; i < n; i++) { const a = i / n * TAU; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a), z]); } return pts; }
+  function box(e, base, edge) {
+    const { x0, x1, y0, y1, z0, z1 } = e;
+    if (view === 'iso') {
+      fillPath([[x0, y1, z0], [x1, y1, z0], [x1, y1, z1], [x0, y1, z1]], shade(base, 0.25), edge);
+      fillPath([[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]], shade(base, -0.18), edge);
+    }
+    fillPath([[x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]], base, edge);
+  }
+  function stadium(x0, x1, y0, y1, z, horizontal) {
+    const pts = [], n = 10;
+    if (horizontal) {
+      const r = (y1 - y0) / 2, cy = (y0 + y1) / 2;
+      for (let i = 0; i <= n; i++) { const a = -Math.PI / 2 + i / n * Math.PI; pts.push([x1 - r + r * Math.cos(a), cy + r * Math.sin(a), z]); }
+      for (let i = 0; i <= n; i++) { const a = Math.PI / 2 + i / n * Math.PI; pts.push([x0 + r + r * Math.cos(a), cy + r * Math.sin(a), z]); }
+    } else {
+      const r = (x1 - x0) / 2, cx = (x0 + x1) / 2;
+      for (let i = 0; i <= n; i++) { const a = i / n * Math.PI; pts.push([cx + r * Math.cos(a), y1 - r + r * Math.sin(a), z]); }
+      for (let i = 0; i <= n; i++) { const a = Math.PI + i / n * Math.PI; pts.push([cx + r * Math.cos(a), y0 + r + r * Math.sin(a), z]); }
+    }
+    return pts;
+  }
+  function axleCross(x, y, z, ang, size, color) {
+    const w = size * 0.32, l = size, pts = [];
+    const shape = [[w, w], [l, w], [l, -w], [w, -w], [w, -l], [-w, -l], [-w, -w], [-l, -w], [-l, w], [-w, w], [-w, l], [w, l]];
+    const c = Math.cos(ang), s = Math.sin(ang);
+    for (const [u, v] of shape) pts.push([x + u * c - v * s, y + u * s + v * c, z]);
+    fillPath(pts, color);
+  }
+  function text(str, x, y, z, color, size = 11, align = 'center') {
+    const [sx, sy] = P(x, y, z);
+    ctx.fillStyle = color; ctx.font = `${size}px ${C['font-mono']}`; ctx.textAlign = align; ctx.textBaseline = 'middle';
+    ctx.fillText(str, sx, sy);
+  }
+
+  // ── Part renderers ──
+  function drawBeam(p) {
+    const e = T.extent(p), horiz = p.dir !== 'y';
+    if (view === 'iso') box(e, C.beam, C['beam-edge']);
+    fillPath(stadium(e.x0 + 0.03, e.x1 - 0.03, e.y0, e.y1, e.z1, horiz), C.beam, C['beam-edge'], 1.2);
+    for (const h of T.holes(p)) {
+      fillPath(ring(h[0], h[1], e.z1, 0.27, 20), C.hole);
+      path(ring(h[0], h[1], e.z1, 0.36, 20), true); ctx.strokeStyle = C['beam-edge']; ctx.lineWidth = 0.8; ctx.stroke();
+    }
+  }
+  function drawBrick(p) {
+    const [dx, dy] = offsetOf(p), e = T.extent(p);
+    const f = { x0: e.x0 + dx, x1: e.x1 + dx, y0: e.y0 + dy, y1: e.y1 + dy, z0: e.z0, z1: e.z1 };
+    if (p.anchored === false) {
+      box(f, C.weight, C['weight-edge']);
+      text(`${+(+p.mass).toFixed(2)} kg`, (f.x0 + f.x1) / 2, (f.y0 + f.y1) / 2, f.z1, '#2a2105', Math.max(9, Math.min(13, cam.s * 0.38)));
+    } else {
+      box(f, C.brick, C['beam-edge']);
+      for (const h of T.holes(p)) if (h[2] === p.z + (p.d || 1) - 1) fillPath(ring(h[0], h[1], f.z1, 0.25, 18), C.hole);
+    }
+  }
+  function drawAxle(p) {
+    const ang = angleOf(p) - (machine && machine.phase.get(p.id) || 0);
+    const z0 = p.z - 0.5, z1 = p.z + p.len - 0.5;
+    if (view === 'iso') {
+      const [ax, ay] = P(p.x, p.y, z0), [bx, by] = P(p.x, p.y, z1);
+      ctx.strokeStyle = C.axle; ctx.lineWidth = Math.max(2, cam.s * 0.2); ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+    axleCross(p.x, p.y, z1, ang, 0.24, C.axle);
+  }
+  // In isometric an axle is drawn a layer at a time, so a gear covers the part behind it
+  // and the part in front of it covers the gear.
+  function axleSegments(p) {
+    const segs = [], base = p.x + p.y, ang = angleOf(p) - (machine && machine.phase.get(p.id) || 0);
+    const line = (za, zb) => () => {
+      const [ax, ay] = P(p.x, p.y, za), [bx, by] = P(p.x, p.y, zb);
+      ctx.strokeStyle = C.axle; ctx.lineWidth = Math.max(2, cam.s * 0.2); ctx.lineCap = 'butt';
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    };
+    for (let k = p.z; k < p.z + p.len; k++) {
+      const wheel = model.parts.some(q => T.isWheel(q) && q.x === p.x && q.y === p.y && q.z === k);
+      const back = k === p.z ? k - 0.5 : k - 0.5, front = k + 0.5;
+      segs.push({ p, d: base + k - 0.05, f: line(back, wheel ? k - 0.2 : k) });
+      segs.push({ p, d: base + k + 0.09, f: line(wheel ? k + 0.2 : k, front) });
+    }
+    const zEnd = p.z + p.len - 0.5;
+    segs.push({ p, d: base + zEnd + 0.1, f: () => axleCross(p.x, p.y, zEnd, ang, 0.24, C.axle) });
+    return segs;
+  }
+  function drawGear(p) {
+    const r = T.radiusOf(p), n = p.teeth, ang = angleOf(p), pa = TAU / n, rt = r + 0.11, rr = r - 0.13;
+    const tooth = z => { const pts = []; for (let k = 0; k < n; k++) { const a = ang + k * pa; for (const [f, rad] of [[-0.5, rr], [-0.2, rt], [0.2, rt], [0.5, rr]]) pts.push([p.x + rad * Math.cos(a + f * pa), p.y + rad * Math.sin(a + f * pa), z]); } return pts; };
+    if (view === 'iso') fillPath(tooth(p.z - 0.2), shade(C.gear, -0.3), C['gear-edge']);
+    fillPath(tooth(p.z + 0.2), C.gear, C['gear-edge'], 1);
+    if (r >= 1.4) {
+      const k = r >= 2.4 ? 6 : 4;
+      for (let i = 0; i < k; i++) { const a = ang + i * TAU / k; fillPath(ring(p.x + r * 0.55 * Math.cos(a), p.y + r * 0.55 * Math.sin(a), p.z + 0.2, r * 0.17, 16), shade(C.gear, -0.25)); }
+    }
+    fillPath(ring(p.x, p.y, p.z + 0.2, Math.min(0.32, r * 0.55), 18), shade(C.gear, -0.12), C['gear-edge'], 0.8);
+  }
+  function drawPulley(p) {
+    const r = T.radiusOf(p), ang = angleOf(p);
+    if (view === 'iso') fillPath(ring(p.x, p.y, p.z - 0.2, r), shade(C.pulley, -0.3), C['gear-edge']);
+    fillPath(ring(p.x, p.y, p.z + 0.2, r), C.pulley, C['gear-edge'], 1);
+    fillPath(ring(p.x, p.y, p.z + 0.2, r * 0.8), shade(C.pulley, -0.1));
+    const k = r >= 1.4 ? 6 : 3;
+    ctx.strokeStyle = C['gear-edge']; ctx.lineWidth = 1;
+    for (let i = 0; i < k; i++) {
+      const a = ang + i * TAU / k;
+      path([[p.x + 0.3 * Math.cos(a), p.y + 0.3 * Math.sin(a), p.z + 0.2], [p.x + r * 0.75 * Math.cos(a), p.y + r * 0.75 * Math.sin(a), p.z + 0.2]]); ctx.stroke();
+    }
+    fillPath(ring(p.x, p.y, p.z + 0.2, 0.3, 16), shade(C.pulley, -0.15), C['gear-edge'], 0.8);
+  }
+  function drawMotor(p) {
+    const e = T.extent(p);
+    box(e, C.motor, shade(C.motor, -0.4));
+    const ang = angleOf(p);
+    fillPath(ring(p.x, p.y, e.z1, 0.45, 20), C['motor-hub']);
+    const sign = p.rpm >= 0 ? 1 : -1;
+    // A curved arrow showing the set direction (counter-clockwise for positive rpm).
+    const pts = [];
+    for (let i = 0; i <= 14; i++) { const a = Math.PI * 0.15 + sign * i / 14 * Math.PI * 1.1; pts.push([p.x + 0.72 * Math.cos(a), p.y + 0.72 * Math.sin(a), e.z1]); }
+    path(pts); ctx.strokeStyle = C['motor-hub']; ctx.lineWidth = Math.max(1.5, cam.s * 0.07); ctx.stroke();
+    const end = pts[pts.length - 1], aEnd = Math.PI * 0.15 + sign * Math.PI * 1.1, t = [-Math.sin(aEnd) * sign, Math.cos(aEnd) * sign];
+    fillPath([[end[0] + t[0] * 0.22, end[1] + t[1] * 0.22, e.z1], [end[0] - t[1] * 0.14 - t[0] * 0.05, end[1] + t[0] * 0.14 - t[1] * 0.05, e.z1], [end[0] + t[1] * 0.14 - t[0] * 0.05, end[1] - t[0] * 0.14 - t[1] * 0.05, e.z1]], C['motor-hub']);
+    text('M', p.x - 0.68, p.y - 0.68, e.z1, '#f3f5f7', Math.max(9, cam.s * 0.32));
+  }
+  function drawRack(p) {
+    const [dx] = offsetOf(p), e = T.extent(p);
+    const f = { x0: e.x0 + dx, x1: e.x1 + dx, y0: e.y0 + 0.12, y1: e.y1 - 0.12, z0: e.z0, z1: e.z1 };
+    box(f, C.rack, shade(C.rack, -0.35));
+    const pitch = TAU / 16;
+    for (const [yy, s] of [[e.y1, -1], [e.y0, 1]]) {
+      const pts = [];
+      for (let x = f.x0 + pitch * 0.25; x < f.x1 - pitch * 0.25; x += pitch) pts.push([x, yy + s * 0.12, f.z1], [x + pitch * 0.2, yy - s * 0.0, f.z1], [x + pitch * 0.45, yy - s * 0.0, f.z1], [x + pitch * 0.65, yy + s * 0.12, f.z1]);
+      if (pts.length) { pts.push([f.x1, yy + s * 0.12, f.z1], [f.x0, yy + s * 0.12, f.z1]); fillPath(pts, C.rack, shade(C.rack, -0.35)); }
+    }
+  }
+  function beltPoints(a, b, crossed) {
+    const r1 = T.radiusOf(a) + 0.06, r2 = T.radiusOf(b) + 0.06, dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy), beta = Math.atan2(dy, dx);
+    if (d < 1e-6) return null;
+    const pts = [], arc = (cx, cy, r, from, to, n = 18) => { for (let i = 0; i <= n; i++) { const t = from + (to - from) * i / n; pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } };
+    if (!crossed) {
+      const al = Math.asin(Math.max(-1, Math.min(1, (r1 - r2) / d)));
+      const up = beta + Math.PI / 2 + al, dn = beta - Math.PI / 2 - al;
+      arc(a.x, a.y, r1, up, dn + TAU * (dn < up ? 1 : 0) - TAU * 0);   // far side of a
+      arc(b.x, b.y, r2, dn, up - (up > dn ? TAU : 0));                 // far side of b
+      return { pts, closed: true };
+    }
+    const al = Math.acos(Math.max(-1, Math.min(1, (r1 + r2) / d)));
+    arc(a.x, a.y, r1, beta + al, beta + TAU - al);
+    arc(b.x, b.y, r2, beta + Math.PI + al, beta + Math.PI + TAU - al);
+    return { pts, closed: true, crossed: true };
+  }
+  function drawBelt(p) {
+    const a = T.byId(model, p.a), b = T.byId(model, p.b);
+    if (!a || !b) return;
+    const bp = beltPoints(a, b, p.crossed);
+    if (!bp) return;
+    const z = a.z + 0.25;
+    path(bp.pts.map(q => [q[0], q[1], z]), true);
+    ctx.strokeStyle = C.belt; ctx.lineWidth = Math.max(2, cam.s * 0.12); ctx.lineJoin = 'round'; ctx.stroke();
+    // Moving marks show the belt travel.
+    const da = dofFor(a.id), travel = da ? da.q * T.radiusOf(a) * cam.s : 0;
+    ctx.setLineDash([2, cam.s * 0.8]); ctx.lineDashOffset = -travel; ctx.strokeStyle = shade(C.belt, 0.45); ctx.lineWidth = Math.max(1.5, cam.s * 0.08); ctx.stroke(); ctx.setLineDash([]);
+  }
+  function ropeEnds(p) {
+    const drum = T.byId(model, p.drum), load = T.byId(model, p.load);
+    if (!drum || !load) return null;
+    const [, dy] = offsetOf(load), cx = load.x + (load.w - 1) / 2, side = cx >= drum.x ? 1 : -1, r = T.radiusOf(drum);
+    return { drum, load, top: [drum.x + side * r, drum.y], bottom: [cx, load.y + load.h - 0.5 + dy], z: drum.z + 0.25 };
+  }
+  function drawRope(p) {
+    const e = ropeEnds(p);
+    if (!e) return;
+    path([[e.top[0], e.top[1], e.z], [e.bottom[0], e.bottom[1], e.z]]);
+    ctx.strokeStyle = C.rope; ctx.lineWidth = Math.max(1.5, cam.s * 0.07); ctx.stroke();
+    path(ring(e.drum.x, e.drum.y, e.z, T.radiusOf(e.drum) + 0.02), true); ctx.stroke();
+    fillPath(ring(e.bottom[0], e.bottom[1] + 0.12, e.z, 0.12, 12), C.rope);
+  }
+
+  const RENDER = { beam: drawBeam, brick: drawBrick, axle: drawAxle, gear: drawGear, pulley: drawPulley, motor: drawMotor, rack: drawRack, belt: drawBelt, rope: drawRope };
+  const ORDER = { brick: 0, beam: 0, motor: 1, rack: 2, gear: 3, pulley: 3, belt: 4, rope: 4, axle: 5 };
+  function frontZ(p) {
+    if (p.type === 'axle') return p.z + p.len - 1;
+    if (p.type === 'belt') { const a = T.byId(model, p.a); return a ? a.z : 0; }
+    if (p.type === 'rope') { const a = T.byId(model, p.drum); return a ? a.z : 0; }
+    if (p.type === 'brick') return p.z + (p.d || 1) - 1;
+    return p.z;
+  }
+  function centre(p) {
+    if (p.type === 'beam') return p.dir === 'y' ? [p.x, p.y + (p.len - 1) / 2] : [p.x + (p.len - 1) / 2, p.y];
+    if (p.type === 'brick') return [p.x + (p.w - 1) / 2, p.y + (p.h - 1) / 2];
+    if (p.type === 'rack') return [p.x + (p.len - 1) / 2, p.y];
+    if (p.type === 'belt') { const a = T.byId(model, p.a), b = T.byId(model, p.b); return a && b ? [(a.x + b.x) / 2, (a.y + b.y) / 2] : [0, 0]; }
+    if (p.type === 'rope') { const e = ropeEnds(p); return e ? e.top : [0, 0]; }
+    return [p.x, p.y];
+  }
+  function depth(p) {
+    const z = frontZ(p), o = ORDER[p.type] || 0;
+    if (view === 'side') return z * 10 + o;
+    const [cx, cy] = centre(p);
+    return cx + cy + z * 1.0 + o * 0.02 + (p.type === 'beam' || p.type === 'brick' ? -0.3 : 0);
+  }
+  function layerOf(p) {
+    if (p.type === 'axle') return [p.z, p.z + p.len - 1];
+    if (p.type === 'brick') return [p.z, p.z + (p.d || 1) - 1];
+    const z = frontZ(p); return [z, z];
+  }
+  function alphaOf(p) {
+    if (view !== 'side') return 1;
+    const [a, b] = layerOf(p);
+    if (layer >= a && layer <= b) return 1;
+    return b < layer ? 0.55 : 0.32;
+  }
+
+  // ── Hit testing ──
+  function hits(p, sx, sy) {
+    const z = frontZ(p) + (p.type === 'axle' ? 0.5 : p.type === 'beam' || p.type === 'brick' ? 0.45 : 0.2);
+    const [wx, wy] = unproject(sx, sy, z);
+    if (p.type === 'gear' || p.type === 'pulley') return Math.hypot(wx - p.x, wy - p.y) < T.radiusOf(p) + 0.12;
+    if (p.type === 'axle') return Math.hypot(wx - p.x, wy - p.y) < 0.4;
+    if (p.type === 'belt') { const a = T.byId(model, p.a), b = T.byId(model, p.b); const bp = a && b && beltPoints(a, b, p.crossed); return !!bp && bp.pts.some((q, i) => i && segDist(wx, wy, bp.pts[i - 1], q) < 0.25); }
+    if (p.type === 'rope') { const e = ropeEnds(p); return !!e && segDist(wx, wy, e.top, e.bottom) < 0.3; }
+    const e = T.extent(p);
+    if (!e) return false;
+    const [dx, dy] = offsetOf(p);
+    return wx >= e.x0 + dx && wx <= e.x1 + dx && wy >= e.y0 + dy && wy <= e.y1 + dy;
+  }
+  function segDist(x, y, a, b) {
+    const vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy) / L));
+    return Math.hypot(x - a[0] - vx * t, y - a[1] - vy * t);
+  }
+  function pick(sx, sy) {
+    const list = model.parts.slice().sort((a, b) => depth(b) - depth(a));
+    if (view === 'side') {
+      const on = list.filter(p => { const [a, b] = layerOf(p); return layer >= a && layer <= b; });
+      const hit = on.find(p => hits(p, sx, sy) && p.type !== 'beam' && p.type !== 'brick') || on.find(p => hits(p, sx, sy));
+      if (hit) return hit;
+    }
+    return list.find(p => hits(p, sx, sy) && p.type !== 'beam' && p.type !== 'brick') || list.find(p => hits(p, sx, sy)) || null;
+  }
+
+  // ── Frame ──
+  function drawGrid() {
+    ctx.fillStyle = C.plate; ctx.fillRect(0, 0, W, H);
+    const [ax, ay] = unproject(0, 0, layer), [bx, by] = unproject(W, H, layer), [cx2, cy2] = unproject(W, 0, layer), [dx2, dy2] = unproject(0, H, layer);
+    const xs = [ax, bx, cx2, dx2], ys = [ay, by, cy2, dy2];
+    const x0 = Math.floor(Math.min(...xs)) - 1, x1 = Math.ceil(Math.max(...xs)) + 1, y0 = Math.max(-1, Math.floor(Math.min(...ys)) - 1), y1 = Math.ceil(Math.max(...ys)) + 1;
+    // Ground.
+    if (view === 'side') {
+      const [, gy] = P(0, -0.5, 0);
+      ctx.fillStyle = shade(C.plate, -0.06); ctx.fillRect(0, gy, W, H - gy);
+      ctx.strokeStyle = C['ink-muted']; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(W, gy); ctx.stroke();
+    } else {
+      const gx0 = Math.max(x0, -4), gx1 = Math.min(x1, 40);
+      fillPath([[gx0, -0.5, -0.5], [gx1, -0.5, -0.5], [gx1, -0.5, LAYERS - 0.5], [gx0, -0.5, LAYERS - 0.5]], shade(C.plate, -0.05), C.grid, 1);
+    }
+    if (x1 - x0 > 300 || y1 - y0 > 300) return;
+    ctx.fillStyle = C.grid;
+    const r = Math.max(1, Math.min(2.2, cam.s * 0.06));
+    for (let x = x0; x <= x1; x++) for (let y = Math.max(0, y0); y <= y1; y++) {
+      const [sx, sy] = P(x, y, layer);
+      if (sx < -5 || sy < -5 || sx > W + 5 || sy > H + 5) continue;
+      ctx.beginPath(); ctx.arc(sx, sy, r, 0, TAU); ctx.fill();
+    }
+  }
+  function draw() {
+    readColors();
+    drawGrid();
+    const items = [];
+    for (const p of model.parts) {
+      if (view === 'iso' && p.type === 'axle') { for (const seg of axleSegments(p)) items.push(seg); continue; }
+      items.push({ p, d: depth(p), f: RENDER[p.type] });
+    }
+    items.sort((a, b) => a.d - b.d);
+    for (const it of items) {
+      if (!it.f) continue;
+      ctx.save(); ctx.globalAlpha = alphaOf(it.p); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      it.f(it.p);
+      ctx.restore();
+    }
+    // Mesh contacts and problems.
+    if (machine) {
+      for (const m of machine.analysis.meshes) {
+        let x, y, z;
+        if (m.kind === 'gear') { const ra = T.radiusOf(m.a), d = Math.hypot(m.b.x - m.a.x, m.b.y - m.a.y); x = m.a.x + (m.b.x - m.a.x) * ra / d; y = m.a.y + (m.b.y - m.a.y) * ra / d; z = m.a.z + 0.25; }
+        else { x = m.a.x; y = m.a.y + m.side * T.radiusOf(m.a); z = m.a.z + 0.25; }
+        fillPath(ring(x, y, z, 0.13, 12), C.ok);
+      }
+      for (const is of machine.analysis.issues) {
+        const p = T.byId(model, is.id);
+        if (!p || p.x === undefined) continue;
+        const [cx, cy] = centre(p);
+        path(ring(cx, cy, frontZ(p) + 0.3, (T.radiusOf(p) || 0.5) + 0.3, 30), true);
+        ctx.strokeStyle = is.level === 'error' ? C.bad : C.warn; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.stroke(); ctx.setLineDash([]);
+      }
+    }
+    for (const id of [selected, pending]) {
+      const p = id && T.byId(model, id);
+      if (!p) continue;
+      ctx.save(); ctx.globalAlpha = 1;
+      outline(p, id === pending ? C.warn : C.accent);
+      ctx.restore();
+    }
+    // Ghost of the part about to be placed.
+    if (hover && !['select', 'erase', 'belt', 'rope'].includes(tool)) {
+      const d = draftPart(hover[0], hover[1]);
+      if (d) {
+        const ghost = Object.assign({ id: -1 }, d), why = whyNot(d);
+        ctx.save(); ctx.globalAlpha = 0.5; RENDER[ghost.type](ghost); ctx.restore();
+        outline(ghost, why ? C.bad : C.accent);
+      }
+    }
+    hud();
+  }
+  function outline(p, color) {
+    ctx.strokeStyle = color; ctx.lineWidth = 2;
+    const z = frontZ(p) + 0.3;
+    if (p.type === 'gear' || p.type === 'pulley') { path(ring(p.x, p.y, z, T.radiusOf(p) + 0.2, 40), true); ctx.stroke(); return; }
+    if (p.type === 'axle') { path(ring(p.x, p.y, z + 0.2, 0.42, 20), true); ctx.stroke(); return; }
+    if (p.type === 'belt' || p.type === 'rope') { const [cx, cy] = centre(p); path(ring(cx, cy, z, 0.45, 20), true); ctx.stroke(); return; }
+    const e = T.extent(p);
+    if (!e) return;
+    const [dx, dy] = offsetOf(p), m = 0.08;
+    path([[e.x0 + dx - m, e.y0 + dy - m, e.z1], [e.x1 + dx + m, e.y0 + dy - m, e.z1], [e.x1 + dx + m, e.y1 + dy + m, e.z1], [e.x0 + dx - m, e.y1 + dy + m, e.z1]], true);
+    ctx.stroke();
+  }
+  function hud() {
+    const t = machine ? machine.t : 0;
+    $('hudL').innerHTML = `t <b>${t.toFixed(2)} s</b> · ${view === 'side' ? 'side' : 'isometric'} · layer <b>${layer}</b>${hover ? ` · hole <b>${hover[0]}, ${hover[1]}</b>` : ''}`;
+  }
+  function hudHint() {
+    const k = toolKind(tool);
+    $('hudR').textContent = HINTS[k] || '';
+  }
+
+  // ── Pointer ──
+  let drag = null;
+  const cell = (sx, sy) => { const [x, y] = unproject(sx, sy, layer); return [Math.round(x), Math.round(y)]; };
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    cv.setPointerCapture(e.pointerId);
+    const hit = pick(sx, sy);
+    if (tool === 'select') {
+      if (hit) {
+        selected = hit.id;
+        drag = { kind: 'part', id: hit.id, from: cell(sx, sy), orig: snapshot(hit), moved: false };
+        setPlaying(false);
+        renderInspector(); renderCheck(); renderComposition();
+      } else {
+        selected = null; renderInspector(); renderCheck(); renderComposition();
+        drag = { kind: 'pan', sx, sy, ox: cam.ox, oy: cam.oy };
+      }
+      return;
+    }
+    if (tool === 'erase') { if (hit) { T.removePart(model, hit.id); if (selected === hit.id) selected = null; commit(); } return; }
+    if (tool === 'belt' || tool === 'rope') { pickTwo(hit); return; }
+    const [cx, cy] = cell(sx, sy);
+    place(cx, cy);
+  });
+  function snapshot(p) {
+    const s = { self: { x: p.x, y: p.y } };
+    if (p.type === 'axle') s.members = model.parts.filter(q => T.isWheel(q) && q.x === p.x && q.y === p.y && q.z >= p.z && q.z < p.z + p.len).map(q => [q, q.x, q.y]);
+    return s;
+  }
+  cv.addEventListener('pointermove', e => {
+    const r = cv.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    hover = cell(sx, sy);
+    if (!drag) return;
+    if (drag.kind === 'pan') { cam.ox = drag.ox + sx - drag.sx; cam.oy = drag.oy + sy - drag.sy; return; }
+    const p = T.byId(model, drag.id);
+    if (!p || p.x === undefined) return;
+    const dx = hover[0] - drag.from[0], dy = hover[1] - drag.from[1];
+    if (!dx && !dy && !drag.moved) return;
+    drag.moved = true;
+    p.x = drag.orig.self.x + dx; p.y = drag.orig.self.y + dy;
+    if (drag.orig.members) for (const [q, x, y] of drag.orig.members) { q.x = x + dx; q.y = y + dy; }
+    if (T.isWheel(p)) {
+      // A wheel dragged off its axle takes the axle along if nothing else uses it.
+      const ax = model.parts.find(a => a.type === 'axle' && a.x === drag.orig.self.x && a.y === drag.orig.self.y && p.z >= a.z && p.z < a.z + a.len);
+      if (ax && !model.parts.some(q => q !== p && T.isWheel(q) && q.x === ax.x && q.y === ax.y && q.z >= ax.z && q.z < ax.z + ax.len)) { ax.x = p.x; ax.y = p.y; }
+    }
+    machine = T.compile(model); pred = T.predict(model, machine);
+  });
+  cv.addEventListener('pointerup', () => {
+    if (drag && drag.kind === 'part' && drag.moved) commit();
+    drag = null;
+  });
+  cv.addEventListener('pointerleave', () => { hover = null; });
+  cv.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r = cv.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top;
+    const k = Math.exp(-e.deltaY * 0.0015), s = Math.max(6, Math.min(120, cam.s * k)), f = s / cam.s;
+    cam.ox = sx - (sx - cam.ox) * f; cam.oy = sy - (sy - cam.oy) * f; cam.s = s;
+  }, { passive: false });
+
+  // ── Inspector ──
+  function renderInspector() {
+    const host = $('insp'), p = selected && T.byId(model, selected);
+    if (!p) { $('inspTitle').textContent = 'nothing'; host.innerHTML = '<p class="muted wide">Click a part with Select to edit it. Delete removes it.</p>'; return; }
+    $('inspTitle').textContent = T.label(p);
+    let h = '';
+    const pos = (p.x !== undefined) ? field('x', num('i_x', +p.x.toFixed(2), -50, 100, 1)) + field('y', num('i_y', p.y, -1, 100, 1)) + field('layer', num('i_z', p.z, 0, LAYERS - 1, 1)) : '';
+    switch (p.type) {
+      case 'beam': h = pos + field('length', num('i_len', p.len, 2, 15, 1)) + field('runs', `<select id="i_dir"><option value="x"${p.dir !== 'y' ? ' selected' : ''}>across</option><option value="y"${p.dir === 'y' ? ' selected' : ''}>up</option></select>`); break;
+      case 'brick': h = pos + field('width', num('i_w', p.w, 1, 16, 1)) + field('height', num('i_h', p.h, 1, 8, 1)) + `<label class="field check"><input type="checkbox" id="i_anchored"${p.anchored !== false ? ' checked' : ''}><span>anchored</span></label>` + (p.anchored === false ? field('mass kg', num('i_mass', p.mass, 0.01, 20, 0.05)) : ''); break;
+      case 'axle': h = field('x', num('i_x', p.x, -50, 100, 1)) + field('y', num('i_y', p.y, -1, 100, 1)) + field('from layer', num('i_z', p.z, 0, LAYERS - 1, 1)) + field('length', num('i_len', p.len, 1, LAYERS, 1)); break;
+      case 'gear': h = pos + field('teeth', `<select id="i_teeth">${[8, 16, 24, 40].map(t => `<option${p.teeth === t ? ' selected' : ''}>${t}</option>`).join('')}</select>`); break;
+      case 'pulley': h = pos + field('size', `<select id="i_size">${Object.entries(T.PULLEYS).map(([k, v]) => `<option value="${k}"${p.size === k ? ' selected' : ''}>${v.label}</option>`).join('')}</select>`); break;
+      case 'motor': h = pos + field('rpm', num('i_rpm', p.rpm, -400, 400, 5)) + field('torque N·m', num('i_torque', p.torque, 0.001, 2, 0.01)); break;
+      case 'rack': h = pos + field('length', num('i_len', p.len, 3, 20, 1)); break;
+      case 'belt': h = `<label class="field check wide"><input type="checkbox" id="i_crossed"${p.crossed ? ' checked' : ''}><span>crossed (reverses direction)</span></label>` + field('slips above N', num('i_slip', p.slip || 0, 0, 100, 0.5)) + '<p class="muted wide">Slip 0 means the belt never slips.</p>'; break;
+      case 'rope': { const e = ropeEnds(p); h = `<p class="muted wide">Hangs ${e ? T.label(e.load) : '?'} from ${e ? T.label(e.drum) : '?'}.</p>`; break; }
+    }
+    h += `<div class="row wide"><button id="i_delete">Delete</button></div>`;
+    host.innerHTML = h;
+    host.querySelectorAll('input, select').forEach(el => el.addEventListener('change', () => {
+      const key = el.id.slice(2), v = el.type === 'checkbox' ? el.checked : el.tagName === 'SELECT' && key !== 'teeth' ? el.value : +el.value;
+      if (el.type === 'number' && !Number.isFinite(v)) return;
+      const map = { len: 'len', dir: 'dir', w: 'w', h: 'h', anchored: 'anchored', mass: 'mass', teeth: 'teeth', size: 'size', rpm: 'rpm', torque: 'torque', crossed: 'crossed', slip: 'slip', x: 'x', y: 'y', z: 'z' };
+      const prop = map[key];
+      if (!prop) return;
+      if (p.type === 'axle' && (prop === 'x' || prop === 'y')) for (const q of model.parts) if (T.isWheel(q) && q.x === p.x && q.y === p.y && q.z >= p.z && q.z < p.z + p.len) q[prop] = v;
+      p[prop] = prop === 'anchored' ? v : v;
+      if (prop === 'anchored' && !v && !p.mass) p.mass = 0.5;
+      commit();
+    }));
+    $('i_delete').addEventListener('click', () => { T.removePart(model, p.id); selected = null; commit(); });
+  }
+
+  // ── Check panel ──
+  const RPM = 60 / TAU;
+  function dofLabel(d) {
+    if (d.kind === 'rotor') {
+      const members = d.partIds.slice(1).map(id => T.byId(model, id)).filter(Boolean);
+      const what = members.map(m => m.type === 'gear' ? `${m.teeth}t` : m.type === 'pulley' ? `${m.size.toUpperCase()} pulley` : 'motor').join(' · ');
+      return `axle #${d.partIds[0]} <small>${what}</small>`;
+    }
+    return d.kind === 'load' ? `weight #${d.partIds[0]} <small>lift</small>` : `rack #${d.partIds[0]} <small>slide</small>`;
+  }
+  function renderCheck() {
+    if (!machine) return;
+    const sim = machine.t > 0.6 ? T.measure(machine, 0.5) : null;
+    const rows = machine.dofs.map((d, i) => {
+      const p = pred.byDof.get(d), f = d.kind === 'rotor' ? RPM : 1000, unit = d.kind === 'rotor' ? 'rpm' : 'mm/s';
+      const a = p.v * f, s = sim ? sim[i] * f : null;
+      let err = null;
+      if (s !== null) err = Math.abs(a) > 1e-6 ? Math.abs(s - a) / Math.abs(a) * 100 : (Math.abs(s - a) < 0.05 ? 0 : null);
+      const cls = err === null ? '' : err < 1 ? 'good' : 'bad';
+      const sel = selected && d.partIds.includes(selected) ? ' class="sel"' : '';
+      return `<tr${sel}><td>${dofLabel(d)}</td><td>${fmt(a)} <small>${unit}</small></td><td>${s === null ? '—' : fmt(s)}</td><td class="${cls}">${err === null ? (s === null ? '—' : 'off') : err.toFixed(2) + '%'}</td></tr>`;
+    });
+    $('results').innerHTML = rows.join('') || '<tr><td colspan="4" class="muted">Nothing moves yet. Add an axle held by a beam, and a motor.</td></tr>';
+
+    const chips = pred.components.map(c => {
+      const m = c.motor, simT = Math.abs(m.lastImpulse.motor || 0);
+      const ratios = [...c.ratios].filter(([d]) => d !== m && d.kind === 'rotor').map(([d, k]) => `#${d.partIds[0]} ${k > 0 ? '' : '−'}1:${fmt(1 / Math.abs(k), 2)}`).join(', ');
+      if (c.jam) return chip('bad', 'Jammed', `Motor on axle #${m.partIds[0]}: the gears and belts in this train ask for different speeds on the same axle, so nothing can turn.`);
+      if (c.stall) return chip('warn', 'Stalls', `Motor on axle #${m.partIds[0]} needs ${fmt(c.torqueNeeded, 4)} N·m but gives at most ${fmt(c.torqueMax, 3)} N·m. Gear it down or lighten the load.`);
+      return chip('ok', 'Runs', `Motor on axle #${m.partIds[0]} at ${fmt(m.motor.rpm)} rpm needs ${fmt(c.torqueNeeded, 4)} of ${fmt(c.torqueMax, 3)} N·m${machine.t > 0.3 ? ` (simulated ${fmt(simT, 4)})` : ''}.${ratios ? ` Ratios: ${ratios}.` : ''}`);
+    });
+    if (!pred.components.length) chips.push(chip('warn', 'No drive', 'Add a motor to an axle that is held by a beam or brick.'));
+    $('motors').innerHTML = chips.join('');
+
+    // Power: motor in = lifting + bearing loss (+ kinetic change).
+    let pin = 0, plift = 0, ploss = 0;
+    for (const d of machine.dofs) {
+      if (d.motor) pin += (d.lastImpulse.motor || 0) * d.v;
+      if (d.kind === 'rotor') ploss += Math.abs((d.lastImpulse.friction || 0) * d.v);
+      if (d.kind === 'load' && d.v > 0) plift += d.inertia * T.G * d.v;
+    }
+    $('power').innerHTML = `<span>motor power in</span><span>${fmt(pin * 1000, 2)} mW</span><span>lifting weights</span><span>${fmt(plift * 1000, 2)} mW</span><span>bearing friction</span><span>${fmt(ploss * 1000, 2)} mW</span>`;
+
+    const off = Object.values(toggles).some(t => Object.values(t).some(v => v === false));
+    const issues = machine.analysis.issues.map(is => `<div class="chip issue ${is.level === 'error' ? 'bad' : 'warn'}" data-id="${is.id}"><b>${is.level === 'error' ? 'Clash' : 'Check'}</b><span>${is.text}.</span></div>`);
+    if (off) issues.unshift(chip('warn', 'Layers off', 'Some layers are switched off, so the hand calculation (which assumes all of them) no longer describes this run.'));
+    $('issues').innerHTML = issues.join('');
+    $('issues').querySelectorAll('.issue').forEach(el => el.addEventListener('click', () => { selected = +el.dataset.id; setTool('select'); renderInspector(); renderComposition(); }));
+  }
+  function chip(cls, tag, body) { return `<div class="chip ${cls}"><b>${tag}</b><span>${body}</span></div>`; }
+  function fmt(v, d = 2) { return v === null || v === undefined || !Number.isFinite(v) ? '—' : (Math.abs(v) < 0.5 * Math.pow(10, -d) ? 0 : v).toFixed(d); }
+
+  // ── Composition ──
+  const HOOKS = { machine: ['fieldAt'], dof: ['forces', 'rows', 'potential'], joint: ['rows'] };
+  function renderComposition() {
+    const host = $('comp');
+    host.innerHTML = '';
+    const rel = o => selected && o.partIds && o.partIds.includes(selected);
+    for (const obj of objects()) {
+      const kind = obj === machine ? 'machine' : obj instanceof T.Joint ? 'joint' : 'dof';
+      const det = document.createElement('details');
+      det.className = 'obj';
+      det.open = rel(obj) || (obj === machine && !selected);
+      const what = kind === 'machine' ? 'Machine' : kind === 'joint' ? ({ gear: 'gear mesh', rack: 'rack mesh', belt: 'belt', rope: 'rope' }[obj.kind]) : ({ rotor: 'axle assembly', load: 'weight', slider: 'rack' }[obj.kind]);
+      det.innerHTML = `<summary><span>${obj.name}</span><span>${what}</span></summary><div class="body"><div></div><pre></pre></div>`;
+      const boxes = det.querySelector('.body > div');
+      for (const m of obj.mixins()) {
+        const on = !(toggles[obj.name] && toggles[obj.name][m.mixinId] === false);
+        const lab = document.createElement('label');
+        lab.innerHTML = `<input type="checkbox"${on ? ' checked' : ''}> ${m.mixinId.replace('technic.', '')}`;
+        lab.querySelector('input').addEventListener('change', e => {
+          (toggles[obj.name] = toggles[obj.name] || {})[m.mixinId] = e.target.checked;
+          if (e.target.checked) obj.enableLayer(m); else obj.disableLayer(m);
+          det.querySelector('pre').textContent = HOOKS[kind].map(h => obj.explain(h)).join('\n');
+          renderCheck();
+        });
+        boxes.appendChild(lab);
+      }
+      det.querySelector('pre').textContent = HOOKS[kind].map(h => obj.explain(h)).join('\n');
+      host.appendChild(det);
+    }
+  }
+
+  // ── Run ──
+  function setPlaying(on) {
+    playing = on;
+    $('btnPlay').textContent = on ? '❚❚ Pause' : '▶ Run';
+  }
+  $('btnPlay').onclick = () => setPlaying(!playing);
+  $('btnReset').onclick = () => rebuild();
+  function setView(v) {
+    view = v;
+    $('viewSide').classList.toggle('on', v === 'side'); $('viewIso').classList.toggle('on', v === 'iso');
+    fit();
+  }
+  $('viewSide').onclick = () => setView('side');
+  $('viewIso').onclick = () => setView('iso');
+  function setLayer(z) { layer = Math.max(0, Math.min(LAYERS - 1, z)); $('layerLbl').textContent = `layer ${layer}`; }
+  $('layerBack').onclick = () => setLayer(layer - 1);
+  $('layerFwd').onclick = () => setLayer(layer + 1);
+  $('btnFit').onclick = () => fit();
+
+  // ── Examples and file ──
+  const presetSel = $('preset');
+  for (const [k, v] of Object.entries(T.PRESETS)) presetSel.insertAdjacentHTML('beforeend', `<option value="${k}">${v.title}</option>`);
+  presetSel.addEventListener('change', () => { $('presetNote').textContent = T.PRESETS[presetSel.value].note; });
+  function loadPreset(k) {
+    model = T.PRESETS[k].model(); selected = null; pending = null;
+    presetSel.value = k; $('presetNote').textContent = T.PRESETS[k].note;
+    for (const key of Object.keys(toggles)) delete toggles[key];
+    setLayer(2); commit(); fit();
+  }
+  $('btnLoadPreset').onclick = () => loadPreset(presetSel.value);
+  let clearArmed = 0;
+  $('btnClear').onclick = () => {
+    if (Date.now() - clearArmed > 3000) { clearArmed = Date.now(); $('btnClear').textContent = 'Click again to clear'; setTimeout(() => { $('btnClear').textContent = 'Clear'; }, 3000); return; }
+    clearArmed = 0; $('btnClear').textContent = 'Clear';
+    model = T.emptyModel(); selected = null; commit(); fit();
+  };
+  $('btnCopy').onclick = () => {
+    const ta = $('json');
+    ta.value = JSON.stringify(model, null, 1);
+    const done = () => toast('Model JSON copied');
+    try { navigator.clipboard.writeText(ta.value).then(done, () => { ta.select(); toast('Select-all is on: press copy'); }); } catch (e) { ta.select(); }
+  };
+  $('btnImport').onclick = () => {
+    try {
+      const m = JSON.parse($('json').value);
+      if (!m || !Array.isArray(m.parts)) throw new Error('no parts');
+      m.version = 2; m.nextId = Math.max(m.nextId || 1, ...m.parts.map(p => p.id + 1));
+      model = m; selected = null; commit(); fit(); toast(`Loaded ${m.parts.length} parts`);
+    } catch (e) { toast('That text is not a Mechanism Lab model. Paste the JSON copied from here.'); }
+  };
+
+  // ── Keys ──
+  window.addEventListener('keydown', e => {
+    if (e.target.closest('input, select, textarea')) return;
+    if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+    else if (e.key === 'Escape') { pending = null; setTool('select'); }
+    else if ((e.key === 'Delete' || e.key === 'Backspace') && selected) { T.removePart(model, selected); selected = null; commit(); }
+    else if (e.key === '[') setLayer(layer - 1);
+    else if (e.key === ']') setLayer(layer + 1);
+    else if (e.key === 'v' || e.key === 'V') setView(view === 'side' ? 'iso' : 'side');
+    else if (e.key === 'f' || e.key === 'F') fit();
+    else if (e.key === 'r' || e.key === 'R') {
+      const p = selected && T.byId(model, selected);
+      if (tool === 'beam') { opt.beamDir = opt.beamDir === 'x' ? 'y' : 'x'; renderToolOpts(); }
+      else if (p && p.type === 'beam') { p.dir = p.dir === 'y' ? 'x' : 'y'; commit(); }
+      else rebuild();
+    }
+  });
+
+  // ── Loop ──
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(1 / 30, (now - last) / 1000);
+    last = now;
+    if (playing && machine) {
+      machine.step(dt * +$('speed').value);
+      T.record(machine);
+      if (++frame % 8 === 0) renderCheck();
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  // ── Boot ──
+  resize();
+  model = loadSaved();
+  renderDrawer();
+  if (model) { $('json').value = JSON.stringify(model); rebuild(); presetSel.value = 'winch'; $('presetNote').textContent = 'Your last build was restored. Load an example to replace it.'; }
+  else loadPreset('winch');
+  fit();
+  new ResizeObserver(() => { resize(); fit(); }).observe($('stage'));
+  setTool('select');
+  requestAnimationFrame(tick);
+})();
+</script>

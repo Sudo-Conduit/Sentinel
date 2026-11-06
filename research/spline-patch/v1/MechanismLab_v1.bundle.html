@@ -1,0 +1,2790 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Mechanism Lab</title>
+<!-- Mechanism Lab, bundled from research/spline-patch/MechanismLab.html (sha256 e2007db8d798c3bd7dcac5355ed26ff84cd967564ef3611d63971a33f2ea7dc6).
+     2 files inlined, listed with their sha256 below; nothing loads from outside this file.
+     91f41d3629270ac909eb63b29449ef410d2efc47cf095f496d17198c6c1eaca0  pooledimpact/mountainshift/v2/ExtendX.js
+     44c2d1c24bcde5ea480d433bb1c55441aea413c7387a32fc43f4c15e3c491cb6  research/spline-patch/Mechanism.js
+-->
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#05080c; --surface:#0c131c; --surface-2:#111a26; --line:#1d2733;
+    --ink:#e7edf5; --ink-muted:#7c8ba0;
+    --accent:#00aaff; --accent-2:#ff2fb0; --warm:#ffd36b; --ok:#3fbf8f;
+    --font-display:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+    --font-body:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono:'Space Mono', ui-monospace, SFMono-Regular, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{background:var(--bg); color:var(--ink); font-family:var(--font-body); margin:0; overflow:hidden;}
+  .app{display:grid; grid-template-columns:360px 1fr; height:100%;}
+  .panel{background:var(--surface); border-right:1px solid var(--line); overflow-y:auto; padding:20px 18px 28px;}
+  .eyebrow{font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); margin:0 0 6px;}
+  h1{font-family:var(--font-display); font-weight:700; font-size:22px; line-height:1.1; margin:0 0 6px;}
+  .sub{font-size:13px; line-height:1.5; color:var(--ink-muted); margin:0 0 14px;}
+  section{border-top:1px solid var(--line); padding:14px 0 6px;}
+  h2{font-family:var(--font-mono); font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); margin:0 0 10px;}
+  .muted{color:var(--ink-muted); font-size:12px; line-height:1.55; margin:0 0 10px;}
+  .btns{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:0 0 10px;}
+  button{font-family:var(--font-mono); font-size:12px; color:var(--ink); background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:6px 10px; cursor:pointer;}
+  button:hover{border-color:var(--accent); color:var(--accent);}
+  button.primary{border-color:var(--accent); color:var(--accent);}
+  select{font-family:var(--font-mono); font-size:12px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 6px;}
+  .param{display:grid; grid-template-columns:34px 1fr 84px; align-items:center; gap:8px; margin:0 0 7px;}
+  .param .sym{font-family:var(--font-display); font-size:13px; color:var(--ink);}
+  .param .sym small{color:var(--ink-muted); font-size:10px;}
+  input[type=range]{width:100%; accent-color:var(--accent);}
+  input[type=number]{width:100%; font-family:var(--font-mono); font-size:12px; background:var(--surface-2); color:var(--ink); border:1px solid var(--line); border-radius:6px; padding:5px 6px;}
+  input[type=number]:focus{outline:none; border-color:var(--accent);}
+  input[type=checkbox]{accent-color:var(--accent);}
+  table{width:100%; border-collapse:collapse; font-family:var(--font-mono); font-size:11.5px;}
+  th{color:var(--ink-muted); font-weight:400; text-align:right; padding:4px 0; border-bottom:1px solid var(--line);}
+  th:first-child, td:first-child{text-align:left;}
+  td{padding:5px 0; text-align:right; border-bottom:1px solid var(--line);}
+  td.err.good{color:var(--ok);} td.err.bad{color:var(--accent-2);}
+  .bars{display:grid; grid-template-columns:62px 1fr 64px; gap:6px 8px; align-items:center; font-family:var(--font-mono); font-size:11px; color:var(--ink-muted);}
+  .bar{height:8px; border-radius:4px; background:var(--surface-2); overflow:hidden;}
+  .bar i{display:block; height:100%; border-radius:4px;}
+  .bars .val{text-align:right; color:var(--ink);}
+  .obj{border:1px solid var(--line); border-radius:8px; padding:8px 10px; margin:0 0 8px; background:var(--surface-2);}
+  .obj .head{display:flex; justify-content:space-between; font-family:var(--font-mono); font-size:12px; margin:0 0 6px;}
+  .obj .head span:last-child{color:var(--ink-muted);}
+  .obj label{display:inline-flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:11.5px; margin:0 12px 4px 0;}
+  .obj pre{margin:4px 0 0; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-muted); white-space:pre-wrap;}
+  .note{font-size:11.5px; color:var(--warm); margin:6px 0 0; min-height:1em;}
+  .stage{position:relative; min-width:0; min-height:0;}
+  canvas{display:block; width:100%; height:100%; touch-action:none;}
+  .hud{position:absolute; left:14px; bottom:12px; font-family:var(--font-mono); font-size:11.5px; color:var(--ink-muted); pointer-events:none; line-height:1.6;}
+  .hud b{color:var(--ink); font-weight:400;}
+  @media (max-width:760px){
+    body{overflow:auto;}
+    .app{grid-template-columns:1fr; grid-template-rows:55vh auto; height:auto;}
+    .panel{order:2; border-right:none; border-top:1px solid var(--line);}
+    .stage{order:1;}
+  }
+</style>
+<div class="app">
+  <aside class="panel">
+    <p class="eyebrow">Research · Dynamics</p>
+    <h1>Mechanism Lab</h1>
+    <p class="sub">A pendulum released at φ₀ strikes a block on a frictionless floor, and the block compresses a spring. Every effect is an ExtendX mixin you can switch off. Drag the bob or the spring plate, or type exact values.</p>
+
+    <section>
+      <h2>Run</h2>
+      <div class="btns">
+        <button id="btnPlay" class="primary">▶ Play</button>
+        <button id="btnReset">Reset</button>
+        <label class="muted" style="margin:0">speed <select id="speed"><option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option></select></label>
+      </div>
+    </section>
+
+    <section>
+      <h2>Parameters</h2>
+      <div id="params"></div>
+    </section>
+
+    <section>
+      <h2>Hand calculation vs simulation</h2>
+      <table>
+        <thead><tr><th>quantity</th><th>by hand</th><th>simulated</th><th>error</th></tr></thead>
+        <tbody id="results"></tbody>
+      </table>
+      <p class="note" id="note"></p>
+      <p class="muted">v₁ = √(2gℓ(1 − cos φ₀)) · v₂ = (1 + e)m₁v₁ / (m₁ + m₂) · v₁′ = (m₁ − e·m₂)v₁ / (m₁ + m₂) · Δx = v₂√(m₂/c)</p>
+    </section>
+
+    <section>
+      <h2>Energy</h2>
+      <div class="bars" id="energy"></div>
+    </section>
+
+    <section>
+      <h2>Composition</h2>
+      <p class="muted">Each object is a base class composed with mixins. Untick one to disable that layer on the live instance; the chains show exactly what runs.</p>
+      <div id="comp"></div>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hud" id="hud"></div>
+  </main>
+</div>
+
+<script>/* pooledimpact/mountainshift/v2/ExtendX.js · sha256 91f41d3629270ac909eb63b29449ef410d2efc47cf095f496d17198c6c1eaca0 */
+/**
+ * @file ExtendX.js
+ * @author Wilbert Fobbs III
+ * @company Pooled Impact
+ * @version 1.6.2
+ * @license Proprietary — All Rights Reserved
+ * @description MountainShift OS Runtime Composition Engine.
+ *
+ *   v1.1.0  (extracted from BaseClassX_Decoupled, v2.3.01-async lineage)
+ *   v1.2.0  mixin.locked (composition-time toggle refusal, fixing the
+ *           enableLayer/disableLayer self-lockout deadlock), the
+ *           _resolvePipeline locked-survives-global-override fix (a
+ *           disposed instance's locked mixins keep enforcing instead of
+ *           silently falling through), and always-wrapped dispose()/
+ *           disposeAsync() (previously conditional in a way that made
+ *           mixin dispose hooks dead for every BaseClassX subclass).
+ *   v1.3.0  Docblock/static-metadata retrofit: static get name/description/
+ *           docs/tests alongside the existing author/company/version
+ *           getters, full Allman brace style, JSDoc on every method --
+ *           no behavior change, but a real additive surface (the new
+ *           getters), not a no-op worth reusing v1.2.0's number for.
+ *   v1.4.0  Stacking fix (found ahead of E.1's closure factory, no current
+ *           production call site hits this shape yet): ExtendX.extend()
+ *           called on top of an ALREADY-composed class used to silently
+ *           drop the OUTER layer entirely -- the Subclass constructor
+ *           called Reflect.construct(BaseClass, args, Subclass) with its
+ *           own closed-over Subclass instead of new.target, so a nested
+ *           Reflect.construct(Inner, args, Outer) never actually reached
+ *           Outer.prototype; confirmed live (instance.world === undefined,
+ *           instance instanceof Outer === false) before the fix. Now
+ *           forwards new.target (falling back to Subclass for an
+ *           ordinary, non-nested construction, where they're the same
+ *           value anyway). A SEPARATE, related dispose()-chain gap was
+ *           found alongside this one and is NOT fixed here -- stacked
+ *           dispose() only runs the outermost layer's mixin hooks, since
+ *           every layer's wrapper calls the same shared
+ *           ExtendX.prototype.dispose(), which always reads
+ *           this.constructor._rawMixins (always the outermost class) and
+ *           short-circuits on its own idempotency guard before an inner
+ *           layer's chained call can do anything. Documented and proven
+ *           as a known gap in test/ExtendX.stacking.test.js pending a
+ *           deliberate fix design (splitting the once-only bookkeeping
+ *           from each layer's own mixin-hook run, tracked per-mixinId
+ *           rather than by a single global disposed flag).
+ *   v1.5.0  Fixed the v1.4.0 dispose-chain gap: split the single conflated
+ *           ExtendX.prototype.dispose()/disposeAsync() into
+ *           finalizeDisposeBookkeeping() (the once-only DISPOSED-flag/
+ *           loop-teardown/mask-collapse/finalizer-unregister state, safe
+ *           to call from every stacked layer's wrapper) and
+ *           runLayerDisposeHooks()/runLayerDisposeHooksAsync() (each
+ *           layer's OWN closed-over mixins list, deduped per mixinId in a
+ *           new RAN_DISPOSE_HOOKS side table rather than gated by the
+ *           single whole-instance DISPOSED flag). The Subclass
+ *           constructor's dispose/disposeAsync wrappers now call these
+ *           helpers directly with THIS extend() call's own `mixins`
+ *           array, instead of the shared this.constructor._rawMixins
+ *           lookup that could only ever see the outermost stacked layer.
+ *           Confirmed live at two and three layers deep, sync and async,
+ *           plus repeat-call idempotency (a second top-level dispose()
+ *           does not re-run any hook) -- test/ExtendX.stacking.test.js
+ *           updated from documenting the known gap to asserting the fix.
+ *   v1.6.0  Third stacking bug, found by direct code review (not testing):
+ *           installWrappers()'s `Subclass._wrapped || (Subclass._wrapped =
+ *           new Set())` did not check for an OWN property. extend() sets
+ *           Object.setPrototypeOf(Subclass, BaseClass), so a stacked
+ *           Outer's `_wrapped` lookup silently resolved up the STATIC
+ *           prototype chain to Inner's already-populated Set the first
+ *           time installWrappers(Outer) ran. Any method name Inner already
+ *           wrapped was then treated as "already installed" for Outer too
+ *           -- Outer never got its OWN dispatcher for that name on
+ *           Outer.prototype, so a call fell straight through the
+ *           prototype chain to INNER's dispatcher, running ONLY Inner's
+ *           chain. Confirmed live and security-relevant: a SecurityMixin
+ *           composed as the OUTER layer over an inner layer sharing a
+ *           guarded method name never actually enforced -- the guarded
+ *           call reached the inner, unguarded implementation directly --
+ *           while mixins()/activeMixins() (reading _rawMixins/
+ *           _resolvePipeline, not _wrapped) still reported the security
+ *           mixin as active, since the two mechanisms don't agree with
+ *           each other at all. Fixed by checking
+ *           Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+ *           instead of bare truthiness, so every Subclass gets its own
+ *           independent Set. test/ExtendX.stacking.test.js gained four
+ *           checks proving the fix (own-Set identity, the outer layer's
+ *           own dispatcher existing, the guard actually enforcing, and
+ *           correct this.super delegation once armed).
+ *   v1.6.1  Ported back from research/lib/chain/ExtendX.js, where it was
+ *           released as v1.5.1 on a fork of this file. tokenFor() built the
+ *           binary literal as '0b' + <reversed bit string>, so the
+ *           just-disabled bit -- always the array's last/highest-index
+ *           element, since disableLayer() never appends past it -- became
+ *           the literal's FIRST character, where a zero is numerically
+ *           invisible: BigInt('0b0111') === BigInt('0b111'). Disabling the
+ *           currently-highest-bitIndex mixin therefore produced the SAME
+ *           token as the all-enabled case, and both PIPELINE_CACHE and
+ *           METHOD_CACHE are keyed by that token -- so a stale, all-enabled
+ *           chain silently served a genuinely-disabled configuration.
+ *           Reproduces deterministically whenever reindex() (global,
+ *           alphabetical, re-run on every extend()) lands an existing
+ *           class's mixin at the new highest bit position. Fixed by
+ *           prefixing a sentinel '1', fixing the literal's length in place.
+ *
+ *           Note on the fork this came from: that file's v1.5.2 and this
+ *           file's v1.6.0 are the SAME defect -- installWrappers() reading
+ *           Subclass._wrapped before checking ownership -- found and fixed
+ *           twice independently, both traced to a SecurityMixin report,
+ *           both landing on the identical hasOwnProperty check. Two version
+ *           numbers, one fix. v1.5.1 was the only change that had no
+ *           counterpart here, which is why this is the only port.
+ *   v1.6.2  Nested composition made whole (test/ExtendX.nesting-defects.test.js,
+ *           red since a83a2fd, now green; test/ExtendX.nesting.test.js adds
+ *           depth, provider-tier and reindex cases):
+ *           D1  extend() over a composed class dropped the inner class's
+ *               last layer. The outer chain called the inner dispatcher
+ *               like a plain method, appending its own `next`; the inner
+ *               layers read that trailing argument as THEIR next, which led
+ *               back out of the inner chain. Dispatchers are now marked
+ *               (IS_DISPATCHER) and called on the real instance with the
+ *               arguments only.
+ *           D2  _defaultMaskState set every bit up to the registry's end, so
+ *               a class claimed mixins it never had and evaluateSetRelation()
+ *               called disjoint compositions SUBSET. A class mask now sets
+ *               only the bits it owns (its mixins plus its base's), and
+ *               evaluateSetRelation() reads owned layers that are on.
+ *               Owning-only masks are safe only if bits stay put, so
+ *               reindex() now remaps every live mask (classes and
+ *               instances) when it moves positions. That also fixes a
+ *               latent defect: a disabled bit used to become the bit of
+ *               whichever mixin slid into its position.
+ *           D3  removeMixin() deregistered without invalidating either memo,
+ *               so the removed layer kept dispatching until unrelated
+ *               registry activity happened to move the key. It now bumps
+ *               REGISTRY_GENERATION and drops the class's ownership bit.
+ *           Also: bitOf() reads a mixin's bit through the registry by id,
+ *           so the object a class was composed with keeps toggling the
+ *           right bit after override() and a later reindex().
+ *
+ *   Runtime subclassing and mixin composition WITHOUT the `extends` keyword and
+ *   without requiring BaseClassX. ExtendX.extend(AnyClass, ...mixins) composes on
+ *   top of any constructor -- a plain ES class, a function, a third-party base --
+ *   so composition is available in contexts where BaseClassX is not an option.
+ *
+ *   Provides:
+ *   - extend(): ordered, runtime-toggleable mixin composition over any base
+ *   - async-capable middleware chain dispatch (this.super.m() / next())
+ *   - per-instance bitmask layer toggling (enableLayer / disableLayer)
+ *   - deliberate mixinId override as a hot-swap across composed classes
+ *   - chain discovery (mixins(prop) / activeMixins() / explain(prop))
+ *   - Von Neumann relational set inspection over layer masks
+ *   - Base36 cache-token generation for a pipeline configuration
+ *
+ *   Chain dispatch notes:
+ *     * each layer runs on a frame-local `this` (own `super`), so awaiting
+ *       layers cannot clobber each other's super binding;
+ *     * the cursor is an index passed down, never a destructive pop, so a layer
+ *       may call down more than once (parallel fan-out);
+ *     * adaptive -- sync chains stay sync, a thenable anywhere makes the chain
+ *       thenable from that point outward;
+ *     * `next` is passed as a trailing argument for (req, res, next) middleware.
+ *
+ *   ExtendX carries the composition surface only. BaseClassX keeps trace, schema,
+ *   events, graph linking, and disposal; where both are present BaseClassX may
+ *   delegate composition here rather than reimplementing it.
+ * @tests test/run-all.js
+ */
+(function(root, factory)
+{
+    if (typeof define === 'function' && define.amd)
+    {
+        define([], factory);
+    }
+    else if (typeof module === 'object' && module.exports)
+    {
+        module.exports = factory();
+    }
+    else
+    {
+        root.ExtendX = factory();
+    }
+}(typeof self !== 'undefined' ? self : this, function()
+{
+
+    'use strict';
+
+    // ─── Private State ──────────────────────────────────────────
+    // Not exposed. Lives in the closure.
+
+    const AUTHOR = 'Wilbert Fobbs III';
+    const COMPANY = 'Pooled Impact';
+    const VERSION = '1.6.2';
+    const NAME = 'ExtendX';
+    const DESCRIPTION = 'MountainShift OS Runtime Composition Engine -- runtime subclassing and mixin composition without the `extends` keyword and without requiring BaseClassX.';
+    const DOCS = [];
+    const TESTS = ['test/run-all.js'];
+
+    // Mask/loop/dispose/pending-init state is keyed by a small internal id,
+    // NOT by object identity.
+    //
+    // Writing _maskState (or `super`) onto the instance makes ExtendX invasive,
+    // and a strict base's Proxy `set` trap (`if (prop in target || schemaApproved)`)
+    // rejects plain assignment of anything new. Object.defineProperty bypasses
+    // that trap (proven elsewhere in this file -- enableLayer/mixins/etc. are
+    // attached the same way), so each instance gets ONE small non-enumerable
+    // `_extId` string via defineProperty; every side table below is a plain
+    // string-keyed Map on that id, not an object-keyed WeakMap. Cheaper (plain
+    // hash lookup, no ephemeron bookkeeping) and fully TS/PHP-portable -- the
+    // cost is no automatic GC-driven cleanup, which FINALIZER (below) exists
+    // to backstop.
+    const MASKS = new Map();
+
+    let __idCounter = 0;
+    // Timestamp-prefixed: shrinks the collision surface versus a bare random
+    // suffix, AND gives every id a natural chronological sort order for free
+    // (useful anywhere ids double as a trace/replay correlation key). No
+    // crypto dependency.
+    function genId()
+    {
+        return 'node_' + Date.now().toString(36) + '_' + (__idCounter++).toString(36) + '_' + Math.random().toString(36).substring(2, 6);
+    }
+
+    // Backstop for a forgotten dispose(): a string-keyed Map does not
+    // self-clean like a WeakMap, so if an instance is GC'd without ever being
+    // disposed its side-table entries would otherwise leak forever. Timing is
+    // nondeterministic (that is what FinalizationRegistry is), so this is a
+    // safety net, not a substitute for calling dispose().
+    const FINALIZER = typeof FinalizationRegistry === 'function'
+        ? new FinalizationRegistry((id) =>
+        {
+            MASKS.delete(id);
+            LOOPS.delete(id);
+            PENDING_INIT.delete(id);
+            DISPOSED.delete(id);
+            RAN_DISPOSE_HOOKS.delete(id);
+        })
+        : null;
+
+    /**
+     * Return this instance's internal id, minting and attaching one via
+     * defineProperty on first use.
+     * @param {Object} obj - any composed instance
+     * @returns {string} the instance's stable `_extId`
+     */
+    function getExtId(obj)
+    {
+        if (typeof obj._extId === 'string')
+        {
+            return obj._extId;
+        }
+        const id = genId();
+        try
+        {
+            Object.defineProperty(obj, '_extId', { value: id, enumerable: false, configurable: false, writable: false });
+        }
+        catch (e) { /* falls through; id still usable for this call */ }
+        if (FINALIZER && typeof obj._extId === 'string')
+        {
+            FINALIZER.register(obj, obj._extId, obj);
+        }
+        return typeof obj._extId === 'string' ? obj._extId : id;
+    }
+
+    // mixinId -> mixin object.
+    //
+    // The registry is the SOURCE OF TRUTH for what an id currently means.
+    // Composed classes keep their declared mixin objects in _rawMixins, but
+    // dispatch resolves each one through here by id -- so replacing an id's
+    // implementation reaches every class already composed with it, with no
+    // bookkeeping and no rebuild. That is what makes override a hot-swap
+    // rather than a re-compose.
+    const REGISTERED = new Map();
+
+    // cacheToken -> resolved pipeline, per composed class. _resolvePipeline
+    // copies, sorts and filters on EVERY method call, which for a request
+    // pipeline is several allocations before the handler runs. The token
+    // already identifies a mask exactly, so it is the correct memo key.
+    // Keyed by the composed CLASS (not an instance), and composed classes are
+    // application-lifetime objects -- same reasoning as USERS below, a plain
+    // Map is fine here, no leak risk in practice.
+    const PIPELINE_CACHE = new Map();
+
+    // Second memo level: composed class -> ("prop|token|generation" -> resolved
+    // function array). Saves the per-call filter/map on hot methods.
+    const METHOD_CACHE = new Map();
+
+    // mixinId -> composed classes using it. override() needs this to install
+    // wrappers for method names a replacement introduces; without it a
+    // late-added method sits on the mixin, is reachable by hand, and is
+    // silently never dispatched. Composed classes are application-lifetime
+    // objects, so a strong Set is acceptable here.
+    const USERS = new Map();
+    function trackUser(mixinId, Subclass)
+    {
+        let s = USERS.get(mixinId);
+        if (!s)
+        {
+            s = new Set(); USERS.set(mixinId, s);
+        }
+        s.add(Subclass);
+    }
+
+    // Bumped whenever an id's implementation is replaced. Folded into the memo
+    // key so a swap cannot serve a stale resolved chain -- cacheToken itself
+    // stays a pure function of the mask, since the mask is what it describes.
+    let REGISTRY_GENERATION = 0;
+
+    // Every composed class's default mask array, so reindex() can move their
+    // bits along with the instance masks in MASKS (v1.6.2, D2).
+    const CLASS_MASKS = new Set();
+
+    // A mixin's CURRENT bit, read through the registry by id (v1.6.2). The
+    // object a class was composed with keeps its own _bitIndex, but only the
+    // registered implementation is reindexed -- after an override(), the
+    // original object's index goes stale the next time reindex() moves it.
+    function bitOf(mixin)
+    {
+        const r = mixin && REGISTERED.get(mixin.mixinId);
+        return r && r._bitIndex !== undefined ? r._bitIndex : (mixin ? mixin._bitIndex : undefined);
+    }
+
+    // Marks a function as an ExtendX dispatcher, so a stacked class calling
+    // down into its base's dispatcher can tell it from a plain method (D1).
+    const IS_DISPATCHER = Symbol('ExtendX.dispatcher');
+
+    // Symbol.dispose / Symbol.asyncDispose are recent; fall back to the
+    // well-known registry so `using` semantics still work on older engines
+    // once a polyfill installs the real symbols.
+    const DISPOSE = typeof Symbol.dispose === 'symbol' ? Symbol.dispose : Symbol.for('Symbol.dispose');
+    const ASYNC_DISPOSE = typeof Symbol.asyncDispose === 'symbol' ? Symbol.asyncDispose : Symbol.for('Symbol.asyncDispose');
+
+    // Disposal is idempotent and must be observable; keyed by id like MASKS.
+    const DISPOSED = new Set();
+
+    // id -> Set<mixinId> already disposed. Deliberately SEPARATE from
+    // DISPOSED above -- DISPOSED gates the once-only bookkeeping (loop
+    // teardown, mask collapse, finalizer unregister), while this gates
+    // each individual mixin's dispose HOOK, one Set entry per mixinId
+    // rather than one flag for the whole instance. That split is what
+    // makes stacked composition's dispose chain work: see
+    // runLayerDisposeHooks()/runLayerDisposeHooksAsync() below.
+    const RAN_DISPOSE_HOOKS = new Map();
+
+    // Compute-loop timer and deferred task queue, per instance. Keyed by id.
+    const LOOPS = new Map();
+
+    // Pending async init promises, per instance id: mixinId -> promise.
+    //
+    // The constructor cannot await, so an async init hook is invoked and its
+    // promise recorded here. initParallel then AWAITS those recorded promises
+    // rather than calling init again -- without this the hook runs twice, once
+    // fire-and-forget at construction and once more on the explicit call.
+    const PENDING_INIT = new Map();
+    function loopState(obj)
+    {
+        const id = getExtId(obj);
+        let s = LOOPS.get(id);
+        if (!s)
+        {
+            s = { timer: null, queue: [] }; LOOPS.set(id, s);
+        }
+        return s;
+    }
+
+    // ─── Private Helpers ───────────────────────────────────────
+
+    function getMask(obj)
+    {
+        const id = getExtId(obj);
+        let m = MASKS.get(id);
+        if (!m)
+        {
+            const d = obj && obj.constructor && obj.constructor._defaultMaskState;
+            m = d ? [d[0], [...d[1]]] : [1, []];
+            MASKS.set(id, m);
+        }
+        return m;
+    }
+
+    function setMask(obj, mask)
+    {
+        MASKS.set(getExtId(obj), mask);
+        return mask;
+    }
+
+    // Base36 scalar identity for a mask. Shared by the cacheToken getter and
+    // the pipeline memo, so a configuration and its cached resolved pipeline
+    // can never disagree about which mask they describe.
+    function tokenFor(mask)
+    {
+        const [globalOverride, bitArray] = mask;
+        if (globalOverride === 0)
+        {
+            return '0';
+        }
+        // Normalize holes to 1 (implicitly-on) so a mask that was never grown
+        // and one explicitly filled with 1s produce the SAME token -- otherwise
+        // 'undefined' would stringify into the binary literal and throw.
+        const binary = Array.from(bitArray, b => (b === 0 ? 0 : 1)).reverse().join('');
+        if (!binary)
+        {
+            return '1';
+        }
+        // The sentinel '1' (v1.6.1) fixes the literal's length in place. The
+        // bit array is REVERSED before parsing, so the just-disabled bit --
+        // always the array's last/highest-index element, since disableLayer()
+        // never appends past it -- becomes the FIRST character, and
+        // BigInt('0b0111') === BigInt('0b111'). A leading zero is numerically
+        // invisible, so disabling the currently-highest-bitIndex mixin
+        // produced the SAME token as all-enabled. Both PIPELINE_CACHE and
+        // METHOD_CACHE are keyed by this token, so a stale all-enabled chain
+        // silently served a genuinely-disabled configuration. With the
+        // sentinel that zero is an internal digit contributing to the value.
+        return (((BigInt('0b1' + binary)) << 1n) | BigInt(globalOverride)).toString(36);
+    }
+
+    // Current implementation for a declared mixin: the registry's entry for its
+    // id, falling back to the object itself if it was never registered.
+    function current(m)
+    {
+        return REGISTERED.get(m.mixinId) || m;
+    }
+
+    // ─── Dispose helpers (stacking fix, v1.4.0) ──────────────────
+    //
+    // Split from one conflated ExtendX.prototype.dispose() into two
+    // independent concerns, because stacked composition (ExtendX.extend()
+    // called on top of an already-composed class) needs them to run on
+    // DIFFERENT schedules:
+    //
+    //   finalizeDisposeBookkeeping -- the once-only, whole-instance state
+    //     (DISPOSED flag, loop teardown, mask collapse, finalizer
+    //     unregister). Must run exactly once no matter how many stacked
+    //     layers call in.
+    //
+    //   runLayerDisposeHooks(Async) -- each mixin's OWN dispose hook, keyed
+    //     by mixinId rather than gated by the single instance-wide DISPOSED
+    //     flag. A stacked instance has ONE shared _extId but MULTIPLE
+    //     layers, each with its OWN distinct declared mixin list (closed
+    //     over per extend() call, not read from this.constructor._rawMixins
+    //     -- that always resolves to the OUTERMOST class via prototype
+    //     shadowing, so it could never reach an inner layer's mixins at
+    //     all). Before this split, every layer's dispose wrapper called the
+    //     same conflated method, whose OWN idempotency guard (`if
+    //     (DISPOSED.has(id)) return;`) short-circuited every layer below
+    //     the outermost the instant the outermost had run -- confirmed
+    //     live: an inner layer's mixin dispose hook silently never ran at
+    //     all. Deduping per mixinId (not per whole-instance flag) instead
+    //     means: every distinct layer's mixins get their turn once each,
+    //     AND a caller invoking dispose() twice at the top level still
+    //     never re-runs the same hook twice.
+    function finalizeDisposeBookkeeping(instance)
+    {
+        const id = getExtId(instance);
+        if (DISPOSED.has(id))
+        {
+            return;
+        }
+        DISPOSED.add(id);
+        const st = LOOPS.get(id);
+        if (st && st.timer)
+        {
+            clearInterval(st.timer);
+        }
+        LOOPS.delete(id);
+        PENDING_INIT.delete(id);
+        // Collapse, don't delete: getMask() regenerates a fresh, fully-
+        // enabled default mask for a MISSING entry, which would silently
+        // re-enable every mixin's dispatch after "dispose" -- setting
+        // [0,[]] is what actually makes the pipeline resolve to nothing.
+        setMask(instance, [0, []]);
+        if (FINALIZER)
+        {
+            FINALIZER.unregister(instance);
+        }
+    }
+
+    function runLayerDisposeHooks(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        (mixinsList || []).forEach(m =>
+        {
+            if (ran.has(m.mixinId))
+            {
+                return;
+            }
+            ran.add(m.mixinId);
+            // Through current(), so an overridden id disposes with its
+            // replacement's hook rather than the original's.
+            const impl = current(m);
+            if (typeof impl.dispose === 'function')
+            {
+                try
+                {
+                    impl.dispose.call(instance);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX dispose] mixin "' + m.mixinId + '" failed:', e);
+                }
+            }
+        });
+    }
+
+    async function runLayerDisposeHooksAsync(instance, mixinsList)
+    {
+        const id = getExtId(instance);
+        let ran = RAN_DISPOSE_HOOKS.get(id);
+        if (!ran)
+        {
+            ran = new Set();
+            RAN_DISPOSE_HOOKS.set(id, ran);
+        }
+        const pending = (mixinsList || [])
+            .filter(m => !ran.has(m.mixinId))
+            .map(m =>
+            {
+                ran.add(m.mixinId);
+                const impl = current(m);
+                if (typeof impl.dispose !== 'function')
+                {
+                    return null;
+                }
+                try
+                {
+                    return Promise.resolve(impl.dispose.call(instance));
+                }
+                catch (e)
+                {
+                    return Promise.reject(e);
+                }
+            })
+            .filter(p => p !== null);
+        const settled = await Promise.allSettled(pending);
+        settled.forEach(r =>
+        {
+            if (r.status === 'rejected')
+            {
+                console.error('[ExtendX asyncDispose] hook failed:', r.reason);
+            }
+        });
+    }
+
+    // Reindex every known mixin. A new id inserted alphabetically before an
+    // existing one shifts the positions after it, so previously assigned
+    // indices must move too or old and new classes disagree about bit meaning.
+    //
+    // v1.6.2: and every mask already built moves with them. A mask is
+    // positional, so before this a disabled bit silently became the bit of
+    // whichever mixin slid into its position (disableLayer(x) turning into
+    // "y is off"), and a class mask that sets only its own bits (D2) would
+    // have dropped its own layers the first time a new id sorted ahead of
+    // them. Positions no old mask knew about stay holes: implicitly on for
+    // dispatch, absent for set relations.
+    function reindex()
+    {
+        const ids = Array.from(REGISTERED.keys()).sort();
+        const moved = new Map();
+        ids.forEach((id, i) =>
+        {
+            const m = REGISTERED.get(id);
+            if (m._bitIndex !== undefined && m._bitIndex !== i)
+            {
+                moved.set(m._bitIndex, i);
+            }
+            m._bitIndex = i;
+        });
+        if (moved.size)
+        {
+            const remap = (bits) =>
+            {
+                const old = bits.slice();
+                bits.length = 0;
+                for (let j = 0; j < old.length; j++)
+                {
+                    if (old[j] === undefined)
+                    {
+                        continue;
+                    }
+                    const to = moved.has(j) ? moved.get(j) : j;
+                    bits[to] = old[j];
+                }
+            };
+            CLASS_MASKS.forEach(mask => remap(mask[1]));
+            MASKS.forEach(mask => remap(mask[1]));
+            REGISTRY_GENERATION++;
+        }
+        return ids;
+    }
+
+    // ─── Dispatch wrapper factory ───────────────────────────────
+    //
+    // Fast dispatch: a real function installed on Subclass.prototype, so there
+    // is no proxy get-trap on every property access and methods are enumerable
+    // and introspectable. The cost is that the set of wrapped names is decided
+    // when the wrapper is installed -- see installWrappers, which override()
+    // calls again so a replacement introducing a NEW method name still gets
+    // one. Without that top-up, a late-added method is present on the mixin,
+    // reachable by hand, and silently never dispatched.
+    function makeDispatcher(Subclass, BaseClass, prop)
+    {
+        const dispatcher = function(...methodArgs)
+        {
+            const receiver = this;
+            const mask = getMask(receiver);
+
+            // Two-level memo. _resolvePipeline caches the active mixin list per
+            // mask; this caches the resolved FUNCTION array per method per mask,
+            // so a hot method skips the filter/map/unshift entirely. The key
+            // carries the registry generation, so an override invalidates it.
+            const mKey = String(prop) + '|' + tokenFor(mask) + '|' + REGISTRY_GENERATION;
+            let methodCache = METHOD_CACHE.get(Subclass);
+            if (!methodCache)
+            {
+                methodCache = new Map(); METHOD_CACHE.set(Subclass, methodCache);
+            }
+
+            let chain = methodCache.get(mKey);
+            if (!chain)
+            {
+                chain = Subclass._resolvePipeline(mask)
+                    .filter(mixin => typeof mixin[prop] === 'function')
+                    .map(mixin => mixin[prop]);
+                const baseMethod = BaseClass.prototype[prop];
+                if (typeof baseMethod === 'function')
+                {
+                    chain.unshift(baseMethod);
+                }
+                methodCache.set(mKey, chain);
+            }
+
+            // Index cursor, NOT a destructive pop. Popping consumes the chain,
+            // so two calls to this.super.m() from the SAME layer -- a parallel
+            // fan-out, Promise.all([this.super.m(), this.super.m()]) -- eat the
+            // same array: the first drains it and the second returns undefined,
+            // silently.
+            const invokeNext = (cursor, ...args) =>
+            {
+                if (cursor < 0)
+                {
+                    return undefined;
+                }
+                const currentMethod = chain[cursor];
+
+                // Stacked composition (D1, v1.6.2): the bottom of this chain is
+                // the base class's OWN dispatcher. Call it as the caller would
+                // -- on the real instance, with the arguments only. Appending
+                // this chain's `next` hands the inner layers a trailing
+                // argument they read as their own `next`, which points back
+                // out of the inner chain: its last layer never runs.
+                if (currentMethod[IS_DISPATCHER])
+                {
+                    return currentMethod.apply(receiver, args);
+                }
+
+                // Frame-local view of the instance.
+                //
+                // Object.create(receiver) is wrong here: reads resolve up the
+                // prototype chain, but a WRITE (this._hits++) creates an own
+                // property on the throwaway frame and vanishes when the layer
+                // returns -- a plugin holding state silently never persists it.
+                // A forwarding proxy instead: every get and set reaches the real
+                // instance, with `super` the single frame-local exception. That
+                // keeps concurrent layers from clobbering each other's super
+                // binding without detaching them from the instance.
+                const layerSuper = Object.create(receiver.super || null);
+                const below = cursor - 1;
+                const frame = new Proxy(receiver, {
+                    get(t, p) { return p === 'super' ? layerSuper : t[p]; },
+                    set(t, p, v) { if (p === 'super') return true; t[p] = v; return true; },
+                    has(t, p) { return p === 'super' ? true : (p in t); }
+                });
+
+                // A synchronous layer cannot await, so if the layer below
+                // returns a promise the sync layer has no way to unwrap it --
+                // `return this.super.m() + 'x'` yields "[object Promise]x". No
+                // dispatch strategy can fix that; what dispatch CAN do is refuse
+                // to let it pass silently.
+                let downstreamAsync = false;
+                const observe = (v) =>
+                {
+                    if (v && typeof v.then === 'function')
+                    {
+                        downstreamAsync = true;
+                    }
+                    return v;
+                };
+                const next = (...nextArgs) =>
+                    observe(invokeNext(below, ...(nextArgs.length ? nextArgs : args)));
+                layerSuper[prop] = (...superArgs) => observe(invokeNext(below, ...superArgs));
+
+                const result = currentMethod.apply(frame, args.concat(next));
+
+                if (downstreamAsync && !(result && typeof result.then === 'function'))
+                {
+                    throw new Error(
+                        'ExtendX chain: a synchronous layer of "' + String(prop) + '" received a ' +
+                        'promise from the layer below and returned a non-promise (' + typeof result + '). ' +
+                        'A sync function cannot await, so the downstream result was discarded or ' +
+                        'stringified. Make this layer async and await this.super.' + String(prop) + '(), ' +
+                        'or return the promise unmodified.'
+                    );
+                }
+                return result;
+            };
+
+            return invokeNext(chain.length - 1, ...methodArgs);
+        };
+        dispatcher[IS_DISPATCHER] = true;
+        return dispatcher;
+    }
+
+    // Names a mixin contributes to dispatch. init/dispose are lifecycle hooks
+    // invoked directly, not chained; the rest is bookkeeping.
+    const NON_DISPATCH = new Set(['init', 'dispose', 'mixinId', '_bitIndex', 'overrides']);
+
+    function dispatchKeys(mixin)
+    {
+        return Object.keys(mixin).filter(k =>
+            !NON_DISPATCH.has(k) && typeof mixin[k] === 'function');
+    }
+
+    /**
+     * Install (or top up) dispatch wrappers on a composed class.
+     *
+     * Idempotent and additive: called once at extend(), and again by override()
+     * for any method name the replacement introduces.
+     */
+    function installWrappers(Subclass)
+    {
+        const BaseClass = Subclass._extendXBase;
+        // Object.prototype.hasOwnProperty, NOT a bare `Subclass._wrapped ||
+        // ...` truthiness check -- extend() sets Object.setPrototypeOf(
+        // Subclass, BaseClass), so a stacked Outer's `_wrapped` lookup
+        // silently resolves up the STATIC prototype chain to Inner's
+        // already-populated Set when Outer has none of its own yet. That
+        // means (a) any method name Inner already wrapped is treated as
+        // "already installed" for Outer too, even when Outer's own mixin
+        // has a MEANINGFULLY DIFFERENT implementation of the same name --
+        // Outer.prototype never gets its own dispatcher for that name at
+        // all, so calls fall through the prototype chain straight to
+        // Inner's dispatcher, silently running ONLY Inner's chain -- and
+        // (b) `installed.add(key)` would MUTATE Inner's own Set in place.
+        // Confirmed live and security-relevant: a SecurityMixin composed
+        // as the OUTER layer over an inner layer sharing a guarded method
+        // name never actually enforced -- the guarded call reached
+        // Inner's unguarded implementation directly, while mixins()/
+        // activeMixins() (which read _rawMixins/_resolvePipeline, not
+        // _wrapped) still reported the security mixin as active. Each
+        // Subclass needs its OWN independent Set, never one inherited
+        // from the class it's stacked on top of.
+        const installed = Object.prototype.hasOwnProperty.call(Subclass, '_wrapped')
+            ? Subclass._wrapped
+            : (Subclass._wrapped = new Set());
+        (Subclass._rawMixins || []).forEach(m =>
+        {
+            dispatchKeys(current(m)).forEach(key =>
+            {
+                if (installed.has(key))
+                {
+                    return;
+                }
+                installed.add(key);
+                Object.defineProperty(Subclass.prototype, key, {
+                    value: makeDispatcher(Subclass, BaseClass, key),
+                    enumerable: false, configurable: true, writable: true
+                });
+            });
+        });
+        return Subclass;
+    }
+
+    // ─── ExtendX Class ──────────────────────────────────────────
+
+    class ExtendX
+    {
+        constructor(options = {})
+        {
+            this.id = options.id || genId();
+            this.state = options.state || 'initialized';
+            getMask(this);
+        }
+
+        // ─── Authorship Info ────────────────────────────────────
+
+        static get author() { return AUTHOR; }
+        static get company() { return COMPANY; }
+        static get version() { return VERSION; }
+        static get name() { return NAME; }
+        static get description() { return DESCRIPTION; }
+        static get docs() { return DOCS; }
+        static get tests() { return TESTS; }
+
+        get author() { return AUTHOR; }
+        get company() { return COMPANY; }
+        get version() { return VERSION; }
+
+        // ─── Read-only view for callers that reference `_maskState` ──
+
+        get _maskState() { return getMask(this); }
+        set _maskState(v) { setMask(this, v); }
+
+        // ─── Introspection API ──────────────────────────────────
+
+        /**
+         * Chain discovery.
+         *
+         *   mixins()        -> every declared mixin, in declaration order
+         *   mixins(prop)    -> the chain that WILL run for prop, dispatch order
+         *                      first to last, with '<base>' where the base
+         *                      method sits
+         *
+         * The second form is the answer to "why isn't my layer running". Two
+         * bugs found while hardening this were invisible without it: a mixin
+         * dropped because its bit index fell outside the mask array, and
+         * disableLayer being swallowed by chain dispatch. Either would have
+         * shown instantly as a missing entry here.
+         *
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @returns {Array} declared mixins, or the resolved dispatch chain for prop
+         */
+        mixins(prop)
+        {
+            const C = this.constructor;
+            if (prop === undefined)
+            {
+                return C._rawMixins ? [...C._rawMixins] : [];
+            }
+            return ExtendX.mixins(C, prop, getMask(this));
+        }
+
+        /**
+         * Active layers only, honouring this instance's mask.
+         * @returns {Array} the currently active mixin objects, dispatch order
+         */
+        activeMixins()
+        {
+            const C = this.constructor;
+            if (typeof C._resolvePipeline !== 'function')
+            {
+                return [];
+            }
+            return [...C._resolvePipeline(getMask(this))].reverse();
+        }
+
+        /**
+         * One-line human-readable chain, e.g. "handle: Log -> Auth -> <base>".
+         * @param {string} prop - method name to explain
+         * @returns {string} the human-readable chain description
+         */
+        explain(prop)
+        {
+            const chain = this.mixins(prop);
+            return String(prop) + ': ' + (chain.length ? chain.join(' -> ') : '(nothing dispatches)');
+        }
+
+        /**
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if this instance's class was composed with mixin
+         */
+        hasMixin(mixin)
+        {
+            if (!this.constructor._rawMixins)
+            {
+                return false;
+            }
+            return this.constructor._rawMixins.includes(mixin);
+        }
+
+        // ─── Instance Bitmask Control ───────────────────────────
+        //
+        // mixin.locked (v1.2.0): a mixin declaring `locked: true` on itself
+        // opts OUT of ever being toggled through enableLayer/disableLayer,
+        // for every instance, permanently, from construction onward -- not
+        // a per-instance seal, a property of the mixin's identity. Default
+        // is unset/false, so every existing mixin's behavior is unchanged;
+        // this is opt-in, for mixins where "toggle it off at runtime" is
+        // categorically the wrong operation to expose at all (a security
+        // mixin's presence should be a composition-time decision -- whether
+        // extend() is called with it in the first place -- not something
+        // togglable while the instance is already live). This also closes
+        // a real deadlock a naive per-instance lock discovered: a mixin
+        // that gates its OWN enableLayer/disableLayer through its OWN bit
+        // can disable itself and then can never re-enable itself, because
+        // the call that would flip the bit back on is itself excluded from
+        // dispatch once the bit is off. Locking at the mixin-identity level
+        // sidesteps that entirely -- the bit for a locked mixin never moves
+        // through this API in the first place.
+
+        /**
+         * Turn a mixin's bit on for this instance.
+         * @param {Object} mixin - the mixin to enable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        enableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
+                throw new Error('ExtendX.enableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
+            const bit = bitOf(mixin);
+            if (bit === undefined)
+            {
+                return this;
+            }
+            const bits = getMask(this)[1];
+            for (let i = bits.length; i < bit; i++)
+            {
+                bits[i] = undefined;   // a hole: implicitly on, not claimed
+            }
+            bits[bit] = 1;
+            return this;
+        }
+
+        /**
+         * Turn a mixin's bit off for this instance.
+         * @param {Object} mixin - the mixin to disable
+         * @returns {ExtendX} this, for chaining
+         * @throws {Error} if mixin.locked is true
+         */
+        disableLayer(mixin)
+        {
+            if (mixin && mixin.locked)
+            {
+                throw new Error('ExtendX.disableLayer(): mixin "' + (mixin.mixinId || '(anonymous)') + '" is locked -- it cannot be toggled at runtime.');
+            }
+            const bit = bitOf(mixin);
+            if (bit === undefined)
+            {
+                return this;
+            }
+            const bits = getMask(this)[1];
+            // Assigning past the end extends the array; the holes it creates
+            // read as implicitly-on, which is the correct default for a layer
+            // registered after this instance's class was composed.
+            for (let i = bits.length; i < bit; i++)
+            {
+                bits[i] = undefined;
+            }
+            bits[bit] = 0;
+            return this;
+        }
+
+        /**
+         * @param {boolean} enabled - global on/off override for every layer
+         * @returns {ExtendX} this, for chaining
+         */
+        toggleAllLayers(enabled)
+        {
+            getMask(this)[0] = enabled ? 1 : 0;
+            return this;
+        }
+
+        get cacheToken()
+        {
+            if (DISPOSED.has(getExtId(this)))
+            {
+                return '0';
+            }
+            return tokenFor(getMask(this));
+        }
+
+        get disposed() { return DISPOSED.has(getExtId(this)); }
+
+        // ─── Compute loop ───────────────────────────────────────
+        //
+        // Drives continuous recalculation and rendering. Returns a lifecycle
+        // handle rather than starting immediately, so a caller decides when.
+        // main() and render() are plain hooks -- a mixin that defines either
+        // one joins the dispatch chain for it like any other method.
+        /**
+         * @param {string} [mode='canvas'] - 'canvas' or 'console'
+         * @param {string|CanvasRenderingContext2D|null} [canvasIdOrContext=null] - canvas id or context, for 'canvas' mode
+         * @param {number} [fps=60] - target frames per second
+         * @returns {{start: Function, stop: Function, running: boolean, schedule: Function, rescue: Function}} a lifecycle handle
+         */
+        compute(mode = 'canvas', canvasIdOrContext = null, fps = 60)
+        {
+            const intervalMs = Math.max(1, Math.floor(1000 / fps));
+            const self = this;
+            let ctx = null;
+
+            if (mode === 'canvas' && canvasIdOrContext)
+            {
+                ctx = typeof canvasIdOrContext === 'string'
+                    ? (typeof document !== 'undefined' ? document.getElementById(canvasIdOrContext)?.getContext('2d') : null)
+                    : canvasIdOrContext;
+            }
+
+            const lifecycle = {
+                start: () =>
+                {
+                    const st = loopState(self);
+                    if (st.timer)
+                    {
+                        return lifecycle;
+                    }
+                    if (DISPOSED.has(getExtId(self)))
+                    {
+                        throw new Error('ExtendX.compute(): instance is disposed');
+                    }
+                    st.timer = setInterval(() =>
+                    {
+                        try
+                        {
+                            self.flushQueue();
+                            self.main();
+                            if (mode === 'canvas' && ctx)
+                            {
+                                self.render(mode, ctx);
+                            }
+                            else
+                            {
+                                if (mode === 'console' && typeof console.clear === 'function')
+                                {
+                                    console.clear();
+                                }
+                                self.render(mode);
+                            }
+                        }
+                        catch (err)
+                        {
+                            lifecycle.rescue(err);
+                        }
+                    }, intervalMs);
+                    return lifecycle;
+                },
+                stop: () =>
+                {
+                    const st = loopState(self);
+                    if (st.timer)
+                    {
+                        clearInterval(st.timer); st.timer = null;
+                    }
+                    return lifecycle;
+                },
+                get running() { return !!loopState(self).timer; },
+                schedule: (task) => { loopState(self).queue.push(task); return lifecycle; },
+                rescue: (error) =>
+                {
+                    console.error('[ExtendX compute loop] halted:', error);
+                    lifecycle.stop();
+                }
+            };
+            return lifecycle;
+        }
+
+        /** Dispatch hook -- a mixin defining main() joins this instance's compute loop chain. @returns {void} */
+        main() { /* dispatch hook */ }
+
+        /**
+         * Dispatch hook -- a mixin defining render() joins this instance's compute loop chain.
+         * @param {string} mode - 'canvas' or 'console'
+         * @param {CanvasRenderingContext2D} [ctx] - the canvas context, for 'canvas' mode
+         * @returns {void}
+         */
+        render(mode, ctx) { /* dispatch hook */ }
+
+        /**
+         * Run and clear every queued task. Errors do not stop the queue.
+         * @returns {ExtendX} this, for chaining
+         */
+        flushQueue()
+        {
+            const st = loopState(this);
+            while (st.queue.length > 0)
+            {
+                const task = st.queue.shift();
+                if (typeof task !== 'function')
+                {
+                    continue;
+                }
+                try
+                {
+                    task.call(this);
+                }
+                catch (e)
+                {
+                    console.error('[ExtendX queue] task failed:', e);
+                }
+            }
+            return this;
+        }
+
+        /**
+         * @param {Function} task - queued to run on the next compute loop tick
+         * @returns {ExtendX} this, for chaining
+         */
+        schedule(task) { loopState(this).queue.push(task); return this; }
+
+        // ─── Explicit resource disposal ─────────────────────────
+        //
+        // Fires when an instance leaves a `using` block. Stops the loop, drops
+        // queued work, runs each active mixin's dispose hook, and collapses the
+        // mask to the empty set -- so cacheToken becomes "0" and the pipeline
+        // resolves to nothing, which is what a disposed composition should mean.
+        //
+        // Idempotent: `using` can dispose an instance that a caller already
+        // disposed by hand, and a mixin's dispose must not run twice.
+        // Pure, portable name -- not because ExtendX's own interface required
+        // Symbol.dispose, but because it was added to hook `using`'s block-scope
+        // GC timing. That hook now lives on [DISPOSE] as a thin alias below, so
+        // the primary method stays free of a JS-only well-known-symbol
+        // dependency (PHP, or any host without Symbol, calls this directly).
+        /**
+         * @returns {void}
+         */
+        dispose()
+        {
+            // Delegates to the shared helpers above -- see their header
+            // comment for why the once-only bookkeeping and each mixin's
+            // own hook are deliberately split. this.constructor._rawMixins
+            // is only correct here because a DIRECT ExtendX subclass (one
+            // never wrapped by extend()) has exactly one layer; extend()'s
+            // own Subclass constructor wraps dispose() differently below,
+            // closing over its OWN mixins list instead of reading this.
+            finalizeDisposeBookkeeping(this);
+            runLayerDisposeHooks(this, this.constructor._rawMixins || []);
+        }
+
+        /**
+         * Async counterpart. Awaits any mixin dispose hook that returns a
+         * thenable, then performs the synchronous teardown.
+         * @returns {Promise<void>}
+         */
+        async disposeAsync()
+        {
+            // See dispose() above and the shared helpers' header comment.
+            await runLayerDisposeHooksAsync(this, this.constructor._rawMixins || []);
+            finalizeDisposeBookkeeping(this);
+        }
+
+        /** Thin alias so `using` still triggers cleanup -- see dispose() above. @returns {void} */
+        [DISPOSE]() { return this.dispose(); }
+
+        /** Thin alias so `await using` still triggers cleanup -- see disposeAsync() above. @returns {Promise<void>} */
+        async [ASYNC_DISPOSE]() { return this.disposeAsync(); }
+
+        // ─── Static Methods ─────────────────────────────────────
+
+        /**
+         * Compose BaseClass with one or more mixins into a new, runtime-toggleable Subclass.
+         * @param {Function} BaseClass - the constructor/class to compose on top of
+         * @param {...Object} args - mixin objects, optionally followed by a trailing
+         *   `{ order, custommap, array }` configuration object
+         * @returns {Function} the composed Subclass constructor
+         * @throws {Error} if a mixin lacks a stable string mixinId, or reuses one
+         *   already registered to a different mixin without `overrides: true`
+         */
+        static extend(BaseClass, ...args)
+        {
+            let options = { order: 'left-right' };
+            let mixins = args;
+
+            // Isolate configuration block from structural mixins
+            if (args.length > 0 &&
+                typeof args[args.length - 1] === 'object' &&
+                !args[args.length - 1].prototype &&
+                !('init' in args[args.length - 1]))
+            {
+                const lastArg = args[args.length - 1];
+                if ('order' in lastArg || 'custommap' in lastArg || 'array' in lastArg)
+                {
+                    options = { ...options, ...args.pop() };
+                    mixins = args;
+                }
+            }
+
+            // ─── Deterministic bit assignment ──────────────────
+            //
+            // Load order is NOT usable: a mixin's bit position decides its
+            // place in the cacheToken, so two processes loading the same mixins
+            // in different order would produce different tokens for an
+            // identical configuration -- destroying the token's main use as a
+            // portable cache key. Position is the mixin's index in the
+            // ALPHABETICALLY SORTED list of every mixinId ever registered.
+            const overriddenIds = [];
+            mixins.forEach(m =>
+            {
+                if (!m.mixinId || typeof m.mixinId !== 'string')
+                {
+                    throw new Error('ExtendX.extend(): every mixin needs a stable string mixinId for deterministic bit assignment');
+                }
+                const owner = REGISTERED.get(m.mixinId);
+                if (owner && owner !== m)
+                {
+                    // Two intents share this shape, and only the caller knows
+                    // which:
+                    //   accidental collision -- two unrelated mixins that
+                    //     happen to pick the same id. They would share a bit,
+                    //     so disableLayer on either toggles both. Silently
+                    //     allowing it is the bug the guard exists for.
+                    //   deliberate override -- a replacement implementation for
+                    //     an id that already exists (a patched layer, a test
+                    //     double, a v2). Here sharing the bit is the POINT:
+                    //     same identity, same toggle, new behaviour.
+                    // So the guard stays and `overrides: true` declares the
+                    // second case.
+                    if (m.overrides !== true)
+                    {
+                        throw new Error('ExtendX.extend(): mixinId "' + m.mixinId + '" is already registered to a different mixin. ' +
+                            'Ids map to bit positions, so two mixins sharing one id share one bit -- disableLayer on either would toggle both. ' +
+                            'If the replacement is intentional, set overrides: true on the new mixin (or call ExtendX.override(mixin)).');
+                    }
+                    m._bitIndex = owner._bitIndex;   // same identity keeps the same bit
+                    REGISTRY_GENERATION++;
+                    // Top up AFTER the registry is updated below -- installWrappers
+                    // reads current(), so running it here would still see the old
+                    // implementation and find no new method names.
+                    overriddenIds.push(m.mixinId);
+                }
+                REGISTERED.set(m.mixinId, m);
+            });
+
+            const sortedIds = reindex();
+
+            // Now that REGISTERED holds the replacements, top up wrappers on any
+            // class already composed with an overridden id.
+            overriddenIds.forEach(id =>
+            {
+                const users = USERS.get(id);
+                if (users)
+                {
+                    users.forEach(Sub => installWrappers(Sub));
+                }
+            });
+
+            // ─── Build mask array sized to global registry ─────
+            //
+            // Sized to the registry, NOT mixins.length. _bitIndex is a global
+            // position, so a mixins.length-sized array leaves later mixins
+            // reading undefined in _resolvePipeline's
+            // `bitArray[mixin._bitIndex] === 1` check -- and being silently
+            // dropped from the pipeline. Symptom is a middleware that registers
+            // without error and never runs.
+            //
+            // v1.6.2 (D2): a 1 only at the bits this class OWNS -- its own
+            // mixins plus everything the class it stacks on owns -- and 0
+            // elsewhere. Every bit up to the registry's end used to be 1, so a
+            // class claimed mixins it never had and evaluateSetRelation()
+            // called disjoint compositions SUBSET. Dispatch is unaffected: it
+            // only ever looks up bits of mixins in a class's own pipeline,
+            // which are all set here, and reindex() keeps them in place.
+            const owned = [];
+            (BaseClass._ownedMixins || []).concat(mixins).forEach(m =>
+            {
+                if (!owned.some(o => o.mixinId === m.mixinId))
+                {
+                    owned.push(m);
+                }
+            });
+            const initialBits = new Array(sortedIds.length).fill(0);
+            owned.forEach(m => { initialBits[bitOf(m)] = 1; });
+            const classDefaultMaskState = [1, initialBits];
+            CLASS_MASKS.add(classDefaultMaskState);
+
+            // ─── Subclass constructor ──────────────────────────
+            function Subclass(...args)
+            {
+                // new.target, NOT the bare closed-over `Subclass` -- stacking a
+                // SECOND ExtendX.extend() on top of an already-composed class
+                // (Outer = ExtendX.extend(Inner, mixinB) where Inner is itself
+                // ExtendX.extend(Raw, mixinA)) used to silently drop the outer
+                // layer entirely. Outer's own constructor calls
+                // Reflect.construct(Inner, args, Outer), which sets new.target
+                // to Outer for the duration of Inner's function body -- but
+                // Inner's body ignored that and called
+                // Reflect.construct(BaseClass, args, Subclass) with ITS OWN
+                // closed-over `Subclass` (Inner itself), hardcoding newTarget
+                // back to Inner. Because Inner's body explicitly returns an
+                // object (the fully-set-up `proxied`), that returned object
+                // OVERRIDES whatever `this` the engine would have created from
+                // Outer.prototype -- so the final instance's real prototype
+                // chain stopped at Inner.prototype, never reaching
+                // Outer.prototype at all. Every mixinB method Outer's own
+                // installWrappers() had put on Outer.prototype became
+                // permanently unreachable: `instance.world` was undefined,
+                // `instance instanceof Outer` was false, proven live before
+                // this fix. Forwarding new.target (falling back to the
+                // closed-over Subclass for an ordinary, non-nested `new
+                // Inner()` call, where new.target === Subclass already) lets
+                // each layer's own newTarget propagate all the way down the
+                // Reflect.construct chain, so the final object's prototype
+                // correctly extends from the OUTERMOST composed class.
+                const instance = Reflect.construct(BaseClass, args, new.target || Subclass);
+
+                // A base that is not an ExtendX subclass has none of these, so
+                // attach them here. Own properties via defineProperty, because
+                // a `prop in target`-style set trap on a strict base rejects
+                // plain assignment of anything new.
+                const methods = ['enableLayer', 'disableLayer', 'toggleAllLayers',
+                    'mixins', 'activeMixins', 'explain', 'hasMixin',
+                    'compute', 'main', 'render', 'flushQueue', 'schedule'];
+                methods.forEach(fn =>
+                {
+                    if (typeof instance[fn] !== 'function')
+                    {
+                        Object.defineProperty(instance, fn, {
+                            value: ExtendX.prototype[fn],
+                            enumerable: false,
+                            configurable: true,
+                            writable: true
+                        });
+                    }
+                });
+
+                // dispose/disposeAsync: ALWAYS wrapped, never conditional on
+                // "does the base already have one" the way the methods above
+                // are. That conditional is exactly what made mixin dispose
+                // hooks silently dead for every BaseClassX subclass: BaseClassX
+                // already defines dispose(), so `typeof instance.dispose !==
+                // 'function'` was always false, and ExtendX's own hook-running
+                // dispose() (the one that calls each mixin's own dispose, per
+                // current() so an override() replacement still fires) never
+                // got attached at all. The fix preserves whatever the base
+                // already provided (BaseClassX's real schema/trace disposal,
+                // or nothing for a plain class) by capturing it BEFORE
+                // overriding, then always running ExtendX's own mixin-hook
+                // logic first and chaining to the original afterward -- so a
+                // BaseClassX subclass gets both: its own real disposal AND
+                // every composed mixin's dispose hook actually running.
+                //
+                // Calls the shared runLayerDisposeHooks(Async) helpers directly
+                // with THIS extend() call's own closed-over `mixins` array --
+                // NOT ExtendX.prototype.dispose.call(this) (which reads
+                // this.constructor._rawMixins, always the OUTERMOST stacked
+                // layer via prototype shadowing, and would never reach an
+                // inner layer's own mixins at all). finalizeDisposeBookkeeping
+                // is idempotent and safe to call from every stacked layer's
+                // wrapper; runLayerDisposeHooks/Async dedupes per mixinId, so
+                // a stacked instance's OUTER layer running first does not
+                // prevent an INNER layer's chained call (via originalDispose
+                // below) from still running its own distinct mixins' hooks --
+                // the bug this fixes: before this split, the inner layer's
+                // chained call hit ExtendX.prototype.dispose's OWN idempotency
+                // guard and returned immediately, so its mixin's dispose hook
+                // silently never ran at all.
+                const originalDispose = typeof instance.dispose === 'function' ? instance.dispose.bind(instance) : null;
+                const originalDisposeAsync = typeof instance.disposeAsync === 'function' ? instance.disposeAsync.bind(instance) : null;
+                Object.defineProperty(instance, 'dispose', {
+                    value: function()
+                    {
+                        finalizeDisposeBookkeeping(this);
+                        runLayerDisposeHooks(this, mixins);
+                        if (originalDispose)
+                        {
+                            originalDispose();
+                        }
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
+                });
+                Object.defineProperty(instance, 'disposeAsync', {
+                    value: async function()
+                    {
+                        await runLayerDisposeHooksAsync(this, mixins);
+                        finalizeDisposeBookkeeping(this);
+                        if (originalDisposeAsync)
+                        {
+                            await originalDisposeAsync();
+                        }
+                    },
+                    enumerable: false,
+                    configurable: true,
+                    writable: true
+                });
+
+                // Authorship getters live on ExtendX.prototype, so an instance
+                // whose base is NOT an ExtendX subclass never sees them.
+                ['author', 'company', 'version'].forEach(p =>
+                {
+                    if (!(p in instance))
+                    {
+                        Object.defineProperty(instance, p, {
+                            get: Object.getOwnPropertyDescriptor(ExtendX.prototype, p).get,
+                            enumerable: false,
+                            configurable: true
+                        });
+                    }
+                });
+
+                // Disposal symbols: a foreign base has no ExtendX.prototype, so
+                // `using` would find no [Symbol.dispose] and silently not clean up.
+                [DISPOSE, ASYNC_DISPOSE].forEach(sym =>
+                {
+                    if (typeof instance[sym] !== 'function')
+                    {
+                        Object.defineProperty(instance, sym, {
+                            value: ExtendX.prototype[sym],
+                            enumerable: false, configurable: true, writable: true
+                        });
+                    }
+                });
+                if (!('disposed' in instance))
+                {
+                    Object.defineProperty(instance, 'disposed', {
+                        get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'disposed').get,
+                        enumerable: false, configurable: true
+                    });
+                }
+
+                if (!('cacheToken' in instance))
+                {
+                    Object.defineProperty(instance, 'cacheToken', {
+                        get: Object.getOwnPropertyDescriptor(ExtendX.prototype, 'cacheToken').get,
+                        enumerable: false,
+                        configurable: true
+                    });
+                }
+
+                if (!('_maskState' in instance))
+                {
+                    Object.defineProperty(instance, '_maskState', {
+                        get() { return getMask(this); },
+                        set(v) { setMask(this, v); },
+                        enumerable: false,
+                        configurable: true
+                    });
+                }
+
+                // No outer proxy: dispatch wrappers live on Subclass.prototype,
+                // so `instance` is the object callers hold and every side table
+                // keys on it directly. This also removes the raw-vs-proxy
+                // identity hazard that previously made PENDING_INIT lookups miss.
+                const proxied = instance;
+                setMask(proxied, [
+                    Subclass._defaultMaskState[0],
+                    [...Subclass._defaultMaskState[1]]
+                ]);
+
+                // Run init lifecycles -- through current(), so an overridden id
+                // constructs with its replacement's init, not the original's.
+                // A hook that returns a thenable is recorded, not re-run later:
+                // ExtendX.initParallel() awaits these same promises.
+                mixins.forEach(mixin =>
+                {
+                    const impl = current(mixin);
+                    if (typeof impl.init !== 'function')
+                    {
+                        return;
+                    }
+                    const im = getMask(proxied);
+                    if (im[0] !== 1 || im[1][bitOf(mixin)] === 0)
+                    {
+                        return;
+                    }
+                    const record = (p) =>
+                    {
+                        const pid = getExtId(proxied);
+                        let map = PENDING_INIT.get(pid);
+                        if (!map)
+                        {
+                            map = new Map(); PENDING_INIT.set(pid, map);
+                        }
+                        map.set(mixin.mixinId, p);
+                    };
+                    let r;
+                    try
+                    {
+                        r = impl.init.call(proxied, ...args);
+                    }
+                    catch (e)
+                    {
+                        const p = Promise.reject(e);
+                        p.catch(() => {});   // defuse; initParallel re-raises
+                        record(p);
+                        return;
+                    }
+                    if (r && typeof r.then === 'function')
+                    {
+                        r.catch(() => {});   // same: the real report is initParallel's
+                        record(r);
+                    }
+                });
+
+                return proxied;
+            }
+
+            // ─── Prototype chain ───────────────────────────────
+            Subclass.prototype = Object.create(BaseClass.prototype);
+            Subclass.prototype.constructor = Subclass;
+            Object.setPrototypeOf(Subclass, BaseClass);
+
+            // ─── Metadata ──────────────────────────────────────
+            Subclass._rawMixins = [...mixins];
+            Subclass._orderStrategy = options.order;
+            Subclass._customMap = options.custommap || null;
+            Subclass._explicitArray = options.array || null;
+            Subclass._defaultMaskState = classDefaultMaskState;
+            Subclass._ownedMixins = owned;
+
+            // ─── Pipeline Resolution ───────────────────────────
+            //
+            // All four strategies resolve by mixinId as well as by object
+            // reference: a custommap or explicit array written with ids is the
+            // readable form, and was previously broken -- `map[a]` used the
+            // mixin OBJECT as a plain-object key, which stringifies to
+            // "[object Object]", so every weight read 0 and the sort was a
+            // no-op that silently fell back to declaration order.
+            Subclass._resolvePipeline = function(currentMask)
+            {
+                const mask = currentMask || classDefaultMaskState;
+                const [globalOverride, bitArray] = mask;
+
+                // A locked mixin (see enableLayer/disableLayer above) is
+                // refused at the per-bit level, but the global override is
+                // a SEPARATE kill switch -- dispose()'s own setMask(this,
+                // [0,[]]) sets exactly this to 0, and toggleAllLayers(false)
+                // does too. Without this check, disposing (or globally
+                // toggling off) an instance would silently exclude a locked
+                // mixin from every future call's chain despite it never
+                // having agreed to be individually disabled -- the same
+                // "turned off by a door it never consented to" gap
+                // mixin.locked exists to close, just reached through the
+                // global bit instead of the per-mixin one. Locked mixins are
+                // therefore immune to the global override entirely, not
+                // just to their own bit.
+                if (globalOverride === 0)
+                {
+                    const locked = Subclass._rawMixins.filter(function(m) { return !!m.locked; });
+                    return locked.length ? locked.map(current) : [];
+                }
+
+                const token = tokenFor(mask) + ':' + REGISTRY_GENERATION;
+                let cache = PIPELINE_CACHE.get(Subclass);
+                if (!cache)
+                {
+                    cache = new Map();
+                    PIPELINE_CACHE.set(Subclass, cache);
+                }
+                const hit = cache.get(token);
+                if (hit)
+                {
+                    return hit;
+                }
+
+                let pipeline = [...Subclass._rawMixins];
+
+                const rank = (list, m) =>
+                {
+                    let i = list.indexOf(m);
+                    if (i === -1)
+                    {
+                        i = list.indexOf(m.mixinId);
+                    }
+                    return i;
+                };
+
+                // Strategy A: Explicit Array Order (mixins or mixinIds)
+                if (Subclass._explicitArray && Array.isArray(Subclass._explicitArray))
+                {
+                    const list = Subclass._explicitArray;
+                    pipeline.sort((a, b) =>
+                    {
+                        const ia = rank(list, a);
+                        const ib = rank(list, b);
+                        return (ia === -1 ? Number.MAX_SAFE_INTEGER : ia) -
+                               (ib === -1 ? Number.MAX_SAFE_INTEGER : ib);
+                    });
+                    pipeline.reverse();
+                }
+                // Strategy B: Custom Map Weight (Map by mixin, object by mixinId)
+                else if (Subclass._customMap && typeof Subclass._customMap === 'object')
+                {
+                    const map = Subclass._customMap;
+                    const weight = (m) =>
+                    {
+                        if (typeof map.get === 'function')
+                        {
+                            return map.get(m) ?? map.get(m.mixinId) ?? 0;
+                        }
+                        return map[m.mixinId] ?? 0;
+                    };
+                    pipeline.sort((a, b) => weight(a) - weight(b));
+                    pipeline.reverse();
+                }
+                // Strategy C: Right-to-Left
+                else if (Subclass._orderStrategy === 'right-left')
+                {
+                    // keep order as-is
+                }
+                // Strategy D: Left-to-Right (default)
+                else
+                {
+                    pipeline.reverse();
+                }
+
+                // Missing bits mean ENABLED, not disabled.
+                //
+                // initialBits is sized to the registry at extend() time, but the
+                // registry keeps growing: any mixin registered later gets an
+                // index past the end of an earlier class's mask array. Testing
+                // `=== 1` then reads undefined and silently drops the layer --
+                // the same failure as the original mixins.length sizing bug, but
+                // temporal, so it appears only once a second composition has
+                // happened. A short array means "not yet configured", and the
+                // default for an unconfigured layer is on.
+                const resolved = pipeline
+                    .filter(mixin => bitArray[bitOf(mixin)] !== 0)
+                    .map(current);   // an overridden id dispatches its replacement
+                cache.set(token, resolved);
+                return resolved;
+            };
+
+            // ─── Dispatch wrappers ─────────────────────────────
+            Subclass._extendXBase = BaseClass;
+            installWrappers(Subclass);
+            mixins.forEach(m => trackUser(m.mixinId, Subclass));
+
+            return Subclass;
+        }
+
+        // ─── Override ──────────────────────────────────────────
+
+        /**
+         * Deliberately replace the implementation behind an existing mixinId.
+         *
+         * Hot-swap, not re-compose: every class already composed with that id
+         * picks the replacement up on its next dispatch, because dispatch
+         * resolves ids through the registry rather than holding the object. The
+         * bit position is unchanged, so enableLayer/disableLayer and cacheToken
+         * keep working and an instance that had the layer off still has it off.
+         *
+         * Returns the previous implementation so a caller can restore it -- the
+         * shape a test double or a temporary patch needs.
+         *
+         * @param {Object} mixin - the replacement mixin, sharing mixinId with the original
+         * @returns {Object|null} the previous implementation registered for that id
+         * @throws {Error} if mixin lacks a string mixinId
+         */
+        static override(mixin)
+        {
+            if (!mixin || typeof mixin.mixinId !== 'string')
+            {
+                throw new Error('ExtendX.override(): needs a mixin with a string mixinId');
+            }
+            const prev = REGISTERED.get(mixin.mixinId) || null;
+            if (prev === mixin)
+            {
+                return prev;
+            }
+            if (prev)
+            {
+                mixin._bitIndex = prev._bitIndex;
+            }
+            REGISTERED.set(mixin.mixinId, mixin);
+            if (!prev)
+            {
+                reindex();
+            }
+            REGISTRY_GENERATION++;
+
+            // Top up dispatch wrappers on every class already composed with this
+            // id. A replacement may define a method the original never had; with
+            // fast prototype dispatch the wrapped-name set is decided at install
+            // time, so without this the new method sits on the mixin, is
+            // reachable by hand, and is silently never dispatched.
+            const users = USERS.get(mixin.mixinId);
+            if (users)
+            {
+                users.forEach(Sub => installWrappers(Sub));
+            }
+            return prev;
+        }
+
+        /**
+         * Concurrently resolve asynchronous mixin init hooks.
+         *
+         * The synchronous init in the Subclass constructor cannot await, so a
+         * mixin needing async setup declares init as async and the caller runs
+         * this once after construction. Resolves through current(), so an
+         * overridden id initialises with its replacement.
+         *
+         * Honours the instance mask: a layer that is off does not initialise.
+         *
+         * @param {Object} instance - a composed instance
+         * @param {...*} args - arguments to re-invoke async init hooks with
+         * @returns {Promise<Object>} instance, once every pending/invoked hook settles
+         * @throws {Error} if one or more mixin init hooks reject
+         */
+        static async initParallel(instance, ...args)
+        {
+            const declared = (instance.constructor && instance.constructor._rawMixins) || [];
+            const mask = getMask(instance);
+            const pending = PENDING_INIT.get(getExtId(instance));
+            const tasks = [];
+
+            declared.forEach(m =>
+            {
+                if (mask[0] !== 1 || mask[1][bitOf(m)] === 0)
+                {
+                    return;
+                }
+                // Already in flight from the constructor: await THAT promise.
+                // Re-invoking would run the hook a second time.
+                if (pending && pending.has(m.mixinId))
+                {
+                    tasks.push(pending.get(m.mixinId)); return;
+                }
+                const impl = current(m);
+                if (typeof impl.init === 'function' && args.length)
+                {
+                    // Only re-invoke when the caller supplies different args than
+                    // construction did; otherwise the constructor already ran it.
+                    tasks.push(Promise.resolve().then(() => impl.init.apply(instance, args)));
+                }
+            });
+
+            const settled = await Promise.allSettled(tasks);
+            const failed = settled.filter(r => r.status === 'rejected');
+            if (pending)
+            {
+                pending.clear();
+            }
+            if (failed.length)
+            {
+                throw new Error('ExtendX.initParallel(): ' + failed.length + ' mixin init hook(s) failed: ' +
+                    failed.map(f => (f.reason && f.reason.message) || String(f.reason)).join('; '));
+            }
+            return instance;
+        }
+
+        /**
+         * @param {string} mixinId - a mixin's stable string id
+         * @returns {Object|null} the current implementation registered for that id
+         */
+        static registered(mixinId) { return REGISTERED.get(mixinId) || null; }
+
+        /**
+         * @returns {string[]} every registered id, alphabetical -- the order that defines bits
+         */
+        static registry() { return Array.from(REGISTERED.keys()).sort(); }
+
+        // ─── Static Introspection ──────────────────────────────
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {string} [prop] - method name to resolve the dispatch chain for
+         * @param {Array} [mask] - a specific instance mask to resolve against
+         * @returns {Array} declared mixins, or the resolved dispatch chain (names) for prop
+         */
+        static mixins(TargetClass, prop, mask)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return [];
+            }
+            if (prop === undefined)
+            {
+                return [...TargetClass._rawMixins];
+            }
+
+            const pipeline = typeof TargetClass._resolvePipeline === 'function'
+                ? TargetClass._resolvePipeline(mask || TargetClass._defaultMaskState)
+                : [];
+
+            // Dispatch pops from the end, so reverse to read in execution
+            // order. An id whose implementation has been overridden is flagged,
+            // because "the layer is running but not the code you're reading" is
+            // otherwise invisible -- exactly the case override introduces.
+            const declared = new Map(TargetClass._rawMixins.map(m => [m.mixinId, m]));
+            const names = [...pipeline]
+                .filter(m => typeof m[prop] === 'function')
+                .map(m =>
+                {
+                    const d = declared.get(m.mixinId);
+                    return (d && d !== m) ? m.mixinId + ' (overridden)' : m.mixinId;
+                })
+                .reverse();
+
+            const Base = Object.getPrototypeOf(TargetClass.prototype);
+            if (Base && typeof Base[prop] === 'function')
+            {
+                names.push('<base>');
+            }
+            return names;
+        }
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixin - a mixin object to check membership of
+         * @returns {boolean} true if TargetClass was composed with mixin
+         */
+        static hasMixin(TargetClass, mixin)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return false;
+            }
+            return TargetClass._rawMixins.includes(mixin);
+        }
+
+        /**
+         * @param {Function} TargetClass - a class composed via ExtendX.extend()
+         * @param {Object} mixinToRemove - the mixin object to remove from TargetClass._rawMixins
+         * @returns {void}
+         */
+        static removeMixin(TargetClass, mixinToRemove)
+        {
+            if (!TargetClass._rawMixins)
+            {
+                return;
+            }
+            const before = TargetClass._rawMixins.length;
+            TargetClass._rawMixins = TargetClass._rawMixins.filter(m => m !== mixinToRemove);
+            if (TargetClass._rawMixins.length === before)
+            {
+                return;
+            }
+            // v1.6.2 (D3): removal must take effect at once, not whenever
+            // something else happens to move the memo key. Both memo levels
+            // key on REGISTRY_GENERATION, so bumping it drops every cached
+            // chain that still holds the removed layer.
+            REGISTRY_GENERATION++;
+            if (Array.isArray(TargetClass._ownedMixins))
+            {
+                const inherited = Object.getPrototypeOf(TargetClass)._ownedMixins || [];
+                const stillInherited = inherited.some(m => m.mixinId === mixinToRemove.mixinId);
+                if (!stillInherited)
+                {
+                    TargetClass._ownedMixins = TargetClass._ownedMixins.filter(m => m.mixinId !== mixinToRemove.mixinId);
+                    const bit = bitOf(mixinToRemove);
+                    if (bit !== undefined && TargetClass._defaultMaskState)
+                    {
+                        TargetClass._defaultMaskState[1][bit] = 0;
+                    }
+                }
+            }
+            const users = USERS.get(mixinToRemove.mixinId);
+            if (users && !TargetClass._rawMixins.some(m => m.mixinId === mixinToRemove.mixinId))
+            {
+                users.delete(TargetClass);
+            }
+        }
+
+        /**
+         * @param {Object} nodeA - a composed instance
+         * @param {Object} nodeB - a composed instance
+         * @returns {string} one of 'EQUIVALENT_EMPTY_SETS', 'NODE_A_IS_EMPTY_SUBSET_OF_B',
+         *   'NODE_B_IS_EMPTY_SUBSET_OF_A', 'IDENTITY_EQUIVALENT_SETS', 'SUBSET', 'SUPERSET',
+         *   or 'DISJOINT_OR_INTERSECTING_SETS'
+         */
+        static evaluateSetRelation(nodeA, nodeB)
+        {
+            // The set a node IS: the layers its class owns that are on for it
+            // (v1.6.2). Bits of mixins the class never had, or a hole past the
+            // end of its mask, are not members -- a mask records toggles, not
+            // ownership, so ownership comes from the class.
+            const members = (node) =>
+            {
+                const mask = getMask(node);
+                const out = [];
+                if (mask[0] === 0)
+                {
+                    return [mask, out];
+                }
+                const C = node && node.constructor;
+                const owned = (C && C._ownedMixins) || [];
+                owned.forEach(m =>
+                {
+                    const bit = bitOf(m);
+                    if (bit !== undefined && mask[1][bit] !== 0)
+                    {
+                        out[bit] = 1;
+                    }
+                });
+                return [[out.length ? 1 : 0, out], out];
+            };
+            const [mA, bitsA] = members(nodeA);
+            const [mB, bitsB] = members(nodeB);
+            if (mA[0] === 0 && mB[0] === 0)
+            {
+                return 'EQUIVALENT_EMPTY_SETS';
+            }
+            if (mA[0] === 0)
+            {
+                return 'NODE_A_IS_EMPTY_SUBSET_OF_B';
+            }
+            if (mB[0] === 0)
+            {
+                return 'NODE_B_IS_EMPTY_SUBSET_OF_A';
+            }
+
+            let isSubset = true;
+            let isSuperset = true;
+
+            for (let i = 0; i < Math.max(bitsA.length, bitsB.length); i++)
+            {
+                const bA = bitsA[i] ?? 0;
+                const bB = bitsB[i] ?? 0;
+                if (bA === 1 && bB !== 1)
+                {
+                    isSubset = false;
+                }
+                if (bB === 1 && bA !== 1)
+                {
+                    isSuperset = false;
+                }
+            }
+
+            if (isSubset && isSuperset)
+            {
+                return 'IDENTITY_EQUIVALENT_SETS';
+            }
+            if (isSubset)
+            {
+                return 'SUBSET';
+            }
+            if (isSuperset)
+            {
+                return 'SUPERSET';
+            }
+            return 'DISJOINT_OR_INTERSECTING_SETS';
+        }
+    }
+
+    // ─── Return ─────────────────────────────────────────────────
+
+    return ExtendX;
+
+}));
+
+</script>
+<script>/* research/spline-patch/Mechanism.js · sha256 44c2d1c24bcde5ea480d433bb1c55441aea413c7387a32fc43f4c15e3c491cb6 */
+// ─── Mechanism — "Lego for science": physics as composable ExtendX mixins ───
+// Author: Will Fobbs
+// Company: Pooled Impact
+// Confidential & Proprietary — Not for distribution
+//
+// Three plain base classes — World, Body, Link — each expose a few dispatch hooks
+// (forces, constrain, potential, energy, fieldAt, interact) and do nothing else.
+// Every physical effect is a mixin that joins those hooks through ExtendX:
+//
+//   World:  Gravity (a uniform field g), Collisions (impulses between Collider bodies)
+//   Body:   Weight (mass × field: W = m·g), Drag, Grounded (frictionless floor, μ = 0),
+//           Collider (circle or box shape)
+//   Link:   Spring (Hooke, optionally compression- or tension-only), Damper, Rod (rigid,
+//           massless, exact length)
+//
+//   const Bob = ExtendX.extend(Body, Weight, Collider);
+//   bob.explain('forces')        → "forces: mech.Weight -> <base>"
+//   bob.disableLayer(Weight)     → this bob no longer feels gravity (or stores its PE)
+//
+// Energy is tallied through the same chains, so switching a layer off removes both its
+// force and its energy term: the books stay balanced whatever is composed.
+//
+// Integration: semi-implicit Euler in fixed substeps; rods are projected (position and
+// velocity) after each substep, then collisions, then body contacts.
+//
+// Kits assemble a ready-made problem with its closed-form answer alongside, so the
+// simulation can be checked against the hand calculation.
+
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define(['../../pooledimpact/mountainshift/v2/ExtendX'], factory);
+  } else if (typeof module === 'object' && module.exports) {
+    module.exports = factory(require('../../pooledimpact/mountainshift/v2/ExtendX.js'));
+  } else {
+    root.Mechanism = factory(root.ExtendX);
+  }
+}(typeof self !== 'undefined' ? self : this, function (ExtendX) {
+
+  'use strict';
+
+  // ── 2D vectors ───────────────────────────────────────────────────────
+  const add = (a, b) => [a[0] + b[0], a[1] + b[1]];
+  const sub = (a, b) => [a[0] - b[0], a[1] - b[1]];
+  const scale = (a, s) => [a[0] * s, a[1] * s];
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1];
+  const len = a => Math.hypot(a[0], a[1]);
+
+  // ── Bases ────────────────────────────────────────────────────────────
+
+  class World {
+    constructor(opts = {}) {
+      this.name = opts.name || 'world';
+      this.bodies = [];
+      this.links = [];
+      this.t = 0;
+      this.substep = opts.substep || 1e-4;
+      this.iterations = opts.iterations || 2;
+      this.events = [];
+    }
+
+    add(...things) {
+      for (const x of things) (x instanceof Link ? this.links : this.bodies).push(x);
+      return this;
+    }
+
+    // Dispatch hook: acceleration of the field at a point (Gravity adds to it).
+    fieldAt(pos) { return [0, 0]; }
+
+    // Dispatch hook: world-level contacts after each substep (Collisions joins it).
+    interact(h) {}
+
+    step(dt) {
+      const n = Math.max(1, Math.ceil(dt / this.substep - 1e-9)), h = dt / n;
+      for (let i = 0; i < n; i++) this.substepOnce(h);
+      return this;
+    }
+
+    substepOnce(h) {
+      for (const b of this.bodies) b.F = [0, 0];
+      for (const b of this.bodies) if (b.invMass > 0) b.forces(this, b.F);
+      for (const l of this.links) l.forces(this);
+      for (const b of this.bodies) {
+        // A kinematic body moves at the velocity it was given, whatever pushes on it.
+        if (b.kinematic) { b.pos = add(b.pos, scale(b.vel, h)); continue; }
+        if (!(b.invMass > 0)) continue;
+        b.vel = add(b.vel, scale(b.F, h * b.invMass));
+        b.pos = add(b.pos, scale(b.vel, h));
+      }
+      for (let k = 0; k < this.iterations; k++) for (const l of this.links) l.constrain(this, h);
+      this.interact(h);
+      for (const b of this.bodies) if (!b.kinematic) b.constrain(this, h);
+      this.t += h;
+    }
+
+    // { kinetic, potential, elastic, total } — each term summed through the layers present.
+    energy() {
+      let kinetic = 0, potential = 0, elastic = 0;
+      for (const b of this.bodies) {
+        if (b.invMass > 0) kinetic += 0.5 * b.mass * dot(b.vel, b.vel);
+        potential += b.potential(this) || 0;
+      }
+      for (const l of this.links) elastic += l.energy(this) || 0;
+      return { kinetic, potential, elastic, total: kinetic + potential + elastic };
+    }
+
+    find(name) { return this.bodies.concat(this.links).find(x => x.name === name) || null; }
+  }
+
+  class Body {
+    constructor(opts = {}) {
+      this.name = opts.name || 'body';
+      this.pos = (opts.pos || [0, 0]).slice();
+      this.vel = (opts.vel || [0, 0]).slice();
+      this.mass = opts.mass === undefined ? 1 : opts.mass;
+      this.fixed = !!opts.fixed;
+      // Kinematic: driven from outside (e.g. by keyframes). Infinite mass to everything it
+      // touches, but it moves, and its velocity counts in impacts and dampers.
+      this.kinematic = !!opts.kinematic;
+      this.F = [0, 0];
+    }
+
+    get invMass() { return this.fixed || this.kinematic || !(this.mass > 0) ? 0 : 1 / this.mass; }
+
+    // Dispatch hooks. Each layer adds its contribution and calls next().
+    forces(world, F) { return F; }
+    constrain(world, h) {}
+    potential(world) { return 0; }
+  }
+
+  class Link {
+    constructor(opts = {}) {
+      this.name = opts.name || 'link';
+      this.a = opts.a;
+      this.b = opts.b || null;
+      this.anchor = (opts.anchor || [0, 0]).slice();
+      this.offsetA = (opts.offsetA || [0, 0]).slice();
+      this.offsetB = (opts.offsetB || [0, 0]).slice();
+      this.rest = opts.rest === undefined ? this.length() : opts.rest;
+    }
+
+    endA() { return add(this.a.pos, this.offsetA); }
+    endB() { return this.b ? add(this.b.pos, this.offsetB) : this.anchor.slice(); }
+    length() { return len(sub(this.endB(), this.endA())); }
+
+    // Push f (along a→b) onto the two ends: +f on a, −f on b.
+    pull(f, n) {
+      this.a.F = add(this.a.F, scale(n, f));
+      if (this.b) this.b.F = sub(this.b.F, scale(n, f));
+    }
+
+    // Dispatch hooks.
+    forces(world) {}
+    constrain(world, h) {}
+    energy(world) { return 0; }
+  }
+
+  // ── World mixins ─────────────────────────────────────────────────────
+
+  const Gravity = {
+    mixinId: 'mech.Gravity',
+    init(opts = {}) { this.g = opts.g === undefined ? 9.81 : opts.g; },
+    fieldAt(pos, next) {
+      const below = next();
+      return [below[0], below[1] - this.g];
+    },
+  };
+
+  // Shapes: { type: 'circle', r } or { type: 'box', w, h }, centred on the body.
+  function contact(a, b) {
+    const sa = a.shape, sb = b.shape;
+    if (sa.type === 'circle' && sb.type === 'circle') {
+      const d = sub(b.pos, a.pos), dist = len(d), depth = sa.r + sb.r - dist;
+      return depth > 0 && dist > 1e-12 ? { n: scale(d, 1 / dist), depth } : null;
+    }
+    if (sa.type === 'box' && sb.type === 'circle') {
+      const c = contact(b, a);
+      return c ? { n: scale(c.n, -1), depth: c.depth } : null;
+    }
+    if (sa.type === 'circle' && sb.type === 'box') {
+      const hw = sb.w / 2, hh = sb.h / 2;
+      const q = [Math.max(b.pos[0] - hw, Math.min(a.pos[0], b.pos[0] + hw)), Math.max(b.pos[1] - hh, Math.min(a.pos[1], b.pos[1] + hh))];
+      const d = sub(q, a.pos), dist = len(d);
+      if (dist >= sa.r) return null;
+      if (dist > 1e-12) return { n: scale(d, 1 / dist), depth: sa.r - dist };
+      // Centre inside the box: push out along the shallower axis.
+      const dx = hw - Math.abs(a.pos[0] - b.pos[0]), dy = hh - Math.abs(a.pos[1] - b.pos[1]);
+      return dx < dy
+        ? { n: [b.pos[0] > a.pos[0] ? 1 : -1, 0], depth: dx + sa.r }
+        : { n: [0, b.pos[1] > a.pos[1] ? 1 : -1], depth: dy + sa.r };
+    }
+    const dx = (sa.w + sb.w) / 2 - Math.abs(b.pos[0] - a.pos[0]);
+    const dy = (sa.h + sb.h) / 2 - Math.abs(b.pos[1] - a.pos[1]);
+    if (dx <= 0 || dy <= 0) return null;
+    return dx < dy ? { n: [b.pos[0] >= a.pos[0] ? 1 : -1, 0], depth: dx } : { n: [0, b.pos[1] >= a.pos[1] ? 1 : -1], depth: dy };
+  }
+
+  const Collisions = {
+    mixinId: 'mech.Collisions',
+    init(opts = {}) { this.restitution = opts.restitution === undefined ? 1 : opts.restitution; },
+    interact(h, next) {
+      const bs = this.bodies.filter(b => b.shape);
+      for (let i = 0; i < bs.length; i++) {
+        for (let j = i + 1; j < bs.length; j++) {
+          const a = bs[i], b = bs[j];
+          if (this.ignorePair && this.ignorePair(a, b)) continue;
+          const c = contact(a, b);
+          if (!c) continue;
+          const wa = a.invMass, wb = b.invMass, w = wa + wb;
+          if (!(w > 0)) continue;
+          a.pos = sub(a.pos, scale(c.n, c.depth * wa / w));
+          b.pos = add(b.pos, scale(c.n, c.depth * wb / w));
+          const rel = dot(sub(b.vel, a.vel), c.n);
+          if (rel >= 0) continue;
+          const before = { a: a.vel.slice(), b: b.vel.slice() };
+          const J = -(1 + this.restitution) * rel / w;
+          a.vel = sub(a.vel, scale(c.n, J * wa));
+          b.vel = add(b.vel, scale(c.n, J * wb));
+          this.events.push({ t: this.t, a: a.name, b: b.name, impulse: J, before, after: { a: a.vel.slice(), b: b.vel.slice() } });
+        }
+      }
+      return next();
+    },
+  };
+
+  // ── Body mixins ──────────────────────────────────────────────────────
+
+  // Weight: the body's mass couples to the world's field. W = m·g, U = −m·g·x.
+  const Weight = {
+    mixinId: 'mech.Weight',
+    forces(world, F, next) {
+      const g = world.fieldAt(this.pos);
+      F[0] += this.mass * g[0];
+      F[1] += this.mass * g[1];
+      return next();
+    },
+    potential(world, next) {
+      return -this.mass * dot(world.fieldAt(this.pos), this.pos) + next();
+    },
+  };
+
+  // Linear air drag, F = −k·v.
+  const Drag = {
+    mixinId: 'mech.Drag',
+    init(opts = {}) { this.drag = opts.drag === undefined ? 0.1 : opts.drag; },
+    forces(world, F, next) {
+      F[0] -= this.drag * this.vel[0];
+      F[1] -= this.drag * this.vel[1];
+      return next();
+    },
+  };
+
+  // Rests on a frictionless floor (μ = 0): never sinks below it, slides freely along it.
+  const Grounded = {
+    mixinId: 'mech.Grounded',
+    init(opts = {}) {
+      this.floor = opts.floor || 0;
+      this.footing = opts.size ? opts.size[1] / 2 : opts.radius || 0;
+    },
+    constrain(world, h, next) {
+      const lowest = this.floor + this.footing;
+      if (this.pos[1] < lowest) {
+        this.pos = [this.pos[0], lowest];
+        if (this.vel[1] < 0) this.vel = [this.vel[0], 0];
+      }
+      return next();
+    },
+  };
+
+  // Gives the body a shape for Collisions: opts.radius → circle, opts.size [w, h] → box.
+  const Collider = {
+    mixinId: 'mech.Collider',
+    init(opts = {}) {
+      this.shape = opts.size ? { type: 'box', w: opts.size[0], h: opts.size[1] } : { type: 'circle', r: opts.radius || 0.05 };
+    },
+  };
+
+  // ── Link mixins ──────────────────────────────────────────────────────
+
+  // Hooke spring, F = c·(L − L₀). mode 'compression' acts only when squeezed (a bumper),
+  // 'tension' only when stretched (a rope-like elastic), 'both' otherwise.
+  const Spring = {
+    mixinId: 'mech.Spring',
+    init(opts = {}) {
+      this.stiffness = opts.stiffness === undefined ? 100 : opts.stiffness;
+      this.mode = opts.mode || 'both';
+      this.maxCompression = 0;
+      this.maxExtension = 0;
+    },
+    stretch() {
+      const ext = this.length() - this.rest;
+      if ((this.mode === 'compression' && ext > 0) || (this.mode === 'tension' && ext < 0)) return 0;
+      return ext;
+    },
+    forces(world, next) {
+      const d = sub(this.endB(), this.endA()), L = len(d);
+      const ext = this.stretch();
+      if (L > 1e-12 && ext) this.pull(this.stiffness * ext, scale(d, 1 / L));
+      if (-ext > this.maxCompression) this.maxCompression = -ext;
+      if (ext > this.maxExtension) this.maxExtension = ext;
+      return next();
+    },
+    energy(world, next) {
+      const ext = this.stretch();
+      return 0.5 * this.stiffness * ext * ext + next();
+    },
+  };
+
+  // Viscous damper along the link, F = d·(relative velocity along it).
+  const Damper = {
+    mixinId: 'mech.Damper',
+    init(opts = {}) { this.damping = opts.damping === undefined ? 1 : opts.damping; },
+    forces(world, next) {
+      const d = sub(this.endB(), this.endA()), L = len(d);
+      if (L > 1e-12) {
+        const n = scale(d, 1 / L), vb = this.b ? this.b.vel : [0, 0];
+        this.pull(this.damping * dot(sub(vb, this.a.vel), n), n);
+      }
+      return next();
+    },
+  };
+
+  // Rigid massless rod: holds the length exactly by projecting positions and removing
+  // the relative velocity along it, split by inverse mass (an anchor is immovable).
+  const Rod = {
+    mixinId: 'mech.Rod',
+    constrain(world, h, next) {
+      const d = sub(this.endB(), this.endA()), L = len(d);
+      const wa = this.a.invMass, wb = this.b ? this.b.invMass : 0, w = wa + wb;
+      if (L > 1e-12 && w > 0) {
+        const n = scale(d, 1 / L), err = L - this.rest;
+        this.a.pos = add(this.a.pos, scale(n, err * wa / w));
+        if (this.b) this.b.pos = sub(this.b.pos, scale(n, err * wb / w));
+        const vb = this.b ? this.b.vel : [0, 0], rel = dot(sub(vb, this.a.vel), n);
+        this.a.vel = add(this.a.vel, scale(n, rel * wa / w));
+        if (this.b) this.b.vel = sub(this.b.vel, scale(n, rel * wb / w));
+      }
+      return next();
+    },
+  };
+
+  const MIXINS = { Gravity, Collisions, Weight, Drag, Grounded, Collider, Spring, Damper, Rod };
+
+  // ── Kits ─────────────────────────────────────────────────────────────
+
+  const Lab = ExtendX.extend(World, Gravity, Collisions);
+  const Bob = ExtendX.extend(Body, Weight, Collider);
+  const Block = ExtendX.extend(Body, Weight, Grounded, Collider);
+  const RodLink = ExtendX.extend(Link, Rod);
+  const Bumper = ExtendX.extend(Link, Spring);
+
+  const PENDULUM_DEFAULTS = {
+    l: 1.2,          // rod length ℓ (pivot to bob centre), m
+    phi0: 60,        // release angle φ₀ from vertical, degrees
+    m1: 1,           // bob mass, kg
+    m2: 2,           // block mass, kg
+    c: 400,          // spring stiffness, N/m
+    e: 1,            // coefficient of restitution (1 = elastic)
+    g: 9.81,         // m/s²
+    gap: 1.0,        // B → C: block's right face at rest to the spring plate, m
+    springLength: 0.5,
+    r: 0.08,         // bob radius, m
+    blockSize: [0.4, 0.24],
+  };
+
+  // Pendulum → block → spring. The bob swings down from φ₀ on a massless rod, strikes the
+  // block at the bottom of its arc (point B), the block slides on a frictionless floor and
+  // compresses the spring at C by Δx.
+  function pendulumBlockSpring(p) {
+    p = Object.assign({}, PENDULUM_DEFAULTS, p);
+    const phi = p.phi0 * Math.PI / 180, [bw, bh] = p.blockSize;
+    const A = [0, p.r + p.l];                         // pivot: bob hangs with its centre at height r
+    const world = new Lab({ g: p.g, restitution: p.e, substep: p.substep });
+    const bob = new Bob({ name: 'bob', mass: p.m1, radius: p.r, pos: [A[0] - p.l * Math.sin(phi), A[1] - p.l * Math.cos(phi)] });
+    const block = new Block({ name: 'block', mass: p.m2, size: p.blockSize, pos: [p.r + bw / 2, bh / 2] });
+    const rod = new RodLink({ name: 'rod', a: bob, anchor: A, rest: p.l });
+    const xC = p.r + bw + p.gap;
+    const spring = new Bumper({ name: 'spring', a: block, offsetA: [bw / 2, 0], anchor: [xC + p.springLength, bh / 2], rest: p.springLength, stiffness: p.c, mode: 'compression' });
+    world.add(bob, block, rod, spring);
+    return { world, params: p, points: { A, B: [0, 0], C: [xC, 0], D: [xC + p.springLength, 0] } };
+  }
+
+  // The hand calculation for the same problem.
+  //   v₁ = √(2gℓ(1 − cos φ₀))              bob speed at the bottom
+  //   v₂ = (1 + e)·m₁·v₁ / (m₁ + m₂)       block speed after impact
+  //   v₁' = (m₁ − e·m₂)·v₁ / (m₁ + m₂)     bob velocity after impact (negative = rebounds)
+  //   Δx = v₂·√(m₂ / c)                    spring compression (block KE → spring PE)
+  function pendulumAnalytic(p) {
+    p = Object.assign({}, PENDULUM_DEFAULTS, p);
+    const phi = p.phi0 * Math.PI / 180;
+    const v1 = Math.sqrt(2 * p.g * p.l * (1 - Math.cos(phi)));
+    const v2 = (1 + p.e) * p.m1 * v1 / (p.m1 + p.m2);
+    const v1After = (p.m1 - p.e * p.m2) * v1 / (p.m1 + p.m2);
+    const dx = v2 * Math.sqrt(p.m2 / p.c);
+    return { v1, v2, v1After, dx };
+  }
+
+  // Simulated counterparts, read from the first bob–block impact and the spring's peak.
+  function pendulumMeasure(kit) {
+    const w = kit.world, hit = w.events.find(ev => (ev.a === 'bob' && ev.b === 'block') || (ev.a === 'block' && ev.b === 'bob'));
+    const spring = w.find('spring');
+    if (!hit) return { impact: false, dx: spring.maxCompression };
+    const bobKey = hit.a === 'bob' ? 'a' : 'b', blockKey = bobKey === 'a' ? 'b' : 'a';
+    return {
+      impact: true,
+      t: hit.t,
+      v1: len(hit.before[bobKey]),
+      v2: hit.after[blockKey][0],
+      v1After: hit.after[bobKey][0],
+      dx: spring.maxCompression,
+    };
+  }
+
+  return {
+    World, Body, Link, ExtendX,
+    MIXINS, Gravity, Collisions, Weight, Drag, Grounded, Collider, Spring, Damper, Rod,
+    compose: (Base, ...mixins) => ExtendX.extend(Base, ...mixins),
+    classes: { Lab, Bob, Block, RodLink, Bumper },
+    contact,
+    kits: { pendulumBlockSpring },
+    analytic: { pendulumBlockSpring: pendulumAnalytic },
+    measure: { pendulumBlockSpring: pendulumMeasure },
+    PENDULUM_DEFAULTS,
+  };
+}));
+
+</script>
+<script>
+(function () {
+  'use strict';
+  const M = window.Mechanism;
+  const $ = id => document.getElementById(id);
+
+  // ── Parameters: a slider for the hand, a number field for precision, bound both ways ──
+  const P = Object.assign({}, M.PENDULUM_DEFAULTS);
+  const PARAMS = [
+    ['l', 'ℓ', 'm', 0.3, 2.5, 0.01],
+    ['phi0', 'φ₀', '°', 5, 170, 0.5],
+    ['m1', 'm₁', 'kg', 0.1, 10, 0.1],
+    ['m2', 'm₂', 'kg', 0.1, 10, 0.1],
+    ['c', 'c', 'N/m', 10, 2000, 10],
+    ['e', 'e', '', 0, 1, 0.01],
+    ['g', 'g', 'm/s²', 0, 25, 0.01],
+    ['gap', 'B→C', 'm', 0.1, 3, 0.01],
+  ];
+  const paramsEl = $('params');
+  PARAMS.forEach(([key, sym, unit, min, max, step]) => {
+    const row = document.createElement('div');
+    row.className = 'param';
+    row.innerHTML = `<span class="sym">${sym}<small> ${unit}</small></span>
+      <input type="range" id="r_${key}" min="${min}" max="${max}" step="${step}" aria-label="${sym}">
+      <input type="number" id="n_${key}" step="any" aria-label="${sym} value">`;
+    paramsEl.appendChild(row);
+    $('r_' + key).addEventListener('input', e => setParam(key, +e.target.value));
+    $('n_' + key).addEventListener('change', e => { const v = +e.target.value; if (Number.isFinite(v)) setParam(key, v); });
+  });
+  function syncParamInputs() {
+    PARAMS.forEach(([key]) => {
+      $('r_' + key).value = P[key];
+      if (document.activeElement !== $('n_' + key)) $('n_' + key).value = +P[key].toFixed(4);
+    });
+  }
+  function setParam(key, v) {
+    P[key] = v;
+    syncParamInputs();
+    build();
+  }
+
+  // ── Kit + layer toggles (kept across rebuilds) ──
+  let kit = null, playing = false;
+  const toggles = {};                 // objectName → { mixinId: false } for layers switched off
+  const HOOKS = { world: ['fieldAt', 'interact'], body: ['forces', 'constrain', 'potential'], link: ['forces', 'constrain', 'energy'] };
+
+  function build() {
+    kit = M.kits.pendulumBlockSpring(P);
+    for (const obj of objects()) {
+      for (const m of obj.mixins()) if (toggles[obj.name] && toggles[obj.name][m.mixinId] === false) obj.disableLayer(m);
+    }
+    setPlaying(false);
+    measureRefs();
+    renderComposition();
+    update();
+  }
+
+  function objects() { return [kit.world, ...kit.world.bodies, ...kit.world.links]; }
+  function kindOf(obj) { return obj === kit.world ? 'world' : obj instanceof M.Link ? 'link' : 'body'; }
+
+  function renderComposition() {
+    const host = $('comp');
+    host.innerHTML = '';
+    for (const obj of objects()) {
+      const kind = kindOf(obj), div = document.createElement('div');
+      div.className = 'obj';
+      div.innerHTML = `<div class="head"><span>${obj.name}</span><span>${{ world: 'World', body: 'Body', link: 'Link' }[kind]}</span></div>`;
+      for (const m of obj.mixins()) {
+        const on = !(toggles[obj.name] && toggles[obj.name][m.mixinId] === false);
+        const lab = document.createElement('label');
+        lab.innerHTML = `<input type="checkbox" ${on ? 'checked' : ''}> ${m.mixinId.replace('mech.', '')}`;
+        lab.querySelector('input').addEventListener('change', e => {
+          (toggles[obj.name] = toggles[obj.name] || {})[m.mixinId] = e.target.checked;
+          if (e.target.checked) obj.enableLayer(m); else obj.disableLayer(m);
+          if (kit.world.t === 0) measureRefs();
+          renderComposition();
+          update();
+        });
+        div.appendChild(lab);
+      }
+      const pre = document.createElement('pre');
+      pre.textContent = HOOKS[kind].map(h => obj.explain(h)).join('\n');
+      div.appendChild(pre);
+      host.appendChild(div);
+    }
+  }
+
+  function anyLayerOff() {
+    return Object.values(toggles).some(t => Object.values(t).some(v => v === false));
+  }
+
+  // ── Results + energy ──
+  const fmt = (v, d = 3) => (v === undefined || v === null || !Number.isFinite(v) ? '—' : v.toFixed(d));
+  function update() {
+    const ref = M.analytic.pendulumBlockSpring(P), sim = M.measure.pendulumBlockSpring(kit);
+    const rows = [
+      ['v₁ bob at impact', ref.v1, sim.impact ? sim.v1 : null, 'm/s', 3],
+      ['v₂ block after', ref.v2, sim.impact ? sim.v2 : null, 'm/s', 3],
+      ['v₁′ bob after', ref.v1After, sim.impact ? sim.v1After : null, 'm/s', 3],
+      ['Δx max', ref.dx * 1000, sim.dx > 0 ? sim.dx * 1000 : null, 'mm', 2],
+    ];
+    $('results').innerHTML = rows.map(([name, a, s, unit, d]) => {
+      const err = s === null ? null : Math.abs(a) > 1e-9 ? Math.abs(s - a) / Math.abs(a) * 100 : Math.abs(s - a) < 1e-6 ? 0 : null;
+      const cls = err === null ? '' : err < 1 ? 'good' : 'bad';
+      return `<tr><td>${name} <span style="color:var(--ink-muted)">${unit}</span></td><td>${fmt(a, d)}</td><td>${fmt(s, d)}</td><td class="err ${cls}">${err === null ? '—' : err.toFixed(2) + '%'}</td></tr>`;
+    }).join('');
+    $('note').textContent = anyLayerOff() ? 'Some layers are off, so the hand calculation (which assumes all of them) no longer describes this run.' : '';
+
+    const E = kit.world.energy(), scaleMax = Math.max(1e-9, Math.abs(E0()), E.kinetic, Math.abs(E.potential), E.elastic);
+    const bar = (label, v, color) => `<span>${label}</span><div class="bar"><i style="width:${Math.min(100, Math.abs(v) / scaleMax * 100)}%; background:${color}"></i></div><span class="val">${v.toFixed(3)} J</span>`;
+    $('energy').innerHTML = [
+      bar('kinetic', E.kinetic, 'var(--accent)'),
+      bar('gravity', E.potential - refPotential(), 'var(--warm)'),
+      bar('spring', E.elastic, 'var(--accent-2)'),
+      bar('total', E.total - refPotential(), 'var(--ok)'),
+    ].join('');
+  }
+  // Gravity energy is shown relative to the bottom of the swing (bob centre at height r),
+  // so the bars start from zero. Potential is linear in position for a uniform field, so
+  // the offset is the current total minus the bob's own term plus its term at the bottom.
+  let potentialRef = 0, scaleRef = 1;
+  function measureRefs() {
+    const w = kit.world, bob = w.find('bob'), E = w.energy();
+    const bobNow = bob.potential(w), bobBottom = bobNow === 0 ? 0 : -bob.mass * w.fieldAt([0, P.r])[1] * P.r;
+    potentialRef = E.potential - bobNow + bobBottom;
+    scaleRef = Math.max(1e-9, E.total - potentialRef);
+  }
+  function refPotential() { return potentialRef; }
+  function E0() { return scaleRef; }
+
+  // ── Drawing ──
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  let view = { s: 100, ox: 0, oy: 0 };
+  const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  function fitView() {
+    const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const minX = -(P.l + P.r) - 0.25, maxX = kit.points.D[0] + 0.35, minY = -0.3, maxY = P.r + P.l + 0.35;
+    view.s = Math.min(r.width / (maxX - minX), (r.height - 40) / (maxY - minY)) * 0.92;
+    view.ox = (r.width - (maxX - minX) * view.s) / 2 - minX * view.s;
+    view.oy = (r.height - 30 + (maxY - minY) * view.s) / 2 + minY * view.s;
+  }
+  const S = p => [view.ox + p[0] * view.s, view.oy - p[1] * view.s];
+  const W = (x, y) => [(x - view.ox) / view.s, (view.oy - y) / view.s];
+
+  function hatch(x0, y0, x1, y1, dir) {
+    ctx.save(); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+    ctx.lineWidth = 1;
+    const n = Math.max(2, Math.floor(Math.hypot(x1 - x0, y1 - y0) / 14));
+    for (let i = 0; i <= n; i++) {
+      const x = x0 + (x1 - x0) * i / n, y = y0 + (y1 - y0) * i / n;
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 8, y + 9 * dir); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  function label(text, p, dx, dy) {
+    const [x, y] = S(p), cx = x + dx, cy = y + dy;
+    ctx.save();
+    ctx.strokeStyle = css('--ink-muted'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(cx, cy); ctx.stroke();
+    ctx.fillStyle = css('--bg'); ctx.beginPath(); ctx.arc(cx, cy, 10, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = css('--ink'); ctx.font = '11px ' + css('--font-mono'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(text, cx, cy + 0.5);
+    ctx.restore();
+  }
+  function dimension(a, b, y, text) {
+    const [x0, sy] = S([a, y]), [x1] = S([b, y]);
+    ctx.save(); ctx.strokeStyle = css('--ink-muted'); ctx.fillStyle = css('--ink'); ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x0, sy); ctx.lineTo(x1, sy); ctx.stroke();
+    [[x0, 1], [x1, -1]].forEach(([x, d]) => { ctx.beginPath(); ctx.moveTo(x + 6 * d, sy - 4); ctx.lineTo(x, sy); ctx.lineTo(x + 6 * d, sy + 4); ctx.stroke(); });
+    ctx.font = '11px ' + css('--font-mono'); ctx.textAlign = 'center'; ctx.fillText(text, (x0 + x1) / 2, sy - 6);
+    ctx.restore();
+  }
+
+  function draw() {
+    const r = cv.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+    const w = kit.world, bob = w.find('bob'), block = w.find('block'), spring = w.find('spring'), A = kit.points.A;
+    const ink = css('--ink'), muted = css('--ink-muted'), accent = css('--accent');
+    ctx.lineCap = 'round';
+
+    // Ground (μ = 0) and wall at D.
+    ctx.strokeStyle = muted; ctx.lineWidth = 1.5;
+    const [gx0, gy] = S([-(P.l + P.r) - 0.15, 0]), [gx1] = S([kit.points.D[0], 0]);
+    hatch(gx0, gy, gx1, gy, 1);
+    const [wx, wy0] = S([kit.points.D[0], 0]), [, wy1] = S([kit.points.D[0], P.blockSize[1] * 1.6]);
+    hatch(wx, wy0, wx, wy1, 0); ctx.beginPath(); ctx.moveTo(wx, wy0); ctx.lineTo(wx, wy1); ctx.stroke();
+    ctx.fillStyle = muted; ctx.font = '11px ' + css('--font-mono'); ctx.fillText('μ = 0', gx0 + 10, gy + 26);
+
+    // Pivot A.
+    const [ax, ay] = S(A);
+    ctx.strokeStyle = ink; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax - 12, ay - 18); ctx.lineTo(ax + 12, ay - 18); ctx.closePath(); ctx.stroke();
+    hatch(ax - 18, ay - 18, ax + 18, ay - 18, -1);
+
+    // Release path (dashed arc), vertical through A, and φ₀.
+    const phi = P.phi0 * Math.PI / 180, rad = P.l * view.s;
+    ctx.save(); ctx.setLineDash([6, 6]); ctx.strokeStyle = muted; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(ax, ay, rad, Math.PI / 2, Math.PI / 2 + phi); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(ax, ay + rad); ctx.stroke();
+    const start = [A[0] - P.l * Math.sin(phi), A[1] - P.l * Math.cos(phi)], [sx, sy] = S(start);
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(sx, sy); ctx.stroke();
+    ctx.restore();
+    ctx.strokeStyle = accent; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(ax, ay, Math.min(rad * 0.45, 70), Math.PI / 2, Math.PI / 2 + phi); ctx.stroke();
+    ctx.fillStyle = accent; ctx.font = '12px ' + css('--font-mono');
+    const lr = Math.min(rad * 0.45, 70) + 16, la = Math.PI / 2 + phi / 2;
+    ctx.fillText(`φ₀ ${P.phi0.toFixed(1)}°`, ax + Math.cos(la) * lr - 26, ay + Math.sin(la) * lr);
+
+    // Spring (compression-only bumper): plate at C or pushed in by the block.
+    const plateX = Math.max(kit.points.C[0], spring.endA()[0]);
+    const sh = P.blockSize[1] / 2, [px, py] = S([plateX, sh]), [dx] = S([kit.points.D[0], sh]);
+    ctx.strokeStyle = css('--accent-2'); ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.moveTo(px, py);
+    const coils = 8, amp = Math.max(5, sh * view.s * 0.45);
+    for (let i = 1; i < coils * 2; i++) ctx.lineTo(px + (dx - px) * i / (coils * 2), py + (i % 2 ? -amp : amp));
+    ctx.lineTo(dx, py); ctx.stroke();
+    ctx.strokeStyle = ink; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(px, py - sh * view.s * 0.9); ctx.lineTo(px, py + sh * view.s * 0.9); ctx.stroke();
+
+    // Block m₂.
+    const [bw, bh] = P.blockSize, [bx, by] = S([block.pos[0] - bw / 2, block.pos[1] + bh / 2]);
+    ctx.fillStyle = 'rgba(255,111,80,.35)'; ctx.strokeStyle = '#ff8a6a'; ctx.lineWidth = 2;
+    ctx.fillRect(bx, by, bw * view.s, bh * view.s); ctx.strokeRect(bx, by, bw * view.s, bh * view.s);
+    ctx.fillStyle = ink; ctx.font = 'italic 12px ' + css('--font-body'); ctx.textAlign = 'center';
+    ctx.fillText('m₂', bx + bw * view.s / 2, by + bh * view.s / 2 + 4); ctx.textAlign = 'left';
+
+    // Rod and bob m₁.
+    const [qx, qy] = S(bob.pos);
+    ctx.strokeStyle = ink; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(qx, qy); ctx.stroke();
+    ctx.fillStyle = dragging === 'bob' ? accent : ink;
+    ctx.beginPath(); ctx.arc(qx, qy, Math.max(5, P.r * view.s), 0, 2 * Math.PI); ctx.fill();
+    ctx.fillStyle = '#05080c'; ctx.beginPath(); ctx.arc(ax, ay, 4, 0, 2 * Math.PI); ctx.fill(); ctx.strokeStyle = ink; ctx.lineWidth = 1.5; ctx.stroke();
+
+    // g arrow.
+    const [gxA, gyA] = S([kit.points.C[0] * 0.55, P.l * 0.55]);
+    ctx.strokeStyle = ink; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(gxA, gyA); ctx.lineTo(gxA, gyA + 40); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(gxA - 5, gyA + 32); ctx.lineTo(gxA, gyA + 41); ctx.lineTo(gxA + 5, gyA + 32); ctx.stroke();
+    ctx.fillStyle = ink; ctx.font = 'italic 13px ' + css('--font-body'); ctx.fillText(`g = ${P.g}`, gxA + 10, gyA + 25);
+
+    // Labels and dimensions.
+    label('A', A, 34, 26);
+    label('B', kit.points.B, -26, 26);
+    label('C', kit.points.C, -10, 30);
+    label('D', kit.points.D, 18, 30);
+    dimension(kit.points.B[0], block.pos[0] + bw / 2, -0.17, `x = ${(block.pos[0] + bw / 2 - kit.points.B[0]).toFixed(3)} m`);
+    const comp = Math.max(0, spring.endA()[0] - kit.points.C[0]);
+    const peak = spring.maxCompression;
+    if (peak > 0) dimension(kit.points.C[0], kit.points.C[0] + peak, bh * 1.9, `Δx max ${(peak * 1000).toFixed(1)} mm`);
+    else dimension(kit.points.C[0], kit.points.D[0], bh * 1.9, `Δx = ${(comp * 1000).toFixed(1)} mm`);
+
+    $('hud').innerHTML = `t <b>${w.t.toFixed(3)} s</b> · impacts <b>${w.events.length}</b>`;
+  }
+
+  // ── Dragging: the bob sets φ₀, the spring plate sets the gap ──
+  let dragging = null;
+  cv.addEventListener('pointerdown', e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    const bob = kit.world.find('bob'), [bx, by] = S(bob.pos);
+    const [cx, cy] = S([Math.max(kit.points.C[0], kit.world.find('spring').endA()[0]), P.blockSize[1] / 2]);
+    if (Math.hypot(x - bx, y - by) < Math.max(18, P.r * view.s * 1.6)) dragging = 'bob';
+    else if (Math.abs(x - cx) < 12 && Math.abs(y - cy) < 40) dragging = 'plate';
+    if (dragging) { cv.setPointerCapture(e.pointerId); setPlaying(false); }
+  });
+  cv.addEventListener('pointermove', e => {
+    const r = cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    if (!dragging) {
+      const bob = kit.world.find('bob'), [bx, by] = S(bob.pos);
+      cv.style.cursor = Math.hypot(x - bx, y - by) < 18 ? 'grab' : 'default';
+      return;
+    }
+    const [wx, wy] = W(x, y), A = kit.points.A;
+    if (dragging === 'bob') {
+      const deg = Math.atan2(A[0] - wx, A[1] - wy) * 180 / Math.PI;
+      P.phi0 = Math.round(Math.min(170, Math.max(5, deg)) * 2) / 2;
+    } else {
+      P.gap = Math.round(Math.min(3, Math.max(0.1, wx - (P.r + P.blockSize[0]))) * 100) / 100;
+    }
+    syncParamInputs();
+    build();
+  });
+  cv.addEventListener('pointerup', () => { dragging = null; draw(); });
+
+  // ── Loop ──
+  function setPlaying(on) {
+    playing = on;
+    $('btnPlay').textContent = on ? '❚❚ Pause' : '▶ Play';
+  }
+  $('btnPlay').onclick = () => setPlaying(!playing);
+  $('btnReset').onclick = () => build();
+  window.addEventListener('keydown', e => {
+    if (e.target.closest('input, select')) return;
+    if (e.code === 'Space') { e.preventDefault(); setPlaying(!playing); }
+    if (e.key === 'r' || e.key === 'R') build();
+  });
+
+  let last = performance.now();
+  function tick(now) {
+    const dt = Math.min(1 / 30, (now - last) / 1000);
+    last = now;
+    if (playing) {
+      kit.world.step(dt * +$('speed').value);
+      update();
+    }
+    draw();
+    requestAnimationFrame(tick);
+  }
+
+  new ResizeObserver(() => { fitView(); draw(); }).observe($('stage'));
+  syncParamInputs();
+  build();
+  fitView();
+  requestAnimationFrame(tick);
+})();
+</script>
+
+</body></html>
