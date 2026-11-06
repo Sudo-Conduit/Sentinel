@@ -740,8 +740,8 @@
           const col = rgb(C.axle);
           prism(mb, c, p.axis, axleOutline(0.2), p.len / 2, col, null);
           // Where the axle runs through a part, show its cross in the hole on each face.
-          for (const cell of cs) if (solidCells.has(cell.join(','))) for (const s of [1, -1]) prism(mb, along(cell, p.axis, s * 0.475), p.axis, axleOutline(0.2), 0.012, col, null);
-        } else { const col = rgb(C.pin); prism(mb, c, p.axis, circle(0.22, 18), p.len / 2, col, edgeOf(col)); disc(mb, along(cs[0], p.axis, 0), p.axis, 0.09, -(0.5 + 0.004), tone(col, -0.3), 10); disc(mb, cs[cs.length - 1], p.axis, 0.09, 0.5 + 0.004, tone(col, -0.3), 10); }
+          for (const cell of cs) if (solidCells.has(cell.join(','))) for (const s of [1, -1]) prism(mb, along(cell, p.axis, s * 0.515), p.axis, axleOutline(0.2), 0.008, col, null);
+        } else { const col = rgb(C.pin); prism(mb, c, p.axis, circle(0.22, 18), p.len / 2 + 0.02, col, edgeOf(col)); disc(mb, cs[0], p.axis, 0.09, -(0.5 + 0.025), tone(col, -0.3), 10); disc(mb, cs[cs.length - 1], p.axis, 0.09, 0.5 + 0.025, tone(col, -0.3), 10); }
         break;
       }
       case 'gear': {

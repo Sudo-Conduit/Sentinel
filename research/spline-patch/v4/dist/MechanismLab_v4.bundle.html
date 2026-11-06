@@ -1,5 +1,5 @@
 <title>Mechanism Lab v4</title>
-<!-- Mechanism Lab v4, bundled from research/spline-patch/v4/MechanismLab_v4.html (sha256 b7d090d605f98266bb17770ee9097d02e8eeb028fd6a65bcac75429644e3bc52).
+<!-- Mechanism Lab v4, bundled from research/spline-patch/v4/MechanismLab_v4.html (sha256 0c58e1dc6eaf18e29d4876b8a398055304965d544fa7bd0c76aa7b578ae29789).
      2 files inlined, listed with their sha256 below; scripts load from nothing outside this file.
      848ff38998abab2461395a63c6939c55842b2066385bc35fb0a4a7046f108b5c  research/spline-patch/v4/ExtendX.js
      abb0098c0e9e9b9ee269da002bc2eaa4534ef2001ca927ca5e4ddde429f656e7  research/spline-patch/v4/Technic.js
@@ -3829,8 +3829,8 @@
           const col = rgb(C.axle);
           prism(mb, c, p.axis, axleOutline(0.2), p.len / 2, col, null);
           // Where the axle runs through a part, show its cross in the hole on each face.
-          for (const cell of cs) if (solidCells.has(cell.join(','))) for (const s of [1, -1]) prism(mb, along(cell, p.axis, s * 0.475), p.axis, axleOutline(0.2), 0.012, col, null);
-        } else { const col = rgb(C.pin); prism(mb, c, p.axis, circle(0.22, 18), p.len / 2, col, edgeOf(col)); disc(mb, along(cs[0], p.axis, 0), p.axis, 0.09, -(0.5 + 0.004), tone(col, -0.3), 10); disc(mb, cs[cs.length - 1], p.axis, 0.09, 0.5 + 0.004, tone(col, -0.3), 10); }
+          for (const cell of cs) if (solidCells.has(cell.join(','))) for (const s of [1, -1]) prism(mb, along(cell, p.axis, s * 0.515), p.axis, axleOutline(0.2), 0.008, col, null);
+        } else { const col = rgb(C.pin); prism(mb, c, p.axis, circle(0.22, 18), p.len / 2 + 0.02, col, edgeOf(col)); disc(mb, cs[0], p.axis, 0.09, -(0.5 + 0.025), tone(col, -0.3), 10); disc(mb, cs[cs.length - 1], p.axis, 0.09, 0.5 + 0.025, tone(col, -0.3), 10); }
         break;
       }
       case 'gear': {
