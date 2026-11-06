@@ -1,5 +1,5 @@
 <title>Mechanism Lab v5</title>
-<!-- Mechanism Lab v5, bundled from research/spline-patch/v5/MechanismLab_v5.html (sha256 0f65caa39e5e9ff40b508a198b129895d23500655351128e3102a352571d12be).
+<!-- Mechanism Lab v5, bundled from research/spline-patch/v5/MechanismLab_v5.html (sha256 b9590051a4f1646445b5f98ce90863f35f347987d1d36191e773df2576e02af6).
      2 files inlined, listed with their sha256 below; scripts load from nothing outside this file.
      848ff38998abab2461395a63c6939c55842b2066385bc35fb0a4a7046f108b5c  research/spline-patch/v5/ExtendX.js
      6c8ce3239485d5d11f214ee4f7ca3792a8e533ebf133fe83393c46e88acf955a  research/spline-patch/v5/Technic.js
@@ -3930,7 +3930,11 @@
         if (p.free) { const col = rgb(C.weight); box(mb, lo, hi, col, rgb(C['weight-edge'])); break; }
         const col = rgb(C.brick);
         box(mb, lo, hi, col, edgeOf(col));
-        for (const cell of T.cells(p)) if (cell[1] === p.y + p.h - 1) prism(mb, [cell[0], cell[1] + 0.59, cell[2]], 'y', circle(0.26, 16), 0.09, tone(col, 0.08), edgeOf(col));
+        if (p.holes === 'y') {
+          // A plate with upward holes: holes on the grid, studs between them (as on Technic plates).
+          const top = p.y + p.h - 1;
+          for (let i = 0; i < p.w - 1; i++) for (let k = 0; k < p.d - 1; k++) prism(mb, [p.x + i + 0.5, top + 0.59, p.z + k + 0.5], 'y', circle(0.22, 16), 0.09, tone(col, 0.08), edgeOf(col));
+        } else for (const cell of T.cells(p)) if (cell[1] === p.y + p.h - 1) prism(mb, [cell[0], cell[1] + 0.59, cell[2]], 'y', circle(0.26, 16), 0.09, tone(col, 0.08), edgeOf(col));
         if (p.holes) {
           const i = IDX[p.holes], cs = T.cells(p), mn = Math.min(...cs.map(q => q[i])), mx = Math.max(...cs.map(q => q[i]));
           for (const cell of cs) {
@@ -4466,8 +4470,19 @@
 
   // ── Inspector ──
   const AX = [['x', 'x'], ['y', 'y'], ['z', 'z']];
+  // For a gear, pulley, worm or axle: which axle it turns on, and which parts hold that axle.
+  function bearingLine(p) {
+    if (!machine || !(T.isWheel(p) || p.type === 'axle') || p.type === 'motor') return '';
+    const an = machine.analysis, as = p.type === 'axle' ? an.axles.find(a => a.axle === p) : an.assemblyOf.get(p.id);
+    if (!as) return `<div class="status wide"><span class="pill bad">loose</span><span>No axle runs through it. Put it on an axle, or place it on a hole so one is added.</span></div>`;
+    const holders = (an.con.connectorParts.get(as.axle.id) || []).filter(q => an.con.status.get(q) === 'fixed');
+    const on = p.type === 'axle' ? '' : `Turns on ${T.label(as.axle)}, `;
+    if (!holders.length) return `<div class="status wide"><span class="pill bad">loose</span><span>${on}which runs through no hole of a fixed part, so it cannot turn. Run the axle through a beam or brick hole.</span></div>`;
+    const drive = as.motor ? ` Driven by ${T.label(as.motor)}.` : '';
+    return `<div class="status wide"><span class="pill ok">held</span><span>${on}held in the hole${holders.length > 1 ? 's' : ''} of ${holders.map(T.label).join(' and ')}.${drive}</span></div>`;
+  }
   function connectionLine(p) {
-    if (!machine || !T.isStructure(p)) return '';
+    if (!machine || !T.isStructure(p)) return bearingLine(p);
     const con = machine.analysis.con, st = con.status.get(p);
     const pins = model.parts.filter(q => q.type === 'pin' && (con.connectorParts.get(q.id) || []).includes(p)).length;
     const axles = model.parts.filter(q => q.type === 'axle' && (con.connectorParts.get(q.id) || []).includes(p)).length;
